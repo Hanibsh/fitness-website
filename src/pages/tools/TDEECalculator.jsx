@@ -25,8 +25,8 @@ const bodyFatRanges = {
 }
 
 const bodyFatBounds = {
-  male: { min: 8, max: 40, default: 20 },
-  female: { min: 12, max: 40, default: 24 },
+  male: { min: 4, max: 65, default: 20 },
+  female: { min: 4, max: 65, default: 24 },
 }
 
 function nearestBodyFatLabel(sex, value) {
@@ -38,6 +38,14 @@ const speeds = [
   { label: 'Moderate', delta: 500, desc: '~0.5 kg/week' },
   { label: 'Fast', delta: 750, desc: '~0.75 kg/week' },
 ]
+
+const inputBounds = {
+  age: { min: 10, max: 100 },
+  weight: { metric: { min: 20, max: 300 }, imperial: { min: 44, max: 660 } },
+  height: { metric: { min: 100, max: 250 }, imperial: { min: 39, max: 98 } },
+  workoutHours: { min: 0, max: 40 },
+  stepsPerDay: { min: 0, max: 50000 },
+}
 
 const neatLevers = [
   { label: 'Walk 30 min more', calc: (w) => 1.84 * w },
@@ -53,16 +61,47 @@ export default function TDEECalculator() {
   const [weight, setWeight] = useState('')
   const [height, setHeight] = useState('')
   const [workoutHours, setWorkoutHours] = useState('')
-  const [stepsPerWeek, setStepsPerWeek] = useState('')
+  const [stepsPerDay, setStepsPerDay] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
   function calculate() {
     const w = parseFloat(weight), h = parseFloat(height), a = parseInt(age)
     const hours = parseFloat(workoutHours) || 0
-    const steps = parseFloat(stepsPerWeek) || 0
+    const steps = parseFloat(stepsPerDay) || 0
     if (!w || !h || !a) {
       setError('Enter your age, weight, and height to calculate.')
+      setResult(null)
+      return
+    }
+
+    const weightRange = inputBounds.weight[unit]
+    const heightRange = inputBounds.height[unit]
+    const weightUnitLabel = unit === 'imperial' ? 'lbs' : 'kg'
+    const heightUnitLabel = unit === 'imperial' ? 'in' : 'cm'
+
+    if (a < inputBounds.age.min || a > inputBounds.age.max) {
+      setError(`Age should be between ${inputBounds.age.min} and ${inputBounds.age.max}.`)
+      setResult(null)
+      return
+    }
+    if (w < weightRange.min || w > weightRange.max) {
+      setError(`Weight should be between ${weightRange.min} and ${weightRange.max} ${weightUnitLabel}.`)
+      setResult(null)
+      return
+    }
+    if (h < heightRange.min || h > heightRange.max) {
+      setError(`Height should be between ${heightRange.min} and ${heightRange.max} ${heightUnitLabel}.`)
+      setResult(null)
+      return
+    }
+    if (hours < inputBounds.workoutHours.min || hours > inputBounds.workoutHours.max) {
+      setError(`Workout hours should be between ${inputBounds.workoutHours.min} and ${inputBounds.workoutHours.max}.`)
+      setResult(null)
+      return
+    }
+    if (steps < inputBounds.stepsPerDay.min || steps > inputBounds.stepsPerDay.max) {
+      setError(`Steps per day should be between ${inputBounds.stepsPerDay.min} and ${inputBounds.stepsPerDay.max}.`)
       setResult(null)
       return
     }
@@ -76,7 +115,7 @@ export default function TDEECalculator() {
     const ageDecline = a > 60 ? 0.007 * (a - 60) : 0
     const bmr = bmrRaw * (1 - ageDecline)
 
-    const neat = (steps / 7) * weightKg * 0.0005
+    const neat = steps * weightKg * 0.0005
     const exercise = (hours / 7) * 6.3 * weightKg
     const tef = 0.1 * (bmr + neat + exercise)
     const tdee = bmr + neat + exercise + tef
@@ -150,10 +189,10 @@ export default function TDEECalculator() {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              {[['Age', age, setAge, '25'], ['Weight', weight, setWeight, unit === 'metric' ? '80' : '176'], ['Height', height, setHeight, unit === 'metric' ? '180' : '71']].map(([label, val, set, ph]) => (
+              {[['Age', age, setAge, '25', inputBounds.age.min, inputBounds.age.max], ['Weight', weight, setWeight, unit === 'metric' ? '80' : '176', inputBounds.weight[unit].min, inputBounds.weight[unit].max], ['Height', height, setHeight, unit === 'metric' ? '180' : '71', inputBounds.height[unit].min, inputBounds.height[unit].max]].map(([label, val, set, ph, min, max]) => (
                 <div key={label}>
                   <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">{label}{label !== 'Age' ? ` (${label === 'Weight' ? (unit === 'metric' ? 'kg' : 'lbs') : (unit === 'metric' ? 'cm' : 'in')})` : ''}</label>
-                  <input type="number" value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                  <input type="number" min={min} max={max} value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
                 </div>
               ))}
             </div>
@@ -161,11 +200,11 @@ export default function TDEECalculator() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Workout (hrs/week)</label>
-                <input type="number" value={workoutHours} onChange={e => setWorkoutHours(e.target.value)} placeholder="4" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.workoutHours.min} max={inputBounds.workoutHours.max} value={workoutHours} onChange={e => setWorkoutHours(e.target.value)} placeholder="4" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
               <div>
-                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Steps (per week)</label>
-                <input type="number" value={stepsPerWeek} onChange={e => setStepsPerWeek(e.target.value)} placeholder="70000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Steps (per day)</label>
+                <input type="number" min={inputBounds.stepsPerDay.min} max={inputBounds.stepsPerDay.max} value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="10000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
             </div>
 
@@ -274,7 +313,7 @@ export default function TDEECalculator() {
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">NEAT — from your step count</p>
-                <p className="text-[13px] text-text-muted leading-relaxed">Calories burned per step scale with body weight — roughly 0.0005 × weight (kg) per step. We take your weekly steps, average them per day, and multiply by that per-step cost to estimate the calories from daily walking and movement.</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">Calories burned per step scale with body weight — roughly 0.0005 × weight (kg) per step. We multiply your daily step count by that per-step cost to estimate the calories from daily walking and movement.</p>
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Exercise calories</p>
