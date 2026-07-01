@@ -12,71 +12,55 @@ export default function CreatineCalculator() {
     const w = parseFloat(weight)
     if (!w) return
     const weightKg = unit === 'lbs' ? w * 0.453592 : w
-    setResult({
-      loading: Math.round(weightKg * 0.3 * 10) / 10,
-      maintenance: Math.round(weightKg * 0.05 * 10) / 10,
-      standard: 5,
-    })
+    setResult({ loading: Math.round(weightKg * 0.3 * 10) / 10, maintenance: Math.round(weightKg * 0.05 * 10) / 10, standard: 5 })
   }
+
+  const toggle = (active, onClick, label) => (
+    <button onClick={onClick} className={`flex-1 py-2 rounded-lg text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{label}</button>
+  )
 
   return (
     <div className="pt-24 pb-16 px-6">
-      <div className="max-w-2xl mx-auto">
-        <Link to="/tools" className="inline-flex items-center gap-2 text-grey-400 hover:text-neon no-underline text-sm mb-8 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Tools
+      <div className="max-w-xl mx-auto">
+        <Link to="/tools" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-8 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to tools
         </Link>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-heading text-4xl font-bold text-white mb-2">Creatine Calculator</h1>
-          <p className="text-grey-400 mb-8">Find your optimal creatine dosage.</p>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="font-heading text-3xl font-medium text-text-primary mb-1.5">Creatine calculator</h1>
+          <p className="text-text-muted text-[14px] mb-8">Find your optimal creatine dosage.</p>
 
-          <div className="bg-dark-800 border border-dark-500/50 rounded-2xl p-8 space-y-6">
-            <div className="flex gap-3">
-              <button onClick={() => setUnit('kg')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${unit === 'kg' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>kg</button>
-              <button onClick={() => setUnit('lbs')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${unit === 'lbs' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>lbs</button>
+          <div className="bg-white border border-border rounded-xl p-7 space-y-5">
+            <div className="flex gap-2">
+              {toggle(unit === 'kg', () => setUnit('kg'), 'kg')}
+              {toggle(unit === 'lbs', () => setUnit('lbs'), 'lbs')}
             </div>
-
             <div>
-              <label className="text-xs text-grey-400 uppercase tracking-wider block mb-2">Body Weight ({unit})</label>
-              <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder={unit === 'kg' ? '80' : '176'} className="w-full bg-dark-700 border border-dark-500 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-neon transition-colors" />
+              <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1.5">Body weight ({unit})</label>
+              <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder={unit === 'kg' ? '80' : '176'} className="w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
             </div>
-
-            <button onClick={calculate} className="w-full bg-neon text-dark-900 font-semibold py-3 rounded-lg border-none cursor-pointer text-base hover:bg-neon-dim transition-colors">
+            <button onClick={calculate} className="w-full bg-text-primary text-cream font-medium py-2.5 rounded-lg border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors">
               Calculate
             </button>
           </div>
 
           {result && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 bg-dark-800 border border-neon/30 rounded-2xl p-8">
-              <h2 className="font-heading text-xl font-semibold text-white mb-6">Your Creatine Dosage</h2>
-              <div className="space-y-4">
-                <div className="bg-dark-700 rounded-xl p-5">
-                  <div className="flex justify-between items-center">
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-6 bg-white border border-border rounded-xl p-7">
+              <h2 className="font-heading text-lg font-medium text-text-primary mb-5">Your creatine dosage</h2>
+              <div className="space-y-3">
+                {[
+                  ['Loading phase (5–7 days)', 'Split into 4 doses throughout the day', `${result.loading}g`, '/day', true],
+                  ['Maintenance (ongoing)', 'Take once daily with a meal', `${result.maintenance}g`, '/day', false],
+                  ['Standard dose (no loading)', 'Simple approach — just take 5g daily', `${result.standard}g`, '/day', false],
+                ].map(([title, desc, val, suffix, highlight]) => (
+                  <div key={title} className={`rounded-lg p-5 flex justify-between items-center ${highlight ? 'bg-text-primary' : 'bg-cream border border-border'}`}>
                     <div>
-                      <p className="text-xs text-grey-400 uppercase tracking-wider mb-1">Loading Phase (5–7 days)</p>
-                      <p className="text-sm text-grey-400">Split into 4 doses throughout the day</p>
+                      <p className={`text-[13px] font-medium mb-0.5 ${highlight ? 'text-cream' : 'text-text-primary'}`}>{title}</p>
+                      <p className={`text-[12px] ${highlight ? 'text-cream/60' : 'text-text-muted'}`}>{desc}</p>
                     </div>
-                    <p className="text-2xl font-bold text-white">{result.loading}g<span className="text-sm text-grey-400">/day</span></p>
+                    <p className={`text-xl font-medium ${highlight ? 'text-cream' : 'text-text-primary'}`}>{val}<span className={`text-[12px] ${highlight ? 'text-cream/50' : 'text-text-light'}`}>{suffix}</span></p>
                   </div>
-                </div>
-                <div className="bg-dark-700 rounded-xl p-5 border border-neon/20">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-neon uppercase tracking-wider mb-1">Maintenance (ongoing)</p>
-                      <p className="text-sm text-grey-400">Take once daily with a meal</p>
-                    </div>
-                    <p className="text-2xl font-bold text-neon">{result.maintenance}g<span className="text-sm text-grey-400">/day</span></p>
-                  </div>
-                </div>
-                <div className="bg-dark-700 rounded-xl p-5">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-grey-400 uppercase tracking-wider mb-1">Standard Dose (no loading)</p>
-                      <p className="text-sm text-grey-400">Simple approach — just take 5g daily</p>
-                    </div>
-                    <p className="text-2xl font-bold text-white">{result.standard}g<span className="text-sm text-grey-400">/day</span></p>
-                  </div>
-                </div>
+                ))}
               </div>
             </motion.div>
           )}

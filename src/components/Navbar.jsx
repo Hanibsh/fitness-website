@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dumbbell, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -15,11 +15,10 @@ export default function Navbar() {
   const location = useLocation()
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-xl border-b border-dark-500/50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-white no-underline">
-          <Dumbbell className="w-6 h-6 text-neon" />
-          <span className="font-heading text-xl font-bold tracking-tight">JEFIT</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-cream/90 backdrop-blur-md border-b border-border">
+      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <Link to="/" className="font-heading text-lg font-semibold text-text-primary tracking-tight no-underline">
+          JEFIT
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
@@ -27,10 +26,10 @@ export default function Navbar() {
             <Link
               key={to}
               to={to}
-              className={`text-sm font-medium tracking-wide no-underline transition-colors ${
+              className={`text-[13px] tracking-wide no-underline transition-colors ${
                 location.pathname === to
-                  ? 'text-neon'
-                  : 'text-grey-400 hover:text-white'
+                  ? 'text-text-primary font-medium'
+                  : 'text-text-muted hover:text-text-primary'
               }`}
             >
               {label}
@@ -40,9 +39,9 @@ export default function Navbar() {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-white bg-transparent border-none cursor-pointer"
+          className="md:hidden text-text-primary bg-transparent border-none cursor-pointer"
         >
-          {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
@@ -52,7 +51,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-dark-800 border-b border-dark-500/50 overflow-hidden"
+            className="md:hidden bg-cream border-b border-border overflow-hidden"
           >
             <div className="px-6 py-4 flex flex-col gap-4">
               {navLinks.map(({ to, label }) => (
@@ -60,8 +59,8 @@ export default function Navbar() {
                   key={to}
                   to={to}
                   onClick={() => setIsOpen(false)}
-                  className={`text-sm font-medium no-underline ${
-                    location.pathname === to ? 'text-neon' : 'text-grey-400'
+                  className={`text-sm no-underline ${
+                    location.pathname === to ? 'text-text-primary font-medium' : 'text-text-muted'
                   }`}
                 >
                   {label}

@@ -13,7 +13,7 @@ import CalorieDeficit from './pages/tools/CalorieDeficit'
 
 function App() {
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-cream">
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />

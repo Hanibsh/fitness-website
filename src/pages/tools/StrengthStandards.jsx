@@ -18,9 +18,8 @@ const standards = {
   },
 }
 
-const liftNames = { bench: 'Bench Press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'Overhead Press' }
+const liftNames = { bench: 'Bench press', squat: 'Squat', deadlift: 'Deadlift', ohp: 'Overhead press' }
 const levels = ['beginner', 'novice', 'intermediate', 'advanced', 'elite']
-const levelColors = { beginner: 'text-grey-400', novice: 'text-blue-400', intermediate: 'text-yellow-400', advanced: 'text-orange-400', elite: 'text-neon' }
 
 export default function StrengthStandards() {
   const [gender, setGender] = useState('male')
@@ -30,48 +29,50 @@ export default function StrengthStandards() {
   const w = parseFloat(weight)
   const weightKg = w ? (unit === 'lbs' ? w * 0.453592 : w) : null
 
+  const toggle = (active, onClick, label) => (
+    <button onClick={onClick} className={`flex-1 py-2 rounded-lg text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{label}</button>
+  )
+
   return (
     <div className="pt-24 pb-16 px-6">
-      <div className="max-w-3xl mx-auto">
-        <Link to="/tools" className="inline-flex items-center gap-2 text-grey-400 hover:text-neon no-underline text-sm mb-8 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Tools
+      <div className="max-w-2xl mx-auto">
+        <Link to="/tools" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-8 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to tools
         </Link>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-heading text-4xl font-bold text-white mb-2">Strength Standards</h1>
-          <p className="text-grey-400 mb-8">See how your lifts compare.</p>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="font-heading text-3xl font-medium text-text-primary mb-1.5">Strength standards</h1>
+          <p className="text-text-muted text-[14px] mb-8">See how your lifts compare.</p>
 
-          <div className="bg-dark-800 border border-dark-500/50 rounded-2xl p-8 space-y-6">
-            <div className="flex gap-3">
-              <button onClick={() => setGender('male')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${gender === 'male' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>Male</button>
-              <button onClick={() => setGender('female')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${gender === 'female' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>Female</button>
+          <div className="bg-white border border-border rounded-xl p-7 space-y-5">
+            <div className="flex gap-2">
+              {toggle(gender === 'male', () => setGender('male'), 'Male')}
+              {toggle(gender === 'female', () => setGender('female'), 'Female')}
             </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => setUnit('kg')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${unit === 'kg' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>kg</button>
-              <button onClick={() => setUnit('lbs')} className={`flex-1 py-2 rounded-lg text-sm font-medium border-none cursor-pointer transition-colors ${unit === 'lbs' ? 'bg-neon text-dark-900' : 'bg-dark-600 text-grey-400'}`}>lbs</button>
+            <div className="flex gap-2">
+              {toggle(unit === 'kg', () => setUnit('kg'), 'kg')}
+              {toggle(unit === 'lbs', () => setUnit('lbs'), 'lbs')}
             </div>
-
             <div>
-              <label className="text-xs text-grey-400 uppercase tracking-wider block mb-2">Body Weight ({unit})</label>
-              <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder={unit === 'kg' ? '80' : '176'} className="w-full bg-dark-700 border border-dark-500 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-neon transition-colors" />
+              <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-1.5">Body weight ({unit})</label>
+              <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder={unit === 'kg' ? '80' : '176'} className="w-full bg-cream border border-border rounded-lg px-3 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
             </div>
           </div>
 
           {weightKg && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 space-y-4">
+            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-6 space-y-3">
               {Object.entries(standards[gender]).map(([lift, vals]) => (
-                <div key={lift} className="bg-dark-800 border border-dark-500/50 rounded-2xl p-6">
-                  <h3 className="font-heading text-lg font-semibold text-white mb-4">{liftNames[lift]}</h3>
+                <div key={lift} className="bg-white border border-border rounded-xl p-5">
+                  <h3 className="font-heading text-[14px] font-medium text-text-primary mb-3">{liftNames[lift]}</h3>
                   <div className="grid grid-cols-5 gap-2">
                     {levels.map(level => {
                       const val = Math.round(weightKg * vals[level])
                       const display = unit === 'lbs' ? Math.round(val * 2.20462) : val
                       return (
-                        <div key={level} className="bg-dark-700 rounded-lg p-3 text-center">
-                          <p className={`text-xs uppercase tracking-wider mb-1 capitalize ${levelColors[level]}`}>{level}</p>
-                          <p className="text-lg font-bold text-white">{display}</p>
-                          <p className="text-xs text-grey-400">{unit}</p>
+                        <div key={level} className={`rounded-lg p-2.5 text-center ${level === 'elite' ? 'bg-text-primary' : 'bg-cream'}`}>
+                          <p className={`text-[10px] uppercase tracking-wider mb-0.5 capitalize ${level === 'elite' ? 'text-cream/70' : 'text-text-muted'}`}>{level}</p>
+                          <p className={`text-[15px] font-medium ${level === 'elite' ? 'text-cream' : 'text-text-primary'}`}>{display}</p>
+                          <p className={`text-[10px] ${level === 'elite' ? 'text-cream/50' : 'text-text-light'}`}>{unit}</p>
                         </div>
                       )
                     })}
