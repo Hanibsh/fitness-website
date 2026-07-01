@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Flame, Target, Beef, Pill, Trophy, TrendingDown } from 'lucide-react'
+import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler } from 'lucide-react'
 
 const tools = [
   {
@@ -38,6 +38,12 @@ const tools = [
     icon: TrendingDown,
     title: 'Calorie deficit guide',
     desc: 'Figure out how long your cut should last and how aggressive to go.',
+  },
+  {
+    to: '/tools/ffmi',
+    icon: Ruler,
+    title: 'FFMI calculator',
+    desc: 'See how much muscle you\'re carrying relative to your height.',
   },
 ]
 
