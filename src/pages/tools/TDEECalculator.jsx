@@ -33,10 +33,21 @@ function nearestBodyFatLabel(sex, value) {
   return bodyFatRanges[sex].reduce((best, r) => Math.abs(r.value - value) < Math.abs(best.value - value) ? r : best).label
 }
 
-const speeds = [
-  { label: 'Slow', delta: 250, desc: '~0.25 kg/week' },
-  { label: 'Moderate', delta: 500, desc: '~0.5 kg/week' },
-  { label: 'Fast', delta: 750, desc: '~0.75 kg/week' },
+const loseSpeeds = [
+  { label: 'Slow', percent: 0.25 },
+  { label: 'Moderate', percent: 0.5 },
+  { label: 'Fast', percent: 1 },
+]
+
+const gainOptions = [
+  { label: 'Lean bulk', sub: 'minimal fat gain', delta: 200 },
+  { label: 'Normal bulk', sub: 'moderate fat gain', delta: 500 },
+]
+
+const recompOptions = [
+  { label: 'Maintain', delta: 0 },
+  { label: 'Muscle-gain focus', delta: 150 },
+  { label: 'Fat-loss focus', percent: 0.35 },
 ]
 
 const inputBounds = {
@@ -204,7 +215,7 @@ export default function TDEECalculator() {
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Steps (per day)</label>
-                <input type="number" min={inputBounds.stepsPerDay.min} max={inputBounds.stepsPerDay.max} value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="10000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.stepsPerDay.min} max={inputBounds.stepsPerDay.max} step={1000} value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="10000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
             </div>
 
@@ -234,26 +245,54 @@ export default function TDEECalculator() {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
-                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Calorie targets</h2>
-                <p className="text-text-muted text-[13px] mb-6">Pick a pace based on how fast you want to reach your goal.</p>
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  {speeds.map(s => (
-                    <div key={s.label} className="text-center text-[11px] text-text-muted uppercase tracking-wider">{s.label}<br /><span className="text-text-light">{s.desc}</span></div>
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Lose weight</h2>
+                <p className="text-text-muted text-[13px] mb-6">Deficits scaled to your bodyweight — a fixed kcal number doesn't make sense for everyone at the same rate.</p>
+                <div className="grid grid-cols-3 gap-4">
+                  {loseSpeeds.map(s => {
+                    const weeklyLossKg = result.weightKg * (s.percent / 100)
+                    const dailyDeficit = Math.round((weeklyLossKg * 7700) / 7)
+                    return (
+                      <div key={s.label} className="bg-cream border border-border p-4 text-center">
+                        <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{s.label}<br /><span className="text-text-light">{s.percent}% BW/week</span></p>
+                        <p className="text-xl font-medium text-text-primary">{result.tdee - dailyDeficit}</p>
+                        <p className="text-[10px] text-text-light">cal/day</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Gain weight</h2>
+                <p className="text-text-muted text-[13px] mb-6">Pick how much fat gain you're willing to trade for faster muscle growth.</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {gainOptions.map(g => (
+                    <div key={g.label} className="bg-cream border border-border p-4 text-center">
+                      <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{g.label}<br /><span className="text-text-light">{g.sub}</span></p>
+                      <p className="text-xl font-medium text-text-primary">{result.tdee + g.delta}</p>
+                      <p className="text-[10px] text-text-light">cal/day</p>
+                    </div>
                   ))}
                 </div>
-                {[['Lose weight', -1], ['Gain weight', 1]].map(([label, sign]) => (
-                  <div key={label} className="mb-4">
-                    <p className="text-[12px] font-medium text-text-primary mb-2">{label}</p>
-                    <div className="grid grid-cols-3 gap-4">
-                      {speeds.map(s => (
-                        <div key={s.label} className="bg-cream border border-border p-4 text-center">
-                          <p className="text-xl font-medium text-text-primary">{result.tdee + sign * s.delta}</p>
-                          <p className="text-[10px] text-text-light">cal/day</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Recomp</h2>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">Eating close to maintenance while training hard and eating enough protein lets you build muscle and lose fat at the same time — no dedicated cut/bulk cycling needed. Pick a lean depending on what you want more of: hold steady, lean into muscle with a very clean bulk, or lean into fat loss at a slow, sustainable pace.</p>
+                <div className="grid grid-cols-3 gap-4">
+                  {recompOptions.map(r => {
+                    const value = r.percent
+                      ? result.tdee - Math.round((result.weightKg * (r.percent / 100) * 7700) / 7)
+                      : result.tdee + r.delta
+                    return (
+                      <div key={r.label} className="bg-cream border border-border p-4 text-center">
+                        <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{r.label}</p>
+                        <p className="text-xl font-medium text-text-primary">{value}</p>
+                        <p className="text-[10px] text-text-light">cal/day</p>
+                      </div>
+                    )
+                  })}
+                </div>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
@@ -329,7 +368,7 @@ export default function TDEECalculator() {
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Calorie targets</p>
-                <p className="text-[13px] text-text-muted leading-relaxed">One kilogram of body fat holds roughly 7,700 calories. A daily deficit or surplus of 250 / 500 / 750 calories works out to about 0.25 / 0.5 / 0.75 kg of change per week — slow, moderate, and fast paces respectively.</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">One kilogram of body fat holds roughly 7,700 calories. For cutting, the deficit is scaled to a percentage of your bodyweight per week (0.25 / 0.5 / 1%) instead of a fixed number, since a flat deficit doesn't mean the same thing for a 50kg person and a 120kg person. For bulking, instead of a speed choice, you pick how much fat gain you're willing to accept: a lean bulk (+200 cal/day, minimal fat gain) or a normal bulk (+500 cal/day, moderate fat gain) — deliberately bulking "fast" mostly just adds fat, not muscle. Recomp offers three closer-to-maintenance options: hold at maintenance, a very clean +150 cal/day surplus for muscle-gain focus, or a slow 0.35%-bodyweight/week deficit for fat-loss focus.</p>
               </div>
             </div>
           </motion.div>
