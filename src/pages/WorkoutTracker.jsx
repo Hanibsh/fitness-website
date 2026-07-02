@@ -19,6 +19,7 @@ import {
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExercisePicker from '../components/ExercisePicker'
+import SessionNamePicker from '../components/SessionNamePicker'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
 
@@ -218,6 +219,13 @@ export default function WorkoutTracker() {
               </div>
             </div>
 
+            <div className="mb-6">
+              <SessionNamePicker
+                value={draft.name || ''}
+                onChange={(name) => setDraft((d) => ({ ...d, name }))}
+              />
+            </div>
+
             <AnimatePresence initial={false}>
               {draft.exercises.map((ex) => (
                 <motion.div
@@ -356,7 +364,14 @@ export default function WorkoutTracker() {
                         className="w-full flex items-center justify-between px-6 py-4 bg-transparent border-none cursor-pointer text-left"
                       >
                         <div>
-                          <p className="text-[14px] font-medium text-text-primary">{formatDate(session.date)}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[14px] font-medium text-text-primary">{formatDate(session.date)}</p>
+                            {session.name && (
+                              <span className="text-[11px] font-medium text-text-secondary bg-cream border border-border px-2 py-0.5">
+                                {session.name}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[12px] text-text-muted mt-0.5">
                             {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
                             {stats.volume > 0 && ` · ${stats.volume.toLocaleString()} ${session.unit || 'kg'} volume`}

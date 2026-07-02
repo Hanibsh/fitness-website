@@ -50,8 +50,9 @@ export function createExercise(name) {
 
 export function emptyDraft() {
   // `date` is the session's logged date — defaults to now but can be set to a
-  // past day to backfill a missed workout.
-  return { startedAt: Date.now(), date: Date.now(), exercises: [] }
+  // past day to backfill a missed workout. `name` is an optional label for the
+  // session (e.g. Push, Pull, Legs).
+  return { startedAt: Date.now(), date: Date.now(), name: '', exercises: [] }
 }
 
 // ---- Unit preference (kg / lbs) -------------------------------------------
@@ -92,6 +93,7 @@ export function finishSession(draft, unit = 'kg') {
   const session = {
     id: newId(),
     date: draft.date || Date.now(),
+    name: draft.name || '',
     unit,
     exercises: draft.exercises,
   }
