@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { lifts, CATEGORY_ORDER, zoneColors5, zoneColors6, matchTier } from '../../lib/strengthStandards'
 
 const inputBounds = {
   bodyweight: { metric: { min: 20, max: 300 }, imperial: { min: 44, max: 660 } },
@@ -9,240 +10,11 @@ const inputBounds = {
   reps: { min: 1, max: 20 },
 }
 
-// Squat/Bench/Deadlift: 5-tier scale from Jeff Nippard's "Noob to Freak" standards.
-// Other lifts: 6-tier scale (adds "Below beginner") from Strength Level's user-submitted data.
-const lifts = {
-  squat: {
-    name: 'Squat',
-    source: "Jeff Nippard's \"Noob to Freak\" standards",
-    male: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 1.25 },
-      { label: 'Advanced', floor: 1.75 },
-      { label: 'Elite', floor: 2.5 },
-      { label: 'Freak', floor: 3.0 },
-    ],
-    female: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite', floor: 1.75 },
-      { label: 'Freak', floor: 2.25 },
-    ],
-  },
-  bench: {
-    name: 'Bench press',
-    source: "Jeff Nippard's \"Noob to Freak\" standards",
-    male: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite', floor: 2.0 },
-      { label: 'Freak', floor: 2.25 },
-    ],
-    female: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 0.5 },
-      { label: 'Advanced', floor: 0.75 },
-      { label: 'Elite', floor: 1.0 },
-      { label: 'Freak', floor: 1.25 },
-    ],
-  },
-  deadlift: {
-    name: 'Deadlift',
-    source: "Jeff Nippard's \"Noob to Freak\" standards",
-    male: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 1.5 },
-      { label: 'Advanced', floor: 2.25 },
-      { label: 'Elite', floor: 3.0 },
-      { label: 'Freak', floor: 3.5 },
-    ],
-    female: [
-      { label: 'Beginner', floor: 0 },
-      { label: 'Intermediate', floor: 1.25 },
-      { label: 'Advanced', floor: 1.75 },
-      { label: 'Elite', floor: 2.25 },
-      { label: 'Freak', floor: 3.0 },
-    ],
-  },
-  hackSquat: {
-    name: 'Hack squat',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.75 },
-      { label: 'Novice', floor: 1.25 },
-      { label: 'Intermediate', floor: 2.0 },
-      { label: 'Advanced', floor: 2.75 },
-      { label: 'Elite+', floor: 4.0 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.25 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.5 },
-      { label: 'Advanced', floor: 2.25 },
-      { label: 'Elite+', floor: 3.25 },
-    ],
-  },
-  rdl: {
-    name: 'Romanian deadlift',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.75 },
-      { label: 'Novice', floor: 1.0 },
-      { label: 'Intermediate', floor: 1.5 },
-      { label: 'Advanced', floor: 2.0 },
-      { label: 'Elite+', floor: 2.75 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.5 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite+', floor: 1.75 },
-    ],
-  },
-  bicepCurl: {
-    name: 'Bicep curl (dumbbell)',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.1 },
-      { label: 'Novice', floor: 0.15 },
-      { label: 'Intermediate', floor: 0.3 },
-      { label: 'Advanced', floor: 0.5 },
-      { label: 'Elite+', floor: 0.65 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.05 },
-      { label: 'Novice', floor: 0.1 },
-      { label: 'Intermediate', floor: 0.2 },
-      { label: 'Advanced', floor: 0.35 },
-      { label: 'Elite+', floor: 0.45 },
-    ],
-  },
-  skullCrusher: {
-    name: 'Skull crusher',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.2 },
-      { label: 'Novice', floor: 0.35 },
-      { label: 'Intermediate', floor: 0.55 },
-      { label: 'Advanced', floor: 0.8 },
-      { label: 'Elite+', floor: 1.1 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.1 },
-      { label: 'Novice', floor: 0.2 },
-      { label: 'Intermediate', floor: 0.35 },
-      { label: 'Advanced', floor: 0.55 },
-      { label: 'Elite+', floor: 0.75 },
-    ],
-  },
-  tBarRow: {
-    name: 'T-bar row',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.5 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite+', floor: 2.0 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.25 },
-      { label: 'Novice', floor: 0.45 },
-      { label: 'Intermediate', floor: 0.75 },
-      { label: 'Advanced', floor: 1.05 },
-      { label: 'Elite+', floor: 1.45 },
-    ],
-  },
-  smithSquat: {
-    name: 'Smith machine squat',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.75 },
-      { label: 'Novice', floor: 1.0 },
-      { label: 'Intermediate', floor: 1.5 },
-      { label: 'Advanced', floor: 2.25 },
-      { label: 'Elite+', floor: 3.0 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.25 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite+', floor: 2.25 },
-    ],
-  },
-  legExtension: {
-    name: 'Leg extension',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.5 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.25 },
-      { label: 'Advanced', floor: 1.75 },
-      { label: 'Elite+', floor: 2.5 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.25 },
-      { label: 'Novice', floor: 0.5 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.25 },
-      { label: 'Elite+', floor: 2.0 },
-    ],
-  },
-  legCurl: {
-    name: 'Leg curl',
-    source: 'Strength Level community data',
-    male: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.5 },
-      { label: 'Novice', floor: 0.75 },
-      { label: 'Intermediate', floor: 1.0 },
-      { label: 'Advanced', floor: 1.5 },
-      { label: 'Elite+', floor: 2.0 },
-    ],
-    female: [
-      { label: 'Below beginner', floor: 0 },
-      { label: 'Beginner', floor: 0.25 },
-      { label: 'Novice', floor: 0.45 },
-      { label: 'Intermediate', floor: 0.75 },
-      { label: 'Advanced', floor: 1.05 },
-      { label: 'Elite+', floor: 1.45 },
-    ],
-  },
-}
-
-const zoneColors6 = ['bg-border-hover', 'bg-blue-400', 'bg-teal-400', 'bg-green-500', 'bg-yellow-500', 'bg-red-600']
-const zoneColors5 = ['bg-blue-400', 'bg-teal-400', 'bg-green-500', 'bg-yellow-500', 'bg-red-600']
-
-function matchTier(tierList, ratio) {
-  let result = tierList[0].label
-  for (const t of tierList) {
-    if (ratio >= t.floor) result = t.label
-  }
-  return result
-}
-
 export default function StrengthStandards() {
   const [unit, setUnit] = useState('metric')
   const [sex, setSex] = useState('male')
   const [lift, setLift] = useState('squat')
+  const [liftQuery, setLiftQuery] = useState('')
   const [bodyweight, setBodyweight] = useState('')
   const [lifted, setLifted] = useState('')
   const [reps, setReps] = useState('')
@@ -297,6 +69,12 @@ export default function StrengthStandards() {
     color: colors[i],
   }))
 
+  const q = liftQuery.trim().toLowerCase()
+  const groups = CATEGORY_ORDER.map((cat) => ({
+    cat,
+    entries: Object.entries(lifts).filter(([, l]) => l.category === cat && l.name.toLowerCase().includes(q)),
+  })).filter((g) => g.entries.length > 0)
+
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
@@ -320,11 +98,38 @@ export default function StrengthStandards() {
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Lift</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {Object.entries(lifts).map(([key, l]) => (
-                  <button key={key} onClick={() => setLift(key)} className={`py-3 text-[13px] font-medium border cursor-pointer transition-colors ${lift === key ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{l.name}</button>
-                ))}
+              <div className="flex items-center gap-2 bg-cream border border-border px-3 mb-3 focus-within:border-text-primary transition-colors">
+                <Search className="w-4 h-4 text-text-light shrink-0" />
+                <input
+                  value={liftQuery}
+                  onChange={(e) => setLiftQuery(e.target.value)}
+                  placeholder="Search lifts…"
+                  className="flex-1 min-w-0 bg-transparent py-2.5 text-text-primary text-[13px] outline-none"
+                />
               </div>
+              <div className="border border-border max-h-60 overflow-y-auto">
+                {groups.length === 0 ? (
+                  <p className="px-3 py-4 text-[12px] text-text-light">No lifts match “{liftQuery.trim()}”.</p>
+                ) : (
+                  groups.map((g) => (
+                    <div key={g.cat}>
+                      <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-light bg-cream-dark sticky top-0">{g.cat}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2">
+                        {g.entries.map(([key, l]) => (
+                          <button
+                            key={key}
+                            onClick={() => setLift(key)}
+                            className={`py-2 px-2.5 text-[12px] font-medium border cursor-pointer transition-colors text-left leading-tight ${lift === key ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}
+                          >
+                            {l.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <p className="text-[12px] text-text-light mt-2">Selected: <span className="text-text-primary font-medium">{lifts[lift].name}</span></p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -400,8 +205,8 @@ export default function StrengthStandards() {
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
             <h2 className="font-heading text-xl font-medium text-text-primary mb-6">Where these numbers come from</h2>
             <p className="text-[13px] text-text-muted leading-relaxed">Squat, bench press, and deadlift use Jeff Nippard's "Noob to Freak" strength standards — his own methodology cites competitive powerlifting data, Mark Rippetoe's Starting Strength standards, Tim Henriques' strength standards, and his own decade-plus of coaching experience. It's calibrated toward general gym-goers, not just competitive lifters.</p>
-            <p className="text-[13px] text-text-muted leading-relaxed mt-4">The other eight lifts use Strength Level's community data (aggregated from hundreds of thousands of user-submitted lifts per exercise), since there's no equivalent general-audience dataset for isolation exercises like leg curls or skull crushers. Worth knowing: people who log lifts on a dedicated strength-tracking site skew toward more committed lifters than the average gym-goer, so these eight may read a little harder to satisfy than the big three above — useful as a relative ranking against other trained lifters, just calibrated to a different crowd.</p>
-            <p className="text-[13px] text-text-muted leading-relaxed mt-4">One more specific note: there's no dedicated dataset for the chest-supported T-bar row, so "T-bar row" here uses the standard (non-chest-supported) version as the closest available data — the chest-supported variant removes some lower-back involvement, so real-world results may run slightly different from what's shown.</p>
+            <p className="text-[13px] text-text-muted leading-relaxed mt-4">Hack squat, Romanian deadlift, dumbbell bicep curl, skull crusher, T-bar row, Smith machine squat, leg extension, and leg curl use Strength Level's community data (aggregated from hundreds of thousands of user-submitted lifts per exercise). People who log lifts on a dedicated tracking site skew toward committed lifters, so these may read a little harder to satisfy than the big three — useful as a relative ranking, just calibrated to a keen crowd.</p>
+            <p className="text-[13px] text-text-muted leading-relaxed mt-4">Every lift labelled "Estimated from general strength standards" is exactly that — a best-estimate benchmark I've set from general lifting knowledge, not exact figures pulled from a specific dataset. Treat those as a reasonable ballpark for how your lift ranks, not a precise percentile. The estimate section will get more accurate over time as I refine it against real data.</p>
           </motion.div>
         </motion.div>
       </div>
