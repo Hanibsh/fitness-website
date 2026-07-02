@@ -1,8 +1,14 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler, Dna } from 'lucide-react'
+import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler, Dna, ClipboardList } from 'lucide-react'
 
 const tools = [
+  {
+    to: '/log',
+    icon: ClipboardList,
+    title: 'Workout log',
+    desc: 'Track every session set by set — reps, weight, and your training history.',
+  },
   {
     to: '/tools/tdee',
     icon: Flame,
