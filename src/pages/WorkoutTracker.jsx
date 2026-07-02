@@ -10,12 +10,16 @@ import {
   createExercise,
   createSet,
   getHistory,
-  finishSession,
+  makeSession,
+  addLocalSession,
+  clearLocalHistory,
   deleteSession,
   sessionStats,
   getUnit,
   saveUnit,
 } from '../lib/workoutStore'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession } from '../lib/workoutRemote'
+import { useAuth } from '../lib/auth'
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExercisePicker from '../components/ExercisePicker'
@@ -55,13 +59,18 @@ function setSummary(set, unit) {
 }
 
 export default function WorkoutTracker() {
+  const { user } = useAuth()
   const [draft, setDraft] = useState(() => getDraft() || emptyDraft())
-  const [history, setHistory] = useState(() => getHistory())
+  const [history, setHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [importable, setImportable] = useState(null)
   const [unit, setUnit] = useState(() => getUnit())
   const [openSession, setOpenSession] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
   const [progressExercise, setProgressExercise] = useState(null)
   const [editingDate, setEditingDate] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const firstRender = useRef(true)
 
   const draftDate = draft.date || Date.now()
@@ -75,6 +84,33 @@ export default function WorkoutTracker() {
     }
     saveDraft(draft)
   }, [draft])
+
+  // Load history from the right place: Supabase when logged in, localStorage
+  // when anonymous. When logging in with local workouts still on the device,
+  // offer to import them into the account.
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoadingHistory(true)
+      if (user) {
+        try {
+          const remote = await fetchRemoteHistory(user.id)
+          if (cancelled) return
+          setHistory(remote)
+          const local = getHistory()
+          setImportable(local.length > 0 ? local : null)
+        } catch {
+          if (!cancelled) setHistory([])
+        }
+      } else {
+        setHistory(getHistory())
+        setImportable(null)
+      }
+      if (!cancelled) setLoadingHistory(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user])
 
   // History plus the in-progress session as a provisional "today" point, so
   // graphs stay live while you're logging.
@@ -136,11 +172,25 @@ export default function WorkoutTracker() {
     }))
   }
 
-  function finish() {
-    const updated = finishSession(draft, unit)
-    setHistory(updated)
-    setDraft(emptyDraft())
-    setEditingDate(false)
+  async function finish() {
+    setSaveError('')
+    setSaving(true)
+    const session = makeSession(draft, unit)
+    try {
+      if (user) {
+        await insertRemoteSession(user.id, session)
+        setHistory((prev) => [session, ...prev].sort((a, b) => b.date - a.date))
+      } else {
+        setHistory(addLocalSession(session))
+      }
+      clearDraft()
+      setDraft(emptyDraft())
+      setEditingDate(false)
+    } catch {
+      setSaveError('Could not save your session. Check your connection and try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function discard() {
@@ -149,8 +199,30 @@ export default function WorkoutTracker() {
     setEditingDate(false)
   }
 
-  function removeSession(id) {
-    setHistory(deleteSession(id))
+  async function removeSession(id) {
+    if (user) {
+      try {
+        await deleteRemoteSession(id)
+      } catch {
+        return
+      }
+      setHistory((prev) => prev.filter((s) => s.id !== id))
+    } else {
+      setHistory(deleteSession(id))
+    }
+  }
+
+  async function importLocal() {
+    if (!user || !importable) return
+    try {
+      await insertRemoteSessions(user.id, importable)
+      clearLocalHistory()
+      const remote = await fetchRemoteHistory(user.id)
+      setHistory(remote)
+      setImportable(null)
+    } catch {
+      setSaveError('Could not import your local workouts. Please try again.')
+    }
   }
 
   const hasLoggedSets = draft.exercises.some((e) => e.sets.some((s) => Number(s.reps) > 0))
@@ -166,7 +238,9 @@ export default function WorkoutTracker() {
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Workout log</h1>
           <p className="text-text-muted text-[15px] mb-10">
-            Track what you trained, set by set. Everything saves automatically in your browser — no account needed.
+            {user
+              ? 'Track what you trained, set by set — saved to your account and synced across your devices.'
+              : 'Track what you trained, set by set. Everything saves automatically in your browser — no account needed.'}
           </p>
 
           {/* Current session */}
@@ -331,23 +405,54 @@ export default function WorkoutTracker() {
             <ExercisePicker onSelect={addExercise} />
 
             {draft.exercises.length > 0 && (
-              <div className="flex gap-3 mt-6 pt-6 border-t border-border">
-                <button
-                  onClick={finish}
-                  disabled={!hasLoggedSets}
-                  className="flex-1 inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium py-3.5 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Check className="w-4 h-4" /> Finish session
-                </button>
-                <button
-                  onClick={discard}
-                  className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
-                >
-                  Discard
-                </button>
+              <div className="mt-6 pt-6 border-t border-border">
+                {saveError && <p className="text-[13px] text-red-600 mb-3">{saveError}</p>}
+                <div className="flex gap-3">
+                  <button
+                    onClick={finish}
+                    disabled={!hasLoggedSets || saving}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium py-3.5 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Check className="w-4 h-4" /> {saving ? 'Saving…' : 'Finish session'}
+                  </button>
+                  <button
+                    onClick={discard}
+                    className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
+                  >
+                    Discard
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Import local workouts into the account */}
+          {importable && importable.length > 0 && (
+            <div className="mt-8 bg-white border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-[13px] text-text-secondary">
+                You have {importable.length} workout{importable.length !== 1 ? 's' : ''} saved on this device.
+                Add {importable.length !== 1 ? 'them' : 'it'} to your account?
+              </p>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={importLocal}
+                  className="bg-text-primary text-cream text-[12px] font-medium px-4 py-2 border-none cursor-pointer hover:bg-accent-hover transition-colors"
+                >
+                  Import
+                </button>
+                <button
+                  onClick={() => setImportable(null)}
+                  className="text-text-muted text-[12px] px-4 py-2 bg-white border border-border cursor-pointer hover:border-border-hover transition-colors"
+                >
+                  Not now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {user && loadingHistory && (
+            <p className="mt-14 text-[13px] text-text-muted">Loading your workouts…</p>
+          )}
 
           {/* History */}
           {history.length > 0 && (
@@ -428,7 +533,9 @@ export default function WorkoutTracker() {
           )}
 
           <p className="text-[12px] text-text-light leading-relaxed mt-10">
-            Your log is saved on this device only. Clearing your browser data will erase it, and it won't sync to your other devices.
+            {user
+              ? 'Your workouts are saved to your account — log in on any device to pick up where you left off.'
+              : "Your log is saved on this device only, and won't sync to other devices. Log in to save it to your account and keep it for good."}
           </p>
         </motion.div>
       </div>
