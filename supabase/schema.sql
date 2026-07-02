@@ -1,0 +1,91 @@
+-- Leon fitness — database schema.
+-- Run this ONCE in Supabase: Dashboard → SQL Editor → New query → paste all of
+-- this → Run. Safe to re-run (uses "if not exists" / "or replace").
+
+-- ---------------------------------------------------------------------------
+-- 1) PROFILES — one row per user: bodyweight, sex, unit, and data-sharing consent.
+-- ---------------------------------------------------------------------------
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  sex text check (sex in ('male', 'female')),
+  bodyweight numeric,
+  unit text not null default 'kg',
+  share_data boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+create policy "Users can view their own profile"
+  on public.profiles for select using (auth.uid() = id);
+create policy "Users can insert their own profile"
+  on public.profiles for insert with check (auth.uid() = id);
+create policy "Users can update their own profile"
+  on public.profiles for update using (auth.uid() = id);
+
+-- Auto-create a profile row when someone signs up.
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id) values (new.id) on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ---------------------------------------------------------------------------
+-- 2) SESSIONS — each user's workout log. Exercises/sets stored as JSON so the
+--    shape matches the app; protected so users only see their own.
+-- ---------------------------------------------------------------------------
+create table if not exists public.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date timestamptz not null,
+  name text,
+  unit text not null default 'kg',
+  exercises jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.sessions enable row level security;
+
+create policy "Users can view their own sessions"
+  on public.sessions for select using (auth.uid() = user_id);
+create policy "Users can insert their own sessions"
+  on public.sessions for insert with check (auth.uid() = user_id);
+create policy "Users can update their own sessions"
+  on public.sessions for update using (auth.uid() = user_id);
+create policy "Users can delete their own sessions"
+  on public.sessions for delete using (auth.uid() = user_id);
+
+create index if not exists sessions_user_date_idx on public.sessions (user_id, date desc);
+
+-- ---------------------------------------------------------------------------
+-- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.
+--    Signed-in users may contribute (insert), but the app can't read it back
+--    (no select policy) — only the Supabase dashboard can, for your analysis.
+-- ---------------------------------------------------------------------------
+create table if not exists public.shared_lifts (
+  id uuid primary key default gen_random_uuid(),
+  exercise text not null,
+  weight numeric,
+  reps int,
+  rir int,
+  unit text,
+  bodyweight numeric,
+  sex text,
+  logged_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.shared_lifts enable row level security;
+
+create policy "Authenticated users can contribute anonymized lifts"
+  on public.shared_lifts for insert
+  with check (auth.uid() is not null);
