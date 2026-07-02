@@ -1,157 +1,59 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Clock, BarChart3, Dumbbell } from 'lucide-react'
-
-const programs = [
-  {
-    id: 'beginner',
-    level: 'Beginner',
-    title: 'Foundation Builder',
-    duration: '8 weeks',
-    frequency: '3 days/week',
-    intensity: 'Low–Moderate',
-    desc: 'Perfect for people just starting out. Learn the core lifts with proper form and build a base of strength.',
-    days: [
-      {
-        name: 'Day A — Full body',
-        exercises: ['Barbell Squat — 3×8', 'Bench Press — 3×8', 'Barbell Row — 3×8', 'Overhead Press — 3×8', 'Plank — 3×30s'],
-      },
-      {
-        name: 'Day B — Full body',
-        exercises: ['Deadlift — 3×5', 'Incline Dumbbell Press — 3×10', 'Lat Pulldown — 3×10', 'Leg Press — 3×10', 'Face Pulls — 3×15'],
-      },
-    ],
-  },
-  {
-    id: 'intermediate',
-    level: 'Intermediate',
-    title: 'Strength & Size',
-    duration: '12 weeks',
-    frequency: '4 days/week',
-    intensity: 'Moderate–High',
-    desc: 'Upper/Lower split designed to build serious strength and muscle. Progressive overload built in.',
-    days: [
-      { name: 'Upper A — Strength', exercises: ['Bench Press — 4×5', 'Barbell Row — 4×5', 'Overhead Press — 3×6', 'Weighted Pull-ups — 3×6', 'Tricep Dips — 3×10', 'Barbell Curl — 3×10'] },
-      { name: 'Lower A — Strength', exercises: ['Barbell Squat — 4×5', 'Romanian Deadlift — 3×8', 'Leg Press — 3×10', 'Leg Curl — 3×10', 'Calf Raises — 4×12', 'Hanging Leg Raise — 3×12'] },
-      { name: 'Upper B — Hypertrophy', exercises: ['Incline DB Press — 4×10', 'Cable Row — 4×10', 'Lateral Raises — 4×12', 'Chest Fly — 3×12', 'Hammer Curls — 3×12', 'Overhead Tricep Extension — 3×12'] },
-      { name: 'Lower B — Hypertrophy', exercises: ['Front Squat — 3×8', 'Deadlift — 3×5', 'Bulgarian Split Squat — 3×10 each', 'Leg Extension — 3×12', 'Seated Calf Raise — 4×15', 'Cable Crunch — 3×15'] },
-    ],
-  },
-  {
-    id: 'advanced',
-    level: 'Advanced',
-    title: 'Power Protocol',
-    duration: '16 weeks',
-    frequency: '5–6 days/week',
-    intensity: 'High',
-    desc: 'Push/Pull/Legs with periodization. For experienced lifters chasing PRs.',
-    days: [
-      { name: 'Push day', exercises: ['Bench Press — 5×5 (heavy)', 'Overhead Press — 4×6', 'Incline DB Press — 4×8', 'Cable Crossover — 3×12', 'Lateral Raises — 4×15', 'Tricep Pushdown — 4×12', 'Overhead Extension — 3×12'] },
-      { name: 'Pull day', exercises: ['Deadlift — 5×3 (heavy)', 'Weighted Pull-ups — 4×6', 'Barbell Row — 4×8', 'Face Pulls — 4×15', 'Dumbbell Shrug — 3×12', 'Barbell Curl — 4×10', 'Hammer Curl — 3×12'] },
-      { name: 'Legs day', exercises: ['Barbell Squat — 5×5 (heavy)', 'Front Squat — 3×8', 'Romanian Deadlift — 4×8', 'Leg Press — 4×10', 'Walking Lunges — 3×12 each', 'Leg Curl — 4×12', 'Standing Calf Raise — 5×15'] },
-    ],
-  },
-]
-
-function ProgramCard({ program }) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="bg-white border border-border rounded-xl overflow-hidden hover:border-border-hover transition-colors"
-    >
-      <div className="p-7">
-        <span className="text-[11px] font-medium uppercase tracking-[2px] text-text-muted">
-          {program.level}
-        </span>
-        <h3 className="font-heading text-xl font-medium text-text-primary mt-2 mb-2">
-          {program.title}
-        </h3>
-        <p className="text-text-muted text-[13px] mb-5 leading-relaxed">{program.desc}</p>
-
-        <div className="flex gap-6 mb-5">
-          <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
-            <Clock className="w-3.5 h-3.5" />
-            {program.duration}
-          </div>
-          <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
-            <Dumbbell className="w-3.5 h-3.5" />
-            {program.frequency}
-          </div>
-          <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
-            <BarChart3 className="w-3.5 h-3.5" />
-            {program.intensity}
-          </div>
-        </div>
-
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex items-center gap-1.5 text-text-primary text-[13px] font-medium bg-transparent border-none cursor-pointer hover:text-accent-hover transition-colors"
-        >
-          {open ? 'Hide' : 'View'} workouts
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <div className="px-7 pb-7 grid md:grid-cols-2 gap-3">
-              {program.days.map((day) => (
-                <div key={day.name} className="bg-cream rounded-lg p-5 border border-border">
-                  <h4 className="font-heading text-[13px] font-medium text-text-primary mb-3">
-                    {day.name}
-                  </h4>
-                  <ul className="space-y-1.5">
-                    {day.exercises.map((ex) => (
-                      <li key={ex} className="text-[12px] text-text-muted flex items-start gap-2">
-                        <span className="text-text-light mt-0.5">·</span>
-                        {ex}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  )
-}
+import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 
 export default function Programs() {
   return (
-    <div className="pt-24 pb-16 px-6">
-      <div className="max-w-3xl mx-auto">
+    <div className="pt-24 pb-16 px-6 min-h-screen flex items-center">
+      <div className="max-w-lg mx-auto w-full text-center">
+        <motion.p
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[11px] uppercase tracking-[3px] text-text-light mb-4"
+        >
+          Programs
+        </motion.p>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="font-heading text-4xl md:text-5xl font-medium text-text-primary mb-4 tracking-tight"
+        >
+          Coming soon.
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-text-muted text-[15px] mb-10 leading-relaxed"
+        >
+          I&apos;m putting together training programs for every level — beginner to advanced.
+          They&apos;re not ready just yet. In the meantime, the fastest way to get a plan built
+          around you is 1:1 coaching, and the calculators are free to use right now.
+        </motion.p>
+
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-14"
+          transition={{ delay: 0.15 }}
+          className="flex flex-col sm:flex-row gap-3 justify-center"
         >
-          <p className="text-[11px] uppercase tracking-[3px] text-text-light mb-4">Programs</p>
-          <h1 className="font-heading text-4xl md:text-5xl font-medium text-text-primary mb-3 tracking-tight">
-            Training programs
-          </h1>
-          <p className="text-text-muted text-[15px]">
-            Pick your level. Follow the plan. See results.
-          </p>
+          <Link
+            to="/contact"
+            className="inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium px-7 py-2.5 rounded-lg no-underline hover:bg-accent-hover transition-colors text-[13px]"
+          >
+            Book a free intro chat
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <Link
+            to="/tools"
+            className="inline-flex items-center justify-center gap-2 border border-border text-text-secondary px-7 py-2.5 rounded-lg no-underline hover:border-border-hover hover:text-text-primary transition-colors text-[13px]"
+          >
+            Free tools
+          </Link>
         </motion.div>
-
-        <div className="space-y-5">
-          {programs.map((program) => (
-            <ProgramCard key={program.id} program={program} />
-          ))}
-        </div>
       </div>
     </div>
   )
