@@ -55,6 +55,18 @@ export function emptyDraft() {
   return { startedAt: Date.now(), date: Date.now(), name: '', exercises: [] }
 }
 
+// ---- Guest data-sharing preference (for non-logged-in users) --------------
+
+const GUEST_SHARE_KEY = 'leon_guest_share'
+
+export function getGuestShare() {
+  return read(GUEST_SHARE_KEY, { share: false, sex: '', bodyweight: '' })
+}
+
+export function saveGuestShare(value) {
+  write(GUEST_SHARE_KEY, value)
+}
+
 // ---- Unit preference (kg / lbs) -------------------------------------------
 
 export function getUnit() {

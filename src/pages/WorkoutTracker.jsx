@@ -17,10 +17,13 @@ import {
   sessionStats,
   getUnit,
   saveUnit,
+  getGuestShare,
+  saveGuestShare,
 } from '../lib/workoutStore'
-import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts } from '../lib/workoutRemote'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts, submitGuestLifts } from '../lib/workoutRemote'
 import { buildSharedLifts } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
+import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
@@ -74,7 +77,17 @@ export default function WorkoutTracker() {
   const [editingDate, setEditingDate] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [guestShare, setGuestShare] = useState(() => getGuestShare())
+  const [hp, setHp] = useState('') // honeypot — real users leave this empty
   const firstRender = useRef(true)
+
+  function updateGuestShare(patch) {
+    setGuestShare((prev) => {
+      const next = { ...prev, ...patch }
+      saveGuestShare(next)
+      return next
+    })
+  }
 
   const draftDate = draft.date || Date.now()
   const isToday = isSameDay(draftDate, Date.now())
@@ -197,6 +210,19 @@ export default function WorkoutTracker() {
         }
       } else {
         setHistory(addLocalSession(session))
+        // Guest contribution — opt-in, anonymized, through the Turnstile-
+        // protected edge function. Best-effort; never blocks the save.
+        if (guestShare.share && turnstileConfigured()) {
+          try {
+            const rows = buildSharedLifts(session, { sex: guestShare.sex, bodyweight: guestShare.bodyweight, unit })
+            if (rows.length) {
+              const token = await getTurnstileToken()
+              await submitGuestLifts(token, rows, hp)
+            }
+          } catch {
+            // ignore
+          }
+        }
       }
       clearDraft()
       setDraft(emptyDraft())
@@ -544,6 +570,70 @@ export default function WorkoutTracker() {
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Guest data-sharing opt-in */}
+          {!user && turnstileConfigured() && (
+            <div className="mt-10 bg-white border border-border p-6">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={guestShare.share}
+                  onChange={(e) => updateGuestShare({ share: e.target.checked })}
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#1a1a1a] cursor-pointer"
+                />
+                <span className="text-[13px] text-text-secondary leading-relaxed">
+                  <span className="font-medium text-text-primary">Help improve the strength standards.</span>{' '}
+                  Share your lifts anonymously as you log them — no account, no name, nothing that identifies you.
+                </span>
+              </label>
+
+              {guestShare.share && (
+                <div className="mt-5 pl-7 space-y-4">
+                  <div>
+                    <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Sex</label>
+                    <div className="flex gap-3 max-w-xs">
+                      {['male', 'female'].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => updateGuestShare({ sex: s })}
+                          className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors capitalize ${
+                            guestShare.sex === s ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Bodyweight ({unit})</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={guestShare.bodyweight}
+                      onChange={(e) => updateGuestShare({ bodyweight: e.target.value })}
+                      placeholder={unit === 'kg' ? '80' : '176'}
+                      className="w-full max-w-xs bg-cream border border-border px-4 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                    />
+                  </div>
+                  <p className="text-[11px] text-text-light leading-relaxed">
+                    Your bodyweight and sex help calibrate the standards. Sent anonymously and never shown to anyone.
+                  </p>
+                </div>
+              )}
+
+              {/* Honeypot: hidden from people, tempting to bots. */}
+              <input
+                type="text"
+                value={hp}
+                onChange={(e) => setHp(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '-9999px', width: 1, height: 1 }}
+              />
             </div>
           )}
 

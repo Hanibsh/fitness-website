@@ -61,3 +61,16 @@ export async function insertSharedLifts(rows) {
   const { error } = await supabase.from('shared_lifts').insert(rows)
   if (error) throw error
 }
+
+// Guests can't write to the table directly — they go through the Turnstile-
+// protected edge function instead.
+const CONTRIBUTE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contribute-lifts`
+
+export async function submitGuestLifts(token, lifts, hp = '') {
+  if (!lifts.length) return
+  await fetch(CONTRIBUTE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+    body: JSON.stringify({ token, hp, lifts }),
+  })
+}
