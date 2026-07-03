@@ -55,6 +55,18 @@ export function emptyDraft() {
   return { startedAt: Date.now(), date: Date.now(), name: '', exercises: [] }
 }
 
+// ---- Guest data-sharing preference (for non-logged-in users) --------------
+
+const GUEST_SHARE_KEY = 'leon_guest_share'
+
+export function getGuestShare() {
+  return read(GUEST_SHARE_KEY, { share: false, sex: '', bodyweight: '' })
+}
+
+export function saveGuestShare(value) {
+  write(GUEST_SHARE_KEY, value)
+}
+
 // ---- Unit preference (kg / lbs) -------------------------------------------
 
 export function getUnit() {
@@ -89,20 +101,32 @@ export function getHistory() {
   return read(HISTORY_KEY, [])
 }
 
-export function finishSession(draft, unit = 'kg') {
-  const session = {
+// Turn the in-progress draft into a finished session object (no persistence —
+// the caller decides whether it goes to localStorage or Supabase).
+export function makeSession(draft, unit = 'kg') {
+  return {
     id: newId(),
     date: draft.date || Date.now(),
     name: draft.name || '',
     unit,
     exercises: draft.exercises,
   }
-  // Keep history newest-first by date, so a backdated session lands in the
-  // right chronological spot rather than always on top.
+}
+
+// Add a finished session to the local (anonymous) history, newest-first by date
+// so a backdated session lands in the right chronological spot.
+export function addLocalSession(session) {
   const history = [session, ...getHistory()].sort((a, b) => b.date - a.date)
   write(HISTORY_KEY, history)
-  clearDraft()
   return history
+}
+
+export function clearLocalHistory() {
+  try {
+    localStorage.removeItem(HISTORY_KEY)
+  } catch {
+    // ignore
+  }
 }
 
 export function deleteSession(id) {

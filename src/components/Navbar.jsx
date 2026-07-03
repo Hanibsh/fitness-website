@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LogOut } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import AuthModal from './AuthModal'
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -13,7 +16,9 @@ const navLinks = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
   const location = useLocation()
+  const { user, signOut } = useAuth()
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-dark/90 backdrop-blur-md border-b border-border">
@@ -36,6 +41,36 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+
+          {supabase && (
+            user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/account"
+                  title={user.email}
+                  className={`text-[13px] max-w-[150px] truncate no-underline transition-colors ${
+                    location.pathname === '/account' ? 'text-text-primary font-medium' : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  {user.email}
+                </Link>
+                <button
+                  onClick={signOut}
+                  aria-label="Log out"
+                  className="text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="text-[13px] font-medium text-text-primary bg-transparent border border-border px-3.5 py-1.5 cursor-pointer hover:border-border-hover transition-colors"
+              >
+                Log in
+              </button>
+            )
+          )}
         </div>
 
         <button
@@ -67,10 +102,42 @@ export default function Navbar() {
                   {label}
                 </Link>
               ))}
+
+              {supabase && (
+                <div className="pt-3 border-t border-border">
+                  {user ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <Link
+                        to="/account"
+                        onClick={() => setIsOpen(false)}
+                        title={user.email}
+                        className="text-[13px] text-text-muted truncate no-underline hover:text-text-primary"
+                      >
+                        {user.email}
+                      </Link>
+                      <button
+                        onClick={() => { signOut(); setIsOpen(false) }}
+                        className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5 shrink-0"
+                      >
+                        <LogOut className="w-4 h-4" /> Log out
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setAuthOpen(true); setIsOpen(false) }}
+                      className="text-sm font-medium text-text-primary bg-transparent border-none cursor-pointer"
+                    >
+                      Log in
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </nav>
   )
 }

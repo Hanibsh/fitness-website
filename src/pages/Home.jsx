@@ -213,6 +213,10 @@ export default function Home() {
 
       <footer className="py-6 px-6 border-t border-border text-center text-text-light text-[12px]">
         &copy; {new Date().getFullYear()} Leon. All rights reserved.
+        {' · '}
+        <Link to="/privacy" className="text-text-light hover:text-text-primary no-underline transition-colors">
+          Privacy
+        </Link>
       </footer>
     </div>
   )
