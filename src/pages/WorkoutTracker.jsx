@@ -18,7 +18,9 @@ import {
   getUnit,
   saveUnit,
 } from '../lib/workoutStore'
-import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession } from '../lib/workoutRemote'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts } from '../lib/workoutRemote'
+import { buildSharedLifts } from '../lib/workoutStats'
+import { fetchProfile } from '../lib/profile'
 import { useAuth } from '../lib/auth'
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
@@ -64,6 +66,7 @@ export default function WorkoutTracker() {
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [importable, setImportable] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [unit, setUnit] = useState(() => getUnit())
   const [openSession, setOpenSession] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
@@ -94,9 +97,10 @@ export default function WorkoutTracker() {
       setLoadingHistory(true)
       if (user) {
         try {
-          const remote = await fetchRemoteHistory(user.id)
+          const [remote, prof] = await Promise.all([fetchRemoteHistory(user.id), fetchProfile(user.id)])
           if (cancelled) return
           setHistory(remote)
+          setProfile(prof)
           const local = getHistory()
           setImportable(local.length > 0 ? local : null)
         } catch {
@@ -105,6 +109,7 @@ export default function WorkoutTracker() {
       } else {
         setHistory(getHistory())
         setImportable(null)
+        setProfile(null)
       }
       if (!cancelled) setLoadingHistory(false)
     }
@@ -180,6 +185,16 @@ export default function WorkoutTracker() {
       if (user) {
         await insertRemoteSession(user.id, session)
         setHistory((prev) => [session, ...prev].sort((a, b) => b.date - a.date))
+        // If the user opted in, contribute anonymized rows — best-effort, never
+        // block or fail the session save.
+        if (profile?.share_data) {
+          try {
+            const rows = buildSharedLifts(session, profile)
+            if (rows.length) await insertSharedLifts(rows)
+          } catch {
+            // ignore
+          }
+        }
       } else {
         setHistory(addLocalSession(session))
       }

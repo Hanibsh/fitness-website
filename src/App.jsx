@@ -13,6 +13,7 @@ import CalorieDeficit from './pages/tools/CalorieDeficit'
 import FFMICalculator from './pages/tools/FFMICalculator'
 import MuscleGainPotential from './pages/tools/MuscleGainPotential'
 import WorkoutTracker from './pages/WorkoutTracker'
+import Account from './pages/Account'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/log" element={<WorkoutTracker />} />
+        <Route path="/account" element={<Account />} />
         <Route path="/programs" element={<Programs />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/tools/tdee" element={<TDEECalculator />} />

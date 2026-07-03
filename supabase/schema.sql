@@ -12,9 +12,14 @@ create table if not exists public.profiles (
   bodyweight numeric,
   unit text not null default 'kg',
   share_data boolean not null default false,
+  -- Set by the coach in the dashboard to mark who's a client.
+  coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- If the profiles table already exists from an earlier run, add the column:
+alter table public.profiles add column if not exists coaching_status text not null default 'none';
 
 alter table public.profiles enable row level security;
 

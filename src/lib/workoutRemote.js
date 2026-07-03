@@ -52,3 +52,12 @@ export async function deleteRemoteSession(id) {
   const { error } = await supabase.from('sessions').delete().eq('id', id)
   if (error) throw error
 }
+
+// Anonymized contribution to the shared strength dataset. No user id is
+// attached (the table has no such column) — RLS lets any signed-in user insert
+// but no one read it back through the app; you read it in the dashboard.
+export async function insertSharedLifts(rows) {
+  if (!rows.length) return
+  const { error } = await supabase.from('shared_lifts').insert(rows)
+  if (error) throw error
+}

@@ -45,9 +45,15 @@ export default function Navbar() {
           {supabase && (
             user ? (
               <div className="flex items-center gap-3">
-                <span className="text-[13px] text-text-muted max-w-[150px] truncate" title={user.email}>
+                <Link
+                  to="/account"
+                  title={user.email}
+                  className={`text-[13px] max-w-[150px] truncate no-underline transition-colors ${
+                    location.pathname === '/account' ? 'text-text-primary font-medium' : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
                   {user.email}
-                </span>
+                </Link>
                 <button
                   onClick={signOut}
                   aria-label="Log out"
@@ -101,7 +107,14 @@ export default function Navbar() {
                 <div className="pt-3 border-t border-border">
                   {user ? (
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[13px] text-text-muted truncate" title={user.email}>{user.email}</span>
+                      <Link
+                        to="/account"
+                        onClick={() => setIsOpen(false)}
+                        title={user.email}
+                        className="text-[13px] text-text-muted truncate no-underline hover:text-text-primary"
+                      >
+                        {user.email}
+                      </Link>
                       <button
                         onClick={() => { signOut(); setIsOpen(false) }}
                         className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5 shrink-0"

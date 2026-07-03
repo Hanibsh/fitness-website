@@ -131,6 +131,33 @@ export function buildSeries(sessions, exerciseName, metricId, rangeId, displayUn
   return points
 }
 
+// Turn a session into anonymized rows for the shared strength dataset,
+// normalising every weight to kg so the dataset is consistent. Bodyweight and
+// sex come from the user's profile; no identity is included.
+export function buildSharedLifts(session, profile) {
+  const rows = []
+  const sessionUnit = session.unit || 'kg'
+  const bwKg = profile.bodyweight ? convertWeight(Number(profile.bodyweight), profile.unit || 'kg', 'kg') : null
+  for (const ex of session.exercises) {
+    for (const s of ex.sets) {
+      const reps = Number(s.reps)
+      if (!(reps > 0)) continue
+      const weight = Number(s.weight)
+      rows.push({
+        exercise: ex.name,
+        weight: weight > 0 ? Math.round(convertWeight(weight, sessionUnit, 'kg') * 100) / 100 : null,
+        reps,
+        rir: s.rir === '' || s.rir == null ? null : Number(s.rir),
+        unit: 'kg',
+        bodyweight: bwKg ? Math.round(bwKg * 100) / 100 : null,
+        sex: profile.sex || null,
+        logged_at: new Date(session.date).toISOString(),
+      })
+    }
+  }
+  return rows
+}
+
 // Every unique exercise name ever logged, most-recent first.
 export function loggedExerciseNames(sessions) {
   const seen = new Map()
