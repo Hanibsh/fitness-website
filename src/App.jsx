@@ -15,6 +15,7 @@ import MuscleGainPotential from './pages/tools/MuscleGainPotential'
 import WorkoutTracker from './pages/WorkoutTracker'
 import Account from './pages/Account'
 import Privacy from './pages/Privacy'
+import InstallPrompt from './components/InstallPrompt'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
         <Route path="/tools/ffmi" element={<FFMICalculator />} />
         <Route path="/tools/muscle-potential" element={<MuscleGainPotential />} />
       </Routes>
+      <InstallPrompt />
     </div>
   )
 }
