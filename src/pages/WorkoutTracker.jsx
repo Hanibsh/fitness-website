@@ -21,7 +21,7 @@ import {
   saveGuestShare,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts, submitGuestLifts } from '../lib/workoutRemote'
-import { buildSharedLifts, loggedExerciseNames } from '../lib/workoutStats'
+import { buildSharedLifts, loggedExerciseNames, distanceUnit } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -31,6 +31,7 @@ import ExercisePicker from '../components/ExercisePicker'
 import SessionNamePicker from '../components/SessionNamePicker'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
+const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px] gap-2 items-center'
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -57,7 +58,13 @@ function isSameDay(a, b) {
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
 }
 
-function setSummary(set, unit) {
+function setSummary(set, unit, kind, distUnit) {
+  if (kind === 'cardio') {
+    const parts = []
+    if (set.duration) parts.push(`${set.duration} min`)
+    if (set.distance) parts.push(`${set.distance} ${distUnit}`)
+    return parts.join(' · ') || '—'
+  }
   const hasRir = set.rir !== '' && set.rir != null
   const base = set.weight ? `${set.weight}${unit} × ${set.reps}` : `${set.reps} reps`
   return hasRir ? `${base} · ${set.rir} RIR` : base
@@ -155,10 +162,11 @@ export default function WorkoutTracker() {
   // surface what they actually train instead of a fixed default list.
   const recentExerciseNames = useMemo(() => loggedExerciseNames(sortedHistory), [sortedHistory])
 
-  function addExercise(name) {
+  function addExercise(name, category) {
     const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
-    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed)] }))
+    const kind = category === 'Cardio' ? 'cardio' : 'strength'
+    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind)] }))
   }
 
   function changeUnit(u) {
@@ -295,7 +303,12 @@ export default function WorkoutTracker() {
     }
   }
 
-  const hasLoggedSets = draft.exercises.some((e) => e.sets.some((s) => Number(s.reps) > 0))
+  const distUnit = distanceUnit(unit)
+  const hasLoggedSets = draft.exercises.some((e) =>
+    e.kind === 'cardio'
+      ? e.sets.some((s) => Number(s.duration) > 0)
+      : e.sets.some((s) => Number(s.reps) > 0)
+  )
   const liveStats = sessionStats(draft)
 
   return (
@@ -383,7 +396,7 @@ export default function WorkoutTracker() {
                     <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setProgressExercise(ex.name)}
+                        onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
                         aria-label={`View ${ex.name} progress`}
                         className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
                       >
@@ -400,68 +413,118 @@ export default function WorkoutTracker() {
                   </div>
 
                   <div className="px-4 py-3">
-                    <div className={`${SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
-                      <span className="text-center">#</span>
-                      <span>{unit}</span>
-                      <span>Reps</span>
-                      <span className="flex items-center gap-1">
-                        RIR
-                        <button
-                          type="button"
-                          onClick={() => setShowRirHelp(true)}
-                          aria-label="What is RIR?"
-                          className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none"
-                        >
-                          <HelpCircle className="w-3 h-3" />
-                        </button>
-                      </span>
-                      <span />
-                    </div>
+                    {ex.kind === 'cardio' ? (
+                      <>
+                        <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
+                          <span className="text-center">#</span>
+                          <span>Min</span>
+                          <span>{distUnit}</span>
+                          <span />
+                        </div>
 
-                    {ex.sets.map((set, i) => (
-                      <div key={set.id} className={`${SET_GRID} mb-2`}>
-                        <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
-                        <input
-                          type="number" inputMode="decimal" min="0"
-                          value={set.weight}
-                          onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
-                          placeholder="—"
-                          aria-label={`Set ${i + 1} weight in ${unit}`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                        />
-                        <input
-                          type="number" inputMode="numeric" min="0"
-                          value={set.reps}
-                          onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
-                          placeholder="—"
-                          aria-label={`Set ${i + 1} reps`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                        />
-                        <input
-                          type="number" inputMode="numeric" min="0" max="10"
-                          value={set.rir ?? ''}
-                          onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                          placeholder="—"
-                          aria-label={`Set ${i + 1} reps in reserve`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                        />
-                        <button
-                          onClick={() => removeSet(ex.id, set.id)}
-                          aria-label={`Remove set ${i + 1}`}
-                          disabled={ex.sets.length === 1}
-                          className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                        {ex.sets.map((set, i) => (
+                          <div key={set.id} className={`${CARDIO_SET_GRID} mb-2`}>
+                            <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
+                            <input
+                              type="number" inputMode="decimal" min="0"
+                              value={set.duration ?? ''}
+                              onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
+                              placeholder="—"
+                              aria-label={`Entry ${i + 1} duration in minutes`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <input
+                              type="number" inputMode="decimal" min="0"
+                              value={set.distance ?? ''}
+                              onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
+                              placeholder="—"
+                              aria-label={`Entry ${i + 1} distance in ${distUnit}`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <button
+                              onClick={() => removeSet(ex.id, set.id)}
+                              aria-label={`Remove entry ${i + 1}`}
+                              disabled={ex.sets.length === 1}
+                              className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
 
-                    <button
-                      onClick={() => addSet(ex.id)}
-                      className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add set
-                    </button>
+                        <button
+                          onClick={() => addSet(ex.id)}
+                          className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add interval
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className={`${SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
+                          <span className="text-center">#</span>
+                          <span>{unit}</span>
+                          <span>Reps</span>
+                          <span className="flex items-center gap-1">
+                            RIR
+                            <button
+                              type="button"
+                              onClick={() => setShowRirHelp(true)}
+                              aria-label="What is RIR?"
+                              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none"
+                            >
+                              <HelpCircle className="w-3 h-3" />
+                            </button>
+                          </span>
+                          <span />
+                        </div>
+
+                        {ex.sets.map((set, i) => (
+                          <div key={set.id} className={`${SET_GRID} mb-2`}>
+                            <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
+                            <input
+                              type="number" inputMode="decimal" min="0"
+                              value={set.weight}
+                              onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
+                              placeholder="—"
+                              aria-label={`Set ${i + 1} weight in ${unit}`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <input
+                              type="number" inputMode="numeric" min="0"
+                              value={set.reps}
+                              onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                              placeholder="—"
+                              aria-label={`Set ${i + 1} reps`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <input
+                              type="number" inputMode="numeric" min="0" max="10"
+                              value={set.rir ?? ''}
+                              onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                              placeholder="—"
+                              aria-label={`Set ${i + 1} reps in reserve`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <button
+                              onClick={() => removeSet(ex.id, set.id)}
+                              aria-label={`Remove set ${i + 1}`}
+                              disabled={ex.sets.length === 1}
+                              className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        <button
+                          onClick={() => addSet(ex.id)}
+                          className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add set
+                        </button>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -570,27 +633,34 @@ export default function WorkoutTracker() {
                             className="overflow-hidden"
                           >
                             <div className="px-6 pb-5 border-t border-border pt-4">
-                              {session.exercises.map((ex) => (
-                                <div key={ex.id} className="mb-4 last:mb-0">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <p className="text-[13px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
-                                    <button
-                                      onClick={() => setProgressExercise(ex.name)}
-                                      aria-label={`View ${ex.name} progress`}
-                                      className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0.5"
-                                    >
-                                      <LineChart className="w-3.5 h-3.5" />
-                                    </button>
+                              {session.exercises.map((ex) => {
+                                const cardio = ex.kind === 'cardio'
+                                const du = distanceUnit(session.unit || 'kg')
+                                const shown = cardio
+                                  ? ex.sets.filter((s) => Number(s.duration) > 0)
+                                  : ex.sets.filter((s) => Number(s.reps) > 0)
+                                return (
+                                  <div key={ex.id} className="mb-4 last:mb-0">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <p className="text-[13px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
+                                      <button
+                                        onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
+                                        aria-label={`View ${ex.name} progress`}
+                                        className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0.5"
+                                      >
+                                        <LineChart className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {shown.map((s) => (
+                                        <span key={s.id} className="text-[12px] text-text-muted bg-cream border border-border px-2.5 py-1">
+                                          {setSummary(s, session.unit || 'kg', ex.kind, du)}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {ex.sets.filter((s) => Number(s.reps) > 0).map((s) => (
-                                      <span key={s.id} className="text-[12px] text-text-muted bg-cream border border-border px-2.5 py-1">
-                                        {setSummary(s, session.unit || 'kg')}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                               <button
                                 onClick={() => removeSession(session.id)}
                                 className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer mt-3 transition-colors"
@@ -712,7 +782,7 @@ export default function WorkoutTracker() {
       {/* Exercise progress graph */}
       {progressExercise && (
         <Modal onClose={() => setProgressExercise(null)} maxWidth="max-w-xl">
-          <ExerciseProgress exerciseName={progressExercise} sessions={progressSessions} unit={unit} />
+          <ExerciseProgress exerciseName={progressExercise.name} kind={progressExercise.kind} sessions={progressSessions} unit={unit} />
         </Modal>
       )}
     </div>

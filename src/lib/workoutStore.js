@@ -35,17 +35,23 @@ function write(key, value) {
 
 export function createSet(prev) {
   // A new set copies the previous set's numbers, since you usually repeat
-  // the same weight/reps — one tap and you're logging.
+  // the same weight/reps (or duration/distance) — one tap and you're logging.
   return {
     id: newId(),
     reps: prev ? prev.reps : '',
     weight: prev ? prev.weight : '',
     rir: prev ? prev.rir : '',
+    duration: prev ? prev.duration ?? '' : '', // cardio: minutes
+    distance: prev ? prev.distance ?? '' : '', // cardio: km/mi
   }
 }
 
-export function createExercise(name) {
-  return { id: newId(), name, sets: [createSet()] }
+// `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance). It's
+// set from the picked movement's category and stored on the exercise so the
+// log, history, and progress graphs all render the right fields. Older saved
+// exercises have no `kind` and are treated as strength.
+export function createExercise(name, kind = 'strength') {
+  return { id: newId(), name, kind, sets: [createSet()] }
 }
 
 export function emptyDraft() {
@@ -141,11 +147,17 @@ export function sessionStats(session) {
   let sets = 0
   let volume = 0
   for (const ex of session.exercises) {
+    const cardio = ex.kind === 'cardio'
     for (const set of ex.sets) {
-      const reps = Number(set.reps) || 0
-      const weight = Number(set.weight) || 0
-      if (reps > 0) sets += 1
-      volume += reps * weight
+      if (cardio) {
+        // A cardio entry "counts" once it has time on it; it adds no volume.
+        if (Number(set.duration) > 0) sets += 1
+      } else {
+        const reps = Number(set.reps) || 0
+        const weight = Number(set.weight) || 0
+        if (reps > 0) sets += 1
+        volume += reps * weight
+      }
     }
   }
   return { exercises: session.exercises.length, sets, volume }

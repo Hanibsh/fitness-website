@@ -5,6 +5,7 @@
 // data behind the graphs, and it'll move to the app untouched.
 
 const LB_PER_KG = 2.2046226218
+const KM_PER_MI = 1.609344
 
 // Convert a weight between kg and lbs. Sessions store the unit they were
 // logged in; graphs normalise everything to one display unit so a line stays
@@ -12,6 +13,17 @@ const LB_PER_KG = 2.2046226218
 export function convertWeight(value, from, to) {
   if (from === to || value === '' || value == null) return value
   return from === 'kg' ? value * LB_PER_KG : value / LB_PER_KG
+}
+
+// Cardio distance uses km with the metric (kg) unit and miles with imperial
+// (lbs), mirroring the weight toggle so there's a single unit switch.
+export function distanceUnit(weightUnit) {
+  return weightUnit === 'lbs' ? 'mi' : 'km'
+}
+
+export function convertDistance(value, from, to) {
+  if (from === to || value === '' || value == null) return value
+  return from === 'mi' ? value * KM_PER_MI : value / KM_PER_MI
 }
 
 // Brzycki 1RM estimate — the same formula the site's 1RM calculator uses,
@@ -92,6 +104,38 @@ export const METRICS = [
   },
 ]
 
+// Cardio equivalents of METRICS — summed across a session's entries. Distance
+// is normalised to the display unit in buildSeries before compute() runs, so
+// these just add up. Both are "higher is better", matching the trend logic.
+export const CARDIO_METRICS = [
+  {
+    id: 'duration',
+    label: 'Duration',
+    unit: 'min',
+    compute(sets) {
+      let total = 0
+      for (const s of sets) {
+        const d = Number(s.duration) || 0
+        if (d > 0) total += d
+      }
+      return total > 0 ? Math.round(total) : null
+    },
+  },
+  {
+    id: 'distance',
+    label: 'Distance',
+    unit: 'dist', // resolved to km/mi by the UI
+    compute(sets) {
+      let total = 0
+      for (const s of sets) {
+        const d = Number(s.distance) || 0
+        if (d > 0) total += d
+      }
+      return total > 0 ? Math.round(total * 100) / 100 : null
+    },
+  },
+]
+
 export const RANGES = [
   { id: '1m', label: '1M', days: 30 },
   { id: '3m', label: '3M', days: 91 },
@@ -103,25 +147,40 @@ export const RANGES = [
   { id: 'all', label: 'All', days: Infinity },
 ]
 
-export function metricById(id) {
-  return METRICS.find((m) => m.id === id) || METRICS[0]
+export function metricById(id, cardio = false) {
+  const list = cardio ? CARDIO_METRICS : METRICS
+  return list.find((m) => m.id === id) || list[0]
 }
 
 // Build the plotted series: one point per session that has data, filtered to
-// the chosen time range, sorted oldest → newest.
-export function buildSeries(sessions, exerciseName, metricId, rangeId, displayUnit = 'kg') {
-  const metric = metricById(metricId)
+// the chosen time range, sorted oldest → newest. `metric` is a metric object
+// (strength or cardio). Weights are normalised to the display unit for
+// strength; distances for cardio — so a line stays continuous across a unit
+// switch.
+export function buildSeries(sessions, exerciseName, metric, rangeId, displayUnit = 'kg', cardio = false) {
   const range = RANGES.find((r) => r.id === rangeId) || RANGES[RANGES.length - 1]
   const cutoff = range.days === Infinity ? 0 : Date.now() - range.days * 86400000
+  const dispDist = distanceUnit(displayUnit)
 
   const points = []
   for (const session of sessions) {
     if (session.date < cutoff) continue
     const sessionUnit = session.unit || 'kg'
-    const sets = setsForExercise(session, exerciseName).map((s) => ({
-      ...s,
-      weight: s.weight === '' || s.weight == null ? s.weight : convertWeight(Number(s.weight), sessionUnit, displayUnit),
-    }))
+    const sets = setsForExercise(session, exerciseName).map((s) => {
+      if (cardio) {
+        return {
+          ...s,
+          distance:
+            s.distance === '' || s.distance == null
+              ? s.distance
+              : convertDistance(Number(s.distance), distanceUnit(sessionUnit), dispDist),
+        }
+      }
+      return {
+        ...s,
+        weight: s.weight === '' || s.weight == null ? s.weight : convertWeight(Number(s.weight), sessionUnit, displayUnit),
+      }
+    })
     if (sets.length === 0) continue
     const value = metric.compute(sets)
     if (value === null) continue

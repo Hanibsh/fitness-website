@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { buildSeries, metricById, METRICS, RANGES } from '../lib/workoutStats'
+import { buildSeries, metricById, METRICS, CARDIO_METRICS, RANGES, distanceUnit } from '../lib/workoutStats'
 import ProgressChart from './ProgressChart'
 
 function fmt(value, unit) {
@@ -11,16 +11,20 @@ function fullDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg' }) {
-  const [metricId, setMetricId] = useState('e1rm')
+export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg', kind = 'strength' }) {
+  const isCardio = kind === 'cardio'
+  const metrics = isCardio ? CARDIO_METRICS : METRICS
+  const [metricId, setMetricId] = useState(isCardio ? 'duration' : 'e1rm')
   const [rangeId, setRangeId] = useState('all')
   const [hovered, setHovered] = useState(null)
 
-  const metric = metricById(metricId)
-  const unitLabel = metric.unit === 'kg' ? unit : metric.unit
+  const metric = metricById(metricId, isCardio)
+  // Resolve unit label: weight metrics show the chosen kg/lbs; the cardio
+  // distance metric shows km/mi; everything else uses its own fixed unit.
+  const unitLabel = metric.unit === 'kg' ? unit : metric.unit === 'dist' ? distanceUnit(unit) : metric.unit
   const series = useMemo(
-    () => buildSeries(sessions, exerciseName, metricId, rangeId, unit),
-    [sessions, exerciseName, metricId, rangeId, unit]
+    () => buildSeries(sessions, exerciseName, metric, rangeId, unit, isCardio),
+    [sessions, exerciseName, metric, rangeId, unit, isCardio]
   )
 
   const active = hovered != null && series[hovered] ? series[hovered] : series[series.length - 1]
@@ -38,7 +42,7 @@ export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg' }
 
       {/* metric toggle */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {METRICS.map((m) => (
+        {metrics.map((m) => (
           <button
             key={m.id}
             onClick={() => setMetricId(m.id)}

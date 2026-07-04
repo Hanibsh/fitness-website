@@ -23,12 +23,14 @@ export default function ExercisePicker({ onSelect, recentNames = [] }) {
   const matches = results.slice(0, 8)
   const exact = results.some((m) => m.name.toLowerCase() === q)
 
-  function pick(name) {
+  function pick(name, category) {
     // 60-char cap matches the shared-lifts validation server-side; anything
-    // longer would also wreck the set-row layout.
+    // longer would also wreck the set-row layout. `category` (when picked from
+    // the list) lets the tracker decide strength vs cardio; custom entries pass
+    // undefined and default to strength.
     const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
-    onSelect(trimmed)
+    onSelect(trimmed, category)
     setQuery('')
     setOpen(false)
   }
@@ -55,7 +57,7 @@ export default function ExercisePicker({ onSelect, recentNames = [] }) {
               key={m.name}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pick(m.name)}
+              onClick={() => pick(m.name, m.category)}
               className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left bg-transparent border-none border-b border-border cursor-pointer hover:bg-cream transition-colors"
             >
               <span className="text-[13px] text-text-primary">{m.name}</span>
