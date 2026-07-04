@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowRight, MessageCircle, Video, CalendarClock, Calculator } from 'lucide-react'
+import { VERSION, STAGE } from '../lib/version'
 
 const coachingFeatures = [
   {
@@ -217,6 +218,8 @@ export default function Home() {
         <Link to="/privacy" className="text-text-light hover:text-text-primary no-underline transition-colors">
           Privacy
         </Link>
+        {' · '}
+        <span className="text-text-light">{STAGE} v{VERSION}</span>
       </footer>
     </div>
   )

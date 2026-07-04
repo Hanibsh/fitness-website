@@ -5,6 +5,7 @@ import { Menu, X, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import AuthModal from './AuthModal'
+import VersionBadge from './VersionBadge'
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -23,9 +24,12 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-dark/90 backdrop-blur-md border-b border-border">
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="font-heading text-lg font-semibold text-text-primary tracking-tight no-underline">
-          LEON
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="font-heading text-lg font-semibold text-text-primary tracking-tight no-underline">
+            LEON
+          </Link>
+          <VersionBadge />
+        </div>
 
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map(({ to, label }) => (
