@@ -30,9 +30,13 @@ export const MOVEMENTS = [
   { name: 'Pec Deck', category: 'Chest', keywords: ['machine fly', 'chest fly', 'butterfly', 'pecs'] },
   { name: 'Dumbbell Fly', category: 'Chest', keywords: ['db', 'dumbbell flye', 'chest fly', 'pecs'] },
   { name: 'Push-up', category: 'Chest', keywords: ['pushup', 'press up', 'bodyweight'] },
+  { name: 'Smith Machine Bench Press', category: 'Chest', keywords: ['smith', 'flat press', 'pecs'] },
+  { name: 'Incline Machine Press', category: 'Chest', keywords: ['machine', 'upper chest', 'hammer strength'] },
+  { name: 'Dumbbell Pullover', category: 'Chest', keywords: ['db', 'pullover', 'lats', 'chest'] },
+  { name: 'Floor Press', category: 'Chest', keywords: ['barbell', 'dumbbell', 'triceps', 'pecs'] },
 
   // Back
-  { name: 'Lat Pulldown', category: 'Back', keywords: ['pulldown', 'cable', 'lats'] },
+  { name: 'Lat Pulldown', category: 'Back', keywords: ['pulldown', 'cable', 'lats', 'wide grip', 'close grip', 'neutral grip'] },
   { name: 'Single-Arm Lat Pulldown', category: 'Back', keywords: ['one arm pulldown', 'cable', 'lats'] },
   { name: 'Seated Cable Row', category: 'Back', keywords: ['cable row', 'lats', 'mid back'] },
   { name: 'Dumbbell Row', category: 'Back', keywords: ['db', 'one arm row', 'single arm row', 'lats'] },
@@ -46,6 +50,10 @@ export const MOVEMENTS = [
   { name: 'Rack Pull', category: 'Back', keywords: ['partial deadlift', 'traps', 'posterior chain'] },
   { name: 'Face Pull', category: 'Back', keywords: ['cable', 'rear delts', 'rotator cuff'] },
   { name: 'Shrug', category: 'Back', keywords: ['barbell shrug', 'dumbbell shrug', 'traps'] },
+  { name: 'Smith Machine Row', category: 'Back', keywords: ['smith', 'bent over row', 'lats'] },
+  { name: 'Seal Row', category: 'Back', keywords: ['chest supported', 'barbell', 'dumbbell', 'lats'] },
+  { name: 'Cable Pullover', category: 'Back', keywords: ['cable', 'straight arm', 'lats'] },
+  { name: 'Assisted Pull-up', category: 'Back', keywords: ['machine', 'assisted pullup', 'lats'] },
 
   // Legs
   { name: 'Front Squat', category: 'Legs', keywords: ['barbell', 'quads'] },
@@ -72,6 +80,15 @@ export const MOVEMENTS = [
   { name: 'Hip Abduction', category: 'Legs', keywords: ['machine', 'outer thigh', 'abductors', 'glutes'] },
   { name: 'Calf Raise', category: 'Legs', keywords: ['standing calf raise', 'calves'] },
   { name: 'Seated Calf Raise', category: 'Legs', keywords: ['machine', 'calves', 'soleus'] },
+  { name: 'Belt Squat', category: 'Legs', keywords: ['machine', 'quads', 'glutes'] },
+  { name: 'Pendulum Squat', category: 'Legs', keywords: ['machine', 'quads'] },
+  { name: 'Sissy Squat', category: 'Legs', keywords: ['quads', 'bodyweight'] },
+  { name: 'Reverse Lunge', category: 'Legs', keywords: ['dumbbell', 'barbell', 'quads', 'glutes'] },
+  { name: 'Cable Pull-Through', category: 'Legs', keywords: ['cable', 'hip hinge', 'glutes', 'hamstrings'] },
+  { name: 'Glute Kickback', category: 'Legs', keywords: ['cable', 'machine', 'glutes'] },
+  { name: 'Standing Leg Curl', category: 'Legs', keywords: ['machine', 'hamstrings'] },
+  { name: 'Donkey Calf Raise', category: 'Legs', keywords: ['machine', 'calves'] },
+  { name: 'Tibialis Raise', category: 'Legs', keywords: ['tib raise', 'shins', 'tibialis anterior'] },
 
   // Shoulders
   { name: 'Seated Dumbbell Press', category: 'Shoulders', keywords: ['db', 'dumbbell shoulder press', 'seated press', 'delts', 'ohp'] },
@@ -85,6 +102,9 @@ export const MOVEMENTS = [
   { name: 'Reverse Pec Deck', category: 'Shoulders', keywords: ['machine reverse fly', 'rear delts'] },
   { name: 'Front Raise', category: 'Shoulders', keywords: ['db', 'dumbbell', 'front delts'] },
   { name: 'Upright Row', category: 'Shoulders', keywords: ['barbell', 'cable', 'delts', 'traps'] },
+  { name: 'Smith Machine Shoulder Press', category: 'Shoulders', keywords: ['smith', 'shoulder press', 'delts', 'ohp'] },
+  { name: 'Machine Lateral Raise', category: 'Shoulders', keywords: ['machine', 'side raise', 'side delts'] },
+  { name: 'Cable Rear Delt Fly', category: 'Shoulders', keywords: ['cable', 'reverse fly', 'rear delts'] },
 
   // Arms
   { name: 'Barbell Curl', category: 'Arms', keywords: ['bicep curl', 'biceps', 'ez bar'] },
@@ -103,6 +123,9 @@ export const MOVEMENTS = [
   { name: 'Tricep Kickback', category: 'Arms', keywords: ['db', 'dumbbell', 'cable', 'triceps'] },
   { name: 'Tricep Dip', category: 'Arms', keywords: ['bench dip', 'triceps', 'bodyweight'] },
   { name: 'Wrist Curl', category: 'Arms', keywords: ['forearms', 'barbell', 'dumbbell'] },
+  { name: 'Reverse Wrist Curl', category: 'Arms', keywords: ['forearms', 'wrist extension'] },
+  { name: 'Cable Hammer Curl', category: 'Arms', keywords: ['rope curl', 'biceps', 'brachialis'] },
+  { name: 'Machine Curl', category: 'Arms', keywords: ['machine', 'bicep curl', 'biceps'] },
 
   // Core
   { name: 'Plank', category: 'Core', keywords: ['bodyweight', 'abs', 'isometric'] },
@@ -115,6 +138,12 @@ export const MOVEMENTS = [
   { name: 'Pallof Press', category: 'Core', keywords: ['cable', 'anti-rotation', 'obliques'] },
   { name: 'Ab Wheel Rollout', category: 'Core', keywords: ['ab roller', 'abs'] },
   { name: 'Back Extension', category: 'Core', keywords: ['hyperextension', 'lower back', 'erectors'] },
+  { name: 'Lying Leg Raise', category: 'Core', keywords: ['leg raise', 'lower abs', 'bodyweight'] },
+  { name: 'Reverse Crunch', category: 'Core', keywords: ['lower abs', 'bodyweight'] },
+  { name: 'Bicycle Crunch', category: 'Core', keywords: ['obliques', 'abs', 'bodyweight'] },
+  { name: 'Machine Crunch', category: 'Core', keywords: ['machine', 'ab crunch', 'abs'] },
+  { name: 'Cable Woodchop', category: 'Core', keywords: ['cable', 'woodchopper', 'obliques'] },
+  { name: 'Mountain Climber', category: 'Core', keywords: ['bodyweight', 'abs', 'conditioning'] },
 
   // Cardio
   { name: 'Running', category: 'Cardio', keywords: ['run', 'treadmill', 'jog', 'conditioning'] },
@@ -131,6 +160,11 @@ export const MOVEMENTS = [
   { name: 'Clean and Jerk', category: 'Olympic', keywords: ['barbell', 'clean', 'jerk'] },
   { name: 'Snatch', category: 'Olympic', keywords: ['barbell', 'explosive'] },
   { name: 'Push Press', category: 'Olympic', keywords: ['barbell', 'overhead', 'leg drive', 'delts'] },
+
+  // Full body / loaded carries
+  { name: 'Kettlebell Swing', category: 'Full Body', keywords: ['kettlebell', 'kb', 'hip hinge', 'glutes', 'hamstrings'] },
+  { name: 'Thruster', category: 'Full Body', keywords: ['barbell', 'dumbbell', 'squat to press', 'conditioning'] },
+  { name: "Farmer's Carry", category: 'Full Body', keywords: ['farmers walk', 'loaded carry', 'grip', 'traps', 'forearms'] },
 ]
 
 // Whole-word abbreviations expanded before searching, so "db shoulder" finds
@@ -145,30 +179,54 @@ const ABBREVIATIONS = {
   cgbp: 'close-grip bench press',
 }
 
-// Precomputed lowercase search text per movement: name + category + keywords.
-const HAYSTACKS = MOVEMENTS.map((m) => ({
-  movement: m,
-  text: [m.name, m.category, ...(m.keywords || [])].join(' ').toLowerCase(),
-}))
+function haystack(m) {
+  return [m.name, m.category, ...(m.keywords || [])].join(' ').toLowerCase()
+}
 
-// Token-based search: every word in the query must appear somewhere in the
-// movement's search text (name, category, or keywords), in any order. Returns
-// all movements for an empty query. This is what makes "incline db press" or
-// "shoulder" or "rdl" all resolve to the right lifts.
-export function searchMovements(query) {
-  const q = (query || '').trim().toLowerCase()
-  if (!q) return MOVEMENTS
-  const tokens = q
+function tokenize(q) {
+  return q
     .split(/\s+/)
     .map((t) => ABBREVIATIONS[t] || t)
     .join(' ')
     .split(/\s+/)
     .filter(Boolean)
-  const hits = HAYSTACKS.filter(({ text }) => tokens.every((t) => text.includes(t)))
-  // Float movements whose name actually starts with what you typed to the top
-  // (so "run" leads with Running, not Crunch), keeping the curated order
-  // otherwise. Array.sort is stable, so ties preserve the original ordering.
-  return hits
-    .sort((a, b) => Number(b.movement.name.toLowerCase().startsWith(q)) - Number(a.movement.name.toLowerCase().startsWith(q)))
-    .map((h) => h.movement)
+}
+
+// The searchable set of exercises for a given user: their previously-logged
+// movements first (most-recent first, so the picker surfaces what they
+// actually use), then the full library — deduped by name. A recent movement
+// that isn't in the library shows up as a plain custom entry so it can be
+// re-logged with an identical name (keeps progress charts continuous).
+export function exercisePool(recentNames = []) {
+  const seen = new Set()
+  const pool = []
+  const push = (item) => {
+    const key = item.name.trim().toLowerCase()
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    pool.push(item)
+  }
+  for (const name of recentNames) {
+    const known = MOVEMENTS.find((m) => m.name.toLowerCase() === name.trim().toLowerCase())
+    push(known || { name: name.trim(), category: 'Recent', keywords: [] })
+  }
+  for (const m of MOVEMENTS) push(m)
+  return pool
+}
+
+// Token-based search over the pool: every word in the query must appear in the
+// movement's name, category, or keywords (any order). Empty query returns the
+// whole pool (recents first). Name-prefix matches float to the top ("run"
+// leads with Running, not Crunch); stable sort preserves pool order otherwise.
+export function searchExercises(query, recentNames = []) {
+  const pool = exercisePool(recentNames)
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return pool
+  const tokens = tokenize(q)
+  return pool
+    .filter((m) => {
+      const text = haystack(m)
+      return tokens.every((t) => text.includes(t))
+    })
+    .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)))
 }

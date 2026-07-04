@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Search } from 'lucide-react'
-import { MOVEMENTS, searchMovements } from '../lib/movements'
+import { searchExercises } from '../lib/movements'
 
-// Searchable exercise picker: filters the movement library as you type, and
-// always offers to add whatever you typed as a custom exercise if it's not a
-// listed movement.
-export default function ExercisePicker({ onSelect }) {
+// Searchable exercise picker: filters the movement library (plus the user's
+// own previously-logged exercises, surfaced first) as you type, and always
+// offers to add whatever you typed as a custom exercise if it's not listed.
+export default function ExercisePicker({ onSelect, recentNames = [] }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const boxRef = useRef(null)
@@ -19,8 +19,9 @@ export default function ExercisePicker({ onSelect }) {
   }, [])
 
   const q = query.trim().toLowerCase()
-  const matches = searchMovements(query).slice(0, 8)
-  const exact = MOVEMENTS.some((m) => m.name.toLowerCase() === q)
+  const results = searchExercises(query, recentNames)
+  const matches = results.slice(0, 8)
+  const exact = results.some((m) => m.name.toLowerCase() === q)
 
   function pick(name) {
     // 60-char cap matches the shared-lifts validation server-side; anything

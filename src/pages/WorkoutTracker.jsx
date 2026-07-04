@@ -21,7 +21,7 @@ import {
   saveGuestShare,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts, submitGuestLifts } from '../lib/workoutRemote'
-import { buildSharedLifts } from '../lib/workoutStats'
+import { buildSharedLifts, loggedExerciseNames } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -150,6 +150,10 @@ export default function WorkoutTracker() {
   }, [draft, history, unit])
 
   const sortedHistory = useMemo(() => [...history].sort((a, b) => b.date - a.date), [history])
+
+  // Exercises the user has logged before, most-recent first, so the picker can
+  // surface what they actually train instead of a fixed default list.
+  const recentExerciseNames = useMemo(() => loggedExerciseNames(sortedHistory), [sortedHistory])
 
   function addExercise(name) {
     const trimmed = name.trim().slice(0, 60)
@@ -471,7 +475,7 @@ export default function WorkoutTracker() {
             )}
 
             {/* Add exercise */}
-            <ExercisePicker onSelect={addExercise} />
+            <ExercisePicker onSelect={addExercise} recentNames={recentExerciseNames} />
 
             {draft.exercises.length > 0 && (
               <div className="mt-6 pt-6 border-t border-border">
