@@ -115,8 +115,18 @@ export function makeSession(draft, unit = 'kg') {
     date: draft.date || Date.now(),
     name: draft.name || '',
     unit,
+    // How long the session took, if it looks plausible (started today, under
+    // 6h). Used by the dashboard. Persisted locally; remote sync ignores it
+    // for now (no DB column), so synced sessions simply won't show a duration.
+    durationMs: plausibleDuration(draft.startedAt),
     exercises: draft.exercises,
   }
+}
+
+function plausibleDuration(startedAt) {
+  if (!startedAt) return null
+  const ms = Date.now() - startedAt
+  return ms >= 60000 && ms <= 6 * 3600000 ? ms : null
 }
 
 // Add a finished session to the local (anonymous) history, newest-first by date

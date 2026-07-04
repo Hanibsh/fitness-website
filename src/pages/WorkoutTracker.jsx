@@ -169,6 +169,13 @@ export default function WorkoutTracker() {
     setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind)] }))
   }
 
+  function setExerciseKind(exId, kind) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, kind } : e)),
+    }))
+  }
+
   function changeUnit(u) {
     setUnit(u)
     saveUnit(u)
@@ -413,6 +420,23 @@ export default function WorkoutTracker() {
                   </div>
 
                   <div className="px-4 py-3">
+                    <div className="flex items-center gap-1 mb-3">
+                      {[['strength', 'Lifting'], ['cardio', 'Cardio']].map(([k, label]) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setExerciseKind(ex.id, k)}
+                          aria-pressed={(ex.kind === 'cardio' ? 'cardio' : 'strength') === k}
+                          className={`px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
+                            (ex.kind === 'cardio' ? 'cardio' : 'strength') === k
+                              ? 'bg-text-primary text-cream border-text-primary'
+                              : 'bg-white text-text-muted border-border hover:border-border-hover'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     {ex.kind === 'cardio' ? (
                       <>
                         <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>

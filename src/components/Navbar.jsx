@@ -38,7 +38,7 @@ export default function Navbar() {
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              {label}
+              {to === '/' && user ? 'Dashboard' : label}
             </Link>
           ))}
 
@@ -101,7 +101,7 @@ export default function Navbar() {
                     location.pathname === to ? 'text-text-primary font-medium' : 'text-text-muted'
                   }`}
                 >
-                  {label}
+                  {to === '/' && user ? 'Dashboard' : label}
                 </Link>
               ))}
 

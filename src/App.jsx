@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import InstallPrompt from './components/InstallPrompt'
+import { useAuth } from './lib/auth'
 
 // Every page except the landing page is lazy-loaded so first paint doesn't
 // pay for calculators and the tracker up front.
@@ -20,14 +21,20 @@ const MuscleGainPotential = lazy(() => import('./pages/tools/MuscleGainPotential
 const WorkoutTracker = lazy(() => import('./pages/WorkoutTracker'))
 const Account = lazy(() => import('./pages/Account'))
 const Privacy = lazy(() => import('./pages/Privacy'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
 
 function App() {
+  const { user, loading } = useAuth()
+  // Logged-in users land on their dashboard; everyone else gets the marketing
+  // home. While auth is resolving, show Home to avoid a flash of empty state.
+  const homeElement = user && !loading ? <Dashboard /> : <Home />
   return (
     <div className="min-h-screen bg-cream">
       <Navbar />
       <Suspense fallback={<div className="pt-28 px-6 text-center text-[13px] text-text-muted">Loading…</div>}>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={homeElement} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/log" element={<WorkoutTracker />} />
         <Route path="/account" element={<Account />} />
