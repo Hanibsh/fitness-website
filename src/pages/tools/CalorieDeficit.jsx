@@ -3,9 +3,11 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
+import { asset } from '../../lib/assets'
 
 const inputBounds = {
   weight: { metric: { min: 20, max: 300 }, imperial: { min: 44, max: 660 } },
+  tdee: { min: 800, max: 10000 },
 }
 
 const essentialFatFloor = { male: 5, female: 12 }
@@ -38,6 +40,11 @@ export default function CalorieDeficit() {
     const weightUnitLabel = unit === 'imperial' ? 'lbs' : 'kg'
     if (w < weightRange.min || w > weightRange.max) {
       setError(`Weight should be between ${weightRange.min} and ${weightRange.max} ${weightUnitLabel}.`)
+      setResult(null)
+      return
+    }
+    if (t < inputBounds.tdee.min || t > inputBounds.tdee.max) {
+      setError(`TDEE should be between ${inputBounds.tdee.min} and ${inputBounds.tdee.max} cal/day.`)
       setResult(null)
       return
     }
@@ -74,9 +81,10 @@ export default function CalorieDeficit() {
     <button onClick={onClick} className={`flex-1 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{label}</button>
   )
 
-  const bfSlider = (value, onChange) => (
+  const bfSlider = (value, onChange, label) => (
     <input
       type="range"
+      aria-label={label}
       min={bodyFatBounds[sex].min}
       max={bodyFatBounds[sex].max}
       step={1}
@@ -110,12 +118,12 @@ export default function CalorieDeficit() {
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Your current body fat %</label>
-              <img src="/images/bodyfat-chart.jpeg" alt="Body fat percentage reference chart" className="w-full border border-border mb-5" />
+              <img src={asset('images/bodyfat-chart.jpeg')} alt="Body fat percentage reference chart" className="w-full border border-border mb-5" />
               <div className="flex items-baseline justify-between mb-3">
                 <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex, bodyFat)}</span>
                 <span className="text-2xl font-medium text-text-primary">{bodyFat}%</span>
               </div>
-              {bfSlider(bodyFat, e => setBodyFat(Number(e.target.value)))}
+              {bfSlider(bodyFat, e => setBodyFat(Number(e.target.value)), 'Current body fat percentage')}
               <div className="flex justify-between text-[11px] text-text-light mt-2">
                 <span>{bodyFatBounds[sex].min}%</span>
                 <span>{bodyFatBounds[sex].max}%</span>
@@ -128,7 +136,7 @@ export default function CalorieDeficit() {
                 <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex, targetBodyFat)}</span>
                 <span className="text-2xl font-medium text-text-primary">{targetBodyFat}%</span>
               </div>
-              {bfSlider(targetBodyFat, e => setTargetBodyFat(Number(e.target.value)))}
+              {bfSlider(targetBodyFat, e => setTargetBodyFat(Number(e.target.value)), 'Target body fat percentage')}
               <div className="flex justify-between text-[11px] text-text-light mt-2">
                 <span>{bodyFatBounds[sex].min}%</span>
                 <span>{bodyFatBounds[sex].max}%</span>
@@ -142,7 +150,7 @@ export default function CalorieDeficit() {
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">TDEE (cal/day)</label>
-                <input type="number" value={tdee} onChange={e => setTdee(e.target.value)} placeholder="2500" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.tdee.min} max={inputBounds.tdee.max} value={tdee} onChange={e => setTdee(e.target.value)} placeholder="2500" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
             </div>
             <p className="text-[12px] text-text-light -mt-4">Don't know your TDEE? Use the <Link to="/tools/tdee" className="text-text-primary no-underline hover:text-accent-hover">TDEE calculator</Link> first.</p>

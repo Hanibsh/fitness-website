@@ -32,8 +32,11 @@ export default function ProgressChart({ points, hoveredIndex, onHover }) {
   const minDate = points[0].date
   const maxDate = points[points.length - 1].date
 
+  // Multiple sessions can share one date (e.g. backfilled days are all pinned
+  // to noon) — a zero date span would divide by zero and NaN the whole chart.
+  const dateSpan = maxDate - minDate
   const xFor = (d) =>
-    points.length === 1 ? PAD.l + PLOT_W / 2 : PAD.l + (PLOT_W * (d - minDate)) / (maxDate - minDate)
+    dateSpan === 0 ? PAD.l + PLOT_W / 2 : PAD.l + (PLOT_W * (d - minDate)) / dateSpan
   const yFor = (v) => PAD.t + PLOT_H * (1 - (v - min) / (max - min))
 
   const coords = points.map((p) => ({ x: xFor(p.date), y: yFor(p.value), p }))
@@ -65,7 +68,7 @@ export default function ProgressChart({ points, hoveredIndex, onHover }) {
       <text x={PAD.l} y={H - 8} textAnchor="start" fontSize="9" fill="currentColor" className="text-text-light">
         {axisDate(minDate)}
       </text>
-      {points.length > 1 && (
+      {dateSpan > 0 && (
         <text x={W - PAD.r} y={H - 8} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
           {axisDate(maxDate)}
         </text>

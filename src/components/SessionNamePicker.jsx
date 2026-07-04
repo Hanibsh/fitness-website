@@ -33,6 +33,7 @@ export default function SessionNamePicker({ value, onChange }) {
           value={value}
           onChange={(e) => { onChange(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
+          maxLength={60}
           placeholder="Name this session — Push, Pull, Legs… (optional)"
           className="flex-1 min-w-0 bg-transparent py-2.5 text-text-primary text-[13px] outline-none"
         />

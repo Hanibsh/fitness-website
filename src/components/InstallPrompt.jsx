@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Download, Share } from 'lucide-react'
+import { asset } from '../lib/assets'
 
 const DISMISS_KEY = 'leon_install_dismissed'
 
@@ -64,7 +65,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-md bg-white border border-border shadow-lg p-4 flex items-center gap-3">
-      <img src="/pwa-192x192.png" alt="" className="w-10 h-10 shrink-0" />
+      <img src={asset('pwa-192x192.png')} alt="" className="w-10 h-10 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-medium text-text-primary">Add Leon to your home screen</p>
         {iosTip ? (

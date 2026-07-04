@@ -32,7 +32,7 @@ export default defineConfig({
         // Precache static assets for offline use, but NOT index.html — pages
         // are fetched fresh from the network (see runtimeCaching) so new deploys
         // show up immediately instead of being served from a stale cache.
-        globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,svg,png,jpg,jpeg,webp,ico,woff2}'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

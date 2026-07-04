@@ -31,7 +31,7 @@ const sections = [
     title: 'Who processes your data',
     body: [
       'Supabase — provides the login and database where account data is stored.',
-      'Vercel — hosts the website.',
+      'Vercel — hosts the website (a legacy mirror also exists on GitHub Pages).',
       'Google — only if you choose "Sign in with Google," which shares your Google email with this site to create your account.',
       'These providers process data on my behalf so the site can function. No other third parties receive your data.',
     ],

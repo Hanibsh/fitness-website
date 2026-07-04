@@ -23,7 +23,9 @@ export default function ExercisePicker({ onSelect }) {
   const exact = MOVEMENTS.some((m) => m.name.toLowerCase() === q)
 
   function pick(name) {
-    const trimmed = name.trim()
+    // 60-char cap matches the shared-lifts validation server-side; anything
+    // longer would also wreck the set-row layout.
+    const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
     onSelect(trimmed)
     setQuery('')
@@ -39,6 +41,7 @@ export default function ExercisePicker({ onSelect }) {
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { e.preventDefault(); pick(query) } }}
+          maxLength={60}
           placeholder="Search or add an exercise…"
           className="flex-1 min-w-0 bg-transparent py-3 text-text-primary text-[13px] outline-none"
         />

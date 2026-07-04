@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
+import { asset } from '../../lib/assets'
 
 const inputBounds = {
   age: { min: 10, max: 100 },
@@ -143,13 +144,14 @@ export default function ProteinCalculator() {
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Estimate your body fat %</label>
-              <img src="/images/bodyfat-chart.jpeg" alt="Body fat percentage reference chart" className="w-full border border-border mb-5" />
+              <img src={asset('images/bodyfat-chart.jpeg')} alt="Body fat percentage reference chart" className="w-full border border-border mb-5" />
               <div className="flex items-baseline justify-between mb-3">
                 <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex, bodyFat)}</span>
                 <span className="text-2xl font-medium text-text-primary">{bodyFat}%</span>
               </div>
               <input
                 type="range"
+                aria-label="Body fat percentage"
                 min={bodyFatBounds[sex].min}
                 max={bodyFatBounds[sex].max}
                 step={1}

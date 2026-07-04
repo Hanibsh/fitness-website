@@ -28,10 +28,16 @@ jobs:
 
       - run: npm ci
 
+      # The VITE_* values are baked into the client bundle at build time.
+      # They MUST be present here (as repo Actions secrets) or the deployed
+      # site ships with accounts and guest data-sharing silently disabled.
       - name: Build
         run: npm run build
         env:
           DEPLOY_TARGET: gh-pages
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
 
       # SPA fallback: Pages serves 404.html for unknown paths, which loads the
       # app so client-side routes (e.g. /tools, /log) resolve correctly.

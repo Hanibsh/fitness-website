@@ -120,7 +120,11 @@ export default function Account() {
                     type="number"
                     min="0"
                     value={bodyweight}
-                    onChange={(e) => setBodyweight(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
+                      setBodyweight(v)
+                    }}
                     placeholder={unit === 'kg' ? '80' : '176'}
                     className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />

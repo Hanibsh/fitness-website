@@ -79,7 +79,13 @@ export default function WorkoutTracker() {
   const [saveError, setSaveError] = useState('')
   const [guestShare, setGuestShare] = useState(() => getGuestShare())
   const [hp, setHp] = useState('') // honeypot — real users leave this empty
+  const [loadError, setLoadError] = useState('')
   const firstRender = useRef(true)
+  // Guards against double-submit. A ref flag isn't enough: the guest path is
+  // fully synchronous, so a `finally` reset happens before the second click of
+  // a double-click lands (which still sees the old draft in its stale closure).
+  // Instead remember which draft was already finished, by its startedAt stamp.
+  const lastFinishedRef = useRef(null)
 
   function updateGuestShare(patch) {
     setGuestShare((prev) => {
@@ -108,6 +114,7 @@ export default function WorkoutTracker() {
     let cancelled = false
     async function load() {
       setLoadingHistory(true)
+      setLoadError('')
       if (user) {
         try {
           const [remote, prof] = await Promise.all([fetchRemoteHistory(user.id), fetchProfile(user.id)])
@@ -117,7 +124,10 @@ export default function WorkoutTracker() {
           const local = getHistory()
           setImportable(local.length > 0 ? local : null)
         } catch {
-          if (!cancelled) setHistory([])
+          if (!cancelled) {
+            setHistory([])
+            setLoadError("Couldn't load your workouts — check your connection and refresh.")
+          }
         }
       } else {
         setHistory(getHistory())
@@ -142,7 +152,7 @@ export default function WorkoutTracker() {
   const sortedHistory = useMemo(() => [...history].sort((a, b) => b.date - a.date), [history])
 
   function addExercise(name) {
-    const trimmed = name.trim()
+    const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
     setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed)] }))
   }
@@ -154,7 +164,11 @@ export default function WorkoutTracker() {
 
   function changeDate(value) {
     if (!value) return
-    setDraft((d) => ({ ...d, date: fromInputDate(value) }))
+    // The input's `max` only constrains the picker — a typed future date still
+    // comes through, so clamp it to today.
+    const ts = Math.min(fromInputDate(value), Date.now())
+    if (Number.isNaN(ts)) return
+    setDraft((d) => ({ ...d, date: ts }))
   }
 
   function removeExercise(exId) {
@@ -171,6 +185,13 @@ export default function WorkoutTracker() {
   }
 
   function updateSet(exId, setId, field, value) {
+    // `min`/`max` on number inputs don't stop typed values — reject negatives
+    // and cap RIR at 10 so the stats/shared-data math never sees junk.
+    if (value !== '') {
+      const n = Number(value)
+      if (!Number.isFinite(n) || n < 0) return
+      if (field === 'rir' && n > 10) return
+    }
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
@@ -191,6 +212,8 @@ export default function WorkoutTracker() {
   }
 
   async function finish() {
+    if (saving || lastFinishedRef.current === draft.startedAt) return
+    lastFinishedRef.current = draft.startedAt
     setSaveError('')
     setSaving(true)
     const session = makeSession(draft, unit)
@@ -228,6 +251,8 @@ export default function WorkoutTracker() {
       setDraft(emptyDraft())
       setEditingDate(false)
     } catch {
+      // Allow retrying this same draft after a failed save.
+      lastFinishedRef.current = null
       setSaveError('Could not save your session. Check your connection and try again.')
     } finally {
       setSaving(false)
@@ -350,8 +375,8 @@ export default function WorkoutTracker() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-4 border border-border bg-cream"
                 >
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                    <span className="text-[14px] font-medium text-text-primary">{ex.name}</span>
+                  <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
+                    <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setProgressExercise(ex.name)}
@@ -397,6 +422,7 @@ export default function WorkoutTracker() {
                           value={set.weight}
                           onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
                           placeholder="—"
+                          aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         <input
@@ -404,6 +430,7 @@ export default function WorkoutTracker() {
                           value={set.reps}
                           onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
                           placeholder="—"
+                          aria-label={`Set ${i + 1} reps`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         <input
@@ -411,6 +438,7 @@ export default function WorkoutTracker() {
                           value={set.rir ?? ''}
                           onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
                           placeholder="—"
+                          aria-label={`Set ${i + 1} reps in reserve`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         <button
@@ -494,6 +522,9 @@ export default function WorkoutTracker() {
           {user && loadingHistory && (
             <p className="mt-14 text-[13px] text-text-muted">Loading your workouts…</p>
           )}
+          {loadError && !loadingHistory && (
+            <p className="mt-14 text-[13px] text-red-600">{loadError}</p>
+          )}
 
           {/* History */}
           {history.length > 0 && (
@@ -513,7 +544,7 @@ export default function WorkoutTracker() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-[14px] font-medium text-text-primary">{formatDate(session.date)}</p>
                             {session.name && (
-                              <span className="text-[11px] font-medium text-text-secondary bg-cream border border-border px-2 py-0.5">
+                              <span className="text-[11px] font-medium text-text-secondary bg-cream border border-border px-2 py-0.5 break-words">
                                 {session.name}
                               </span>
                             )}
@@ -538,7 +569,7 @@ export default function WorkoutTracker() {
                               {session.exercises.map((ex) => (
                                 <div key={ex.id} className="mb-4 last:mb-0">
                                   <div className="flex items-center gap-2 mb-1.5">
-                                    <p className="text-[13px] font-medium text-text-primary">{ex.name}</p>
+                                    <p className="text-[13px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
                                     <button
                                       onClick={() => setProgressExercise(ex.name)}
                                       aria-label={`View ${ex.name} progress`}
@@ -613,7 +644,11 @@ export default function WorkoutTracker() {
                       type="number"
                       min="0"
                       value={guestShare.bodyweight}
-                      onChange={(e) => updateGuestShare({ bodyweight: e.target.value })}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
+                        updateGuestShare({ bodyweight: v })
+                      }}
                       placeholder={unit === 'kg' ? '80' : '176'}
                       className="w-full max-w-xs bg-cream border border-border px-4 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                     />

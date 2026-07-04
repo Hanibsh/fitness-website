@@ -55,6 +55,7 @@ function validLift(l: Record<string, unknown>): boolean {
   if (l.rir != null) { const r = Number(l.rir); if (!Number.isFinite(r) || r < 0 || r > 10) return false }
   if (l.bodyweight != null) { const b = Number(l.bodyweight); if (!Number.isFinite(b) || b < 20 || b > 400) return false }
   if (l.sex != null && l.sex !== 'male' && l.sex !== 'female') return false
+  if (l.logged_at != null && Number.isNaN(new Date(l.logged_at as string).getTime())) return false
   return true
 }
 
@@ -67,7 +68,11 @@ function cleanLift(l: Record<string, unknown>) {
     unit: 'kg',
     bodyweight: l.bodyweight == null ? null : Number(l.bodyweight),
     sex: l.sex === 'male' || l.sex === 'female' ? l.sex : null,
-    logged_at: l.logged_at ? new Date(l.logged_at as string).toISOString() : new Date().toISOString(),
+    // validLift guarantees logged_at parses; keep the fallback for safety.
+    logged_at:
+      l.logged_at && !Number.isNaN(new Date(l.logged_at as string).getTime())
+        ? new Date(l.logged_at as string).toISOString()
+        : new Date().toISOString(),
   }
 }
 

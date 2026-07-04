@@ -8,8 +8,11 @@
   --color-border-hover: #D5D2CC;
   --color-text-primary: #1a1a1a;
   --color-text-secondary: #555555;
-  --color-text-muted: #999999;
-  --color-text-light: #bbbbbb;
+  /* #999/#bbb failed WCAG AA contrast (2.9:1 / 2:1) for the body copy that
+     uses them everywhere. These are the closest passing/near-passing grays
+     that keep the muted hierarchy readable. */
+  --color-text-muted: #6f6f6f;
+  --color-text-light: #8c8c8c;
   --color-accent: #1a1a1a;
   --color-accent-hover: #333333;
   --font-heading: 'Space Grotesk', sans-serif;

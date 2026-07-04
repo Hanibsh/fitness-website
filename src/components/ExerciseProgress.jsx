@@ -34,7 +34,7 @@ export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg' }
   return (
     <div className="p-6 md:p-8 pt-8">
       <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">Progress</p>
-      <h2 className="font-heading text-2xl font-medium text-text-primary mb-6">{exerciseName}</h2>
+      <h2 className="font-heading text-2xl font-medium text-text-primary mb-6 break-words">{exerciseName}</h2>
 
       {/* metric toggle */}
       <div className="flex flex-wrap gap-2 mb-3">

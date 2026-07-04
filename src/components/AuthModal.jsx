@@ -24,12 +24,19 @@ export default function AuthModal({ onClose }) {
   const [busy, setBusy] = useState(false)
 
   async function google() {
+    if (busy) return
     setError('')
+    setBusy(true)
+    // Redirect back to where the app actually lives — on GitHub Pages that's
+    // /fitness-website/, not the origin root (which would 404).
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + import.meta.env.BASE_URL },
     })
-    if (error) setError(error.message)
+    if (error) {
+      setError(error.message)
+      setBusy(false)
+    }
   }
 
   async function submit(e) {
@@ -72,7 +79,8 @@ export default function AuthModal({ onClose }) {
 
         <button
           onClick={google}
-          className="w-full flex items-center justify-center gap-2.5 bg-white border border-border text-text-primary font-medium py-3 cursor-pointer text-[13px] hover:border-border-hover transition-colors mb-5"
+          disabled={busy}
+          className="w-full flex items-center justify-center gap-2.5 bg-white border border-border text-text-primary font-medium py-3 cursor-pointer text-[13px] hover:border-border-hover transition-colors mb-5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <GoogleIcon /> Continue with Google
         </button>
