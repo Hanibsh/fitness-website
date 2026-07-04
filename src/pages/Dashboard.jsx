@@ -3,20 +3,20 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Clock, Trophy, Target, Activity, History,
-  ChevronRight, Award, CalendarDays, Plus,
+  ChevronRight, Award, CalendarDays, Plus, Pencil,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { getHistory, getUnit } from '../lib/workoutStore'
+import { getHistory, getUnit, getGoals, saveGoals } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { loggedExerciseNames } from '../lib/workoutStats'
 import {
   heroSummary, monthStats, lifetimeStats, weeklyMuscleSets, personalRecords, recentPRs,
   splitDistribution, muscleDistribution, recentActivity, thisDayInHistory, formatDuration,
+  exerciseBests,
 } from '../lib/dashboard'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import ExerciseProgress from '../components/ExerciseProgress'
-
-const MONTHLY_GOAL = 12 // workouts/month target for the goals card
+import GoalsModal from '../components/GoalsModal'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -116,6 +116,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [unit, setUnit] = useState(() => getUnit())
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
+  const [goals, setGoals] = useState(() => getGoals())
+  const [editingGoals, setEditingGoals] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -157,6 +159,13 @@ export default function Dashboard() {
   }, [sessions, unit])
 
   const exerciseNames = useMemo(() => loggedExerciseNames(sessions), [sessions])
+  // Best working-set weight per exercise (display unit) — the "current" value
+  // behind each lift goal.
+  const bestsByName = useMemo(() => {
+    const map = {}
+    for (const b of exerciseBests(sessions, unit)) map[b.name.trim().toLowerCase()] = b
+    return map
+  }, [sessions, unit])
   const kindFor = (name) => {
     for (const s of [...sessions].sort((a, b) => b.date - a.date)) {
       const ex = s.exercises.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase())
@@ -347,10 +356,30 @@ export default function Dashboard() {
         {/* SECTION 7 + 8 — GOALS & PERSONAL RECORDS */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
-            <SectionHeading icon={Target}>Goals</SectionHeading>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-text-primary" />
+                <h2 className="font-heading text-lg font-medium text-text-primary">Goals</h2>
+              </div>
+              <button
+                onClick={() => setEditingGoals(true)}
+                className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </button>
+            </div>
             <div className="space-y-5">
-              <ProgressGoal label="Monthly workouts" value={month.workouts} target={MONTHLY_GOAL} />
-              {records.bestE1rm.name && (
+              <ProgressGoal label="Monthly workouts" value={month.workouts} target={goals.monthlyWorkouts} />
+              {goals.lifts.map((g) => (
+                <ProgressGoal
+                  key={g.id}
+                  label={g.exercise}
+                  value={Math.round(bestsByName[g.exercise.trim().toLowerCase()]?.weight || 0)}
+                  target={g.target}
+                  unit={unit}
+                />
+              ))}
+              {goals.lifts.length === 0 && records.bestE1rm.name && (
                 <ProgressGoal
                   label={`${records.bestE1rm.name} — next milestone`}
                   value={records.bestE1rm.value}
@@ -483,6 +512,16 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {editingGoals && (
+        <GoalsModal
+          goals={goals}
+          exerciseNames={exerciseNames}
+          unit={unit}
+          onSave={(g) => { saveGoals(g); setGoals(g); setEditingGoals(false) }}
+          onClose={() => setEditingGoals(false)}
+        />
+      )}
     </div>
   )
 }

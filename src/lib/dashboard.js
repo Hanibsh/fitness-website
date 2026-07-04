@@ -32,17 +32,45 @@ const MUSCLE_MATCHERS = [
 
 const CATEGORY_MUSCLE = { Chest: 'Chest', Back: 'Back', Shoulders: 'Shoulders', Arms: 'Biceps', Legs: 'Quads', Core: 'Abs' }
 
+// For custom exercises we don't have in the library, guess the muscle from
+// common exercise-name patterns. Ordered so more specific movements win — e.g.
+// "leg curl" is Hamstrings before the generic "curl" → Biceps rule.
+const NAME_PATTERNS = [
+  ['Hamstrings', ['leg curl', 'lying curl', 'seated curl', 'ham curl', 'nordic', 'hamstring', 'rdl', 'romanian', 'good morning']],
+  ['Glutes', ['hip thrust', 'glute', 'bridge', 'kickback', 'pull-through', 'pull through', 'hip abduction']],
+  ['Calves', ['calf raise', 'calf', 'soleus']],
+  ['Quads', ['squat', 'lunge', 'leg extension', 'leg press', 'step up', 'step-up', 'hack']],
+  ['Triceps', ['pushdown', 'pressdown', 'tricep', 'skull', 'overhead extension', 'kickback', 'close-grip', 'close grip']],
+  ['Biceps', ['curl']],
+  ['Back', ['row', 'pulldown', 'pull-up', 'pullup', 'pull up', 'chin', 'deadlift', 'shrug', 'pullover', 'lat ']],
+  ['Chest', ['bench', 'chest', 'fly', 'flye', 'push-up', 'pushup', 'press up', 'pec', 'dip']],
+  ['Shoulders', ['lateral raise', 'front raise', 'overhead press', 'shoulder press', 'ohp', 'delt', 'arnold', 'upright row', 'face pull', 'reverse fly']],
+  ['Abs', ['crunch', 'plank', 'sit-up', 'situp', 'leg raise', 'rollout', 'woodchop', 'russian twist', 'ab ']],
+]
+
 const MOVEMENT_BY_NAME = new Map(MOVEMENTS.map((m) => [m.name.toLowerCase(), m]))
 
 export function muscleForExercise(name) {
-  const m = MOVEMENT_BY_NAME.get((name || '').trim().toLowerCase())
-  if (!m) return null
-  if (m.category === 'Cardio' || m.category === 'Full Body' || m.category === 'Olympic') return null
-  const hay = [m.name, ...(m.keywords || [])].join(' ').toLowerCase()
-  for (const [muscle, words] of MUSCLE_MATCHERS) {
-    if (words.some((w) => hay.includes(w))) return muscle
+  const raw = (name || '').trim().toLowerCase()
+  if (!raw) return null
+  const m = MOVEMENT_BY_NAME.get(raw)
+  if (m) {
+    if (m.category === 'Cardio' || m.category === 'Full Body' || m.category === 'Olympic') return null
+    const hay = [m.name, ...(m.keywords || [])].join(' ').toLowerCase()
+    for (const [muscle, words] of MUSCLE_MATCHERS) {
+      if (words.some((w) => hay.includes(w))) return muscle
+    }
+    return CATEGORY_MUSCLE[m.category] || null
   }
-  return CATEGORY_MUSCLE[m.category] || null
+  // Not in the library — infer from the custom name. First look for an explicit
+  // muscle word, then fall back to exercise-name patterns.
+  for (const [muscle, words] of MUSCLE_MATCHERS) {
+    if (words.some((w) => raw.includes(w))) return muscle
+  }
+  for (const [muscle, patterns] of NAME_PATTERNS) {
+    if (patterns.some((p) => raw.includes(p))) return muscle
+  }
+  return null
 }
 
 // ---- Small helpers ---------------------------------------------------------

@@ -55,8 +55,15 @@ create table if not exists public.sessions (
   name text,
   unit text not null default 'kg',
   exercises jsonb not null default '[]'::jsonb,
+  -- How long the session took, in milliseconds (nullable; older rows and
+  -- sessions where it couldn't be measured are null). Powers the dashboard's
+  -- training-time stats.
+  duration_ms bigint,
   created_at timestamptz not null default now()
 );
+
+-- If the sessions table already exists from an earlier run, add the column:
+alter table public.sessions add column if not exists duration_ms bigint;
 
 alter table public.sessions enable row level security;
 

@@ -12,6 +12,7 @@ function fromRow(row) {
     name: row.name || '',
     unit: row.unit || 'kg',
     exercises: Array.isArray(row.exercises) ? row.exercises : [],
+    durationMs: row.duration_ms ?? null,
   }
 }
 
@@ -23,7 +24,21 @@ function toRow(userId, session) {
     name: session.name || null,
     unit: session.unit || 'kg',
     exercises: session.exercises || [],
+    duration_ms: session.durationMs ?? null,
   }
+}
+
+// True when an insert failed only because the `duration_ms` column isn't in
+// the schema yet (the migration hasn't been run). Lets us retry without it so
+// saving never breaks on older databases.
+function missingDurationColumn(error) {
+  if (!error) return false
+  return error.code === 'PGRST204' || (typeof error.message === 'string' && error.message.includes('duration_ms'))
+}
+
+function stripDuration(row) {
+  const { duration_ms, ...rest } = row // eslint-disable-line no-unused-vars
+  return rest
 }
 
 export async function fetchRemoteHistory(userId) {
@@ -37,14 +52,22 @@ export async function fetchRemoteHistory(userId) {
 }
 
 export async function insertRemoteSession(userId, session) {
-  const { error } = await supabase.from('sessions').insert(toRow(userId, session))
+  const row = toRow(userId, session)
+  let { error } = await supabase.from('sessions').insert(row)
+  if (missingDurationColumn(error)) {
+    ;({ error } = await supabase.from('sessions').insert(stripDuration(row)))
+  }
   if (error) throw error
   return session
 }
 
 export async function insertRemoteSessions(userId, sessions) {
   if (!sessions.length) return
-  const { error } = await supabase.from('sessions').insert(sessions.map((s) => toRow(userId, s)))
+  const rows = sessions.map((s) => toRow(userId, s))
+  let { error } = await supabase.from('sessions').insert(rows)
+  if (missingDurationColumn(error)) {
+    ;({ error } = await supabase.from('sessions').insert(rows.map(stripDuration)))
+  }
   if (error) throw error
 }
 

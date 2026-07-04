@@ -73,6 +73,29 @@ export function saveGuestShare(value) {
   write(GUEST_SHARE_KEY, value)
 }
 
+// ---- Training goals --------------------------------------------------------
+// Stored on the device (not synced to the account yet). `monthlyWorkouts` is a
+// target count; `lifts` is a list of { id, exercise, target } weight goals in
+// the user's chosen unit.
+const GOALS_KEY = 'leon_goals'
+
+export function getGoals() {
+  const g = read(GOALS_KEY, null)
+  if (!g) return { monthlyWorkouts: 12, lifts: [] }
+  return {
+    monthlyWorkouts: Number(g.monthlyWorkouts) > 0 ? Number(g.monthlyWorkouts) : 12,
+    lifts: Array.isArray(g.lifts) ? g.lifts : [],
+  }
+}
+
+export function saveGoals(goals) {
+  write(GOALS_KEY, goals)
+}
+
+export function newGoalId() {
+  return newId()
+}
+
 // ---- Unit preference (kg / lbs) -------------------------------------------
 
 export function getUnit() {
