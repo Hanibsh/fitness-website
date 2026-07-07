@@ -19,6 +19,31 @@
   --font-body: 'Inter', sans-serif;
 }
 
+/* Dark mode. The @theme tokens above compile to var(--color-*), so overriding
+   those variables here flips every utility (bg-cream, text-text-primary, …) at
+   once. The theme is set on <html data-theme> before first paint (see
+   index.html) and toggled by the navbar. The near-black tokens (text-primary,
+   accent) become near-white, so black-on-cream elements invert to
+   cream-on-black and primary buttons read as light-on-dark. */
+:root[data-theme='dark'] {
+  --color-cream: #15161a;
+  --color-cream-dark: #1e2027;
+  --color-white: #1e2027;
+  --color-border: #2e3038;
+  --color-border-hover: #40434d;
+  --color-text-primary: #f0efeb;
+  --color-text-secondary: #c6c5c0;
+  --color-text-muted: #9b9a94;
+  --color-text-light: #83837d;
+  --color-accent: #f0efeb;
+  --color-accent-hover: #ffffff;
+}
+
+:root[data-theme='dark'] ::selection {
+  background: rgba(240, 239, 235, 0.18);
+  color: var(--color-text-primary);
+}
+
 @layer base {
   * {
     margin: 0;

@@ -937,7 +937,7 @@ export default function WorkoutTracker() {
                   type="checkbox"
                   checked={guestShare.share}
                   onChange={(e) => updateGuestShare({ share: e.target.checked })}
-                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#1a1a1a] cursor-pointer"
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
                 />
                 <span className="text-[13px] text-text-secondary leading-relaxed">
                   <span className="font-medium text-text-primary">Help improve the strength standards.</span>{' '}

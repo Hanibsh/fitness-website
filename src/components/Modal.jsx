@@ -19,7 +19,7 @@ export default function Modal({ onClose, children, maxWidth = 'max-w-lg' }) {
   // viewport — the top is never clipped.
   return createPortal(
     <div className="fixed inset-0 z-[100] overflow-y-auto" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-text-primary/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div className="relative flex min-h-full items-center justify-center p-4">
         <div className={`relative bg-white border border-border shadow-xl w-full ${maxWidth} my-8`}>
           <button
