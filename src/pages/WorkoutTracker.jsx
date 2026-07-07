@@ -92,9 +92,24 @@ function isWorkingSet(set, kind) {
   return Number(set.reps) > 0
 }
 
+// Drafts saved before laterality existed have no `laterality` on their
+// exercises, so they'd fall back to "both" and wrongly show the toggle (e.g.
+// a unilateral toggle on Bench Press). Backfill it from the DB on load and
+// snap the sets to the resolved shape.
+function migrateExercise(ex) {
+  if (!ex || ex.kind === 'cardio' || ex.laterality) return ex
+  const laterality = lateralityFor(ex.name)
+  const unilateral = laterality === 'unilateral' ? true : laterality === 'bilateral' ? false : !!ex.unilateral
+  return { ...ex, laterality, unilateral, sets: (ex.sets || []).map((s) => convertSet(s, unilateral)) }
+}
+function migrateDraft(draft) {
+  if (!draft || !Array.isArray(draft.exercises)) return draft
+  return { ...draft, exercises: draft.exercises.map(migrateExercise) }
+}
+
 export default function WorkoutTracker() {
   const { user } = useAuth()
-  const [draft, setDraft] = useState(() => getDraft() || emptyDraft())
+  const [draft, setDraft] = useState(() => migrateDraft(getDraft()) || emptyDraft())
   const [history, setHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [importable, setImportable] = useState(null)
