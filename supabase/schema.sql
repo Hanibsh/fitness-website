@@ -79,6 +79,33 @@ create policy "Users can delete their own sessions"
 create index if not exists sessions_user_date_idx on public.sessions (user_id, date desc);
 
 -- ---------------------------------------------------------------------------
+-- 2b) BODYWEIGHT_LOG — each user's bodyweight over time (one row per weigh-in).
+--     Separate from profiles.bodyweight (the single "current" value); this is
+--     the time series behind the dashboard's bodyweight chart.
+-- ---------------------------------------------------------------------------
+create table if not exists public.bodyweight_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date timestamptz not null,
+  weight numeric not null,
+  unit text not null default 'kg',
+  created_at timestamptz not null default now()
+);
+
+alter table public.bodyweight_log enable row level security;
+
+create policy "Users can view their own bodyweight"
+  on public.bodyweight_log for select using (auth.uid() = user_id);
+create policy "Users can insert their own bodyweight"
+  on public.bodyweight_log for insert with check (auth.uid() = user_id);
+create policy "Users can update their own bodyweight"
+  on public.bodyweight_log for update using (auth.uid() = user_id);
+create policy "Users can delete their own bodyweight"
+  on public.bodyweight_log for delete using (auth.uid() = user_id);
+
+create index if not exists bodyweight_user_date_idx on public.bodyweight_log (user_id, date desc);
+
+-- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.
 --    Signed-in users may contribute (insert), but the app can't read it back
 --    (no select policy) — only the Supabase dashboard can, for your analysis.

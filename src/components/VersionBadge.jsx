@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Modal from './Modal'
-import { STAGE, VERSION, CHANGELOG, ROADMAP } from '../lib/version'
+import { STAGE, VERSION, CHANGELOG } from '../lib/version'
 
 // Small "Alpha" pill (shown next to the wordmark) that opens the version
 // history + roadmap. Bump the data in lib/version.js to update it.
@@ -49,21 +49,12 @@ export default function VersionBadge() {
               ))}
             </div>
 
-            {ROADMAP.length > 0 && (
-              <div className="mt-7 pt-6 border-t border-border">
-                <p className="text-[11px] uppercase tracking-wider text-text-light mb-3">What's next</p>
-                <div className="space-y-3">
-                  {ROADMAP.map((r) => (
-                    <div key={r.stage} className="flex gap-3">
-                      <span className="text-[10px] uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5 leading-none h-fit shrink-0 mt-0.5">
-                        {r.stage}
-                      </span>
-                      <p className="text-[13px] text-text-muted leading-relaxed">{r.goal}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="mt-7 pt-6 border-t border-border">
+              <p className="text-[13px] text-text-muted leading-relaxed">
+                <span className="text-text-primary font-medium">More to come.</span>{' '}
+                This is an early build and it&apos;s actively growing — new tools and improvements land regularly.
+              </p>
+            </div>
           </div>
         </Modal>
       )}

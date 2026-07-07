@@ -147,6 +147,38 @@ export const RANGES = [
   { id: 'all', label: 'All', days: Infinity },
 ]
 
+// Time ranges for the bodyweight chart. Starts at one week (bodyweight moves
+// day to day, unlike a lift you might train weekly) and runs out to 5 years.
+export const BODYWEIGHT_RANGES = [
+  { id: '1w', label: '1W', days: 7 },
+  { id: '1m', label: '1M', days: 30 },
+  { id: '3m', label: '3M', days: 91 },
+  { id: '6m', label: '6M', days: 182 },
+  { id: '1y', label: '1Y', days: 365 },
+  { id: '2y', label: '2Y', days: 730 },
+  { id: '3y', label: '3Y', days: 1095 },
+  { id: '5y', label: '5Y', days: 1825 },
+  { id: 'all', label: 'All', days: Infinity },
+]
+
+// Turn stored bodyweight entries into a plotted series for the chosen range,
+// normalised to the display unit (entries keep the unit they were logged in),
+// oldest → newest. Weight keeps one decimal so half-kilo changes still show.
+export function bodyweightSeries(entries, rangeId, displayUnit = 'kg') {
+  const range = BODYWEIGHT_RANGES.find((r) => r.id === rangeId) || BODYWEIGHT_RANGES[BODYWEIGHT_RANGES.length - 1]
+  const cutoff = range.days === Infinity ? 0 : Date.now() - range.days * 86400000
+  const points = []
+  for (const e of entries) {
+    if (e.date < cutoff) continue
+    const w = Number(e.weight)
+    if (!(w > 0)) continue
+    const value = Math.round(convertWeight(w, e.unit || 'kg', displayUnit) * 10) / 10
+    points.push({ date: e.date, value })
+  }
+  points.sort((a, b) => a.date - b.date)
+  return points
+}
+
 export function metricById(id, cardio = false) {
   const list = cardio ? CARDIO_METRICS : METRICS
   return list.find((m) => m.id === id) || list[0]

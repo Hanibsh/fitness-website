@@ -8,6 +8,7 @@
 const DRAFT_KEY = 'leon_workout_draft'
 const HISTORY_KEY = 'leon_workout_history'
 const UNIT_KEY = 'leon_workout_unit'
+const BODYWEIGHT_KEY = 'leon_bodyweight_log'
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -172,6 +173,41 @@ export function deleteSession(id) {
   const history = getHistory().filter((s) => s.id !== id)
   write(HISTORY_KEY, history)
   return history
+}
+
+// ---- Bodyweight log --------------------------------------------------------
+//
+// A separate time series from the single `bodyweight` profile field (which is
+// "current weight" for the strength tools). Each entry keeps the unit it was
+// logged in so the chart can normalise to the display unit. Newest-first.
+
+export function getBodyweightLog() {
+  return read(BODYWEIGHT_KEY, [])
+}
+
+// Build an entry. `date` defaults to noon today so there's one weigh-in per
+// calendar day and the timestamp never lands on a day boundary (tz-safe).
+export function makeBodyweightEntry(weight, unit = 'kg', date) {
+  let when = date
+  if (when == null) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    when = d.getTime()
+  }
+  return { id: newId(), date: when, weight: Number(weight), unit }
+}
+
+// Upsert by id, keeping the log sorted newest-first.
+export function saveBodyweightEntry(entry) {
+  const log = [entry, ...getBodyweightLog().filter((e) => e.id !== entry.id)].sort((a, b) => b.date - a.date)
+  write(BODYWEIGHT_KEY, log)
+  return log
+}
+
+export function deleteBodyweightEntry(id) {
+  const log = getBodyweightLog().filter((e) => e.id !== id)
+  write(BODYWEIGHT_KEY, log)
+  return log
 }
 
 // ---- Stats -----------------------------------------------------------------

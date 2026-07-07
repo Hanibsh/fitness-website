@@ -17,6 +17,7 @@ import {
 } from '../lib/dashboard'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import ExerciseProgress from '../components/ExerciseProgress'
+import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
 import NicknameModal from '../components/NicknameModal'
 
@@ -274,6 +275,7 @@ export default function Dashboard() {
               <Plus className="w-4 h-4" /> Log your first workout
             </Link>
           </motion.div>
+          <BodyweightTracker user={user} unit={unit} />
           <CoachingCTA />
         </div>
         {editingNick && user && (
@@ -437,6 +439,9 @@ export default function Dashboard() {
             </div>
           )}
         </Card>
+
+        {/* SECTION 6b — BODYWEIGHT */}
+        <BodyweightTracker user={user} unit={unit} />
 
         {/* SECTION 7 + 8 — GOALS & PERSONAL RECORDS */}
         <div className="grid lg:grid-cols-2 gap-6">

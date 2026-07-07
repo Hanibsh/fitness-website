@@ -1,6 +1,6 @@
 // App version + changelog. Bump VERSION/STAGE and prepend a CHANGELOG entry
 // whenever there's a release worth noting. STAGE drives the little badge shown
-// in the navbar; the full history and roadmap live in the version modal.
+// in the navbar; the full history lives in the version modal.
 
 export const VERSION = '0.1.0'
 export const STAGE = 'Alpha'
@@ -23,14 +23,3 @@ export const CHANGELOG = [
   },
 ]
 
-// Where things are headed — shown as "What's next" in the version modal.
-export const ROADMAP = [
-  {
-    stage: 'Beta',
-    goal: 'Refined and battle-tested with real users — training programs, deeper goal tracking, and polish based on your feedback.',
-  },
-  {
-    stage: '1.0',
-    goal: 'The full release: stable, complete, and ready for everyone.',
-  },
-]

@@ -76,6 +76,44 @@ export async function deleteRemoteSession(id) {
   if (error) throw error
 }
 
+// ---- Bodyweight log --------------------------------------------------------
+// Mirrors the localStorage bodyweight functions but talks to the
+// `bodyweight_log` table. RLS keeps each user to their own rows.
+function bwFromRow(row) {
+  return { id: row.id, date: new Date(row.date).getTime(), weight: Number(row.weight), unit: row.unit || 'kg' }
+}
+
+function bwToRow(userId, entry) {
+  return {
+    id: entry.id,
+    user_id: userId,
+    date: new Date(entry.date).toISOString(),
+    weight: entry.weight,
+    unit: entry.unit || 'kg',
+  }
+}
+
+export async function fetchRemoteBodyweight(userId) {
+  const { data, error } = await supabase
+    .from('bodyweight_log')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+  if (error) throw error
+  return (data || []).map(bwFromRow)
+}
+
+export async function upsertRemoteBodyweight(userId, entry) {
+  const { error } = await supabase.from('bodyweight_log').upsert(bwToRow(userId, entry))
+  if (error) throw error
+  return entry
+}
+
+export async function deleteRemoteBodyweight(id) {
+  const { error } = await supabase.from('bodyweight_log').delete().eq('id', id)
+  if (error) throw error
+}
+
 // Anonymized contribution to the shared strength dataset. No user id is
 // attached (the table has no such column) — RLS lets any signed-in user insert
 // but no one read it back through the app; you read it in the dashboard.
