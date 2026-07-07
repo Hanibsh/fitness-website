@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Scale, TrendingUp, TrendingDown, Minus, Plus, X, ChevronRight } from 'lucide-react'
+import { Scale, TrendingUp, TrendingDown, Minus, Plus, X, ChevronRight, Lock } from 'lucide-react'
 import {
   getBodyweightLog, makeBodyweightEntry, saveBodyweightEntry, deleteBodyweightEntry,
 } from '../lib/workoutStore'
@@ -7,6 +7,7 @@ import { fetchRemoteBodyweight, upsertRemoteBodyweight, deleteRemoteBodyweight }
 import { BODYWEIGHT_RANGES, bodyweightSeries, convertWeight } from '../lib/workoutStats'
 import ProgressChart from './ProgressChart'
 import Modal from './Modal'
+import AuthModal from './AuthModal'
 
 function fmt(value, unit) {
   return `${Math.round(value * 10) / 10} ${unit}`
@@ -32,21 +33,25 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
   const [input, setInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
   // Whether we can talk to the remote table. Starts true for logged-in users;
   // flips off (→ local) the first time a remote call fails.
   const [remoteOk, setRemoteOk] = useState(!!user)
 
+  // Bodyweight tracking requires an account (it syncs to your profile), so
+  // logged-out visitors get a locked teaser that prompts login.
+  const locked = !user
+
   useEffect(() => {
     let cancelled = false
     async function load() {
-      if (user) {
-        try {
-          const remote = await fetchRemoteBodyweight(user.id)
-          if (!cancelled) { setEntries(remote); setRemoteOk(true) }
-          return
-        } catch {
-          if (!cancelled) setRemoteOk(false)
-        }
+      if (!user) { setEntries([]); return }
+      try {
+        const remote = await fetchRemoteBodyweight(user.id)
+        if (!cancelled) { setEntries(remote); setRemoteOk(true) }
+        return
+      } catch {
+        if (!cancelled) setRemoteOk(false)
       }
       if (!cancelled) setEntries(getBodyweightLog())
     }
@@ -119,9 +124,9 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
 
   return (
     <>
-      {/* Compact tile — the only thing on the dashboard; tap to open the panel. */}
+      {/* Compact tile — tap to open the panel (or prompt login when locked). */}
       <button
-        onClick={() => setExpanded(true)}
+        onClick={() => (locked ? setAuthOpen(true) : setExpanded(true))}
         className="w-full text-left bg-white border border-border p-5 sm:p-6 hover:border-border-hover transition-colors cursor-pointer"
       >
         <div className="flex items-center justify-between">
@@ -129,9 +134,13 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
             <Scale className="w-4 h-4 text-text-primary" />
             <h2 className="font-heading text-lg font-medium text-text-primary">Bodyweight</h2>
           </div>
-          <ChevronRight className="w-4 h-4 text-text-light" />
+          {locked ? <Lock className="w-3.5 h-3.5 text-text-light" /> : <ChevronRight className="w-4 h-4 text-text-light" />}
         </div>
-        {latest != null ? (
+        {locked ? (
+          <p className="text-[13px] text-text-muted mt-2">
+            Track your weight over time and see your trend. <span className="text-text-primary font-medium">Log in to start →</span>
+          </p>
+        ) : latest != null ? (
           <div className="flex items-baseline gap-3 mt-3">
             <span className="font-heading text-2xl font-medium text-text-primary leading-none">{fmt(latest, unit)}</span>
             {change !== null && change !== 0 && (
@@ -147,8 +156,10 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
         )}
       </button>
 
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+
       {/* Expanded panel — full chart, ranges, logging, and history. */}
-      {expanded && (
+      {expanded && !locked && (
         <Modal onClose={() => setExpanded(false)} maxWidth="max-w-lg">
           <div className="p-6 sm:p-7">
             <div className="flex items-center gap-2 mb-5">

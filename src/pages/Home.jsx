@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { ArrowRight, MessageCircle, Video, CalendarClock, Calculator } from 'lucide-react'
 import { VERSION, STAGE } from '../lib/version'
+import BodyweightTracker from '../components/BodyweightTracker'
 
 const coachingFeatures = [
   {
@@ -208,6 +209,26 @@ export default function Home() {
               Explore the tools
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 border-t border-border">
+        <div className="max-w-md mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-[11px] uppercase tracking-[3px] text-text-light mb-4 text-center"
+          >
+            Track your progress
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <BodyweightTracker />
           </motion.div>
         </div>
       </section>
