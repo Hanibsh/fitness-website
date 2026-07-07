@@ -34,9 +34,17 @@ function write(key, value) {
 
 // ---- Factories -------------------------------------------------------------
 
-export function createSet(prev) {
+// One limb's numbers, for unilateral (left/right) logging.
+function blankSide(prev) {
+  return { weight: prev ? prev.weight : '', reps: prev ? prev.reps : '', rir: prev ? prev.rir : '' }
+}
+
+export function createSet(prev, unilateral = false) {
   // A new set copies the previous set's numbers, since you usually repeat
   // the same weight/reps (or duration/distance) — one tap and you're logging.
+  if (unilateral) {
+    return { id: newId(), left: blankSide(prev?.left), right: blankSide(prev?.right) }
+  }
   return {
     id: newId(),
     reps: prev ? prev.reps : '',
@@ -47,12 +55,41 @@ export function createSet(prev) {
   }
 }
 
-// `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance). It's
-// set from the picked movement's category and stored on the exercise so the
-// log, history, and progress graphs all render the right fields. Older saved
-// exercises have no `kind` and are treated as strength.
-export function createExercise(name, kind = 'strength') {
-  return { id: newId(), name, kind, sets: [createSet()] }
+// Convert a set between the flat (bilateral) and left/right (unilateral)
+// shapes, preserving whatever was already typed.
+export function convertSet(s, unilateral) {
+  if (unilateral) {
+    if (s.left) return s
+    const side = { weight: s.weight ?? '', reps: s.reps ?? '', rir: s.rir ?? '' }
+    return { id: s.id, left: side, right: { ...side } }
+  }
+  if (!s.left) return s
+  return { id: s.id, weight: s.left.weight ?? '', reps: s.left.reps ?? '', rir: s.left.rir ?? '', duration: '', distance: '' }
+}
+
+// `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance) — it
+// decides which section of the log an exercise lives in and which fields
+// render. `unilateral` splits each set into left/right limbs. `repRange` is the
+// double-progression target: keep the weight until every set hits the top of
+// the range, then add weight. Older saved exercises lack these and are treated
+// as bilateral strength with no target.
+export function createExercise(name, kind = 'strength', opts = {}) {
+  const unilateral = !!opts.unilateral
+  const ex = { id: newId(), name, kind, sets: [createSet(undefined, unilateral)] }
+  if (kind !== 'cardio') {
+    ex.unilateral = unilateral
+    ex.repRange = opts.repRange || { low: 8, high: 12 }
+  }
+  return ex
+}
+
+// Flatten an exercise's sets to plain {weight,reps,rir} entries — one per limb
+// for unilateral work — so stats/graph code can treat everything uniformly.
+export function effectiveSets(ex) {
+  if (ex.kind !== 'cardio' && ex.unilateral) {
+    return ex.sets.flatMap((s) => [s.left, s.right].filter(Boolean))
+  }
+  return ex.sets
 }
 
 export function emptyDraft() {
@@ -221,6 +258,13 @@ export function sessionStats(session) {
       if (cardio) {
         // A cardio entry "counts" once it has time on it; it adds no volume.
         if (Number(set.duration) > 0) sets += 1
+      } else if (ex.unilateral) {
+        // A unilateral set counts once (one set of the exercise), but volume
+        // sums both limbs.
+        const l = set.left || {}, r = set.right || {}
+        const lr = Number(l.reps) || 0, rr = Number(r.reps) || 0
+        if (lr > 0 || rr > 0) sets += 1
+        volume += (Number(l.weight) || 0) * lr + (Number(r.weight) || 0) * rr
       } else {
         const reps = Number(set.reps) || 0
         const weight = Number(set.weight) || 0
@@ -230,4 +274,21 @@ export function sessionStats(session) {
     }
   }
   return { exercises: session.exercises.length, sets, volume }
+}
+
+// ---- Per-exercise rep-range targets (double progression) -------------------
+// Remembered on the device, keyed by exercise name, so re-adding an exercise
+// prefills the range you last trained it in.
+const EX_TARGETS_KEY = 'leon_exercise_targets'
+
+export function getExerciseTarget(name) {
+  const map = read(EX_TARGETS_KEY, {})
+  return map[name.trim().toLowerCase()] || null
+}
+
+export function saveExerciseTarget(name, repRange) {
+  if (!name || !repRange || !(repRange.low > 0) || !(repRange.high >= repRange.low)) return
+  const map = read(EX_TARGETS_KEY, {})
+  map[name.trim().toLowerCase()] = { low: repRange.low, high: repRange.high }
+  write(EX_TARGETS_KEY, map)
 }

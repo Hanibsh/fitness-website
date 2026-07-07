@@ -36,14 +36,38 @@ export function estimatedOneRepMax(weight, reps) {
 }
 
 // Gather every set of one exercise within a single session (an exercise can
-// appear more than once — combine them).
+// appear more than once — combine them). Unilateral sets are flattened to one
+// entry per limb so the metrics below treat each limb as its own working set.
 function setsForExercise(session, name) {
   const target = name.trim().toLowerCase()
   const sets = []
   for (const ex of session.exercises) {
-    if (ex.name.trim().toLowerCase() === target) sets.push(...ex.sets)
+    if (ex.name.trim().toLowerCase() !== target) continue
+    if (ex.kind !== 'cardio' && ex.unilateral) {
+      for (const s of ex.sets) { if (s.left) sets.push(s.left); if (s.right) sets.push(s.right) }
+    } else {
+      sets.push(...ex.sets)
+    }
   }
   return sets
+}
+
+// Double-progression status for an in-progress exercise: with a fixed weight,
+// once every working set reaches the top of the rep range it's time to add
+// weight. For unilateral work the weaker limb gates progress (uses min L/R).
+export function repRangeStatus(ex) {
+  if (!ex || ex.kind === 'cardio' || !ex.repRange) return null
+  const { low, high } = ex.repRange
+  if (!(low > 0) || !(high >= low)) return null
+  const repsOf = (s) =>
+    ex.unilateral
+      ? Math.min(Number(s.left?.reps) || 0, Number(s.right?.reps) || 0)
+      : Number(s.reps) || 0
+  const working = ex.sets.map(repsOf).filter((r) => r > 0)
+  if (!working.length) return null
+  if (working.every((r) => r >= high)) return { tone: 'go', label: `Add weight next — hit ${high}+ on every set` }
+  if (working.every((r) => r >= low)) return { tone: 'in', label: `In target ${low}–${high} — push toward ${high}` }
+  return { tone: 'below', label: `Building toward ${low}–${high}` }
 }
 
 // Each metric turns one session's sets into a single number (or null if the
@@ -229,21 +253,29 @@ export function buildSharedLifts(session, profile) {
   const rows = []
   const sessionUnit = session.unit || 'kg'
   const bwKg = profile.bodyweight ? convertWeight(Number(profile.bodyweight), profile.unit || 'kg', 'kg') : null
+  const addRow = (exName, s) => {
+    const reps = Number(s.reps)
+    if (!(reps > 0)) return
+    const weight = Number(s.weight)
+    rows.push({
+      exercise: exName,
+      weight: weight > 0 ? Math.round(convertWeight(weight, sessionUnit, 'kg') * 100) / 100 : null,
+      reps,
+      rir: s.rir === '' || s.rir == null ? null : Number(s.rir),
+      unit: 'kg',
+      bodyweight: bwKg ? Math.round(bwKg * 100) / 100 : null,
+      sex: profile.sex || null,
+      logged_at: new Date(session.date).toISOString(),
+    })
+  }
   for (const ex of session.exercises) {
     for (const s of ex.sets) {
-      const reps = Number(s.reps)
-      if (!(reps > 0)) continue
-      const weight = Number(s.weight)
-      rows.push({
-        exercise: ex.name,
-        weight: weight > 0 ? Math.round(convertWeight(weight, sessionUnit, 'kg') * 100) / 100 : null,
-        reps,
-        rir: s.rir === '' || s.rir == null ? null : Number(s.rir),
-        unit: 'kg',
-        bodyweight: bwKg ? Math.round(bwKg * 100) / 100 : null,
-        sex: profile.sex || null,
-        logged_at: new Date(session.date).toISOString(),
-      })
+      if (ex.kind !== 'cardio' && ex.unilateral) {
+        if (s.left) addRow(ex.name, s.left)
+        if (s.right) addRow(ex.name, s.right)
+      } else {
+        addRow(ex.name, s)
+      }
     }
   }
   return rows

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Trash2, ChevronDown, HelpCircle, LineChart, Calendar } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, ArrowLeftRight } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -9,6 +9,7 @@ import {
   emptyDraft,
   createExercise,
   createSet,
+  convertSet,
   getHistory,
   makeSession,
   addLocalSession,
@@ -19,9 +20,11 @@ import {
   saveUnit,
   getGuestShare,
   saveGuestShare,
+  getExerciseTarget,
+  saveExerciseTarget,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, insertSharedLifts, submitGuestLifts } from '../lib/workoutRemote'
-import { buildSharedLifts, loggedExerciseNames, distanceUnit } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -58,6 +61,12 @@ function isSameDay(a, b) {
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
 }
 
+function sideSummary(s, unit) {
+  const base = s.weight ? `${s.weight}${unit} × ${s.reps}` : `${s.reps}`
+  const hasRir = s.rir !== '' && s.rir != null
+  return hasRir ? `${base} @${s.rir}` : base
+}
+
 function setSummary(set, unit, kind, distUnit) {
   if (kind === 'cardio') {
     const parts = []
@@ -65,9 +74,20 @@ function setSummary(set, unit, kind, distUnit) {
     if (set.distance) parts.push(`${set.distance} ${distUnit}`)
     return parts.join(' · ') || '—'
   }
+  if (set.left) {
+    return `L ${sideSummary(set.left, unit)} · R ${sideSummary(set.right || {}, unit)}`
+  }
   const hasRir = set.rir !== '' && set.rir != null
   const base = set.weight ? `${set.weight}${unit} × ${set.reps}` : `${set.reps} reps`
   return hasRir ? `${base} · ${set.rir} RIR` : base
+}
+
+// A unilateral set is "worked" if either limb has reps; a bilateral set if it
+// has reps; a cardio entry if it has duration.
+function isWorkingSet(set, kind) {
+  if (kind === 'cardio') return Number(set.duration) > 0
+  if (set.left) return Number(set.left?.reps) > 0 || Number(set.right?.reps) > 0
+  return Number(set.reps) > 0
 }
 
 export default function WorkoutTracker() {
@@ -158,21 +178,68 @@ export default function WorkoutTracker() {
 
   const sortedHistory = useMemo(() => [...history].sort((a, b) => b.date - a.date), [history])
 
-  // Exercises the user has logged before, most-recent first, so the picker can
-  // surface what they actually train instead of a fixed default list.
-  const recentExerciseNames = useMemo(() => loggedExerciseNames(sortedHistory), [sortedHistory])
+  // Exercises the user has logged before, most-recent first and split by kind,
+  // so each section's picker surfaces what they actually train there.
+  const recentByKind = useMemo(() => {
+    const resistance = [], cardio = []
+    const seen = new Set()
+    for (const s of sortedHistory) {
+      for (const ex of s.exercises) {
+        const key = ex.name.trim().toLowerCase()
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        ;(ex.kind === 'cardio' ? cardio : resistance).push(ex.name.trim())
+      }
+    }
+    return { resistance, cardio }
+  }, [sortedHistory])
 
-  function addExercise(name, category) {
+  // `kind` is decided by which section's picker added it (resistance/cardio),
+  // not a per-exercise toggle. Prefill the rep target from the last time this
+  // exercise was trained, if we remember one.
+  function addExercise(name, kind) {
     const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
-    const kind = category === 'Cardio' ? 'cardio' : 'strength'
-    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind)] }))
+    const repRange = kind !== 'cardio' ? getExerciseTarget(trimmed) || undefined : undefined
+    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind, { repRange })] }))
   }
 
-  function setExerciseKind(exId, kind) {
+  // Flip an exercise between bilateral and per-limb (left/right) logging,
+  // converting its existing sets so nothing typed is lost.
+  function toggleUnilateral(exId) {
     setDraft((d) => ({
       ...d,
-      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, kind } : e)),
+      exercises: d.exercises.map((e) => {
+        if (e.id !== exId || e.kind === 'cardio') return e
+        const unilateral = !e.unilateral
+        return { ...e, unilateral, sets: e.sets.map((s) => convertSet(s, unilateral)) }
+      }),
+    }))
+  }
+
+  function updateLimbSet(exId, setId, side, field, value) {
+    if (value !== '') {
+      const n = Number(value)
+      if (!Number.isFinite(n) || n < 0) return
+      if (field === 'rir' && n > 10) return
+    }
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, [side]: { ...s[side], [field]: value } } : s)) }
+          : e
+      ),
+    }))
+  }
+
+  function setRepRange(exId, field, value) {
+    const n = value === '' ? '' : Math.max(1, Math.min(50, parseInt(value, 10) || 0))
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId ? { ...e, repRange: { ...(e.repRange || { low: 8, high: 12 }), [field]: n } } : e
+      ),
     }))
   }
 
@@ -198,7 +265,7 @@ export default function WorkoutTracker() {
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
-        e.id === exId ? { ...e, sets: [...e.sets, createSet(e.sets[e.sets.length - 1])] } : e
+        e.id === exId ? { ...e, sets: [...e.sets, createSet(e.sets[e.sets.length - 1], e.unilateral)] } : e
       ),
     }))
   }
@@ -266,6 +333,10 @@ export default function WorkoutTracker() {
           }
         }
       }
+      // Remember each exercise's rep target so it prefills next time.
+      for (const ex of session.exercises) {
+        if (ex.kind !== 'cardio' && ex.repRange) saveExerciseTarget(ex.name, ex.repRange)
+      }
       clearDraft()
       setDraft(emptyDraft())
       setEditingDate(false)
@@ -311,12 +382,250 @@ export default function WorkoutTracker() {
   }
 
   const distUnit = distanceUnit(unit)
-  const hasLoggedSets = draft.exercises.some((e) =>
-    e.kind === 'cardio'
-      ? e.sets.some((s) => Number(s.duration) > 0)
-      : e.sets.some((s) => Number(s.reps) > 0)
-  )
+  const hasLoggedSets = draft.exercises.some((e) => e.sets.some((s) => isWorkingSet(s, e.kind)))
   const liveStats = sessionStats(draft)
+  const resistanceExercises = draft.exercises.filter((e) => e.kind !== 'cardio')
+  const cardioExercises = draft.exercises.filter((e) => e.kind === 'cardio')
+
+  const CHIP_TONE = {
+    go: 'text-green-700 bg-green-50 border-green-300',
+    in: 'text-text-secondary bg-white border-border',
+    below: 'text-text-muted bg-white border-border',
+  }
+
+  // One exercise card. Cardio shows duration/distance; resistance shows a
+  // laterality toggle, a rep-range target (double progression) with a live
+  // status chip, and either flat sets or per-limb (L/R) sets.
+  const renderExercise = (ex) => {
+    const status = repRangeStatus(ex)
+    return (
+      <motion.div
+        key={ex.id}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, height: 0 }}
+        className="mb-4 border border-border bg-cream"
+      >
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
+          <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
+              aria-label={`View ${ex.name} progress`}
+              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
+            >
+              <LineChart className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => removeExercise(ex.id)}
+              aria-label={`Remove ${ex.name}`}
+              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-4 py-3">
+          {ex.kind === 'cardio' ? (
+            <>
+              <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
+                <span className="text-center">#</span>
+                <span>Min</span>
+                <span>{distUnit}</span>
+                <span />
+              </div>
+              {ex.sets.map((set, i) => (
+                <div key={set.id} className={`${CARDIO_SET_GRID} mb-2`}>
+                  <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
+                  <input
+                    type="number" inputMode="decimal" min="0"
+                    value={set.duration ?? ''}
+                    onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
+                    placeholder="—" aria-label={`Entry ${i + 1} duration in minutes`}
+                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                  <input
+                    type="number" inputMode="decimal" min="0"
+                    value={set.distance ?? ''}
+                    onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
+                    placeholder="—" aria-label={`Entry ${i + 1} distance in ${distUnit}`}
+                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                  <button
+                    onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove entry ${i + 1}`} disabled={ex.sets.length === 1}
+                    className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => addSet(ex.id)}
+                className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add interval
+              </button>
+            </>
+          ) : (
+            <>
+              {/* laterality toggle + double-progression rep target */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => toggleUnilateral(ex.id)}
+                  aria-pressed={!!ex.unilateral}
+                  title={ex.unilateral ? 'Logging each limb separately' : 'Log both limbs together'}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
+                    ex.unilateral ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+                  }`}
+                >
+                  <ArrowLeftRight className="w-3 h-3" /> {ex.unilateral ? 'Unilateral' : 'Bilateral'}
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-text-light">Target</span>
+                  <input
+                    type="number" inputMode="numeric" min="1" max="50"
+                    value={ex.repRange?.low ?? ''}
+                    onChange={(e) => setRepRange(ex.id, 'low', e.target.value)}
+                    aria-label="Target rep range low"
+                    className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                  />
+                  <span className="text-text-light text-[12px]">–</span>
+                  <input
+                    type="number" inputMode="numeric" min="1" max="50"
+                    value={ex.repRange?.high ?? ''}
+                    onChange={(e) => setRepRange(ex.id, 'high', e.target.value)}
+                    aria-label="Target rep range high"
+                    className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                  />
+                  <span className="text-[11px] text-text-light">reps</span>
+                </div>
+              </div>
+
+              {status && (
+                <p className={`inline-flex items-center text-[11px] font-medium border px-2 py-1 mb-3 ${CHIP_TONE[status.tone]}`}>
+                  {status.label}
+                </p>
+              )}
+
+              {ex.unilateral ? (
+                <>
+                  <div className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 mb-1.5 text-[10px] uppercase tracking-wider text-text-light">
+                    <span />
+                    <span>{unit}</span>
+                    <span>Reps</span>
+                    <span className="flex items-center gap-1">RIR
+                      <button type="button" onClick={() => setShowRirHelp(true)} aria-label="What is RIR?" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none">
+                        <HelpCircle className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </div>
+                  {ex.sets.map((set, i) => (
+                    <div key={set.id} className="mb-2.5 pb-2.5 border-b border-border/60 last:border-0 last:pb-0 last:mb-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] text-text-muted">Set {i + 1}</span>
+                        <button
+                          onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
+                          className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {['left', 'right'].map((side) => (
+                        <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
+                          <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
+                          <input
+                            type="number" inputMode="decimal" min="0"
+                            value={set[side]?.weight ?? ''}
+                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
+                            placeholder="—" aria-label={`Set ${i + 1} ${side} weight`}
+                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                          <input
+                            type="number" inputMode="numeric" min="0"
+                            value={set[side]?.reps ?? ''}
+                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
+                            placeholder="—" aria-label={`Set ${i + 1} ${side} reps`}
+                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                          <input
+                            type="number" inputMode="numeric" min="0" max="10"
+                            value={set[side]?.rir ?? ''}
+                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
+                            placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
+                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addSet(ex.id)}
+                    className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add set
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className={`${SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
+                    <span className="text-center">#</span>
+                    <span>{unit}</span>
+                    <span>Reps</span>
+                    <span className="flex items-center gap-1">RIR
+                      <button type="button" onClick={() => setShowRirHelp(true)} aria-label="What is RIR?" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none">
+                        <HelpCircle className="w-3 h-3" />
+                      </button>
+                    </span>
+                    <span />
+                  </div>
+                  {ex.sets.map((set, i) => (
+                    <div key={set.id} className={`${SET_GRID} mb-2`}>
+                      <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
+                      <input
+                        type="number" inputMode="decimal" min="0"
+                        value={set.weight}
+                        onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
+                        placeholder="—" aria-label={`Set ${i + 1} weight in ${unit}`}
+                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                      />
+                      <input
+                        type="number" inputMode="numeric" min="0"
+                        value={set.reps}
+                        onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                        placeholder="—" aria-label={`Set ${i + 1} reps`}
+                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                      />
+                      <input
+                        type="number" inputMode="numeric" min="0" max="10"
+                        value={set.rir ?? ''}
+                        onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                        placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
+                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                      />
+                      <button
+                        onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
+                        className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addSet(ex.id)}
+                    className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add set
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <div className="pt-28 pb-24 px-6">
@@ -390,179 +699,39 @@ export default function WorkoutTracker() {
               />
             </div>
 
-            <AnimatePresence initial={false}>
-              {draft.exercises.map((ex) => (
-                <motion.div
-                  key={ex.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-4 border border-border bg-cream"
-                >
-                  <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
-                    <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
-                        aria-label={`View ${ex.name} progress`}
-                        className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
-                      >
-                        <LineChart className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => removeExercise(ex.id)}
-                        aria-label={`Remove ${ex.name}`}
-                        className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="px-4 py-3">
-                    <div className="flex items-center gap-1 mb-3">
-                      {[['strength', 'Lifting'], ['cardio', 'Cardio']].map(([k, label]) => (
-                        <button
-                          key={k}
-                          type="button"
-                          onClick={() => setExerciseKind(ex.id, k)}
-                          aria-pressed={(ex.kind === 'cardio' ? 'cardio' : 'strength') === k}
-                          className={`px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
-                            (ex.kind === 'cardio' ? 'cardio' : 'strength') === k
-                              ? 'bg-text-primary text-cream border-text-primary'
-                              : 'bg-white text-text-muted border-border hover:border-border-hover'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    {ex.kind === 'cardio' ? (
-                      <>
-                        <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
-                          <span className="text-center">#</span>
-                          <span>Min</span>
-                          <span>{distUnit}</span>
-                          <span />
-                        </div>
-
-                        {ex.sets.map((set, i) => (
-                          <div key={set.id} className={`${CARDIO_SET_GRID} mb-2`}>
-                            <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
-                            <input
-                              type="number" inputMode="decimal" min="0"
-                              value={set.duration ?? ''}
-                              onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
-                              placeholder="—"
-                              aria-label={`Entry ${i + 1} duration in minutes`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                            <input
-                              type="number" inputMode="decimal" min="0"
-                              value={set.distance ?? ''}
-                              onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
-                              placeholder="—"
-                              aria-label={`Entry ${i + 1} distance in ${distUnit}`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                            <button
-                              onClick={() => removeSet(ex.id, set.id)}
-                              aria-label={`Remove entry ${i + 1}`}
-                              disabled={ex.sets.length === 1}
-                              className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-
-                        <button
-                          onClick={() => addSet(ex.id)}
-                          className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Add interval
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`${SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
-                          <span className="text-center">#</span>
-                          <span>{unit}</span>
-                          <span>Reps</span>
-                          <span className="flex items-center gap-1">
-                            RIR
-                            <button
-                              type="button"
-                              onClick={() => setShowRirHelp(true)}
-                              aria-label="What is RIR?"
-                              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none"
-                            >
-                              <HelpCircle className="w-3 h-3" />
-                            </button>
-                          </span>
-                          <span />
-                        </div>
-
-                        {ex.sets.map((set, i) => (
-                          <div key={set.id} className={`${SET_GRID} mb-2`}>
-                            <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
-                            <input
-                              type="number" inputMode="decimal" min="0"
-                              value={set.weight}
-                              onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
-                              placeholder="—"
-                              aria-label={`Set ${i + 1} weight in ${unit}`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                            <input
-                              type="number" inputMode="numeric" min="0"
-                              value={set.reps}
-                              onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
-                              placeholder="—"
-                              aria-label={`Set ${i + 1} reps`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                            <input
-                              type="number" inputMode="numeric" min="0" max="10"
-                              value={set.rir ?? ''}
-                              onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                              placeholder="—"
-                              aria-label={`Set ${i + 1} reps in reserve`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                            <button
-                              onClick={() => removeSet(ex.id, set.id)}
-                              aria-label={`Remove set ${i + 1}`}
-                              disabled={ex.sets.length === 1}
-                              className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-
-                        <button
-                          onClick={() => addSet(ex.id)}
-                          className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Add set
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-
-            {draft.exercises.length === 0 && (
-              <div className="text-center py-8 border border-dashed border-border mb-4">
-                <Dumbbell className="w-6 h-6 text-text-light mx-auto mb-2" />
-                <p className="text-[13px] text-text-muted">Add your first exercise to start logging.</p>
+            {/* Resistance training */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <Dumbbell className="w-4 h-4 text-text-primary" />
+                <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Resistance training</h3>
               </div>
-            )}
+              <AnimatePresence initial={false}>
+                {resistanceExercises.map(renderExercise)}
+              </AnimatePresence>
+              <ExercisePicker
+                onSelect={(name) => addExercise(name, 'strength')}
+                recentNames={recentByKind.resistance}
+                excludeCategory="Cardio"
+                placeholder="Search or add a resistance exercise…"
+              />
+            </div>
 
-            {/* Add exercise */}
-            <ExercisePicker onSelect={addExercise} recentNames={recentExerciseNames} />
+            {/* Cardio */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-4 h-4 text-text-primary" />
+                <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Cardio</h3>
+              </div>
+              <AnimatePresence initial={false}>
+                {cardioExercises.map(renderExercise)}
+              </AnimatePresence>
+              <ExercisePicker
+                onSelect={(name) => addExercise(name, 'cardio')}
+                recentNames={recentByKind.cardio}
+                onlyCategory="Cardio"
+                placeholder="Search or add a cardio exercise…"
+              />
+            </div>
 
             {draft.exercises.length > 0 && (
               <div className="mt-6 pt-6 border-t border-border">
@@ -658,11 +827,8 @@ export default function WorkoutTracker() {
                           >
                             <div className="px-6 pb-5 border-t border-border pt-4">
                               {session.exercises.map((ex) => {
-                                const cardio = ex.kind === 'cardio'
                                 const du = distanceUnit(session.unit || 'kg')
-                                const shown = cardio
-                                  ? ex.sets.filter((s) => Number(s.duration) > 0)
-                                  : ex.sets.filter((s) => Number(s.reps) > 0)
+                                const shown = ex.sets.filter((s) => isWorkingSet(s, ex.kind))
                                 return (
                                   <div key={ex.id} className="mb-4 last:mb-0">
                                     <div className="flex items-center gap-2 mb-1.5">
