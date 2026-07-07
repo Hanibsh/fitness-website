@@ -167,6 +167,34 @@ export const MOVEMENTS = [
   { name: "Farmer's Carry", category: 'Full Body', keywords: ['farmers walk', 'loaded carry', 'grip', 'traps', 'forearms'] },
 ]
 
+// ---- Laterality -----------------------------------------------------------
+// Whether an exercise is trained both limbs together (bilateral), one limb at
+// a time (unilateral), or either (both — the log offers a toggle). The cleaned
+// exercise DB carries this straight from the source data, so it's the
+// authority; for names not in the DB (custom entries, differently-named
+// library movements) we infer from the name and default to "both".
+import exercisesDb from '../data/exercises.json'
+
+const DB_LATERALITY = new Map(
+  (exercisesDb.exercises || []).map((e) => [e.name.trim().toLowerCase(), e.laterality])
+)
+
+// Clearly single-limb movements.
+const UNILATERAL_RE = /\b(single[- ]?arm|one[- ]?arm|1[- ]?arm|single[- ]?leg|one[- ]?leg|bulgarian|split[- ]squat|lunge|step[- ]?up|pistol|concentration|kickback|suitcase|meadows|side plank|pallof|wood ?chop)\b/i
+// Movements locked to both limbs (barbell/machine/bodyweight compounds).
+const BILATERAL_RE = /\b(barbell|bench press|squat|deadlift|overhead press|push press|military|pull[- ]?up|chin[- ]?up|pulldown|dip|push[- ]?up|pec deck|leg press|leg extension|leg curl|hip thrust|glute bridge|good morning|shrug|calf raise|smith|thruster|clean|snatch|jerk|upright row|kettlebell|machine|plank|crunch|sit[- ]?up|ab wheel|rack pull)\b/i
+
+export function lateralityFor(name) {
+  const key = (name || '').trim().toLowerCase()
+  if (!key) return 'both'
+  if (DB_LATERALITY.has(key)) return DB_LATERALITY.get(key) // authoritative
+  if (UNILATERAL_RE.test(key)) return 'unilateral'
+  // Dumbbells/cables can be loaded per-limb, so leave the choice open.
+  if (/\b(dumbbell|db|cable)\b/.test(key)) return 'both'
+  if (BILATERAL_RE.test(key)) return 'bilateral'
+  return 'both'
+}
+
 // Whole-word abbreviations expanded before searching, so "db shoulder" finds
 // the dumbbell shoulder presses, "ohp" finds the overhead press, etc.
 const ABBREVIATIONS = {

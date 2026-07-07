@@ -69,14 +69,17 @@ export function convertSet(s, unilateral) {
 
 // `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance) — it
 // decides which section of the log an exercise lives in and which fields
-// render. `unilateral` splits each set into left/right limbs. `repRange` is the
-// double-progression target: keep the weight until every set hits the top of
-// the range, then add weight. Older saved exercises lack these and are treated
-// as bilateral strength with no target.
+// render. `laterality` ('bilateral' | 'unilateral' | 'both') comes from the
+// exercise DB and controls the L/R logging: bilateral exercises never offer it,
+// unilateral ones are fixed to it, and "both" exposes a toggle. `repRange` is
+// the double-progression target. Older saved exercises lack these and are
+// treated as bilateral strength ("both") with no target.
 export function createExercise(name, kind = 'strength', opts = {}) {
-  const unilateral = !!opts.unilateral
+  const laterality = kind === 'cardio' ? undefined : opts.laterality || 'both'
+  const unilateral = laterality === 'unilateral'
   const ex = { id: newId(), name, kind, sets: [createSet(undefined, unilateral)] }
   if (kind !== 'cardio') {
+    ex.laterality = laterality
     ex.unilateral = unilateral
     // Opt-in: only carry a rep-range target if one was passed (e.g. remembered
     // from a previous session). Otherwise the user adds it per exercise.

@@ -32,6 +32,7 @@ import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExercisePicker from '../components/ExercisePicker'
 import SessionNamePicker from '../components/SessionNamePicker'
+import { lateralityFor } from '../lib/movements'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
 const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px] gap-2 items-center'
@@ -200,8 +201,10 @@ export default function WorkoutTracker() {
   function addExercise(name, kind) {
     const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
-    const repRange = kind !== 'cardio' ? getExerciseTarget(trimmed) || undefined : undefined
-    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind, { repRange })] }))
+    const isStrength = kind !== 'cardio'
+    const laterality = isStrength ? lateralityFor(trimmed) : undefined
+    const repRange = isStrength ? getExerciseTarget(trimmed) || undefined : undefined
+    setDraft((d) => ({ ...d, exercises: [...d.exercises, createExercise(trimmed, kind, { laterality, repRange })] }))
   }
 
   // Flip an exercise between bilateral and per-limb (left/right) logging,
@@ -211,6 +214,8 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) => {
         if (e.id !== exId || e.kind === 'cardio') return e
+        // Only "both" exercises can switch; bilateral/unilateral are fixed.
+        if ((e.laterality || 'both') !== 'both') return e
         const unilateral = !e.unilateral
         return { ...e, unilateral, sets: e.sets.map((s) => convertSet(s, unilateral)) }
       }),
@@ -477,19 +482,30 @@ export default function WorkoutTracker() {
             </>
           ) : (
             <>
-              {/* laterality toggle + double-progression rep target */}
+              {/* laterality control + double-progression rep target */}
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => toggleUnilateral(ex.id)}
-                  aria-pressed={!!ex.unilateral}
-                  title={ex.unilateral ? 'Logging each limb separately' : 'Log both limbs together'}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
-                    ex.unilateral ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
-                  }`}
-                >
-                  <ArrowLeftRight className="w-3 h-3" /> {ex.unilateral ? 'Unilateral' : 'Bilateral'}
-                </button>
+                {(ex.laterality || 'both') === 'both' ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleUnilateral(ex.id)}
+                    aria-pressed={!!ex.unilateral}
+                    title={ex.unilateral ? 'Logging each limb separately' : 'Log both limbs together'}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
+                      ex.unilateral ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+                    }`}
+                  >
+                    <ArrowLeftRight className="w-3 h-3" /> {ex.unilateral ? 'Unilateral' : 'Bilateral'}
+                  </button>
+                ) : ex.laterality === 'unilateral' ? (
+                  <span
+                    title="This movement is trained one limb at a time"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium border border-border bg-white text-text-muted"
+                  >
+                    <ArrowLeftRight className="w-3 h-3" /> Unilateral
+                  </span>
+                ) : (
+                  <span />
+                )}
                 {ex.repRange ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] uppercase tracking-wider text-text-light">Target</span>
