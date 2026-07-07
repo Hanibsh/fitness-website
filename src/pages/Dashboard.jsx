@@ -275,6 +275,7 @@ export default function Dashboard() {
               <Plus className="w-4 h-4" /> Log your first workout
             </Link>
           </motion.div>
+          <BodyweightTracker user={user} unit={unit} />
           <CoachingCTA />
         </div>
         {editingNick && user && (
