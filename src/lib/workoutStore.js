@@ -90,11 +90,13 @@ export function createExercise(name, kind = 'strength', opts = {}) {
 
 // Flatten an exercise's sets to plain {weight,reps,rir} entries — one per limb
 // for unilateral work — so stats/graph code can treat everything uniformly.
+// Warm-up sets are dropped: they don't count toward working volume.
 export function effectiveSets(ex) {
+  const working = ex.sets.filter((s) => s.type !== 'warmup')
   if (ex.kind !== 'cardio' && ex.unilateral) {
-    return ex.sets.flatMap((s) => [s.left, s.right].filter(Boolean))
+    return working.flatMap((s) => [s.left, s.right].filter(Boolean))
   }
-  return ex.sets
+  return working
 }
 
 export function emptyDraft() {
@@ -260,6 +262,8 @@ export function sessionStats(session) {
   for (const ex of session.exercises) {
     const cardio = ex.kind === 'cardio'
     for (const set of ex.sets) {
+      // Warm-ups are logged but never count toward working volume or set totals.
+      if (set.type === 'warmup') continue
       if (cardio) {
         // A cardio entry "counts" once it has time on it; it adds no volume.
         if (Number(set.duration) > 0) sets += 1

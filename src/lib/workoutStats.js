@@ -44,9 +44,9 @@ function setsForExercise(session, name) {
   for (const ex of session.exercises) {
     if (ex.name.trim().toLowerCase() !== target) continue
     if (ex.kind !== 'cardio' && ex.unilateral) {
-      for (const s of ex.sets) { if (s.left) sets.push(s.left); if (s.right) sets.push(s.right) }
+      for (const s of ex.sets) { if (s.type === 'warmup') continue; if (s.left) sets.push(s.left); if (s.right) sets.push(s.right) }
     } else {
-      sets.push(...ex.sets)
+      sets.push(...ex.sets.filter((s) => s.type !== 'warmup'))
     }
   }
   return sets
@@ -270,6 +270,7 @@ export function buildSharedLifts(session, profile) {
   }
   for (const ex of session.exercises) {
     for (const s of ex.sets) {
+      if (s.type === 'warmup') continue // don't contribute warm-ups to the dataset
       if (ex.kind !== 'cardio' && ex.unilateral) {
         if (s.left) addRow(ex.name, s.left)
         if (s.right) addRow(ex.name, s.right)

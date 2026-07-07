@@ -76,12 +76,13 @@ function setSummary(set, unit, kind, distUnit) {
     if (set.distance) parts.push(`${set.distance} ${distUnit}`)
     return parts.join(' · ') || '—'
   }
+  const tag = set.type === 'warmup' ? 'W · ' : set.type === 'backoff' ? 'B · ' : ''
   if (set.left) {
-    return `L ${sideSummary(set.left, unit)} · R ${sideSummary(set.right || {}, unit)}`
+    return `${tag}L ${sideSummary(set.left, unit)} · R ${sideSummary(set.right || {}, unit)}`
   }
   const hasRir = set.rir !== '' && set.rir != null
   const base = set.weight ? `${set.weight}${unit} × ${set.reps}` : `${set.reps} reps`
-  return hasRir ? `${base} · ${set.rir} RIR` : base
+  return tag + (hasRir ? `${base} · ${set.rir} RIR` : base)
 }
 
 // A unilateral set is "worked" if either limb has reps; a bilateral set if it
@@ -272,6 +273,29 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // Cycle a set's type: working → warm-up → back-off → working. Warm-ups are
+  // logged but excluded from volume/hard-set counts; back-offs are working sets,
+  // just labeled.
+  function cycleSetType(exId, setId) {
+    const next = { undefined: 'warmup', warmup: 'backoff', backoff: undefined }
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? {
+              ...e,
+              sets: e.sets.map((s) => {
+                if (s.id !== setId) return s
+                const t = next[s.type] ?? 'warmup'
+                const { type, ...rest } = s // eslint-disable-line no-unused-vars
+                return t ? { ...rest, type: t } : rest
+              }),
+            }
+          : e
+      ),
+    }))
+  }
+
   function changeUnit(u) {
     setUnit(u)
     saveUnit(u)
@@ -425,8 +449,12 @@ export default function WorkoutTracker() {
   // One exercise card. Cardio shows duration/distance; resistance shows a
   // laterality toggle, a rep-range target (double progression) with a live
   // status chip, and either flat sets or per-limb (L/R) sets.
-  const renderExercise = (ex) => {
+  const renderExercise = (ex, exIndex) => {
     const status = repRangeStatus(ex)
+    // Working-set numbering: warm-ups show "W", back-offs "B", the rest count 1,2,3…
+    let workNo = 0
+    const setLabels = ex.sets.map((s) => (s.type === 'warmup' ? 'W' : s.type === 'backoff' ? 'B' : String(++workNo)))
+    const typeClass = (s) => (s.type === 'warmup' ? 'text-amber-500 font-semibold' : s.type === 'backoff' ? 'text-sky-500 font-semibold' : 'text-text-muted')
     return (
       <motion.div
         key={ex.id}
@@ -567,6 +595,12 @@ export default function WorkoutTracker() {
                 </p>
               )}
 
+              {exIndex === 0 && (
+                <p className="text-[11px] text-text-light mb-3">
+                  Tip: tap a set's number to mark it a warm-up (<span className="text-amber-500 font-semibold">W</span>, excluded from volume) or back-off (<span className="text-sky-500 font-semibold">B</span>).
+                </p>
+              )}
+
               {ex.unilateral ? (
                 <>
                   <div className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 mb-1.5 text-[10px] uppercase tracking-wider text-text-light">
@@ -582,7 +616,14 @@ export default function WorkoutTracker() {
                   {ex.sets.map((set, i) => (
                     <div key={set.id} className="mb-2.5 pb-2.5 border-b border-border/60 last:border-0 last:pb-0 last:mb-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] text-text-muted">Set {i + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => cycleSetType(ex.id, set.id)}
+                          title="Tap: working → warm-up (W) → back-off (B)"
+                          className={`text-[11px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
+                        >
+                          {set.type === 'warmup' ? 'Warm-up' : set.type === 'backoff' ? 'Back-off' : `Set ${setLabels[i]}`}
+                        </button>
                         <button
                           onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
                           className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -640,7 +681,14 @@ export default function WorkoutTracker() {
                   </div>
                   {ex.sets.map((set, i) => (
                     <div key={set.id} className={`${SET_GRID} mb-2`}>
-                      <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => cycleSetType(ex.id, set.id)}
+                        title="Tap: working → warm-up (W) → back-off (B)"
+                        className={`text-center text-[13px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
+                      >
+                        {setLabels[i]}
+                      </button>
                       <input
                         type="number" inputMode="decimal" min="0"
                         value={set.weight}
