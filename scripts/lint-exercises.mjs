@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { MUSCLES, resolveMuscleTerm } from './muscle-taxonomy.mjs'
+import { resolveMuscleTerm } from './muscle-taxonomy.mjs'
 import { OVERRIDES } from '../data/exercise-overrides.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
