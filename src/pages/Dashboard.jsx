@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Clock, Trophy, Target, Activity, History,
-  ChevronRight, Award, CalendarDays, Plus, Pencil,
+  ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit, getGoals, saveGoals } from '../lib/workoutStore'
@@ -112,6 +112,48 @@ function ProgressGoal({ label, value, target, unit = '' }) {
   )
 }
 
+// Compact 1:1 coaching banner shown at the top of the dashboard — the first
+// thing a logged-in user sees, since coaching is the point of the brand.
+function CoachingBanner() {
+  return (
+    <Link to="/contact" className="block group no-underline">
+      <div className="bg-white border border-border p-4 sm:p-5 flex items-center gap-4 hover:border-border-hover transition-colors">
+        <div className="w-10 h-10 shrink-0 rounded-full bg-text-primary flex items-center justify-center">
+          <MessageCircle className="w-4 h-4 text-cream" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-text-light mb-0.5">1:1 online coaching</p>
+          <p className="text-[14px] font-medium text-text-primary">Train with Leon — a plan built around your life.</p>
+        </div>
+        <span className="hidden sm:inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 shrink-0 group-hover:bg-accent-hover transition-colors">
+          Book a free intro chat <ArrowRight className="w-3.5 h-3.5" />
+        </span>
+        <ArrowRight className="w-4 h-4 text-text-light shrink-0 sm:hidden group-hover:text-text-primary transition-colors" />
+      </div>
+    </Link>
+  )
+}
+
+// Fuller coaching call-to-action shown below the dashboard stats.
+function CoachingCTA() {
+  return (
+    <div className="bg-text-primary text-cream p-6 sm:p-8 text-center">
+      <MessageCircle className="w-5 h-5 text-cream/80 mx-auto mb-4" />
+      <h2 className="font-heading text-2xl sm:text-3xl font-medium mb-3">Ready to take it further?</h2>
+      <p className="text-[14px] text-cream/70 max-w-md mx-auto mb-6 leading-relaxed">
+        A dashboard tracks your progress — a coach in your corner accelerates it. I build the plan,
+        fix your form, and adjust it around your life so you actually stick to it.
+      </p>
+      <Link
+        to="/contact"
+        className="inline-flex items-center gap-2 bg-cream text-text-primary font-medium px-6 py-3 no-underline cursor-pointer text-[14px] hover:bg-white transition-colors"
+      >
+        Book a free intro chat <ArrowRight className="w-3.5 h-3.5" />
+      </Link>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   // Nickname lives in the auth context so the navbar reflects edits instantly.
   const { user, nickname, setNickname } = useAuth()
@@ -204,8 +246,9 @@ export default function Dashboard() {
   // Empty state — no workouts yet.
   if (!stats) {
     return (
-      <div className="pt-28 pb-24 px-6">
-        <div className="max-w-2xl mx-auto">
+      <div className="pt-24 pb-24 px-4 sm:px-6">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <CoachingBanner />
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
             <div className="flex items-center gap-2 mb-3">
@@ -231,6 +274,7 @@ export default function Dashboard() {
               <Plus className="w-4 h-4" /> Log your first workout
             </Link>
           </motion.div>
+          <CoachingCTA />
         </div>
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
@@ -249,6 +293,9 @@ export default function Dashboard() {
   return (
     <div className="pt-24 pb-24 px-4 sm:px-6" style={{ paddingBottom: 'max(6rem, env(safe-area-inset-bottom))' }}>
       <div className="max-w-5xl mx-auto space-y-6">
+        {/* SECTION 0 — COACHING BANNER (coaching-first: the point of the brand) */}
+        <CoachingBanner />
+
         {/* SECTION 1 — HERO */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <div className="bg-text-primary text-cream p-6 sm:p-8">
@@ -549,6 +596,9 @@ export default function Dashboard() {
             </div>
           </Card>
         )}
+
+        {/* SECTION 14 — COACHING CTA */}
+        <CoachingCTA />
       </div>
 
       {editingGoals && (
