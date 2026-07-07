@@ -144,22 +144,29 @@ export function formatDuration(ms) {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
-// ---- Streak ----------------------------------------------------------------
-export function computeStreak(sessions) {
-  const days = [...new Set(sessions.map((s) => startOfDay(s.date)))].sort((a, b) => b - a)
-  if (!days.length) return 0
-  const today = startOfDay(Date.now())
-  // Streak only counts if the latest workout was today or yesterday.
-  if (days[0] !== today && days[0] !== today - DAY) return 0
-  let cursor = days[0]
+// ---- Weekly streak ---------------------------------------------------------
+// Number of weeks (Mon–Sun) trained in a row. A weekly measure fits training
+// with rest days — off days never break it. The current week counts once it
+// has a workout, but an empty current week doesn't break the streak (we start
+// counting from the most recent trained week).
+function weekStart(ts) {
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  const mondayOffset = (d.getDay() + 6) % 7 // Mon=0 … Sun=6
+  d.setDate(d.getDate() - mondayOffset)
+  return d.getTime()
+}
+
+export function weeklyStreak(sessions) {
+  if (!sessions.length) return 0
+  const WEEK = 7 * DAY
+  const active = new Set(sessions.map((s) => weekStart(s.date)))
+  let cursor = weekStart(Date.now())
+  if (!active.has(cursor)) cursor -= WEEK // this week empty so far — don't break
   let streak = 0
-  for (const d of days) {
-    if (d === cursor) {
-      streak += 1
-      cursor -= DAY
-    } else if (d < cursor) {
-      break
-    }
+  while (active.has(cursor)) {
+    streak += 1
+    cursor -= WEEK
   }
   return streak
 }
@@ -407,7 +414,7 @@ export function heroSummary(sessions, unit = 'kg') {
   const sorted = [...sessions].sort((a, b) => b.date - a.date)
   const last = sorted[0] || null
   return {
-    streak: computeStreak(sessions),
+    streak: weeklyStreak(sessions),
     last: last
       ? {
           name: last.name || 'Workout',

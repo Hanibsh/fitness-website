@@ -318,11 +318,11 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               <div className="col-span-2 sm:col-span-1">
-                <p className="text-[10px] uppercase tracking-wider text-cream/50 mb-1">Current streak</p>
+                <p className="text-[10px] uppercase tracking-wider text-cream/50 mb-1">Weekly streak</p>
                 <p className="font-heading text-2xl font-medium flex items-center gap-1.5">
                   <Flame className="w-5 h-5 text-orange-400" /> {hero.streak}
                 </p>
-                <p className="text-[11px] text-cream/50">{hero.streak === 1 ? 'day' : 'days'} in a row</p>
+                <p className="text-[11px] text-cream/50">{hero.streak === 1 ? 'week' : 'weeks'} in a row</p>
               </div>
               {hero.last && (
                 <>
@@ -351,7 +351,7 @@ export default function Dashboard() {
 
         {/* SECTION 2 — QUICK STATS */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatTile icon={Flame} label="Workout streak" value={hero.streak} sub={`${hero.streak === 1 ? 'day' : 'days'} in a row`} />
+          <StatTile icon={Flame} label="Weekly streak" value={hero.streak} sub={`${hero.streak === 1 ? 'week' : 'weeks'} in a row`} />
           <StatTile icon={Dumbbell} label="Workouts this month" value={month.workouts} sub={`${month.daysTrained} day${month.daysTrained !== 1 ? 's' : ''} trained`} />
           <StatTile icon={TrendingUp} label="Volume this month" value={fmtNum(month.volume)} sub={unit} />
           <StatTile icon={Clock} label="Training time" value={trainingTime || '—'} sub={trainingTime ? 'this month' : 'not tracked yet'} />
