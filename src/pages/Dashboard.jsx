@@ -6,8 +6,9 @@ import {
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { getHistory, getUnit, getGoals, saveGoals } from '../lib/workoutStore'
-import { fetchRemoteHistory } from '../lib/workoutRemote'
+import { getHistory, getUnit, getGoals, saveGoals, getProgram } from '../lib/workoutStore'
+import { fetchRemoteHistory, fetchRemoteProgram } from '../lib/workoutRemote'
+import { todaysDay } from '../lib/program'
 import { saveProfile } from '../lib/profile'
 import { loggedExerciseNames } from '../lib/workoutStats'
 import {
@@ -159,6 +160,7 @@ export default function Dashboard() {
   // Nickname lives in the auth context so the navbar reflects edits instantly.
   const { user, nickname, setNickname } = useAuth()
   const [sessions, setSessions] = useState([])
+  const [program, setProgram] = useState(null)
   const [loading, setLoading] = useState(true)
   const [unit, setUnit] = useState(() => getUnit())
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
@@ -173,13 +175,14 @@ export default function Dashboard() {
       setUnit(getUnit())
       if (user) {
         try {
-          const remote = await fetchRemoteHistory(user.id)
-          if (!cancelled) setSessions(remote)
+          const [remote, prog] = await Promise.all([fetchRemoteHistory(user.id), fetchRemoteProgram(user.id)])
+          if (!cancelled) { setSessions(remote); setProgram(prog || getProgram()) }
         } catch {
-          if (!cancelled) setSessions(getHistory())
+          if (!cancelled) { setSessions(getHistory()); setProgram(getProgram()) }
         }
       } else {
         setSessions(getHistory())
+        setProgram(getProgram())
       }
       if (!cancelled) setLoading(false)
     }
@@ -286,6 +289,14 @@ export default function Dashboard() {
   }
 
   const { hero, month, lifetime, muscle, records, prs, split, muscleDist, activity, throwback } = stats
+  // "Up next" comes from the active program when there is one (the real next day
+  // in the rotation), falling back to the name-based heuristic otherwise.
+  const nextDay = todaysDay(program)
+  const upNext = nextDay
+    ? nextDay.kind === 'rest'
+      ? { label: 'Rest day', sub: 'Recovery in your rotation' }
+      : { label: nextDay.name, sub: `${nextDay.exercises.length} exercise${nextDay.exercises.length !== 1 ? 's' : ''} planned` }
+    : { label: hero.next, sub: null }
   const maxMuscle = Math.max(1, ...muscle.map((m) => m.sets))
   const maxSplit = Math.max(1, ...split.map((s) => s.value))
   const maxMuscleDist = Math.max(1, ...muscleDist.map((m) => m.value))
@@ -342,8 +353,11 @@ export default function Dashboard() {
               )}
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-cream/50 mb-1">Up next</p>
-                <p className="font-heading text-[15px] font-medium">{hero.next}</p>
-                <Link to="/log" className="text-[11px] text-cream/70 underline hover:text-cream no-underline">Start logging →</Link>
+                <p className="font-heading text-[15px] font-medium break-words">{upNext.label}</p>
+                {upNext.sub && <p className="text-[11px] text-cream/50">{upNext.sub}</p>}
+                <Link to="/log" className="text-[11px] text-cream/70 underline hover:text-cream no-underline">
+                  {nextDay ? 'Start today’s session →' : 'Start logging →'}
+                </Link>
               </div>
             </div>
           </div>
