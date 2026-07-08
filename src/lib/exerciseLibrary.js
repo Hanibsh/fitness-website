@@ -106,7 +106,12 @@ function buildHaystack(parts) {
 // of isolation (nice empty-state suggestions), then alphabetical.
 const LIBRARY = (exercisesDb.exercises || [])
   .map((e) => {
-    const muscles = Object.keys(e.muscles || {})
+    // Only the primary (highest-contribution) muscle(s) feed search. Secondary
+    // movers would otherwise make e.g. bench press match "shoulder" (front
+    // delts) or a front raise match "lateral" (side delts).
+    const entries = Object.entries(e.muscles || {})
+    const maxWeight = entries.reduce((m, [, w]) => Math.max(m, w), 0)
+    const primary = entries.filter(([, w]) => w === maxWeight).map(([m]) => m)
     const item = {
       id: e.id,
       name: e.name,
@@ -120,7 +125,7 @@ const LIBRARY = (exercisesDb.exercises || [])
       e.category,
       e.type,
       e.equipment,
-      ...muscles.map((m) => MUSCLE_ALIASES[m] || m),
+      ...primary.map((m) => MUSCLE_ALIASES[m] || m),
       ...nameSynonyms(e.name),
     ])
     return item
@@ -187,15 +192,64 @@ export function exercisePool(recentNames = []) {
   return pool
 }
 
+// The gym staples people search for most — boosted so the canonical version
+// leads a generic query ("squat" → Barbell Squat, not Belt Squat; "curl" →
+// Barbell/Dumbbell Curl, not a lever variant). A specific query still wins on
+// its own name match, so this only decides otherwise-weak/tied results.
+const PRIORITY = new Set([
+  'bench-press', 'incline-barbell-bench-press', 'dumbbell-bench-press',
+  'barbell-squat', 'deadlift', 'romanian-deadlift', 'sumo-deadlift', 'leg-press', 'leg-extension', 'lying-leg-curl',
+  'seated-barbell-shoulder-press', 'dumbbell-shoulder-press',
+  'barbell-bent-over-row', 'seated-cable-row', 'lat-pulldown', 'pull-up', 'chin-up',
+  'barbell-curl', 'dumbbell-curl', 'hammer-curl', 'push-down', 'barbell-hip-thrusts',
+])
+
+// Whole-word queries that read as "show me this group" — boost members of that
+// category so browsing by body part surfaces the real thing (e.g. "back" lists
+// rows/pulldowns, not "Cable Kickbacks" whose name merely contains "back").
+const CATEGORY_WORDS = {
+  chest: 'Chest', back: 'Back', legs: 'Legs', leg: 'Legs', arms: 'Arms', arm: 'Arms',
+  shoulders: 'Shoulders', shoulder: 'Shoulders', core: 'Core', abs: 'Core', traps: 'Traps', trap: 'Traps',
+}
+
+// How well an item answers the query. The key idea: matches in the exercise's
+// NAME beat matches that only came from its muscles/synonyms, so the exercise
+// someone actually typed surfaces first (e.g. "shoulder press" leads with the
+// shoulder presses, not a bench press that happens to hit front delts).
+function relevance(item, q, qCompact, tokens, isRecent) {
+  const name = item.name.toLowerCase()
+  const nameCompact = name.replace(/[^a-z0-9]/g, '')
+  let s = 0
+  if (name === q) s += 1000
+  else if (name.startsWith(q)) s += 600
+  else if (name.includes(q) || (qCompact && nameCompact.includes(qCompact))) s += 300
+  let inName = 0
+  for (const t of tokens) if (name.includes(t) || nameCompact.includes(t)) inName += 1
+  s += inName * 40
+  if (inName === tokens.length) s += 120 // every query word is in the name itself
+  if (isRecent) s += 250 // the user's own logged exercises come first
+  if (PRIORITY.has(item.id)) s += 200 // canonical staples lead generic searches
+  if (CATEGORY_WORDS[q] === item.category) s += 700 // body-part browse leads with that group
+  if (item.id) s += 6 // prefer real DB entries over name-only supplements
+  if (item.type === 'compound') s += 4
+  s -= name.length * 0.15 // gently favour the concise, canonical name
+  return s
+}
+
 // Token search over the pool: every query word must appear in the movement's
-// searchable text (name/category/muscles/equipment/synonyms). Empty query
-// returns the whole pool (recents first). Name-prefix matches float to the top.
+// searchable text (name/category/primary muscles/equipment/synonyms). Empty
+// query returns the whole pool (recents first). Non-empty queries are ranked by
+// relevance so the best (name) match leads.
 export function searchExercises(query, recentNames = []) {
   const pool = exercisePool(recentNames)
   const q = (query || '').trim().toLowerCase()
   if (!q) return pool
+  const recentSet = new Set(recentNames.map((n) => n.trim().toLowerCase()))
+  const qCompact = q.replace(/[^a-z0-9]/g, '')
   const tokens = tokenize(q)
   return pool
     .filter((m) => tokens.every((t) => m._hay.includes(t)))
-    .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)))
+    .map((m) => ({ m, score: relevance(m, q, qCompact, tokens, recentSet.has(m.name.toLowerCase())) }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.m)
 }
