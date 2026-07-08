@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Unlink2 } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -26,7 +26,7 @@ import {
   getBodyweightLog,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, insertSharedLifts, submitGuestLifts } from '../lib/workoutRemote'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -260,6 +260,17 @@ export default function WorkoutTracker() {
         const unilateral = !e.unilateral
         return { ...e, unilateral, sets: e.sets.map((s) => convertSet(s, unilateral)) }
       }),
+    }))
+  }
+
+  // Link/unlink a resistance exercise into a superset with the one above it.
+  // Grouping is derived from this `linkedToPrev` flag (see supersetLabels).
+  function toggleSuperset(exId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId && e.kind !== 'cardio' ? { ...e, linkedToPrev: !e.linkedToPrev } : e
+      ),
     }))
   }
 
@@ -545,6 +556,9 @@ export default function WorkoutTracker() {
   const liveStats = sessionStats(draft)
   const resistanceExercises = draft.exercises.filter((e) => e.kind !== 'cardio')
   const cardioExercises = draft.exercises.filter((e) => e.kind === 'cardio')
+  // Superset grouping is a resistance-only concept, derived from each exercise's
+  // `linkedToPrev` flag over the section in order.
+  const resistanceGroups = supersetLabels(resistanceExercises)
 
   const CHIP_TONE = {
     go: 'text-green-700 bg-green-50 border-green-300',
@@ -561,17 +575,44 @@ export default function WorkoutTracker() {
     let workNo = 0
     const setLabels = ex.sets.map((s) => (s.type === 'warmup' ? 'W' : s.type === 'backoff' ? 'B' : String(++workNo)))
     const typeClass = (s) => (s.type === 'warmup' ? 'text-amber-500 font-semibold' : s.type === 'backoff' ? 'text-sky-500 font-semibold' : 'text-text-muted')
+    const group = ex.kind === 'cardio' ? null : resistanceGroups.get(ex.id)
+    const inSuperset = !!group && group.size > 1
+    // Tighten the gap between linked cards so a superset reads as one block.
+    const gapClass = inSuperset && group.position < group.size - 1 ? 'mb-1.5' : 'mb-4'
     return (
       <motion.div
         key={ex.id}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0 }}
-        className="mb-4 border border-border bg-cream"
+        className={`${gapClass} border border-border bg-cream ${inSuperset ? 'border-l-2 border-l-text-primary' : ''}`}
       >
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
-          <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            {inSuperset && (
+              <span
+                title={`Superset ${group.letter}`}
+                className="shrink-0 inline-flex items-center justify-center text-[10px] font-semibold text-cream bg-text-primary px-1.5 py-0.5 tracking-wide"
+              >
+                {group.label}
+              </span>
+            )}
+            <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
+          </div>
           <div className="flex items-center gap-1">
+            {ex.kind !== 'cardio' && exIndex > 0 && (
+              <button
+                onClick={() => toggleSuperset(ex.id)}
+                aria-pressed={!!ex.linkedToPrev}
+                aria-label={ex.linkedToPrev ? `Remove ${ex.name} from superset` : `Superset ${ex.name} with the exercise above`}
+                title={ex.linkedToPrev ? 'Ungroup from superset' : 'Superset with exercise above'}
+                className={`bg-transparent border-none cursor-pointer p-1 transition-colors ${
+                  ex.linkedToPrev ? 'text-text-primary' : 'text-text-light hover:text-text-primary'
+                }`}
+              >
+                {ex.linkedToPrev ? <Unlink2 className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+              </button>
+            )}
             <button
               onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
               aria-label={`View ${ex.name} progress`}
@@ -704,6 +745,12 @@ export default function WorkoutTracker() {
               {exIndex === 0 && (
                 <p className="text-[11px] text-text-light mb-3">
                   Tip: tap a set's number to mark it a warm-up (<span className="text-amber-500 font-semibold">W</span>, excluded from volume) or back-off (<span className="text-sky-500 font-semibold">B</span>).
+                </p>
+              )}
+
+              {exIndex === 1 && !inSuperset && (
+                <p className="text-[11px] text-text-light mb-3 inline-flex items-center gap-1">
+                  Tip: use <Link2 className="w-3 h-3 inline" /> to superset this with the exercise above.
                 </p>
               )}
 
@@ -1113,6 +1160,7 @@ export default function WorkoutTracker() {
                 {sortedHistory.map((session) => {
                   const stats = sessionStats(session)
                   const isOpen = openSession === session.id
+                  const sessionGroups = supersetLabels(session.exercises.filter((e) => e.kind !== 'cardio'))
                   return (
                     <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border scroll-mt-28">
                       <button
@@ -1148,9 +1196,16 @@ export default function WorkoutTracker() {
                               {session.exercises.map((ex) => {
                                 const du = distanceUnit(session.unit || 'kg')
                                 const shown = ex.sets.filter((s) => isWorkingSet(s, ex.kind))
+                                const g = sessionGroups.get(ex.id)
+                                const badge = g && g.size > 1 ? g.label : null
                                 return (
                                   <div key={ex.id} className="mb-4 last:mb-0">
                                     <div className="flex items-center gap-2 mb-1.5">
+                                      {badge && (
+                                        <span className="shrink-0 inline-flex items-center justify-center text-[9px] font-semibold text-cream bg-text-primary px-1.5 py-0.5 tracking-wide">
+                                          {badge}
+                                        </span>
+                                      )}
                                       <p className="text-[13px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
                                       <button
                                         onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}

@@ -26,6 +26,33 @@ export function convertDistance(value, from, to) {
   return from === 'mi' ? value * KM_PER_MI : value / KM_PER_MI
 }
 
+// Supersets: an exercise with `linkedToPrev` is performed back-to-back with the
+// exercise directly above it, forming one group. Given an ordered list of
+// exercises (a single section — supersets don't span resistance and cardio),
+// return a Map of exercise id -> { label, size, position } where `label` is
+// like 'A1' for members of a multi-exercise superset, or null for a standalone
+// exercise. The letter advances per superset (A, B, C…); lone exercises are
+// unlabeled. The first exercise never links up (nothing above it).
+export function supersetLabels(exercises = []) {
+  const groups = []
+  exercises.forEach((ex, i) => {
+    if (i === 0 || !ex.linkedToPrev) groups.push([ex])
+    else groups[groups.length - 1].push(ex)
+  })
+  const map = new Map()
+  let letterIdx = 0
+  for (const g of groups) {
+    if (g.length > 1) {
+      const letter = String.fromCharCode(65 + (letterIdx % 26))
+      letterIdx++
+      g.forEach((ex, j) => map.set(ex.id, { label: `${letter}${j + 1}`, size: g.length, position: j, letter }))
+    } else {
+      map.set(g[0].id, { label: null, size: 1, position: 0 })
+    }
+  }
+  return map
+}
+
 // Brzycki 1RM estimate — the same formula the site's 1RM calculator uses,
 // so the graph agrees with that tool. Accurate at low reps, rough past ~12.
 export function estimatedOneRepMax(weight, reps) {
