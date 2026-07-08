@@ -3,18 +3,20 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Clock, Trophy, Target, Activity, History,
-  ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight,
+  ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
-import { getHistory, getUnit, getGoals, saveGoals, getProgram } from '../lib/workoutStore'
-import { fetchRemoteHistory, fetchRemoteProgram } from '../lib/workoutRemote'
+import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks } from '../lib/workoutStore'
+import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks } from '../lib/workoutRemote'
 import { todaysDay } from '../lib/program'
+import { activeBlock, sortedBlocks, blockWeek } from '../lib/blocks'
+import BlockModal from '../components/BlockModal'
 import { saveProfile } from '../lib/profile'
 import { loggedExerciseNames } from '../lib/workoutStats'
 import {
   heroSummary, monthStats, lifetimeStats, weeklyMuscleSets, personalRecords, recentPRs,
   splitDistribution, muscleDistribution, recentActivity, thisDayInHistory, formatDuration,
-  exerciseBests,
+  exerciseBests, blockSummary,
 } from '../lib/dashboard'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import ExerciseProgress from '../components/ExerciseProgress'
@@ -161,11 +163,13 @@ export default function Dashboard() {
   const { user, nickname, setNickname } = useAuth()
   const [sessions, setSessions] = useState([])
   const [program, setProgram] = useState(null)
+  const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [unit, setUnit] = useState(() => getUnit())
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
   const [goals, setGoals] = useState(() => getGoals())
   const [editingGoals, setEditingGoals] = useState(false)
+  const [blockModal, setBlockModal] = useState(null) // { block } | null; block null = new
   const [editingNick, setEditingNick] = useState(false)
 
   useEffect(() => {
@@ -175,14 +179,15 @@ export default function Dashboard() {
       setUnit(getUnit())
       if (user) {
         try {
-          const [remote, prog] = await Promise.all([fetchRemoteHistory(user.id), fetchRemoteProgram(user.id)])
-          if (!cancelled) { setSessions(remote); setProgram(prog || getProgram()) }
+          const [remote, prog, blks] = await Promise.all([fetchRemoteHistory(user.id), fetchRemoteProgram(user.id), fetchRemoteBlocks(user.id)])
+          if (!cancelled) { setSessions(remote); setProgram(prog || getProgram()); setBlocks(blks || getBlocks()) }
         } catch {
-          if (!cancelled) { setSessions(getHistory()); setProgram(getProgram()) }
+          if (!cancelled) { setSessions(getHistory()); setProgram(getProgram()); setBlocks(getBlocks()) }
         }
       } else {
         setSessions(getHistory())
         setProgram(getProgram())
+        setBlocks(getBlocks())
       }
       if (!cancelled) setLoading(false)
     }
@@ -194,6 +199,22 @@ export default function Dashboard() {
     await saveProfile(user.id, { display_name: value || null })
     setNickname(value)
     setEditingNick(false)
+  }
+
+  // Persist the blocks list: locally always, remotely (best-effort) when logged in.
+  function persistBlocks(next) {
+    setBlocks(next)
+    saveBlocks(next)
+    if (user) upsertRemoteBlocks(user.id, next).catch(() => {})
+  }
+  function saveBlock(block) {
+    const exists = blocks.some((b) => b.id === block.id)
+    persistBlocks(exists ? blocks.map((b) => (b.id === block.id ? block : b)) : [...blocks, block])
+    setBlockModal(null)
+  }
+  function deleteBlock(id) {
+    persistBlocks(blocks.filter((b) => b.id !== id))
+    setBlockModal(null)
   }
 
   const now = new Date()
@@ -297,6 +318,11 @@ export default function Dashboard() {
       ? { label: 'Rest day', sub: 'Recovery in your rotation' }
       : { label: nextDay.name, sub: `${nextDay.exercises.length} exercise${nextDay.exercises.length !== 1 ? 's' : ''} planned` }
     : { label: hero.next, sub: null }
+  // Active specialization block + its per-muscle summary.
+  const active = activeBlock(blocks)
+  const block = blockSummary(sessions, active, unit)
+  const pastBlocks = sortedBlocks(blocks).filter((b) => b.id !== active?.id)
+  const maxBlockMuscle = block ? Math.max(1, ...block.perMuscle.map((p) => p.sets)) : 1
   const maxMuscle = Math.max(1, ...muscle.map((m) => m.sets))
   const maxSplit = Math.max(1, ...split.map((s) => s.value))
   const maxMuscleDist = Math.max(1, ...muscleDist.map((m) => m.value))
@@ -428,6 +454,78 @@ export default function Dashboard() {
               {muscle.map((m) => (
                 <Bar key={m.muscle} label={m.muscle} value={m.sets} max={maxMuscle} suffix=" sets" />
               ))}
+            </div>
+          )}
+        </Card>
+
+        {/* SECTION 5b — SPECIALIZATION BLOCK */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Crosshair className="w-4 h-4 text-text-primary" />
+              <h2 className="font-heading text-lg font-medium text-text-primary">Specialization block</h2>
+            </div>
+            {active ? (
+              <button onClick={() => setBlockModal({ block: active })} className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer">
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </button>
+            ) : (
+              <button onClick={() => setBlockModal({ block: null })} className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer">
+                <Plus className="w-3.5 h-3.5" /> New block
+              </button>
+            )}
+          </div>
+
+          {!active ? (
+            <p className="text-[13px] text-text-muted">
+              No active block. Start one to emphasize a muscle group and track whether you’re giving it the extra volume.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <p className="text-[15px] font-medium text-text-primary break-words">{active.name}</p>
+                {active.focusMuscles.map((m) => (
+                  <span key={m} className="text-[10px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">{m}</span>
+                ))}
+              </div>
+              <p className="text-[12px] text-text-muted mb-4">
+                Week {blockWeek(active)} · {block.sessions} session{block.sessions !== 1 ? 's' : ''}
+                {block.totalSets > 0 && ` · ${block.focusSets} of ${block.totalSets} hard sets on your focus`}
+              </p>
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+                {block.perMuscle.filter((p) => p.sets > 0 || p.focus).map((p) => (
+                  <div key={p.muscle}>
+                    <div className="flex justify-between text-[12px] mb-1">
+                      <span className={p.focus ? 'text-text-primary font-medium' : 'text-text-secondary'}>
+                        {p.muscle}
+                        {p.focus && <span className="ml-1.5 text-[10px] uppercase tracking-wider text-text-primary">focus</span>}
+                      </span>
+                      <span className="text-text-muted">{p.sets} · {p.weeklyAvg}/wk</span>
+                    </div>
+                    <div className="w-full h-2 bg-cream border border-border overflow-hidden">
+                      <div className={`h-full transition-all ${p.focus ? 'bg-text-primary' : 'bg-text-light'}`} style={{ width: `${Math.round((p.sets / maxBlockMuscle) * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {pastBlocks.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="text-[10px] uppercase tracking-wider text-text-light mb-2">Past blocks</p>
+              <div className="space-y-1.5">
+                {pastBlocks.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setBlockModal({ block: b })}
+                    className="w-full flex items-center justify-between gap-2 text-left bg-transparent border-none cursor-pointer text-[12px] hover:text-text-primary text-text-muted p-0"
+                  >
+                    <span className="truncate">{b.name}</span>
+                    <span className="shrink-0 text-text-light">{b.focusMuscles.join(', ')}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </Card>
@@ -632,6 +730,15 @@ export default function Dashboard() {
 
       {editingNick && user && (
         <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
+      )}
+
+      {blockModal && (
+        <BlockModal
+          block={blockModal.block}
+          onSave={saveBlock}
+          onDelete={blockModal.block ? deleteBlock : undefined}
+          onClose={() => setBlockModal(null)}
+        />
       )}
     </div>
   )
