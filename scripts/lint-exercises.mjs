@@ -7,6 +7,11 @@
 // validates every row against the canonical taxonomy and a set of consistency
 // rules, writes a human report to data/lint-report.md, and emits a normalized,
 // ID-stamped data/exercises.candidate.json for review.
+//
+// Columns are matched by HEADER NAME (see resolveColumns), so the CSV can be
+// safely re-ordered or extended. Muscle contributions are read from the
+// Primary/Secondary/Tertiary/Quaternary columns at weights 1 / .5 / .25 / .125
+// (Quaternary is optional). See data/README.md for the editing guide.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -77,11 +82,47 @@ const CABLE_HINTS = /\bcable|pushdown|push-down|crossover|face pull\b/i
 const BODYWEIGHT_HINTS = /\b(pull-up|chin-up|push-up|dip|muscle-up|dragon flag|toes to bar|hanging|leg raise|russian twist|sissy)\b/i
 const UNILATERAL_HINTS = /\b(one[ -]arm|single[ -]arm|one[ -]leg|single[ -]leg|1[ -]arm|unilateral)\b/i
 
+// Resolve columns by HEADER NAME, not fixed position, so editing the CSV
+// (adding a Quaternary column, reordering, renaming) can't silently misalign
+// the parse. Required columns throw a clear error if missing; optional ones
+// resolve to -1.
+function resolveColumns(header) {
+  const idx = (re) => header.findIndex((h) => re.test(h.trim()))
+  const need = (re, label) => {
+    const i = idx(re)
+    if (i === -1) throw new Error(`CSV is missing a required column: ${label}`)
+    return i
+  }
+  return {
+    name: need(/^exercise name$/i, 'Exercise Name'),
+    category: need(/^(home )?category$/i, 'Home Category'),
+    type: need(/exercise type/i, 'Exercise Type'),
+    laterality: need(/laterality/i, 'Laterality'),
+    primary: need(/primary muscle/i, 'Primary Muscles'),
+    secondary: need(/secondary muscle/i, 'Secondary Muscles'),
+    tertiary: need(/tertiary muscle/i, 'Tertiary Muscles'),
+    quaternary: idx(/quaternary muscle/i), // optional — -1 when absent
+    fatigue: need(/fatigue score/i, 'Fatigue Score'),
+    recovery: need(/recovery window/i, 'Estimated Recovery Window'),
+    overload: need(/progressive overload/i, 'Progressive Overload Potential'),
+    stability: need(/^stability$/i, 'Stability'),
+    hypertrophy: need(/hypertrophy potential/i, 'Hypertrophy Potential'),
+    sfr: need(/sfr|stimulus-to-fatigue/i, 'Stimulus-to-Fatigue Ratio'),
+    stretch: need(/stretch-mediated/i, 'Stretch-Mediated Hypertrophy'),
+    resistance: need(/resistance profile/i, 'Resistance Profile'),
+    equipment: need(/^equipment$|stability requirement/i, 'Equipment'),
+    axial: need(/axial/i, 'Axial Loading'),
+    skill: need(/skill/i, 'Skill Requirement'),
+    rest: need(/rest time/i, 'Recommended Rest Time'),
+    notes: idx(/notes/i), // optional
+  }
+}
+
 function main() {
   const rows = parseCSV(readFileSync(SRC_CSV, 'utf8')).filter((r) => r.some((c) => c.trim() !== ''))
   const header = rows[0]
-  const EQUIP_IDX = header.findIndex((h) => /stability requirement/i.test(h))
-  if (EQUIP_IDX !== -1) add('WARNING', '(schema)', `Column "${header[EQUIP_IDX]}" holds equipment values — read as \`equipment\` and renamed in the output.`)
+  const COL = resolveColumns(header)
+  if (/stability requirement/i.test(header[COL.equipment] || '')) add('WARNING', '(schema)', `Column "${header[COL.equipment].trim()}" holds equipment values — read as \`equipment\` and renamed in the output.`)
   add('NOTICE', '(schema)', 'CSV has no "Recovery Impact" column (design doc lists one). Recovery windows kept as PRIORS; a recovery-impact coefficient will live in engine config (fatigue + axial + equipment).')
 
   const exercises = []
@@ -90,17 +131,19 @@ function main() {
 
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i]
-    const name = (r[0] || '').trim()
+    const name = (r[COL.name] || '').trim()
     if (!name) continue
 
     let id = slugify(name)
     if (seenIds.has(id)) { const n = seenIds.get(id) + 1; seenIds.set(id, n); id = `${id}-${n}` } else seenIds.set(id, 1)
     const ov = OVERRIDES[id] || null
 
-    // ---- muscle contributions (primary/secondary/tertiary = 1 / .5 / .25) ----
+    // ---- muscle contributions (primary/secondary/tertiary/quaternary = 1 / .5 / .25 / .125) ----
     const muscles = {}
     let collapsed = false
-    for (const [cell, tw] of [[r[4], 1.0], [r[5], 0.5], [r[6], 0.25]]) {
+    const tiers = [[r[COL.primary], 1.0], [r[COL.secondary], 0.5], [r[COL.tertiary], 0.25]]
+    if (COL.quaternary !== -1) tiers.push([r[COL.quaternary], 0.125])
+    for (const [cell, tw] of tiers) {
       if (!cell) continue
       for (const term of cell.split(',')) {
         if (!term.trim()) continue
@@ -117,28 +160,28 @@ function main() {
 
     // ---- raw → normalized draft ----
     const rawByField = {
-      type: r[2], laterality: r[3], progressiveOverload: r[9], stability: r[10],
-      hypertrophyPotential: r[11], sfr: r[12], stretchMediated: r[13], resistanceProfile: r[14],
-      equipment: r[EQUIP_IDX], axialLoading: r[16], skill: r[17],
+      type: r[COL.type], laterality: r[COL.laterality], progressiveOverload: r[COL.overload], stability: r[COL.stability],
+      hypertrophyPotential: r[COL.hypertrophy], sfr: r[COL.sfr], stretchMediated: r[COL.stretch], resistanceProfile: r[COL.resistance],
+      equipment: r[COL.equipment], axialLoading: r[COL.axial], skill: r[COL.skill],
     }
     const ex = {
-      id, name, category: (r[1] || '').trim(),
-      type: normEnum('type', r[2]),
-      laterality: normEnum('laterality', r[3]),
+      id, name, category: (r[COL.category] || '').trim(),
+      type: normEnum('type', r[COL.type]),
+      laterality: normEnum('laterality', r[COL.laterality]),
       muscles,
-      fatigueScore: parseInt(r[7], 10),
-      recoveryWindowHours: parseRange(r[8], 'hours'),
-      restSeconds: parseRange(r[18], 'min'),
-      progressiveOverload: normEnum('level', r[9]),
-      stability: normEnum('stability', r[10]),
-      hypertrophyPotential: normEnum('hypertrophy', r[11]),
-      sfr: normEnum('sfr', r[12]),
-      stretchMediated: normEnum('stretch', r[13]),
-      resistanceProfile: normEnum('resistance', r[14]),
-      equipment: normEnum('equipment', r[EQUIP_IDX]),
-      axialLoading: normEnum('axial', r[16]),
-      skill: normEnum('level', r[17]),
-      notes: (r[19] || '').trim() || null,
+      fatigueScore: parseInt(r[COL.fatigue], 10),
+      recoveryWindowHours: parseRange(r[COL.recovery], 'hours'),
+      restSeconds: parseRange(r[COL.rest], 'min'),
+      progressiveOverload: normEnum('level', r[COL.overload]),
+      stability: normEnum('stability', r[COL.stability]),
+      hypertrophyPotential: normEnum('hypertrophy', r[COL.hypertrophy]),
+      sfr: normEnum('sfr', r[COL.sfr]),
+      stretchMediated: normEnum('stretch', r[COL.stretch]),
+      resistanceProfile: normEnum('resistance', r[COL.resistance]),
+      equipment: normEnum('equipment', r[COL.equipment]),
+      axialLoading: normEnum('axial', r[COL.axial]),
+      skill: normEnum('level', r[COL.skill]),
+      notes: (COL.notes !== -1 ? (r[COL.notes] || '').trim() : '') || null,
     }
 
     // ---- apply approved override (raw CSV stays pristine) ----
@@ -162,7 +205,7 @@ function main() {
     if (ex.equipment === 'free weight' && MACHINE_HINTS.test(name)) add('WARNING', name, `Equipment "free weight" but name looks like a machine.`)
     if (ex.equipment === 'free weight' && CABLE_HINTS.test(name) && !MACHINE_HINTS.test(name)) add('WARNING', name, `Equipment "free weight" but name looks cable-based.`)
     if (ex.laterality === 'bilateral' && UNILATERAL_HINTS.test(name)) add('WARNING', name, `Name implies single-limb but laterality is "bilateral".`)
-    if (ex.fatigueScore <= 1 && ex.restSeconds && ex.restSeconds[0] >= 210) add('WARNING', name, `Fatigue ${ex.fatigueScore} but rest ${r[18]} — they disagree.`)
+    if (ex.fatigueScore <= 1 && ex.restSeconds && ex.restSeconds[0] >= 210) add('WARNING', name, `Fatigue ${ex.fatigueScore} but rest ${r[COL.rest]} — they disagree.`)
     if (ex.fatigueScore >= 5 && ex.type === 'isolation') add('WARNING', name, `Isolation with max fatigue (5) — check.`)
     if (/wrist curl/i.test(name) && ex.muscles['Brachioradialis'] && !ex.muscles['Wrist Flexors'] && !ex.muscles['Wrist Extensors']) add('WARNING', name, `Wrist-curl mapped to Brachioradialis — should be wrist flexors/extensors.`)
     if (BODYWEIGHT_HINTS.test(name) && ex.equipment === 'free weight') add('NOTICE', name, `Bodyweight-pattern movement stored as "free weight".`)
