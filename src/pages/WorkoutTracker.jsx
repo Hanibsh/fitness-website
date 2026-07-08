@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Unlink2, Pencil } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -120,9 +120,29 @@ function migrateExercise(ex) {
   }
   return next
 }
+function newSupersetId() {
+  return `ss-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+// Convert legacy adjacency-based supersets (`linkedToPrev`) to the group-id
+// model (`supersetId`), so grouping no longer depends on list order. No-op once
+// data is already on the new model.
+function migrateSupersets(exercises) {
+  if (!exercises.some((e) => e && e.linkedToPrev)) return exercises
+  const out = exercises.map((e) => ({ ...e }))
+  for (let i = 0; i < out.length; i++) {
+    if (!out[i].supersetId && i > 0 && out[i].linkedToPrev) {
+      if (!out[i - 1].supersetId) out[i - 1].supersetId = newSupersetId()
+      out[i].supersetId = out[i - 1].supersetId
+    }
+    delete out[i].linkedToPrev
+  }
+  return out
+}
+
 function migrateDraft(draft) {
   if (!draft || !Array.isArray(draft.exercises)) return draft
-  return { ...draft, exercises: draft.exercises.map(migrateExercise) }
+  return { ...draft, exercises: migrateSupersets(draft.exercises.map(migrateExercise)) }
 }
 
 export default function WorkoutTracker() {
@@ -134,6 +154,7 @@ export default function WorkoutTracker() {
   const [profile, setProfile] = useState(null)
   const [unit, setUnit] = useState(() => getUnit())
   const [openSession, setOpenSession] = useState(null)
+  const [supersetMenuFor, setSupersetMenuFor] = useState(null)
   const [selectedCalDay, setSelectedCalDay] = useState(null)
   const [editingSessionDate, setEditingSessionDate] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
@@ -284,15 +305,35 @@ export default function WorkoutTracker() {
     }))
   }
 
-  // Link/unlink a resistance exercise into a superset with the one above it.
-  // Grouping is derived from this `linkedToPrev` flag (see supersetLabels).
-  function toggleSuperset(exId) {
-    setDraft((d) => ({
-      ...d,
-      exercises: d.exercises.map((e) =>
-        e.id === exId && e.kind !== 'cardio' ? { ...e, linkedToPrev: !e.linkedToPrev } : e
-      ),
-    }))
+  // Any supersetId shared by fewer than two exercises is meaningless — clear it
+  // so a leftover partner falls back to standalone.
+  function pruneSupersets(exercises) {
+    const counts = {}
+    for (const e of exercises) if (e.supersetId) counts[e.supersetId] = (counts[e.supersetId] || 0) + 1
+    return exercises.map((e) => (e.supersetId && counts[e.supersetId] < 2 ? { ...e, supersetId: null } : e))
+  }
+
+  // Group two resistance exercises into a superset. If either is already in a
+  // superset the other joins it; otherwise a new group is created. Works for
+  // any two exercises regardless of their position in the list.
+  function pairSuperset(exId, targetId) {
+    setDraft((d) => {
+      const a = d.exercises.find((e) => e.id === exId)
+      const b = d.exercises.find((e) => e.id === targetId)
+      if (!a || !b || a.kind === 'cardio' || b.kind === 'cardio') return d
+      const groupId = b.supersetId || a.supersetId || newSupersetId()
+      const exercises = d.exercises.map((e) => (e.id === exId || e.id === targetId ? { ...e, supersetId: groupId } : e))
+      return { ...d, exercises: pruneSupersets(exercises) }
+    })
+  }
+
+  // Remove one exercise from its superset (and dissolve the group if that leaves
+  // a lone partner).
+  function removeFromSuperset(exId) {
+    setDraft((d) => {
+      const exercises = d.exercises.map((e) => (e.id === exId ? { ...e, supersetId: null } : e))
+      return { ...d, exercises: pruneSupersets(exercises) }
+    })
   }
 
   function updateLimbSet(exId, setId, side, field, value) {
@@ -471,7 +512,7 @@ export default function WorkoutTracker() {
         startedAt: Date.now(),
         date: session.date,
         name: session.name || '',
-        exercises: session.exercises.map(migrateExercise),
+        exercises: migrateSupersets(session.exercises.map(migrateExercise)),
         bodyweight,
         editingId: session.id,
         durationMs: session.durationMs ?? null,
@@ -671,15 +712,15 @@ export default function WorkoutTracker() {
     const typeClass = (s) => (s.type === 'warmup' ? 'text-amber-500 font-semibold' : s.type === 'backoff' ? 'text-sky-500 font-semibold' : 'text-text-muted')
     const group = ex.kind === 'cardio' ? null : resistanceGroups.get(ex.id)
     const inSuperset = !!group && group.size > 1
-    // Tighten the gap between linked cards so a superset reads as one block.
-    const gapClass = inSuperset && group.position < group.size - 1 ? 'mb-1.5' : 'mb-4'
+    // Other resistance exercises this one can be supersetted with.
+    const supersetTargets = ex.kind === 'cardio' ? [] : resistanceExercises.filter((o) => o.id !== ex.id)
     return (
       <motion.div
         key={ex.id}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0 }}
-        className={`${gapClass} border border-border bg-cream ${inSuperset ? 'border-l-2 border-l-text-primary' : ''}`}
+        className={`mb-4 border border-border bg-cream ${inSuperset ? 'border-l-2 border-l-text-primary' : ''}`}
       >
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2 min-w-0">
@@ -693,18 +734,19 @@ export default function WorkoutTracker() {
             )}
             <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
           </div>
-          <div className="flex items-center gap-1">
-            {ex.kind !== 'cardio' && exIndex > 0 && (
+          <div className="relative flex items-center gap-1">
+            {ex.kind !== 'cardio' && supersetTargets.length > 0 && (
               <button
-                onClick={() => toggleSuperset(ex.id)}
-                aria-pressed={!!ex.linkedToPrev}
-                aria-label={ex.linkedToPrev ? `Remove ${ex.name} from superset` : `Superset ${ex.name} with the exercise above`}
-                title={ex.linkedToPrev ? 'Ungroup from superset' : 'Superset with exercise above'}
+                onClick={() => setSupersetMenuFor(supersetMenuFor === ex.id ? null : ex.id)}
+                aria-haspopup="true"
+                aria-expanded={supersetMenuFor === ex.id}
+                aria-label={`Superset options for ${ex.name}`}
+                title={inSuperset ? `In superset ${group.letter}` : 'Superset with another exercise'}
                 className={`bg-transparent border-none cursor-pointer p-1 transition-colors ${
-                  ex.linkedToPrev ? 'text-text-primary' : 'text-text-light hover:text-text-primary'
+                  inSuperset ? 'text-text-primary' : 'text-text-light hover:text-text-primary'
                 }`}
               >
-                {ex.linkedToPrev ? <Unlink2 className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                <Link2 className="w-4 h-4" />
               </button>
             )}
             <button
@@ -721,6 +763,47 @@ export default function WorkoutTracker() {
             >
               <X className="w-4 h-4" />
             </button>
+
+            {/* Superset picker — anchored to the button cluster's right edge so
+                it never runs off a narrow screen. */}
+            {supersetMenuFor === ex.id && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setSupersetMenuFor(null)} />
+                <div className="absolute right-0 top-full z-30 mt-1 w-56 max-w-[calc(100vw-3rem)] bg-white border border-border shadow-lg">
+                  <p className="px-3 py-2 text-[10px] uppercase tracking-wider text-text-light border-b border-border">
+                    Superset with
+                  </p>
+                  <div className="max-h-56 overflow-y-auto">
+                    {supersetTargets.map((o) => {
+                      const og = resistanceGroups.get(o.id)
+                      const together = inSuperset && og && og.letter === group.letter
+                      return (
+                        <button
+                          key={o.id}
+                          onClick={() => { pairSuperset(ex.id, o.id); setSupersetMenuFor(null) }}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left bg-transparent border-none cursor-pointer hover:bg-cream transition-colors"
+                        >
+                          <span className="text-[12px] text-text-primary truncate">{o.name}</span>
+                          {(og || together) && (
+                            <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">
+                              {together ? 'paired' : og.label}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {inSuperset && (
+                    <button
+                      onClick={() => { removeFromSuperset(ex.id); setSupersetMenuFor(null) }}
+                      className="w-full text-left px-3 py-2 text-[12px] text-red-600 bg-transparent border-t border-border cursor-pointer hover:bg-cream transition-colors"
+                    >
+                      Remove from superset
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -844,7 +927,7 @@ export default function WorkoutTracker() {
 
               {exIndex === 1 && !inSuperset && (
                 <p className="text-[11px] text-text-light mb-3 inline-flex items-center gap-1">
-                  Tip: use <Link2 className="w-3 h-3 inline" /> to superset this with the exercise above.
+                  Tip: use <Link2 className="w-3 h-3 inline" /> to superset this with any other exercise.
                 </p>
               )}
 

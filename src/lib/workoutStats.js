@@ -26,29 +26,48 @@ export function convertDistance(value, from, to) {
   return from === 'mi' ? value * KM_PER_MI : value / KM_PER_MI
 }
 
-// Supersets: an exercise with `linkedToPrev` is performed back-to-back with the
-// exercise directly above it, forming one group. Given an ordered list of
-// exercises (a single section — supersets don't span resistance and cardio),
-// return a Map of exercise id -> { label, size, position } where `label` is
-// like 'A1' for members of a multi-exercise superset, or null for a standalone
-// exercise. The letter advances per superset (A, B, C…); lone exercises are
-// unlabeled. The first exercise never links up (nothing above it).
+// Supersets: exercises sharing a `supersetId` are performed together as one
+// group, regardless of their position in the list. (Legacy data used a
+// `linkedToPrev` flag that only chained adjacent exercises — still understood
+// here so old sessions render.) Resolve each exercise to a group key.
+function supersetGroupKeys(exercises) {
+  const keys = new Array(exercises.length).fill(null)
+  for (let i = 0; i < exercises.length; i++) {
+    const ex = exercises[i]
+    if (ex.supersetId) { keys[i] = `id:${ex.supersetId}`; continue }
+    // Legacy fallback: linkedToPrev joins the exercise directly above.
+    if (i > 0 && ex.linkedToPrev && !exercises[i - 1].supersetId) {
+      if (!keys[i - 1]) keys[i - 1] = `run:${i - 1}`
+      keys[i] = keys[i - 1]
+    }
+  }
+  return keys
+}
+
+// Given an ordered list of exercises (a single section — supersets don't span
+// resistance and cardio), return a Map of exercise id -> { label, size,
+// position, letter } for members of a multi-exercise superset. `label` is like
+// 'A1'; the letter advances per superset (A, B, C…) in first-appearance order;
+// members keep list order. Standalone exercises are absent from the map.
 export function supersetLabels(exercises = []) {
-  const groups = []
-  exercises.forEach((ex, i) => {
-    if (i === 0 || !ex.linkedToPrev) groups.push([ex])
-    else groups[groups.length - 1].push(ex)
+  const keys = supersetGroupKeys(exercises)
+  const order = []
+  const members = new Map()
+  keys.forEach((k, i) => {
+    if (!k) return
+    if (!members.has(k)) { members.set(k, []); order.push(k) }
+    members.get(k).push(i)
   })
   const map = new Map()
   let letterIdx = 0
-  for (const g of groups) {
-    if (g.length > 1) {
-      const letter = String.fromCharCode(65 + (letterIdx % 26))
-      letterIdx++
-      g.forEach((ex, j) => map.set(ex.id, { label: `${letter}${j + 1}`, size: g.length, position: j, letter }))
-    } else {
-      map.set(g[0].id, { label: null, size: 1, position: 0 })
-    }
+  for (const k of order) {
+    const idxs = members.get(k)
+    if (idxs.length < 2) continue // a lone member isn't a superset
+    const letter = String.fromCharCode(65 + (letterIdx % 26))
+    letterIdx++
+    idxs.forEach((exIndex, pos) => {
+      map.set(exercises[exIndex].id, { label: `${letter}${pos + 1}`, size: idxs.length, position: pos, letter })
+    })
   }
   return map
 }
