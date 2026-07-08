@@ -275,6 +275,19 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // Swap a unilateral set's left/right values (e.g. you logged them the wrong
+  // way round, or want to lead with the other side).
+  function swapLimbs(exId, setId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId && s.left ? { ...s, left: s.right, right: s.left } : s)) }
+          : e
+      ),
+    }))
+  }
+
   function setRepRange(exId, field, value) {
     const n = value === '' ? '' : Math.max(1, Math.min(50, parseInt(value, 10) || 0))
     setDraft((d) => ({
@@ -753,12 +766,23 @@ export default function WorkoutTracker() {
                         >
                           {set.type === 'warmup' ? 'Warm-up' : set.type === 'backoff' ? 'Back-off' : `Set ${setLabels[i]}`}
                         </button>
-                        <button
-                          onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
-                          className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => swapLimbs(ex.id, set.id)}
+                            aria-label={`Swap left and right for set ${i + 1}`}
+                            title="Swap left / right"
+                            className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
+                          >
+                            <ArrowLeftRight className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
+                            className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                       {['left', 'right'].map((side) => (
                         <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
