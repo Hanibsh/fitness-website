@@ -19,6 +19,7 @@ const CalorieDeficit = lazy(() => import('./pages/tools/CalorieDeficit'))
 const FFMICalculator = lazy(() => import('./pages/tools/FFMICalculator'))
 const MuscleGainPotential = lazy(() => import('./pages/tools/MuscleGainPotential'))
 const WorkoutTracker = lazy(() => import('./pages/WorkoutTracker'))
+const Routine = lazy(() => import('./pages/Routine'))
 const Account = lazy(() => import('./pages/Account'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -37,6 +38,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tools" element={<Tools />} />
         <Route path="/log" element={<WorkoutTracker />} />
+        <Route path="/routine" element={<Routine />} />
         <Route path="/account" element={<Account />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/programs" element={<Programs />} />
