@@ -10,7 +10,7 @@
 
 import exercisesDb from '../data/exercises.json'
 import {
-  rirEffectiveness, ATOM_TO_GROUP, ENGINE_MUSCLES, landmarksFor,
+  rirEffectiveness, ATOM_TO_GROUP, ENGINE_MUSCLES, landmarksFor, withinSessionMult,
   rirFatigue, FATIGUE_SCORE_COEF, DEFAULT_FATIGUE_SCORE, DEFAULT_RECOVERY_WINDOW,
   RECOVERY_DECAY_FACTOR, capacityFor, READY_THRESHOLD, RECOVERY_LOOKBACK_DAYS,
   AXIAL_MULT, FREE_WEIGHT_MULT, SYSTEMIC_TAU, SYSTEMIC_CAPACITY, systemicLevel,
@@ -79,14 +79,41 @@ export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } =
   const atomSets = {} // DB atom -> effective sets
   const groupFallback = {} // engine muscle -> effective sets (custom exercises, no DB atoms)
 
-  forEachWorkingSet(sessions, cutoff, (set, ex, db) => {
+  // Within-session diminishing returns: per session, per muscle group, later
+  // sets earn less credit. `k` = effective sets already credited this session.
+  let curSession = null
+  let k = {}
+
+  forEachWorkingSet(sessions, cutoff, (set, ex, db, s) => {
+    if (s !== curSession) {
+      curSession = s
+      k = {}
+    }
     const eff = rirEffectiveness(setRir(set))
     if (db && db.muscles && Object.keys(db.muscles).length) {
-      for (const [atom, w] of Object.entries(db.muscles)) atomSets[atom] = (atomSets[atom] || 0) + w * eff
+      // Bucket the set's atoms by group so the multiplier applies once per
+      // muscle group per set (a deadlift's three Back atoms share one slot).
+      const byGroup = {}
+      for (const [atom, w] of Object.entries(db.muscles)) {
+        const g = ATOM_TO_GROUP[atom]
+        if (g) (byGroup[g] = byGroup[g] || []).push([atom, w])
+      }
+      for (const [g, atoms] of Object.entries(byGroup)) {
+        const dim = withinSessionMult(k[g] || 0)
+        let credited = 0
+        for (const [atom, w] of atoms) {
+          atomSets[atom] = (atomSets[atom] || 0) + w * eff * dim
+          credited += w
+        }
+        k[g] = (k[g] || 0) + credited
+      }
     } else {
       // Custom / unmatched exercise: coarse group from the name (no atoms).
       const g = muscleForExercise(ex.name)
-      if (g) groupFallback[g] = (groupFallback[g] || 0) + eff
+      if (g) {
+        groupFallback[g] = (groupFallback[g] || 0) + eff * withinSessionMult(k[g] || 0)
+        k[g] = (k[g] || 0) + 1
+      }
     }
   })
 

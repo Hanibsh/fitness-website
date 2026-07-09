@@ -21,6 +21,19 @@ export function rirEffectiveness(rir) {
   return Number.isFinite(r) ? RIR_EFFECTIVENESS[r] : RIR_EFFECTIVENESS_DEFAULT
 }
 
+// ---- Within-session diminishing returns (stimulus) ---------------------------
+// The first hard sets a muscle gets in a session count fully; past that, each
+// extra set adds less (junk-volume protection). Applied per muscle group per
+// session in effectiveWeeklyVolume.
+export const WITHIN_SESSION_FULL_SETS = 5
+export const WITHIN_SESSION_DECAY = 0.1 // credit lost per set past the full allotment
+export const WITHIN_SESSION_FLOOR = 0.5
+
+// `k` = effective sets this muscle has already been credited this session.
+export function withinSessionMult(k) {
+  return Math.max(WITHIN_SESSION_FLOOR, 1 - Math.max(0, k - WITHIN_SESSION_FULL_SETS + 1) * WITHIN_SESSION_DECAY)
+}
+
 // ---- Fatigue model (engine v2) ----------------------------------------------
 // Fatigue mirrors stimulus with opposite curvature: pushing closer to failure
 // adds disproportionate fatigue (stimulus saturates, fatigue accelerates).

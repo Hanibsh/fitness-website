@@ -552,7 +552,7 @@ export default function Dashboard() {
             Muscle volume
           </SectionHeading>
           <p className="text-[12px] text-text-muted mb-4 -mt-2">
-            Effective sets per muscle over {VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel} — weighted by how directly each set trains the muscle and how close to failure. Tap a muscle for the breakdown.
+            Effective sets per muscle over {VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel} — weighted by how directly each set trains the muscle, how close to failure, and diminishing returns within a marathon session. Tap a muscle for the breakdown.
           </p>
           {volume.every((v) => v.sets === 0) ? (
             <p className="text-[13px] text-text-muted">No sets logged in this range.</p>
