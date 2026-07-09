@@ -85,10 +85,15 @@ export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } =
   for (const [atom, sets] of Object.entries(atomSets)) bump(ATOM_TO_GROUP[atom], sets, atom)
   for (const [muscle, sets] of Object.entries(groupFallback)) bump(muscle, sets, null)
 
+  // Landmarks are weekly guidance; scale them to the requested window (e.g. a
+  // 30-day view compares against ~4.3x the weekly range) so status stays
+  // meaningful at any range, not just the default 7 days.
+  const scale = days / 7
   return ENGINE_MUSCLES.map((muscle) => {
     const g = byGroup[muscle] || { sets: 0, atoms: {} }
     const sets = round1(g.sets)
-    const lm = landmarksFor(muscle)
+    const weekly = landmarksFor(muscle)
+    const lm = { low: Math.round(weekly.low * scale), high: Math.round(weekly.high * scale) }
     const status = sets < lm.low ? 'under' : sets > lm.high ? 'over' : 'in'
     return {
       muscle,

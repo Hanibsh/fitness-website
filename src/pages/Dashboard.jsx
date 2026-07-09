@@ -36,6 +36,14 @@ function fmtNum(n) {
   return (n || 0).toLocaleString()
 }
 
+// Weekly-volume window choices — landmarks scale to whichever is picked
+// (see effectiveWeeklyVolume).
+const VOLUME_RANGES = [
+  { days: 7, label: 'Week', windowLabel: 'the last 7 days' },
+  { days: 30, label: 'Month', windowLabel: 'the last 30 days' },
+  { days: 90, label: '3 Months', windowLabel: 'the last 3 months' },
+]
+
 function relativeDay(ts) {
   const day = new Date(ts); day.setHours(0, 0, 0, 0)
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -55,11 +63,14 @@ function Card({ children, className = '' }) {
   return <div className={`bg-white border border-border p-5 sm:p-6 ${className}`}>{children}</div>
 }
 
-function SectionHeading({ children, icon: Icon }) {
+function SectionHeading({ children, icon: Icon, right }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
-      {Icon && <Icon className="w-4 h-4 text-text-primary" />}
-      <h2 className="font-heading text-lg font-medium text-text-primary">{children}</h2>
+    <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon className="w-4 h-4 text-text-primary" />}
+        <h2 className="font-heading text-lg font-medium text-text-primary">{children}</h2>
+      </div>
+      {right}
     </div>
   )
 }
@@ -172,6 +183,7 @@ export default function Dashboard() {
   const [editingGoals, setEditingGoals] = useState(false)
   const [blockModal, setBlockModal] = useState(null) // { block } | null; block null = new
   const [expandedMuscle, setExpandedMuscle] = useState(null) // weekly-volume drill-down
+  const [volumeRangeDays, setVolumeRangeDays] = useState(7) // weekly-volume window: 7/30/90
   const [editingNick, setEditingNick] = useState(false)
 
   useEffect(() => {
@@ -226,7 +238,6 @@ export default function Dashboard() {
       hero: heroSummary(sessions, unit),
       month: monthStats(sessions, now.getFullYear(), now.getMonth(), unit),
       lifetime: lifetimeStats(sessions, unit),
-      volume: effectiveWeeklyVolume(sessions),
       records: personalRecords(sessions, unit),
       prs: recentPRs(sessions, unit, 6),
       split: splitDistribution(sessions),
@@ -235,6 +246,10 @@ export default function Dashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions, unit])
+
+  // Kept separate from `stats` so switching the weekly-volume range doesn't
+  // recompute everything else on the page.
+  const volume = useMemo(() => effectiveWeeklyVolume(sessions, { days: volumeRangeDays }), [sessions, volumeRangeDays])
 
   const exerciseNames = useMemo(() => loggedExerciseNames(sessions), [sessions])
   // Best working-set weight per exercise (display unit) — the "current" value
@@ -310,7 +325,7 @@ export default function Dashboard() {
     )
   }
 
-  const { hero, month, lifetime, volume, records, prs, split, activity, throwback } = stats
+  const { hero, month, lifetime, records, prs, split, activity, throwback } = stats
   // "Up next" comes from the active program when there is one (the real next day
   // in the rotation), falling back to the name-based heuristic otherwise.
   const nextDay = todaysDay(program)
@@ -442,14 +457,33 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* SECTION 5 — WEEKLY MUSCLE VOLUME (effective sets) */}
+        {/* SECTION 5 — MUSCLE VOLUME (effective sets, range-selectable) */}
         <Card>
-          <SectionHeading icon={Activity}>Weekly muscle volume</SectionHeading>
+          <SectionHeading
+            icon={Activity}
+            right={
+              <div className="flex border border-border shrink-0">
+                {VOLUME_RANGES.map((r) => (
+                  <button
+                    key={r.days}
+                    onClick={() => setVolumeRangeDays(r.days)}
+                    className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
+                      volumeRangeDays === r.days ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            Muscle volume
+          </SectionHeading>
           <p className="text-[12px] text-text-muted mb-4 -mt-2">
-            Effective sets per muscle over the last 7 days — weighted by how directly each set trains the muscle and how close to failure. Tap a muscle for the breakdown.
+            Effective sets per muscle over {VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel} — weighted by how directly each set trains the muscle and how close to failure. Tap a muscle for the breakdown.
           </p>
           {volume.every((v) => v.sets === 0) ? (
-            <p className="text-[13px] text-text-muted">No sets logged in the last 7 days.</p>
+            <p className="text-[13px] text-text-muted">No sets logged in this range.</p>
           ) : (
             <div className="space-y-2">
               {volume.map((v) => {
