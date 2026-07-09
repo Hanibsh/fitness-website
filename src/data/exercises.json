@@ -1,32 +1,32 @@
 {
   "version": 1,
   "generatedAt": "2026-07-09",
-  "count": 147,
+  "count": 148,
   "exercises": [
     {
-      "id": "seated-barbell-shoulder-press",
-      "name": "Seated Barbell Shoulder Press",
-      "category": "Shoulders",
+      "id": "barbell-jm-press",
+      "name": "Barbell JM Press",
+      "category": "Arms",
       "type": "compound",
       "laterality": "bilateral",
       "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Triceps": 0.25
+        "Triceps": 1,
+        "Middle Chest": 0.5,
+        "Front Delts": 0.25
       },
-      "fatigueScore": 3,
+      "fatigueScore": 2,
       "recoveryWindowHours": [
-        48,
-        72
+        24,
+        48
       ],
       "restSeconds": [
         210,
         300
       ],
       "progressiveOverload": "very high",
-      "stability": "stable",
+      "stability": "moderate",
       "hypertrophyPotential": "high",
-      "sfr": "average",
+      "sfr": "good",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "free weight",
@@ -35,263 +35,46 @@
       "notes": null
     },
     {
-      "id": "dumbbell-shoulder-press",
-      "name": "Dumbbell Shoulder Press",
-      "category": "Shoulders",
+      "id": "triceps-dips",
+      "name": "Triceps Dips",
+      "category": "Arms",
       "type": "compound",
-      "laterality": "both",
+      "laterality": "bilateral",
       "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Triceps": 0.25
+        "Triceps": 1,
+        "Middle Chest": 0.5,
+        "Front Delts": 0.25
       },
-      "fatigueScore": 3,
+      "fatigueScore": 2,
       "recoveryWindowHours": [
-        48,
-        72
+        24,
+        48
       ],
       "restSeconds": [
         210,
         300
       ],
-      "progressiveOverload": "high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "smith-machine-behind-the-neck-press",
-      "name": "Smith Machine Behind The Neck Press",
-      "category": "Shoulders",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Side Delts": 1,
-        "Front Delts": 0.5,
-        "Triceps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        36,
-        60
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
-      "progressiveOverload": "very high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "smith-machine-shoulder-press",
-      "name": "Smith Machine Shoulder Press",
-      "category": "Shoulders",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Triceps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        36,
-        60
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
-      "progressiveOverload": "very high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "cable-lateral-raise",
-      "name": "Cable Lateral Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Side Delts": 1,
-        "Upper Traps": 0.5,
-        "Rear Delts": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
       "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
-    },
-    {
-      "id": "lever-shoulder-press",
-      "name": "Lever Shoulder Press",
-      "category": "Shoulders",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Triceps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        36,
-        60
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-chest-supported-lateral-raise",
-      "name": "Dumbbell Chest Supported Lateral Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Side Delts": 1,
-        "Rear Delts": 0.5,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
-    },
-    {
-      "id": "two-arm-cable-front-raise",
-      "name": "Two Arm Cable Front Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "two-arm-dumbbell-front-raise",
-      "name": "Two Arm Dumbbell Front Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
       "stability": "moderate",
       "hypertrophyPotential": "high",
       "sfr": "good",
       "stretchMediated": "none",
-      "resistanceProfile": "shortened",
+      "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "rear-delt-fly-machine",
-      "name": "Rear Delt Fly Machine",
-      "category": "Shoulders",
-      "type": "isolation",
+      "id": "lever-triceps-dip",
+      "name": "Lever Triceps Dip",
+      "category": "Arms",
+      "type": "compound",
       "laterality": "bilateral",
       "muscles": {
-        "Rear Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
+        "Triceps": 1,
+        "Middle Chest": 0.5,
+        "Front Delts": 0.25
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -299,8 +82,8 @@
         48
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
       "progressiveOverload": "high",
       "stability": "very stable",
@@ -314,15 +97,15 @@
       "notes": null
     },
     {
-      "id": "seated-rear-lateral-dumbbell-raise",
-      "name": "Seated Rear Lateral Dumbbell Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "both",
+      "id": "triceps-dip-machine",
+      "name": "Triceps Dip Machine",
+      "category": "Arms",
+      "type": "compound",
+      "laterality": "bilateral",
       "muscles": {
-        "Rear Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
+        "Triceps": 1,
+        "Middle Chest": 0.5,
+        "Front Delts": 0.25
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -330,30 +113,60 @@
         48
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
-      "progressiveOverload": "low",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
       "stretchMediated": "none",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "seated-dumbbell-lateral-raise",
-      "name": "Seated Dumbbell Lateral Raise",
-      "category": "Shoulders",
-      "type": "isolation",
+      "id": "assisted-triceps-dips",
+      "name": "Assisted Triceps Dips",
+      "category": "Arms",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Middle Chest": 0.5,
+        "Front Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-skull-crusher",
+      "name": "Dumbbell Skull Crusher",
+      "category": "Arms",
+      "type": "compound",
       "laterality": "both",
       "muscles": {
-        "Side Delts": 1,
-        "Upper Traps": 0.5,
-        "Rear Delts": 0.25
+        "Triceps": 1,
+        "Brachioradialis": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -364,27 +177,26 @@
         120,
         180
       ],
-      "progressiveOverload": "low",
-      "stability": "stable",
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
       "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
-      "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "skill": "moderate",
+      "notes": null
     },
     {
-      "id": "cable-rear-delt-fly",
-      "name": "Cable Rear Delt Fly",
-      "category": "Shoulders",
+      "id": "push-down",
+      "name": "Push-down",
+      "category": "Arms",
       "type": "isolation",
-      "laterality": "both",
+      "laterality": "bilateral",
       "muscles": {
-        "Rear Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
+        "Triceps": 1,
+        "Brachioradialis": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -407,17 +219,437 @@
       "notes": null
     },
     {
-      "id": "face-pull",
-      "name": "Face Pull",
-      "category": "Shoulders",
-      "type": "compound",
+      "id": "cable-rope-overhead-triceps-extension",
+      "name": "Cable Rope Overhead Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Rear Delts": 1,
-        "Upper Traps": 0.5,
-        "Rotator Cuff": 0.25
+        "Triceps": 1,
+        "Brachioradialis": 0.5
       },
-      "fatigueScore": 3,
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "lying-barbell-triceps-extension",
+      "name": "Lying Barbell Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "very high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "lever-triceps-extension",
+      "name": "Lever Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-ez-bar-overhead-triceps-extension",
+      "name": "Seated EZ-Bar Overhead Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "barbell-lying-back-of-the-head-tricep-extension",
+      "name": "Barbell Lying Back of the Head Tricep Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "very high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "barbell-curl",
+      "name": "Barbell Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "ez-bar-preacher-curl",
+      "name": "EZ Bar Preacher Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "hammer-curl",
+      "name": "Hammer Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Brachialis": 1,
+        "Biceps": 0.5,
+        "Brachioradialis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "lever-preacher-curl",
+      "name": "Lever Preacher Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "lengthened",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "prone-incline-barbell-curl-spider-curl",
+      "name": "Prone Incline Barbell Curl (Spider Curl)",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "very high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "cable-rope-hammer-curl",
+      "name": "Cable Rope Hammer Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Brachialis": 1,
+        "Biceps": 0.5,
+        "Brachioradialis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "lever-biceps-curl",
+      "name": "Lever Biceps Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "two-dumbbell-preacher-curl",
+      "name": "Two Dumbbell Preacher Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "z-bar-curl",
+      "name": "Z-Bar Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "wrist-curl",
+      "name": "Wrist Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Wrist Flexors": 1
+      },
+      "fatigueScore": 1,
       "recoveryWindowHours": [
         24,
         48
@@ -427,26 +659,55 @@
         120
       ],
       "progressiveOverload": "moderate",
-      "stability": "stable",
+      "stability": "moderate",
       "hypertrophyPotential": "low",
       "sfr": "good",
-      "stretchMediated": "none",
+      "stretchMediated": "partial",
       "resistanceProfile": "balanced",
-      "equipment": "cable",
+      "equipment": "free weight",
       "axialLoading": false,
-      "skill": "moderate",
+      "skill": "low",
       "notes": null
     },
     {
-      "id": "incline-dumbbell-side-lateral-raise",
-      "name": "Incline Dumbbell Side Lateral Raise",
-      "category": "Shoulders",
+      "id": "seated-dumbbell-triceps-extension",
+      "name": "Seated Dumbbell Triceps Extension",
+      "category": "Arms",
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Side Delts": 1,
-        "Rear Delts": 0.5,
-        "Upper Traps": 0.25
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-curl",
+      "name": "Dumbbell Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -462,136 +723,309 @@
       "hypertrophyPotential": "high",
       "sfr": "good",
       "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
+      "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "notes": null
     },
     {
-      "id": "barbell-upright-row",
-      "name": "Barbell Upright Row",
-      "category": "Shoulders",
-      "type": "hybrid",
-      "laterality": "bilateral",
+      "id": "dumbbell-preacher-curl",
+      "name": "Dumbbell Preacher Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
       "muscles": {
-        "Upper Traps": 1,
-        "Side Delts": 0.5,
-        "Front Delts": 0.25
+        "Biceps": 1,
+        "Brachioradialis": 0.5
       },
-      "fatigueScore": 3,
+      "fatigueScore": 1,
       "recoveryWindowHours": [
-        48,
-        72
+        24,
+        48
       ],
       "restSeconds": [
-        210,
-        300
+        120,
+        180
       ],
-      "progressiveOverload": "very high",
+      "progressiveOverload": "low",
       "stability": "moderate",
       "hypertrophyPotential": "high",
-      "sfr": "average",
+      "sfr": "excellent",
       "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-incline-dumbbell-curl",
+      "name": "Seated Incline Dumbbell Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "lying-cable-curl",
+      "name": "Lying Cable Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-reverse-curl",
+      "name": "Dumbbell Reverse Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Brachioradialis": 1,
+        "Biceps": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "cable-curl",
+      "name": "Cable Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-wrist-curl",
+      "name": "Dumbbell Wrist Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Wrist Flexors": 1
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "low",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-one-arm-dumbbell-triceps-extension",
+      "name": "Seated One-Arm Dumbbell Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "cable-one-arm-overhead-triceps-extension",
+      "name": "Cable One-Arm Overhead Triceps Extension",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "one-arm-cable-curl",
+      "name": "One Arm Cable Curl",
+      "category": "Arms",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "ez-bar-skull-crusher",
+      "name": "EZ Bar Skull Crusher",
+      "category": "Arms",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Triceps": 1,
+        "Brachioradialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
-      "id": "barbell-front-raise",
-      "name": "Barbell Front Raise",
-      "category": "Shoulders",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Front Delts": 1,
-        "Side Delts": 0.5,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "very high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "weighted-muscle-up",
-      "name": "Weighted Muscle-Up",
-      "category": "Back",
-      "type": "hybrid",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 5,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        240,
-        420
-      ],
-      "progressiveOverload": "low",
-      "stability": "highly unstable",
-      "hypertrophyPotential": "moderate",
-      "sfr": "poor",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "bodyweight",
-      "axialLoading": false,
-      "skill": "very high",
-      "notes": null
-    },
-    {
-      "id": "band-assisted-muscle-up",
-      "name": "Band Assisted Muscle-Up",
-      "category": "Back",
-      "type": "hybrid",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 5,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        240,
-        420
-      ],
-      "progressiveOverload": "low",
-      "stability": "highly unstable",
-      "hypertrophyPotential": "moderate",
-      "sfr": "poor",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "bodyweight",
-      "axialLoading": false,
-      "skill": "very high",
       "notes": null
     },
     {
@@ -781,101 +1215,6 @@
       "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
     },
     {
-      "id": "cable-one-arm-lat-pulldown",
-      "name": "Cable One Arm Lat Pulldown",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
-    },
-    {
-      "id": "seated-cable-row",
-      "name": "Seated Cable Row",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Mid Back": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
-      "id": "close-grip-cable-row",
-      "name": "Close Grip Cable Row",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Mid Back": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
       "id": "seated-row-machine",
       "name": "Seated Row Machine",
       "category": "Back",
@@ -903,38 +1242,6 @@
       "stretchMediated": "partial",
       "resistanceProfile": "balanced",
       "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
-      "id": "one-arm-cable-row",
-      "name": "One Arm Cable Row",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Mid Back": 1,
-        "Biceps": 0.5,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
@@ -1101,6 +1408,259 @@
       "notes": null
     },
     {
+      "id": "weighted-roman-chair-back-extension",
+      "name": "Weighted Roman Chair Back Extension",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Spinal Erectors": 1,
+        "Glute Max": 0.5,
+        "Hamstrings": 0.5
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Use a barbell across shoulders or hold a plate/dumbbell. Focus on spinal extension/flexion for erectors, or keep spine rigid to bias glutes/hamstrings."
+    },
+    {
+      "id": "seated-cable-row",
+      "name": "Seated Cable Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Mid Back": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "close-grip-cable-row",
+      "name": "Close Grip Cable Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Mid Back": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "cable-one-arm-lat-pulldown",
+      "name": "Cable One Arm Lat Pulldown",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+    },
+    {
+      "id": "one-arm-cable-row",
+      "name": "One Arm Cable Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Mid Back": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "braced-single-arm-cable-pulldown",
+      "name": "Braced Single Arm Cable Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Lower Traps": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Underhand/neutral grip with non-working hand bracing against a bench. Exceptional lat isolation."
+    },
+    {
+      "id": "weighted-muscle-up",
+      "name": "Weighted Muscle-Up",
+      "category": "Back",
+      "type": "hybrid",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 5,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        240,
+        420
+      ],
+      "progressiveOverload": "low",
+      "stability": "highly unstable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "poor",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "very high",
+      "notes": null
+    },
+    {
+      "id": "band-assisted-muscle-up",
+      "name": "Band Assisted Muscle-Up",
+      "category": "Back",
+      "type": "hybrid",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 5,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        240,
+        420
+      ],
+      "progressiveOverload": "low",
+      "stability": "highly unstable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "poor",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "very high",
+      "notes": null
+    },
+    {
       "id": "bench-press",
       "name": "Bench Press",
       "category": "Chest",
@@ -1130,98 +1690,6 @@
       "axialLoading": false,
       "skill": "moderate",
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
-    },
-    {
-      "id": "incline-chest-fly-machine",
-      "name": "Incline Chest Fly Machine",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Upper Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "pec-deck-fly",
-      "name": "Pec Deck Fly",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Middle Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "shortened",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-pullover",
-      "name": "Dumbbell Pullover",
-      "category": "Chest",
-      "type": "hybrid",
-      "laterality": "bilateral",
-      "muscles": {
-        "Middle Chest": 1,
-        "Lats": 1,
-        "Triceps": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
     },
     {
       "id": "low-cable-crossover",
@@ -1315,36 +1783,6 @@
       "notes": null
     },
     {
-      "id": "dumbbell-fly",
-      "name": "Dumbbell Fly",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Middle Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
       "id": "dumbbell-bench-press",
       "name": "Dumbbell Bench Press",
       "category": "Chest",
@@ -1401,127 +1839,6 @@
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "single-arm-cable-crossover",
-      "name": "Single-Arm Cable Crossover",
-      "category": "Chest",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Middle Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "incline-dumbbell-fly",
-      "name": "Incline Dumbbell Fly",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Upper Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "incline-dumbbell-press",
-      "name": "Incline Dumbbell Press",
-      "category": "Chest",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Upper Chest": 1,
-        "Triceps": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "machine-fly",
-      "name": "Machine Fly",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Middle Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
@@ -1659,7 +1976,7 @@
       "muscles": {
         "Upper Chest": 1,
         "Triceps": 0.5,
-        "Front Delts": 0.25
+        "Front Delts": 0.5
       },
       "fatigueScore": 3,
       "recoveryWindowHours": [
@@ -1690,7 +2007,7 @@
       "muscles": {
         "Middle Chest": 1,
         "Triceps": 0.5,
-        "Front Delts": 0.25
+        "Front Delts": 0.5
       },
       "fatigueScore": 3,
       "recoveryWindowHours": [
@@ -1711,36 +2028,6 @@
       "axialLoading": false,
       "skill": "moderate",
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
-    },
-    {
-      "id": "incline-cable-fly",
-      "name": "Incline Cable Fly",
-      "category": "Chest",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Upper Chest": 1,
-        "Front Delts": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
     },
     {
       "id": "close-grip-bench-press",
@@ -1835,202 +2122,50 @@
       "notes": null
     },
     {
-      "id": "barbell-jm-press",
-      "name": "Barbell JM Press",
-      "category": "Arms",
+      "id": "incline-dumbbell-press",
+      "name": "Incline Dumbbell Press",
+      "category": "Chest",
       "type": "compound",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Middle Chest": 0.5,
+        "Upper Chest": 1,
+        "Triceps": 0.5,
         "Front Delts": 0.25
       },
-      "fatigueScore": 2,
+      "fatigueScore": 3,
       "recoveryWindowHours": [
-        24,
-        48
+        48,
+        72
       ],
       "restSeconds": [
         210,
         300
       ],
-      "progressiveOverload": "very high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "push-down",
-      "name": "Push-down",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "triceps-dips",
-      "name": "Triceps Dips",
-      "category": "Arms",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Middle Chest": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 2,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "cable-rope-overhead-triceps-extension",
-      "name": "Cable Rope Overhead Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "lever-triceps-dip",
-      "name": "Lever Triceps Dip",
-      "category": "Arms",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Middle Chest": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
       "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
-      "equipment": "machine",
+      "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
     },
     {
-      "id": "lying-barbell-triceps-extension",
-      "name": "Lying Barbell Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "very high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-one-arm-dumbbell-triceps-extension",
-      "name": "Seated One-Arm Dumbbell Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
+      "id": "single-arm-cable-crossover",
+      "name": "Single-Arm Cable Crossover",
+      "category": "Chest",
+      "type": "compound",
       "laterality": "unilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Middle Chest": 1,
+        "Front Delts": 0.5
       },
-      "fatigueScore": 1,
+      "fatigueScore": 3,
       "recoveryWindowHours": [
-        24,
-        48
+        48,
+        72
       ],
       "restSeconds": [
         120,
@@ -2042,443 +2177,112 @@
       "sfr": "good",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "lever-triceps-extension",
-      "name": "Lever Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-dumbbell-triceps-extension",
-      "name": "Seated Dumbbell Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-skull-crusher",
-      "name": "Dumbbell Skull Crusher",
-      "category": "Arms",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
+      "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
     },
     {
-      "id": "seated-ez-bar-overhead-triceps-extension",
-      "name": "Seated EZ-Bar Overhead Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
+      "id": "dumbbell-pullover",
+      "name": "Dumbbell Pullover",
+      "category": "Chest",
+      "type": "hybrid",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "cable-one-arm-overhead-triceps-extension",
-      "name": "Cable One-Arm Overhead Triceps Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "unilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "triceps-dip-machine",
-      "name": "Triceps Dip Machine",
-      "category": "Arms",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Middle Chest": 0.5,
+        "Middle Chest": 1,
+        "Lats": 1,
+        "Triceps": 0.5,
         "Front Delts": 0.25
       },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "incline-chest-fly-machine",
+      "name": "Incline Chest Fly Machine",
+      "category": "Chest",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Upper Chest": 1,
+        "Front Delts": 0.5
+      },
       "fatigueScore": 1,
       "recoveryWindowHours": [
         24,
         48
       ],
       "restSeconds": [
-        180,
-        240
+        120,
+        180
       ],
       "progressiveOverload": "high",
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "assisted-triceps-dips",
-      "name": "Assisted Triceps Dips",
-      "category": "Arms",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Middle Chest": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 2,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "barbell-lying-back-of-the-head-tricep-extension",
-      "name": "Barbell Lying Back of the Head Tricep Extension",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "very high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-curl",
-      "name": "Dumbbell Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "barbell-curl",
-      "name": "Barbell Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "very high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-preacher-curl",
-      "name": "Dumbbell Preacher Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "ez-bar-preacher-curl",
-      "name": "EZ Bar Preacher Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "hammer-curl",
-      "name": "Hammer Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Brachialis": 1,
-        "Biceps": 0.5,
-        "Brachioradialis": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-incline-dumbbell-curl",
-      "name": "Seated Incline Dumbbell Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
       "sfr": "excellent",
       "stretchMediated": "yes",
       "resistanceProfile": "balanced",
-      "equipment": "free weight",
+      "equipment": "machine",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "lever-preacher-curl",
-      "name": "Lever Preacher Curl",
-      "category": "Arms",
+      "id": "pec-deck-fly",
+      "name": "Pec Deck Fly",
+      "category": "Chest",
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
+        "Middle Chest": 1,
+        "Front Delts": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "machine-fly",
+      "name": "Machine Fly",
+      "category": "Chest",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Middle Chest": 1,
+        "Front Delts": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -2493,82 +2297,22 @@
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
       "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "lengthened",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
       "equipment": "machine",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "one-arm-cable-curl",
-      "name": "One Arm Cable Curl",
-      "category": "Arms",
+      "id": "dumbbell-fly",
+      "name": "Dumbbell Fly",
+      "category": "Chest",
       "type": "isolation",
-      "laterality": "unilateral",
+      "laterality": "bilateral",
       "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "lying-cable-curl",
-      "name": "Lying Cable Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-reverse-curl",
-      "name": "Dumbbell Reverse Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Brachioradialis": 1,
-        "Biceps": 0.5
+        "Middle Chest": 1,
+        "Front Delts": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -2583,113 +2327,22 @@
       "stability": "moderate",
       "hypertrophyPotential": "high",
       "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
       "equipment": "free weight",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "prone-incline-barbell-curl-spider-curl",
-      "name": "Prone Incline Barbell Curl (Spider Curl)",
-      "category": "Arms",
+      "id": "incline-dumbbell-fly",
+      "name": "Incline Dumbbell Fly",
+      "category": "Chest",
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "very high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "cable-rope-hammer-curl",
-      "name": "Cable Rope Hammer Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Brachialis": 1,
-        "Biceps": 0.5,
-        "Brachioradialis": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "lever-biceps-curl",
-      "name": "Lever Biceps Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "two-dumbbell-preacher-curl",
-      "name": "Two Dumbbell Preacher Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
+        "Upper Chest": 1,
+        "Front Delts": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -2703,23 +2356,23 @@
       "progressiveOverload": "low",
       "stability": "moderate",
       "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "lengthened",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
       "equipment": "free weight",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
-      "id": "cable-curl",
-      "name": "Cable Curl",
-      "category": "Arms",
+      "id": "incline-cable-fly",
+      "name": "Incline Cable Fly",
+      "category": "Chest",
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
+        "Upper Chest": 1,
+        "Front Delts": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -2734,48 +2387,18 @@
       "stability": "stable",
       "hypertrophyPotential": "high",
       "sfr": "excellent",
-      "stretchMediated": "partial",
+      "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "cable",
       "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "z-bar-curl",
-      "name": "Z-Bar Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Biceps": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
     },
     {
       "id": "dragon-flag",
       "name": "Dragon Flag",
       "category": "Core",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Rectus Abdominis": 1,
@@ -2803,41 +2426,10 @@
       "notes": null
     },
     {
-      "id": "kneeling-cable-crunch",
-      "name": "Kneeling Cable Crunch",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Rectus Abdominis": 1,
-        "Obliques": 0.5,
-        "Transverse Abdominis": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
       "id": "decline-crunches",
       "name": "Decline Crunches",
       "category": "Core",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Rectus Abdominis": 1,
@@ -2868,7 +2460,7 @@
       "id": "crunch-machine",
       "name": "Crunch Machine",
       "category": "Core",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Rectus Abdominis": 1,
@@ -2891,6 +2483,189 @@
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "russian-twist",
+      "name": "Russian Twist",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Obliques": 1,
+        "Rectus Abdominis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Can be weighted. Focus on torso rotation, not just moving the hands."
+    },
+    {
+      "id": "decline-russian-twist",
+      "name": "Decline Russian Twist",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Obliques": 1,
+        "Rectus Abdominis": 0.5
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Decline bench increases mechanical tension on the rectus abdominis while twisting."
+    },
+    {
+      "id": "hanging-knee-raise",
+      "name": "Hanging Knee Raise",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rectus Abdominis": 1,
+        "Hip Flexors": 0.5
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Focus on posterior pelvic tilt (curling the pelvis up) rather than just flexing the hips."
+    },
+    {
+      "id": "toes-to-bar",
+      "name": "Toes to Bar",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rectus Abdominis": 1,
+        "Hip Flexors": 0.5,
+        "Lats": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "high",
+      "notes": "Requires lat strength to stabilize the swing. Great deep stretch for the lower abs."
+    },
+    {
+      "id": "kneeling-cable-crunch",
+      "name": "Kneeling Cable Crunch",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rectus Abdominis": 1,
+        "Obliques": 0.5,
+        "Transverse Abdominis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "cable-obliques",
+      "name": "Cable Obliques",
+      "category": "Core",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Obliques": 1,
+        "Rectus Abdominis": 0.5,
+        "Transverse Abdominis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
@@ -2927,15 +2702,14 @@
       "notes": null
     },
     {
-      "id": "cable-obliques",
-      "name": "Cable Obliques",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "both",
+      "id": "barbell-reverse-wrist-curl",
+      "name": "Barbell Reverse Wrist Curl",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "bilateral",
       "muscles": {
-        "Obliques": 1,
-        "Rectus Abdominis": 0.5,
-        "Transverse Abdominis": 0.25
+        "Wrist Extensors": 1,
+        "Brachioradialis": 0.25
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -2944,17 +2718,165 @@
       ],
       "restSeconds": [
         120,
-        180
+        120
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "low",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "barbell-reverse-curl",
+      "name": "Barbell Reverse Curl",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Brachioradialis": 1
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "low",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "preacher-dumbbell-wrist-curl",
+      "name": "Preacher Dumbbell Wrist Curl",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Wrist Flexors": 1
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "low",
+      "stability": "very stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Bench provides external stability for strict isolation of the flexors."
+    },
+    {
+      "id": "preacher-dumbbell-reverse-wrist-curl",
+      "name": "Preacher Dumbbell Reverse Wrist Curl",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Wrist Extensors": 1,
+        "Brachioradialis": 0.3
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "low",
+      "stability": "very stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Bench provides external stability for strict isolation of the extensors."
+    },
+    {
+      "id": "seated-one-arm-forearm-cable-curls",
+      "name": "Seated One Arm Forearm Cable Curls",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Wrist Flexors": 1
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
       ],
       "progressiveOverload": "moderate",
       "stability": "stable",
       "hypertrophyPotential": "high",
       "sfr": "excellent",
-      "stretchMediated": "none",
+      "stretchMediated": "partial",
       "resistanceProfile": "balanced",
       "equipment": "cable",
       "axialLoading": false,
-      "skill": "moderate",
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-one-arm-forearm-reverse-curls",
+      "name": "Seated One Arm Forearm Reverse Curls",
+      "category": "Forearms",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Brachioradialis": 0.9,
+        "Brachialis": 0.8,
+        "Wrist Extensors": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
       "notes": null
     },
     {
@@ -2987,37 +2909,6 @@
       "axialLoading": true,
       "skill": "high",
       "notes": "Stance width and depth dictate Glute vs Quad bias."
-    },
-    {
-      "id": "single-leg-dumbbell-hip-thrust",
-      "name": "Single-Leg Dumbbell Hip Thrust",
-      "category": "Legs",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Glute Max": 1,
-        "Hamstrings": 0.5,
-        "Quadriceps": 0.25
-      },
-      "fatigueScore": 4,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "poor",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
     },
     {
       "id": "barbell-hip-thrusts",
@@ -3055,7 +2946,7 @@
       "name": "Dumbbell Walking Lunge",
       "category": "Legs",
       "type": "compound",
-      "laterality": "unilateral",
+      "laterality": "bilateral",
       "muscles": {
         "Quadriceps": 1,
         "Glute Max": 0.5,
@@ -3113,41 +3004,10 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias."
     },
     {
-      "id": "dumbbell-lunge",
-      "name": "Dumbbell Lunge",
-      "category": "Legs",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Quadriceps": 1,
-        "Glute Max": 0.5,
-        "Hamstrings": 0.25
-      },
-      "fatigueScore": 4,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "highly unstable",
-      "hypertrophyPotential": "high",
-      "sfr": "poor",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
       "id": "glute-kickback-machine",
       "name": "Glute Kickback Machine",
       "category": "Legs",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Glute Max": 1,
@@ -3200,36 +3060,6 @@
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "cable-kickbacks",
-      "name": "Cable Kickbacks",
-      "category": "Legs",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Glute Max": 1,
-        "Hamstrings": 0.5
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
@@ -3331,7 +3161,7 @@
       "id": "hip-adduction-machine",
       "name": "Hip Adduction Machine",
       "category": "Legs",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Adductors": 1,
@@ -3362,7 +3192,7 @@
       "id": "hip-abduction-machine",
       "name": "Hip Abduction Machine",
       "category": "Legs",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Abductors": 1,
@@ -3451,159 +3281,6 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias."
     },
     {
-      "id": "bulgarian-split-squats",
-      "name": "Bulgarian Split Squats",
-      "category": "Legs",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Quadriceps": 1,
-        "Glute Max": 0.5,
-        "Hamstrings": 0.25
-      },
-      "fatigueScore": 5,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        240,
-        420
-      ],
-      "progressiveOverload": "very high",
-      "stability": "highly unstable",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "partial",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": true,
-      "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
-    },
-    {
-      "id": "leg-press",
-      "name": "Leg Press",
-      "category": "Legs",
-      "type": "compound",
-      "laterality": "both",
-      "muscles": {
-        "Quadriceps": 1,
-        "Glute Max": 0.5,
-        "Hamstrings": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "very high",
-      "stability": "moderate",
-      "hypertrophyPotential": "excellent",
-      "sfr": "average",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": null
-    },
-    {
-      "id": "lying-leg-curl",
-      "name": "Lying Leg Curl",
-      "category": "Legs",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Hamstrings": 1,
-        "Glute Max": 0.5,
-        "Gastrocnemius": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-leg-curl",
-      "name": "Seated Leg Curl",
-      "category": "Legs",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Hamstrings": 1,
-        "Glute Max": 0.5,
-        "Gastrocnemius": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "leg-extension",
-      "name": "Leg Extension",
-      "category": "Legs",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Quadriceps": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
       "id": "hack-squats-machine",
       "name": "Hack Squats Machine",
       "category": "Legs",
@@ -3666,18 +3343,51 @@
       "notes": null
     },
     {
-      "id": "single-leg-extension",
-      "name": "Single Leg Extension",
+      "id": "leg-press",
+      "name": "Leg Press",
       "category": "Legs",
-      "type": "isolation",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Quadriceps": 1,
+        "Glute Max": 0.5,
+        "Hamstrings": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "average",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "single-leg-dumbbell-hip-thrust",
+      "name": "Single-Leg Dumbbell Hip Thrust",
+      "category": "Legs",
+      "type": "compound",
       "laterality": "unilateral",
       "muscles": {
-        "Quadriceps": 1
+        "Glute Max": 1,
+        "Hamstrings": 0.5,
+        "Quadriceps": 0.25
       },
-      "fatigueScore": 1,
+      "fatigueScore": 4,
       "recoveryWindowHours": [
-        24,
-        48
+        48,
+        72
       ],
       "restSeconds": [
         120,
@@ -3686,23 +3396,115 @@
       "progressiveOverload": "moderate",
       "stability": "moderate",
       "hypertrophyPotential": "high",
+      "sfr": "poor",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-lunge",
+      "name": "Dumbbell Lunge",
+      "category": "Legs",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Quadriceps": 1,
+        "Glute Max": 0.5,
+        "Hamstrings": 0.25
+      },
+      "fatigueScore": 4,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "highly unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "poor",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "cable-kickbacks",
+      "name": "Cable Kickbacks",
+      "category": "Legs",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Glute Max": 1,
+        "Hamstrings": 0.5
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
       "sfr": "good",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
-      "equipment": "machine",
+      "equipment": "cable",
       "axialLoading": false,
-      "skill": "low",
+      "skill": "moderate",
       "notes": null
+    },
+    {
+      "id": "bulgarian-split-squats",
+      "name": "Bulgarian Split Squats",
+      "category": "Legs",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Quadriceps": 1,
+        "Glute Max": 0.5,
+        "Hamstrings": 0.25
+      },
+      "fatigueScore": 5,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        240,
+        420
+      ],
+      "progressiveOverload": "very high",
+      "stability": "highly unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "partial",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": true,
+      "skill": "high",
+      "notes": "Stance width and depth dictate Glute vs Quad bias."
     },
     {
       "id": "sissy-squat",
       "name": "Sissy Squat",
       "category": "Legs",
-      "type": "compound",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Quadriceps": 1,
-        "Glute Max": 0.5
+        "Hip Flexors": 0.35
       },
       "fatigueScore": 5,
       "recoveryWindowHours": [
@@ -3875,15 +3677,75 @@
       "notes": null
     },
     {
-      "id": "dumbbell-shrug",
-      "name": "Dumbbell Shrug",
-      "category": "Traps",
+      "id": "lying-leg-curl",
+      "name": "Lying Leg Curl",
+      "category": "Legs",
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Upper Traps": 1,
-        "Rhomboids": 0.5,
-        "Brachioradialis": 0.25
+        "Hamstrings": 1,
+        "Glute Max": 0.5,
+        "Gastrocnemius": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-leg-curl",
+      "name": "Seated Leg Curl",
+      "category": "Legs",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Hamstrings": 1,
+        "Glute Max": 0.5,
+        "Gastrocnemius": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "leg-extension",
+      "name": "Leg Extension",
+      "category": "Legs",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Quadriceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -3896,14 +3758,637 @@
       ],
       "progressiveOverload": "moderate",
       "stability": "moderate",
-      "hypertrophyPotential": "moderate",
+      "hypertrophyPotential": "high",
       "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-barbell-shoulder-press",
+      "name": "Seated Barbell Shoulder Press",
+      "category": "Shoulders",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
       "notes": null
+    },
+    {
+      "id": "smith-machine-behind-the-neck-press",
+      "name": "Smith Machine Behind The Neck Press",
+      "category": "Shoulders",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Side Delts": 1,
+        "Front Delts": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        36,
+        60
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "smith-machine-shoulder-press",
+      "name": "Smith Machine Shoulder Press",
+      "category": "Shoulders",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        36,
+        60
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "lever-shoulder-press",
+      "name": "Lever Shoulder Press",
+      "category": "Shoulders",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        36,
+        60
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "face-pull",
+      "name": "Face Pull",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rear Delts": 1,
+        "Upper Traps": 0.5,
+        "Rotator Cuff": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "low",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "dumbbell-shoulder-press",
+      "name": "Dumbbell Shoulder Press",
+      "category": "Shoulders",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "barbell-upright-row",
+      "name": "Barbell Upright Row",
+      "category": "Shoulders",
+      "type": "hybrid",
+      "laterality": "bilateral",
+      "muscles": {
+        "Upper Traps": 1,
+        "Side Delts": 0.5,
+        "Front Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "dumbbell-chest-supported-lateral-raise",
+      "name": "Dumbbell Chest Supported Lateral Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Side Delts": 1,
+        "Rear Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Lean slightly forward to better align Side Delts against gravity."
+    },
+    {
+      "id": "two-arm-cable-front-raise",
+      "name": "Two Arm Cable Front Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "two-arm-dumbbell-front-raise",
+      "name": "Two Arm Dumbbell Front Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "rear-delt-fly-machine",
+      "name": "Rear Delt Fly Machine",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rear Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "barbell-front-raise",
+      "name": "Barbell Front Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Front Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "cable-lateral-raise",
+      "name": "Cable Lateral Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Side Delts": 1,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Lean slightly forward to better align Side Delts against gravity."
+    },
+    {
+      "id": "seated-rear-lateral-dumbbell-raise",
+      "name": "Seated Rear Lateral Dumbbell Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Rear Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-dumbbell-lateral-raise",
+      "name": "Seated Dumbbell Lateral Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Side Delts": 1,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Lean slightly forward to better align Side Delts against gravity."
+    },
+    {
+      "id": "cable-rear-delt-fly",
+      "name": "Cable Rear Delt Fly",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Rear Delts": 1,
+        "Side Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "incline-dumbbell-side-lateral-raise",
+      "name": "Incline Dumbbell Side Lateral Raise",
+      "category": "Shoulders",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Side Delts": 1,
+        "Rear Delts": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Lean slightly forward to better align Side Delts against gravity."
+    },
+    {
+      "id": "ez-bar-upright-row",
+      "name": "EZ Bar Upright Row",
+      "category": "Traps",
+      "type": "hybrid",
+      "laterality": "bilateral",
+      "muscles": {
+        "Upper Traps": 0.8,
+        "Side Delts": 0.7,
+        "Mid Traps": 0.4,
+        "Front Delts": 0.3
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "cable-upright-row",
+      "name": "Cable Upright Row",
+      "category": "Traps",
+      "type": "hybrid",
+      "laterality": "both",
+      "muscles": {
+        "Upper Traps": 0.8,
+        "Side Delts": 0.7,
+        "Mid Traps": 0.4,
+        "Front Delts": 0.3
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+    },
+    {
+      "id": "dumbbell-upright-row",
+      "name": "Dumbbell Upright Row",
+      "category": "Traps",
+      "type": "hybrid",
+      "laterality": "both",
+      "muscles": {
+        "Upper Traps": 0.8,
+        "Side Delts": 0.7,
+        "Mid Traps": 0.4,
+        "Front Delts": 0.3
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
     },
     {
       "id": "barbell-shrug",
@@ -3968,97 +4453,35 @@
       "notes": null
     },
     {
-      "id": "cable-upright-row",
-      "name": "Cable Upright Row",
+      "id": "dumbbell-shrug",
+      "name": "Dumbbell Shrug",
       "category": "Traps",
-      "type": "hybrid",
-      "laterality": "both",
-      "muscles": {
-        "Upper Traps": 1,
-        "Side Delts": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
-      "id": "dumbbell-upright-row",
-      "name": "Dumbbell Upright Row",
-      "category": "Traps",
-      "type": "hybrid",
-      "laterality": "both",
-      "muscles": {
-        "Upper Traps": 1,
-        "Side Delts": 0.5,
-        "Front Delts": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "high",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
-    },
-    {
-      "id": "ez-bar-upright-row",
-      "name": "EZ Bar Upright Row",
-      "category": "Traps",
-      "type": "hybrid",
+      "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
         "Upper Traps": 1,
-        "Side Delts": 0.5,
-        "Front Delts": 0.25
+        "Rhomboids": 0.5,
+        "Brachioradialis": 0.25
       },
-      "fatigueScore": 3,
+      "fatigueScore": 1,
       "recoveryWindowHours": [
-        48,
-        72
+        24,
+        48
       ],
       "restSeconds": [
-        210,
-        300
+        120,
+        180
       ],
-      "progressiveOverload": "high",
+      "progressiveOverload": "moderate",
       "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "partial",
-      "resistanceProfile": "shortened",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": null
     },
     {
       "id": "incline-dumbbell-y-raise",
@@ -4121,394 +4544,6 @@
       "axialLoading": false,
       "skill": "low",
       "notes": null
-    },
-    {
-      "id": "barbell-reverse-wrist-curl",
-      "name": "Barbell Reverse Wrist Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Wrist Extensors": 1,
-        "Brachioradialis": 0.25
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "very high",
-      "stability": "moderate",
-      "hypertrophyPotential": "low",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "dumbbell-wrist-curl",
-      "name": "Dumbbell Wrist Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "both",
-      "muscles": {
-        "Wrist Flexors": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "low",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "wrist-curl",
-      "name": "Wrist Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Wrist Flexors": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "low",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-one-arm-forearm-cable-curls",
-      "name": "Seated One Arm Forearm Cable Curls",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "unilateral",
-      "muscles": {
-        "Brachioradialis": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "seated-one-arm-forearm-reverse-curls",
-      "name": "Seated One Arm Forearm Reverse Curls",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "unilateral",
-      "muscles": {
-        "Brachioradialis": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": null
-    },
-    {
-      "id": "russian-twist",
-      "name": "Russian Twist",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Obliques": 1,
-        "Rectus Abdominis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "low",
-      "stability": "moderate",
-      "hypertrophyPotential": "moderate",
-      "sfr": "good",
-      "stretchMediated": "none",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": "Can be weighted. Focus on torso rotation, not just moving the hands."
-    },
-    {
-      "id": "decline-russian-twist",
-      "name": "Decline Russian Twist",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Obliques": 1,
-        "Rectus Abdominis": 0.5
-      },
-      "fatigueScore": 2,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Decline bench increases mechanical tension on the rectus abdominis while twisting."
-    },
-    {
-      "id": "preacher-dumbbell-wrist-curl",
-      "name": "Preacher Dumbbell Wrist Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "unilateral",
-      "muscles": {
-        "Wrist Flexors": 1
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "low",
-      "stability": "very stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": "Bench provides external stability for strict isolation of the flexors."
-    },
-    {
-      "id": "preacher-dumbbell-reverse-wrist-curl",
-      "name": "Preacher Dumbbell Reverse Wrist Curl",
-      "category": "Arms",
-      "type": "isolation",
-      "laterality": "unilateral",
-      "muscles": {
-        "Wrist Extensors": 1,
-        "Brachioradialis": 0.5
-      },
-      "fatigueScore": 1,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "low",
-      "stability": "very stable",
-      "hypertrophyPotential": "high",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "low",
-      "notes": "Bench provides external stability for strict isolation of the extensors."
-    },
-    {
-      "id": "hanging-knee-raise",
-      "name": "Hanging Knee Raise",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Rectus Abdominis": 1,
-        "Hip Flexors": 0.5
-      },
-      "fatigueScore": 2,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        120
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "unstable",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "shortened",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Focus on posterior pelvic tilt (curling the pelvis up) rather than just flexing the hips."
-    },
-    {
-      "id": "toes-to-bar",
-      "name": "Toes to Bar",
-      "category": "Core",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Rectus Abdominis": 1,
-        "Hip Flexors": 0.5,
-        "Lats": 0.25
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        24,
-        48
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "low",
-      "stability": "unstable",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "bodyweight",
-      "axialLoading": false,
-      "skill": "high",
-      "notes": "Requires lat strength to stabilize the swing. Great deep stretch for the lower abs."
-    },
-    {
-      "id": "braced-single-arm-cable-pulldown",
-      "name": "Braced Single Arm Cable Pulldown",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "unilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Lower Traps": 0.25
-      },
-      "fatigueScore": 2,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        120,
-        180
-      ],
-      "progressiveOverload": "high",
-      "stability": "very stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "excellent",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "cable",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Underhand/neutral grip with non-working hand bracing against a bench. Exceptional lat isolation."
-    },
-    {
-      "id": "weighted-roman-chair-back-extension",
-      "name": "Weighted Roman Chair Back Extension",
-      "category": "Back",
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Spinal Erectors": 1,
-        "Glute Max": 0.5,
-        "Hamstrings": 0.5
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
-      "progressiveOverload": "high",
-      "stability": "stable",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "machine",
-      "axialLoading": false,
-      "skill": "moderate",
-      "notes": "Use a barbell across shoulders or hold a plate/dumbbell. Focus on spinal extension/flexion for erectors, or keep spine rigid to bias glutes/hamstrings."
     }
   ]
 }
