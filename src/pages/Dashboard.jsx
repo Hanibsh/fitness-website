@@ -651,6 +651,14 @@ export default function Dashboard() {
                     Fully recovered: {untouched.map((m) => m.muscle).join(' · ')}
                   </p>
                 )}
+                {recovery.personal.observations > 0 && (
+                  <p className="text-[11px] text-text-light pt-2">
+                    Recovery speeds personalized from {recovery.personal.observations} performance observation{recovery.personal.observations !== 1 ? 's' : ''}
+                    {recovery.personal.notes.length > 0 && (
+                      <> — {recovery.personal.notes.map((n) => `${n.muscle} ${n.mult < 1 ? 'faster' : 'slower'}`).join(' · ')} than default for you</>
+                    )}.
+                  </p>
+                )}
               </div>
             )
           })()}

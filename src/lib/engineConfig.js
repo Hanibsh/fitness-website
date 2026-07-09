@@ -82,6 +82,30 @@ export const RECOVERY_LOOKBACK_DAYS = 14
 // for readiness hints (primaries + secondaries; tertiaries ride along).
 export const TARGET_CONTRIBUTION_MIN = 0.5
 
+// ---- Personalization: e1RM-residual learning (engine v3) ---------------------
+// Performance is ground truth. If you keep matching/beating your e1RM trend on
+// lifts hitting a muscle the model calls "recovering", the model is too
+// pessimistic for you — that muscle's recovery τ shrinks. Underperforming
+// while "ready" pushes it the other way. Guards keep one noisy session from
+// steering the model.
+export const EWMA_ALPHA = 0.3 // per-exercise e1RM trend smoothing
+export const RESIDUAL_CLAMP = 0.1 // |e1RM residual| cap, as a fraction of trend
+export const MIN_EXPOSURES_TO_LEARN = 3 // sessions of an exercise before residuals count
+export const MAX_E1RM_REPS = 12 // Brzycki unreliable past this (reps + RIR)
+export const PERSONAL_LEARNING_RATE = 0.05 // max τ-multiplier step per observation
+export const TAU_MULT_MIN = 0.6
+export const TAU_MULT_MAX = 1.6
+// Learned recovery speeds only get surfaced in UI past this deviation from 1.
+export const TAU_MULT_NOTEWORTHY = 0.1
+
+// ---- Repeated-bout effect -----------------------------------------------------
+// Unfamiliar movements cause disproportionate damage; the bonus halves with
+// each exposure (effectively gone by the ~5th time you log the exercise).
+export const NOVELTY_BONUS = 0.3
+export function noveltyMult(exposures) {
+  return 1 + NOVELTY_BONUS * Math.pow(0.5, exposures)
+}
+
 // ---- Systemic fatigue (whole-body pool) -------------------------------------
 // Second compartment: every working set also taxes one shared pool, weighted
 // up for axially-loading and free-weight work (more whole-body demand).
