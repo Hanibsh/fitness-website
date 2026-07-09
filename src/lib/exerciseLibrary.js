@@ -211,6 +211,9 @@ const PRIORITY = new Set([
 // Whole-word queries that read as "show me this group" — boost members of that
 // category so browsing by body part surfaces the real thing (e.g. "back" lists
 // rows/pulldowns, not "Cable Kickbacks" whose name merely contains "back").
+// The distinct category VALUES here must stay in sync with HOME_CATEGORIES in
+// scripts/muscle-taxonomy.mjs (the CSV linter warns on any Home Category not
+// in that list) — add a value in both places together.
 const CATEGORY_WORDS = {
   chest: 'Chest', back: 'Back', legs: 'Legs', leg: 'Legs', arms: 'Arms', arm: 'Arms',
   shoulders: 'Shoulders', shoulder: 'Shoulders', core: 'Core', abs: 'Core', traps: 'Traps', trap: 'Traps',

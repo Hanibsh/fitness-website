@@ -35,6 +35,15 @@ After any edit:
 Columns are matched by **header name**, not position, so you can reorder or add
 columns without breaking the parser — but keep the header text recognizable.
 
+**Trying a brand-new value the app doesn't know yet?** Muscle names are strict
+(🔴 blocker if unrecognized). Home Category is looser — it won't block the
+build, but the linter still ⚠️ **warns** if you use one the app has no code for
+yet (e.g. `Neck`), since it just sits there inert (no search boost, can't be a
+specialization-block focus) until code is added for it. That warning is your
+cue to ask for it to be added — new values (a new muscle, a new category,
+anything) always go through a flag-and-ask step before code changes, never
+silently.
+
 ## Add / edit / remove an exercise
 
 - **Add:** append a new row and fill every column (see reference below). The `id`

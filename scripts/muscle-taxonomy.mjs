@@ -28,6 +28,19 @@ export const MUSCLE_GROUPS = {
 // Flat set of every canonical atom.
 export const MUSCLES = new Set(Object.values(MUSCLE_GROUPS).flat())
 
+// Home Category values the app actually has code for (search boost in
+// exerciseLibrary.js CATEGORY_WORDS, specialization-block options in
+// dashboard.js MUSCLE_GROUPS, etc). NOT the same list as MUSCLE_GROUPS' keys
+// above — Home Category is about how exercises are browsed/organized, not
+// muscle-volume rollup (e.g. "Traps" is its own browsing category even though
+// traps atoms live under the "Back" muscle family for volume purposes). Home
+// Category itself is free text — an unrecognized value doesn't break the
+// build — but the linter flags it as a WARNING so a genuinely new category
+// (e.g. "Neck") gets surfaced for a deliberate decision instead of silently
+// sitting inert with no app support. Keep in sync with exerciseLibrary.js's
+// CATEGORY_WORDS values by hand — see the note there.
+export const HOME_CATEGORIES = new Set(['Shoulders', 'Back', 'Chest', 'Arms', 'Forearms', 'Core', 'Legs', 'Traps'])
+
 // The group a canonical atom belongs to (for roll-up displays).
 export const GROUP_OF = Object.fromEntries(
   Object.entries(MUSCLE_GROUPS).flatMap(([group, list]) => list.map((m) => [m, group]))

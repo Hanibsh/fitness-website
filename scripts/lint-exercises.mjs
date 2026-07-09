@@ -17,7 +17,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { resolveMuscleTerm } from './muscle-taxonomy.mjs'
+import { resolveMuscleTerm, HOME_CATEGORIES } from './muscle-taxonomy.mjs'
 import { OVERRIDES } from '../data/exercise-overrides.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -227,6 +227,7 @@ function main() {
     if (ex.fatigueScore >= 5 && ex.type === 'isolation') add('WARNING', name, `Isolation with max fatigue (5) — check.`)
     if (/wrist curl/i.test(name) && ex.muscles['Brachioradialis'] && !ex.muscles['Wrist Flexors'] && !ex.muscles['Wrist Extensors']) add('WARNING', name, `Wrist-curl mapped to Brachioradialis — should be wrist flexors/extensors.`)
     if (BODYWEIGHT_HINTS.test(name) && ex.equipment === 'free weight') add('NOTICE', name, `Bodyweight-pattern movement stored as "free weight".`)
+    if (ex.category && !HOME_CATEGORIES.has(ex.category)) add('WARNING', name, `Home Category "${ex.category}" isn't recognized by the app yet (no search boost, can't be a specialization-block focus). Ask Claude to add code support for it if this is intentional.`)
 
     exercises.push(ex)
   }
