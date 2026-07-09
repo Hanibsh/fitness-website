@@ -449,7 +449,11 @@ export default function WorkoutTracker() {
   // logged but excluded from volume/hard-set counts; back-offs are working sets,
   // just labeled.
   function cycleSetType(exId, setId) {
-    const next = { undefined: 'warmup', warmup: 'backoff', backoff: undefined }
+    // normal -> warmup -> backoff -> normal. An explicit order array (rather
+    // than a lookup object) avoids ?? ambiguity between "no such key" and "the
+    // next state is genuinely undefined" — the bug that used to send back-off
+    // back to warm-up instead of clearing to normal.
+    const order = ['warmup', 'backoff', undefined]
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
@@ -458,7 +462,7 @@ export default function WorkoutTracker() {
               ...e,
               sets: e.sets.map((s) => {
                 if (s.id !== setId) return s
-                const t = next[s.type] ?? 'warmup'
+                const t = order[(order.indexOf(s.type) + 1) % order.length]
                 const { type, ...rest } = s // eslint-disable-line no-unused-vars
                 return t ? { ...rest, type: t } : rest
               }),
