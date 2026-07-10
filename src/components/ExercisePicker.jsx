@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Search, SearchX } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
 
@@ -66,7 +67,10 @@ export default function ExercisePicker({ onSelect, recentNames = [], onlyCategor
             <div className="flex items-start gap-2 px-4 py-3">
               <SearchX className="w-3.5 h-3.5 text-text-light shrink-0 mt-0.5" />
               <p className="text-[12px] text-text-light leading-relaxed">
-                No exercise found for “{query.trim()}”. Try a different search — only exercises in the library can be logged.
+                No exercise found for “{query.trim()}”. Try a different search — only exercises in the library can be logged.{' '}
+                <Link to="/contact" className="text-text-secondary underline hover:text-text-primary">
+                  Can’t find it? Message me and I’ll add it to the library.
+                </Link>
               </p>
             </div>
           )}
