@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-09",
+  "generatedAt": "2026-07-10",
   "count": 148,
   "exercises": [
     {
@@ -2928,8 +2928,8 @@
         72
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
       "progressiveOverload": "very high",
       "stability": "moderate",
@@ -2959,8 +2959,8 @@
         72
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
       "progressiveOverload": "moderate",
       "stability": "highly unstable",
@@ -3391,8 +3391,8 @@
         72
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
       "progressiveOverload": "moderate",
       "stability": "moderate",
@@ -3422,8 +3422,8 @@
         72
       ],
       "restSeconds": [
-        120,
-        180
+        180,
+        240
       ],
       "progressiveOverload": "moderate",
       "stability": "highly unstable",

@@ -46,4 +46,13 @@ export const OVERRIDES = {
   'barbell-jm-press': { fatigueScore: 2, _reason: 'Loaded compound triceps press; fatigue 1 too low for 3.5-5 min rest.' },
   'triceps-dips': { fatigueScore: 2, _reason: 'Loaded compound dip; fatigue 1 too low for 3.5-5 min rest.' },
   'assisted-triceps-dips': { fatigueScore: 2, _reason: 'Compound dip; fatigue 1 too low for 3.5-5 min rest.' },
+
+  // --- Rest too short vs. fatigue 4: these are the same hip-hinge/lunge
+  //     fatigue tier as Smith Machine Hip Thrust, which already carries a
+  //     3-4 min rest at fatigue 4. Bumped to match (data/recovery-rubric.md
+  //     §4/§5 R2, data/audit-recovery-report.md). ---
+  'barbell-hip-thrusts': { restSeconds: [180, 240], _reason: 'Fatigue 4 but rest was 2-3 min; matches Smith Machine Hip Thrust (fatigue 4, 3-4 min) once bumped.' },
+  'dumbbell-walking-lunge': { restSeconds: [180, 240], _reason: 'Fatigue 4 but rest was 2-3 min; bumped to the fatigue-4 tier (3-4 min).' },
+  'single-leg-dumbbell-hip-thrust': { restSeconds: [180, 240], _reason: 'Fatigue 4 but rest was 2-3 min; bumped to the fatigue-4 tier (3-4 min).' },
+  'dumbbell-lunge': { restSeconds: [180, 240], _reason: 'Fatigue 4 but rest was 2-3 min; bumped to the fatigue-4 tier (3-4 min).' },
 }
