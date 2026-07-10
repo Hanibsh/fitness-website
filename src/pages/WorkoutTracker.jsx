@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -155,9 +155,11 @@ function newSupersetId() {
 
 // Convert legacy adjacency-based supersets (`linkedToPrev`) to the group-id
 // model (`supersetId`), so grouping no longer depends on list order. No-op once
-// data is already on the new model.
+// data is already on the new model. Also normalizes to the contiguous-group
+// invariant below, in case any older history has a group scattered non-
+// adjacently (from before that was enforced).
 function migrateSupersets(exercises) {
-  if (!exercises.some((e) => e && e.linkedToPrev)) return exercises
+  if (!exercises.some((e) => e && e.linkedToPrev)) return regroupSupersets(exercises)
   const out = exercises.map((e) => ({ ...e }))
   for (let i = 0; i < out.length; i++) {
     if (!out[i].supersetId && i > 0 && out[i].linkedToPrev) {
@@ -165,6 +167,41 @@ function migrateSupersets(exercises) {
       out[i].supersetId = out[i - 1].supersetId
     }
     delete out[i].linkedToPrev
+  }
+  return regroupSupersets(out)
+}
+
+// Group a list into contiguous runs: a run of same-`supersetId` exercises is
+// one block (moved/reordered as a unit), everything else is its own 1-item
+// block. Assumes the contiguous-group invariant already holds (see
+// regroupSupersets) — this just describes the blocks, it doesn't enforce it.
+function exerciseBlocks(exercises) {
+  const blocks = []
+  let i = 0
+  while (i < exercises.length) {
+    const id = exercises[i].supersetId
+    let j = i + 1
+    if (id) while (j < exercises.length && exercises[j].supersetId === id) j++
+    blocks.push(exercises.slice(i, j))
+    i = j
+  }
+  return blocks
+}
+
+// Enforce "once paired, supersets stay adjacent": pull every member of each
+// group together at the position of that group's first-encountered member,
+// preserving relative order otherwise. Idempotent — safe to call any time a
+// supersetId changes.
+function regroupSupersets(exercises) {
+  const emitted = new Set()
+  const out = []
+  for (const e of exercises) {
+    if (!e.supersetId) {
+      out.push(e)
+    } else if (!emitted.has(e.supersetId)) {
+      emitted.add(e.supersetId)
+      out.push(...exercises.filter((x) => x.supersetId === e.supersetId))
+    }
   }
   return out
 }
@@ -419,7 +456,9 @@ export default function WorkoutTracker() {
 
   // Group two resistance exercises into a superset. If either is already in a
   // superset the other joins it; otherwise a new group is created. Works for
-  // any two exercises regardless of their position in the list.
+  // any two exercises regardless of their position in the list — they're
+  // immediately pulled adjacent afterward (regroupSupersets) so paired
+  // exercises always render together.
   function pairSuperset(exId, targetId) {
     setDraft((d) => {
       const a = d.exercises.find((e) => e.id === exId)
@@ -427,7 +466,31 @@ export default function WorkoutTracker() {
       if (!a || !b || a.kind === 'cardio' || b.kind === 'cardio') return d
       const groupId = b.supersetId || a.supersetId || newSupersetId()
       const exercises = d.exercises.map((e) => (e.id === exId || e.id === targetId ? { ...e, supersetId: groupId } : e))
-      return { ...d, exercises: pruneSupersets(exercises) }
+      return { ...d, exercises: regroupSupersets(pruneSupersets(exercises)) }
+    })
+  }
+
+  // Move an exercise up/down, keeping resistance and cardio reordered
+  // independently (they render in separate sections) and superset groups
+  // moving as a single unit (exerciseBlocks treats a contiguous group as one
+  // block, so this can't split them apart).
+  function moveExercise(exId, delta) {
+    setDraft((d) => {
+      const ex = d.exercises.find((e) => e.id === exId)
+      if (!ex) return d
+      const isCardio = ex.kind === 'cardio'
+      const sameKind = d.exercises.filter((e) => (e.kind === 'cardio') === isCardio)
+      const blocks = exerciseBlocks(sameKind)
+      const blockIdx = blocks.findIndex((b) => b.some((e) => e.id === exId))
+      const to = blockIdx + delta
+      if (to < 0 || to >= blocks.length) return d
+      const reordered = blocks.slice()
+      const [blk] = reordered.splice(blockIdx, 1)
+      reordered.splice(to, 0, blk)
+      const newSameKindOrder = reordered.flat()
+      let ptr = 0
+      const exercises = d.exercises.map((e) => ((e.kind === 'cardio') === isCardio ? newSameKindOrder[ptr++] : e))
+      return { ...d, exercises }
     })
   }
 
@@ -891,6 +954,13 @@ export default function WorkoutTracker() {
     const inSuperset = !!group && group.size > 1
     // Other resistance exercises this one can be supersetted with.
     const supersetTargets = ex.kind === 'cardio' ? [] : resistanceExercises.filter((o) => o.id !== ex.id)
+    // Position within its own section's BLOCKS (a superset counts as one block,
+    // so moving any member moves the whole group — see moveExercise).
+    const kindList = ex.kind === 'cardio' ? cardioExercises : resistanceExercises
+    const kindBlocks = exerciseBlocks(kindList)
+    const blockIdx = kindBlocks.findIndex((b) => b.some((e) => e.id === ex.id))
+    const isFirstBlock = blockIdx <= 0
+    const isLastBlock = blockIdx === kindBlocks.length - 1
     return (
       <motion.div
         key={ex.id}
@@ -901,6 +971,24 @@ export default function WorkoutTracker() {
       >
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-col shrink-0">
+              <button
+                onClick={() => moveExercise(ex.id, -1)}
+                disabled={isFirstBlock}
+                aria-label={`Move ${ex.name} up`}
+                className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => moveExercise(ex.id, 1)}
+                disabled={isLastBlock}
+                aria-label={`Move ${ex.name} down`}
+                className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
             {inSuperset && (
               <span
                 title={`Superset ${group.letter}`}
