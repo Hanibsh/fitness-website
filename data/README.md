@@ -80,7 +80,7 @@ fatigue at failure — see `recovery-rubric.md` §0 for why.
 |---|---|
 | Exercise Name | Free text. Becomes the `id` (slugified). |
 | Home Category | `Shoulders`, `Back`, `Chest`, `Arms`, `Forearms`, `Core`, `Legs`, `Traps` — free text, but these are the ones the app recognizes for search/browse and specialization blocks |
-| Exercise Type | `Compound`, `Isolation`, `Hybrid` |
+| Exercise Type | `Compound`, `Isolation`, `Hybrid`, `Isometric` (`Isometric` for holds — planks, wall sits, Copenhagen holds) |
 | Laterality | `Bilateral`, `Unilateral`, `Can be both` |
 | Primary Muscles (1.00) | Muscle name(s), comma-separated. Weight ×1.0 |
 | Secondary Muscles (0.50) | …weight ×0.5 |
@@ -94,7 +94,7 @@ fatigue at failure — see `recovery-rubric.md` §0 for why.
 | Stimulus-to-Fatigue Ratio (SFR) | `Poor`, `Average`, `Good`, `Excellent`. Target-muscle stimulus ÷ total fatigue (systemic + joint + stabilizer). A *derived* rating — must stay consistent with Fatigue Score / Hypertrophy Potential / Stability / Equipment (stable machines & cables tend high; axial free-weight compounds and unstable moves tend low). Feeds the advisor's "which exercise to trim first" logic. Rubric + audit rules in `data/sfr-rubric.md`; run `node scripts/audit-sfr.mjs` after edits. |
 | Stretch-Mediated Hypertrophy | `No`, `Partial`, `Yes`. Does the exercise load the target muscle at long (stretched) muscle length — a descriptive tag, not a claim of bonus gains (the "distinct mechanism" framing is contested in the literature). Should track Resistance Profile: `Lengthened Bias` implies at least `Partial`; the reverse isn't required (`Shortened Bias` can still load real stretch tension — cam machines, dead-hang starts). Not read by any app code yet. Rubric in `data/hp-stretch-rubric.md`. |
 | Resistance Profile | `Balanced`, `Shortened bias`, `Lengthened bias` |
-| Stability Requirement | Actually **equipment**: `Free weight`, `Machine`, `Cable`, `Bodyweight` |
+| Stability Requirement | Actually **equipment**: `Free weight`, `Machine`, `Cable`, `Bodyweight`, `Resistance Band` (`Bodyweight`/`Resistance Band` power at-home/no-gym program filtering) |
 | Axial Loading | `No`, `Yes`. Real spinal-compression risk (squat/deadlift-style) — not just "holds a loaded barbell" (a shrug loads a barbell but isn't axial in this sense; see the Barbell Shrug case in `recovery-rubric.md`). |
 | Skill Requirement | `Low`, `Moderate`, `High`, `Very High` |
 | Recommended Rest Time | e.g. `3.5-5 minutes` (stored as seconds). Should rise monotonically with Fatigue Score / axial loading — isolation 2-3 min, free-weight compound 3-5 min, heavy axial 4-7 min. Never go below ~2 min regardless of fatigue (app policy, more conservative than the literature's ~90s plateau — see `recovery-rubric.md` §4). |

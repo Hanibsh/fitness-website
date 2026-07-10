@@ -46,7 +46,7 @@ function parseCSV(text) {
 
 // ---- enum normalization ----------------------------------------------------
 const ENUMS = {
-  type: { compound: 'compound', isolation: 'isolation', hybrid: 'hybrid' },
+  type: { compound: 'compound', isolation: 'isolation', hybrid: 'hybrid', isometric: 'isometric' },
   laterality: { bilateral: 'bilateral', unilateral: 'unilateral', 'can be both': 'both' },
   level: { low: 'low', moderate: 'moderate', high: 'high', 'very high': 'very high' },
   stability: {
@@ -57,7 +57,7 @@ const ENUMS = {
   sfr: { poor: 'poor', average: 'average', good: 'good', excellent: 'excellent' },
   stretch: { no: 'none', partial: 'partial', yes: 'yes' },
   resistance: { balanced: 'balanced', 'shortened bias': 'shortened', 'lengthened bias': 'lengthened' },
-  equipment: { 'free weight': 'free weight', machine: 'machine', cable: 'cable', bodyweight: 'bodyweight' },
+  equipment: { 'free weight': 'free weight', machine: 'machine', cable: 'cable', bodyweight: 'bodyweight', 'resistance band': 'resistance band' },
   axial: { no: false, yes: true },
 }
 function normEnum(kind, raw) {

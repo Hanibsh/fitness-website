@@ -1,0 +1,35 @@
+Exercise Name,Home Category,Exercise Type,Laterality,Primary Muscles (1.00),Secondary Muscles (0.50),Tertiary Muscles (0.25),Quaternary Muscles (0.125),Fatigue Score,Estimated Recovery Window,Progressive Overload Potential,Stability,Hypertrophy Potential,Stimulus-to-Fatigue Ratio (SFR),Stretch-Mediated Hypertrophy,Resistance Profile,Stability Requirement,Axial Loading,Skill Requirement,Recommended Rest Time,Notes
+Seated Dumbbell Overhead Press,Shoulders,Compound,Bilateral,Front Delts,"Side Delts, Upper Chest",Triceps,,3,48 hours,High,Moderate,Excellent,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+Standing Dumbbell Overhead Press,Shoulders,Compound,Bilateral,Front Delts,"Side Delts, Upper Chest","Triceps, Core",,4,48-72 hours,High,Low,Good,Moderate,No,Ascending,Free Weight,Yes,High,3-5 minutes,
+Seated Dumbbell Overhead Press (Neutral Grip),Shoulders,Compound,Bilateral,Front Delts,Triceps,Upper Chest,,3,48 hours,High,Moderate,Good,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+Standing Barbell Overhead Press,Shoulders,Compound,Bilateral,Front Delts,"Upper Chest, Triceps","Side Delts, Core",,4,48-72 hours,Very High,Low,Good,Moderate,No,Ascending,Free Weight,Yes,High,3-5 minutes,
+Seated Barbell Overhead Press,Shoulders,Compound,Bilateral,Front Delts,"Upper Chest, Triceps",Side Delts,,3,48 hours,Very High,Moderate,Excellent,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+Seated Barbell Behind The Neck Press,Shoulders,Compound,Bilateral,"Front Delts, Side Delts",Triceps,Traps,,3,48 hours,High,Moderate,Good,Moderate,No,Ascending,Free Weight,Yes,High,3-5 minutes,Requires good shoulder mobility
+Standing Barbell Behind The Neck Press,Shoulders,Compound,Bilateral,"Front Delts, Side Delts",Triceps,"Traps, Core",,4,48-72 hours,High,Low,Good,Low,No,Ascending,Free Weight,Yes,Very High,3-5 minutes,High mobility requirement
+Standing Landmine Press,Shoulders,Compound,Unilateral,"Front Delts, Upper Chest",Triceps,Core,,2,24-48 hours,High,Moderate,Good,Good,No,Balanced,Free Weight,Minor,Moderate,2-3 minutes,
+Half-Kneeling Landmine Press,Shoulders,Compound,Unilateral,"Front Delts, Upper Chest",Triceps,Core,,2,24-48 hours,High,Stable,Excellent,Excellent,No,Balanced,Free Weight,Minor,Low,2-3 minutes,Excellent for strict tension
+Machine Overhead Press (Wide Grip),Shoulders,Compound,Bilateral,"Front Delts, Side Delts",Triceps,Upper Chest,,2,48 hours,High,Very Stable,Excellent,Excellent,No,Balanced,Machine,No,Low,3-4 minutes,Allows pushing closer to failure safely
+Machine Overhead Press (Narrow Grip),Shoulders,Compound,Bilateral,Front Delts,Triceps,Upper Chest,,2,48 hours,High,Very Stable,Excellent,Excellent,No,Balanced,Machine,No,Low,3-4 minutes,Allows pushing closer to failure safely
+Banded Seated Overhead Press,Shoulders,Compound,Bilateral,Front Delts,"Side Delts, Triceps",Upper Chest,,2,24-48 hours,Low,Moderate,Moderate,Moderate,No,Ascending,Resistance Band,Minor,Low,2-3 minutes,
+Banded Upright Row,Shoulders,Compound,Bilateral,Side Delts,Traps,Front Delts,,1,24 hours,Low,Moderate,Moderate,Moderate,No,Ascending,Resistance Band,No,Low,2-3 minutes,
+Standing Dumbbell Front Raise,Shoulders,Isolation,Bilateral,Front Delts,,Upper Chest,,1,24 hours,Moderate,Moderate,Good,Good,No,Descending,Free Weight,No,Low,2-3 minutes,
+Seated Dumbbell Front Raise,Shoulders,Isolation,Bilateral,Front Delts,,Upper Chest,,1,24 hours,Moderate,Stable,Good,Excellent,No,Descending,Free Weight,No,Low,2-3 minutes,Eliminates momentum
+Dumbbell Bent-Over Reverse Fly,Shoulders,Isolation,Bilateral,Rear Delts,Traps,Rhomboids,,1,24 hours,Moderate,Low,Good,Moderate,No,Descending,Free Weight,Minor,Moderate,2-3 minutes,
+Chest-Supported Dumbbell Reverse Fly,Shoulders,Isolation,Bilateral,Rear Delts,"Traps, Rhomboids",,,1,24 hours,Moderate,Stable,Excellent,Excellent,No,Descending,Free Weight,No,Low,2-3 minutes,Highly stable for maximal mechanical tension
+Pike Push-Up,Shoulders,Compound,Bilateral,Front Delts,Triceps,Upper Chest,,3,48 hours,Low,Moderate,Good,Moderate,No,Ascending,Bodyweight,No,Moderate,2-4 minutes,
+Pike Hold,Shoulders,Isometric,Bilateral,Front Delts,Triceps,Core,,2,24-48 hours,Low,Moderate,Moderate,Moderate,No,Isometric,Bodyweight,No,Moderate,2-3 minutes,Good baseline progression for learning freestanding handstands
+Dumbbell Floor Press,Chest,Compound,Bilateral,"Middle Chest, Triceps",Front Delts,,,2,48 hours,High,Stable,Good,Good,No,Ascending,Free Weight,No,Low,3-5 minutes,"Limits ROM, emphasizes triceps and lock-out"
+Dumbbell Floor Press (Neutral Grip),Chest,Compound,Bilateral,"Triceps, Middle Chest",Front Delts,,,2,48 hours,High,Stable,Good,Good,No,Ascending,Free Weight,No,Low,3-5 minutes,
+Mid Cable Fly,Chest,Isolation,Bilateral,Middle Chest,,Front Delts,,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,Provides constant tension through the stretch
+High-to-Low Cable Fly,Chest,Isolation,Bilateral,Lower Chest,,Front Delts,,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,
+Low-to-High Cable Fly,Chest,Isolation,Bilateral,Upper Chest,,Front Delts,,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,
+Plate-Loaded Chest Press,Chest,Compound,Bilateral,Middle Chest,"Front Delts, Triceps",,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,Maximal tension yield with low injury risk
+Plate-Loaded Incline Chest Press,Chest,Compound,Bilateral,Upper Chest,"Front Delts, Triceps",,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,Maximal tension yield with low injury risk
+Machine Chest Press,Chest,Compound,Bilateral,Middle Chest,"Front Delts, Triceps",,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+Push-Up,Chest,Compound,Bilateral,Middle Chest,"Front Delts, Triceps",Core,,2,24-48 hours,Low,Moderate,Good,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Close-Grip Push-Up,Chest,Compound,Bilateral,"Triceps, Middle Chest",Front Delts,Core,,2,24-48 hours,Low,Moderate,Good,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Incline Push-Up,Chest,Compound,Bilateral,Lower Chest,"Front Delts, Triceps",Core,,1,24 hours,Low,Moderate,Low,Moderate,No,Ascending,Bodyweight,No,Low,2-3 minutes,Regressed push-up variation
+Close-Grip Incline Push-Up,Chest,Compound,Bilateral,"Triceps, Lower Chest",Front Delts,Core,,1,24 hours,Low,Moderate,Low,Moderate,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Knee Push-Up,Chest,Compound,Bilateral,Middle Chest,"Front Delts, Triceps",,,1,24 hours,Low,Stable,Low,Moderate,No,Ascending,Bodyweight,No,Low,2-3 minutes,Regressed push-up variation
+Close-Grip Knee Push-Up,Chest,Compound,Bilateral,"Triceps, Middle Chest",Front Delts,,,1,24 hours,Low,Stable,Low,Moderate,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Weighted Chest Dips,Chest,Compound,Bilateral,Lower Chest,"Front Delts, Triceps",Core,,3,48-72 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,High mechanical tension with external load

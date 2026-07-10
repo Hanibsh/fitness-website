@@ -1,0 +1,16 @@
+Exercise Name,Home Category,Exercise Type,Laterality,Primary Muscles (1.00),Secondary Muscles (0.50),Tertiary Muscles (0.25),Quaternary Muscles (0.125),Fatigue Score,Estimated Recovery Window,Progressive Overload Potential,Stability,Hypertrophy Potential,Stimulus-to-Fatigue Ratio (SFR),Stretch-Mediated Hypertrophy,Resistance Profile,Stability Requirement,Axial Loading,Skill Requirement,Recommended Rest Time,Notes
+Barbell Good Morning,Legs,Compound,Bilateral,"Hamstrings, Glutes",Erector Spinae,Core,,4,72 hours,Very High,Low,Good,Moderate,Yes,Ascending,Free Weight,Yes,High,3-5 minutes,High axial loading
+Barbell Staggered Stance Good Morning,Legs,Compound,Bilateral,"Hamstrings, Glutes","Erector Spinae, Core",,,3,48-72 hours,High,Moderate,Good,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,
+Kettlebell Swing,Legs,Compound,Bilateral,"Glutes, Hamstrings",Erector Spinae,Core,,3,48 hours,Moderate,Low,Good,Moderate,No,Ballistic,Free Weight,Minor,High,2-3 minutes,Explosive movement
+Smith Machine Staggered Stance Good Morning,Legs,Compound,Bilateral,"Hamstrings, Glutes","Erector Spinae, Core",,,2,48 hours,High,Stable,Good,Excellent,Yes,Ascending,Machine,No,Low,3-4 minutes,
+Seated Single Leg Curl Machine,Legs,Isolation,Unilateral,Hamstrings,,,,1,24-48 hours,High,Very Stable,Excellent,Excellent,Yes,Balanced,Machine,No,Low,2-3 minutes,
+Roman Chair Single Leg Back Extension,Legs,Isolation,Unilateral,"Hamstrings, Glutes",Erector Spinae,,,2,24-48 hours,Moderate,Stable,Excellent,Excellent,Yes,Balanced,Bodyweight,No,Moderate,2-3 minutes,
+Hamstring Sliders,Legs,Isolation,Bilateral,Hamstrings,Glutes,Core,,2,24-48 hours,Low,Moderate,Good,Good,Yes,Balanced,Bodyweight,No,Moderate,2-3 minutes,
+TRX Hamstring Sliders,Legs,Isolation,Bilateral,Hamstrings,Glutes,Core,,2,24-48 hours,Low,Moderate,Good,Good,Yes,Balanced,Bodyweight,No,Moderate,2-3 minutes,
+Barbell Hip Thrust, With Bands,Legs,Compound,Bilateral,Glutes,Hamstrings,Core,,3,48 hours,Very High,Stable,Excellent,Excellent,Partial,Ascending,Free Weight,No,Moderate,3-5 minutes,Bands increase peak tension
+Dumbbell Hip Thrust, With Bands,Legs,Compound,Bilateral,Glutes,Hamstrings,Core,,2,48 hours,High,Stable,Excellent,Excellent,Partial,Ascending,Free Weight,No,Moderate,3-5 minutes,
+Dumbbell Glute Bridge,Legs,Compound,Bilateral,Glutes,Hamstrings,Core,,2,48 hours,Moderate,Stable,Good,Good,No,Ascending,Free Weight,No,Low,2-3 minutes,
+Dumbbell Glute Bridge, With Bands,Legs,Compound,Bilateral,Glutes,Hamstrings,Core,,2,48 hours,High,Stable,Good,Good,No,Ascending,Free Weight,No,Low,3-5 minutes,
+Hip Thrust Machine,Legs,Compound,Bilateral,Glutes,Hamstrings,,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,Most stable hip thrust option
+Hip Thrust With Bands,Legs,Compound,Bilateral,Glutes,,Core,,2,24-48 hours,Moderate,Moderate,Moderate,Good,Partial,Ascending,Resistance Band,No,Low,2-3 minutes,
+Standing Cable Hip Extension,Legs,Isolation,Unilateral,Glutes,Hamstrings,,,1,24 hours,Moderate,Stable,Excellent,Excellent,No,Balanced,Cable,No,Low,2-3 minutes,
