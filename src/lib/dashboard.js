@@ -126,10 +126,26 @@ function isCardio(ex) {
   return ex.kind === 'cardio'
 }
 
+// Unilateral sets store each limb separately ({left, right}) instead of
+// top-level reps/weight/rir — every stat below needs to see through that
+// shape or it silently drops unilateral exercises entirely (Bulgarian split
+// squats, single-arm rows, …). Each limb moved its own real weight/reps, so
+// they're aggregated as independent entries; bilateral sets pass through
+// unchanged. Mirrors the flattening workoutStats.js already does for graphs.
+function sides(s) {
+  return s.left ? [s.left, s.right].filter(Boolean) : [s]
+}
+
+// Whether this logged row is a performed set at all — a unilateral row is one
+// set of the movement (not two), so this checks either limb, not both summed.
+function hasReps(s) {
+  return sides(s).some((side) => Number(side.reps) > 0)
+}
+
 // Working strength sets only (reps logged). Cardio entries are counted where
 // relevant via duration instead.
 function workingSets(ex) {
-  return ex.sets.filter((s) => Number(s.reps) > 0)
+  return ex.sets.filter(hasReps)
 }
 
 // ---- Per-session numbers ---------------------------------------------------
@@ -139,9 +155,11 @@ export function sessionVolume(session, unit = 'kg') {
   for (const ex of session.exercises) {
     if (isCardio(ex)) continue
     for (const s of ex.sets) {
-      const reps = Number(s.reps) || 0
-      const w = Number(s.weight) || 0
-      if (reps > 0 && w > 0) vol += reps * convertWeight(w, from, unit)
+      for (const side of sides(s)) {
+        const reps = Number(side.reps) || 0
+        const w = Number(side.weight) || 0
+        if (reps > 0 && w > 0) vol += reps * convertWeight(w, from, unit)
+      }
     }
   }
   return Math.round(vol)
@@ -160,7 +178,9 @@ export function sessionRepCount(session) {
   let n = 0
   for (const ex of session.exercises) {
     if (isCardio(ex)) continue
-    for (const s of ex.sets) n += Number(s.reps) > 0 ? Number(s.reps) : 0
+    for (const s of ex.sets) {
+      for (const side of sides(s)) n += Number(side.reps) > 0 ? Number(side.reps) : 0
+    }
   }
   return n
 }
@@ -170,7 +190,9 @@ function sessionRirValues(session) {
   for (const ex of session.exercises) {
     if (isCardio(ex)) continue
     for (const s of ex.sets) {
-      if (Number(s.reps) > 0 && s.rir !== '' && s.rir != null && Number.isFinite(Number(s.rir))) out.push(Number(s.rir))
+      for (const side of sides(s)) {
+        if (Number(side.reps) > 0 && side.rir !== '' && side.rir != null && Number.isFinite(Number(side.rir))) out.push(Number(side.rir))
+      }
     }
   }
   return out
@@ -349,14 +371,16 @@ export function exerciseBests(sessions, unit = 'kg') {
       const key = ex.name.trim().toLowerCase()
       const cur = map.get(key) || { name: ex.name.trim(), weight: 0, e1rm: 0, reps: 0, volume: 0 }
       for (const set of ex.sets) {
-        const reps = Number(set.reps) || 0
-        const w = reps > 0 ? convertWeight(Number(set.weight) || 0, from, unit) : 0
-        if (reps > 0) {
-          if (w > cur.weight) cur.weight = w
-          if (reps > cur.reps) cur.reps = reps
-          const e = estimatedOneRepMax(w, reps)
-          if (e && e > cur.e1rm) cur.e1rm = e
-          cur.volume += w * reps
+        for (const side of sides(set)) {
+          const reps = Number(side.reps) || 0
+          const w = reps > 0 ? convertWeight(Number(side.weight) || 0, from, unit) : 0
+          if (reps > 0) {
+            if (w > cur.weight) cur.weight = w
+            if (reps > cur.reps) cur.reps = reps
+            const e = estimatedOneRepMax(w, reps)
+            if (e && e > cur.e1rm) cur.e1rm = e
+            cur.volume += w * reps
+          }
         }
       }
       map.set(key, cur)
@@ -403,11 +427,13 @@ export function recentPRs(sessions, unit = 'kg', limit = 6) {
       const key = ex.name.trim().toLowerCase()
       let top = 0
       for (const set of ex.sets) {
-        const reps = Number(set.reps) || 0
-        if (reps < 1) continue
-        const w = convertWeight(Number(set.weight) || 0, from, unit)
-        const e = estimatedOneRepMax(w, reps)
-        if (e && e > top) top = e
+        for (const side of sides(set)) {
+          const reps = Number(side.reps) || 0
+          if (reps < 1) continue
+          const w = convertWeight(Number(side.weight) || 0, from, unit)
+          const e = estimatedOneRepMax(w, reps)
+          if (e && e > top) top = e
+        }
       }
       if (top <= 0) continue
       const prev = best.get(key) || 0
