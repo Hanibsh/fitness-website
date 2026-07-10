@@ -58,6 +58,24 @@ don't want to touch the raw CSV for, use `data/exercise-overrides.mjs` (keyed by
 
 ## Column reference
 
+Three columns — **Fatigue Score**, **Estimated Recovery Window**, and
+**Recommended Rest Time** — are the direct inputs to the hypertrophy engine's
+fatigue/recovery model (`src/lib/engine.js` + `src/lib/engineConfig.js`), so
+their exact meaning matters more than the others. They were fact-checked
+against the exercise-science literature on 2026-07-10; the full evidence base,
+archetype bands, and cross-column consistency rules live in
+`data/recovery-rubric.md` — read that before editing these three columns on a
+new exercise, or if a value looks off on an existing one.
+
+**The load-bearing definition:** Estimated Recovery Window means *time to
+recover after a typical HARD set — one taken to roughly 0–2 RIR, not
+necessarily to absolute failure.* It is not calibrated per-set-to-failure;
+the engine's RIR-fatigue curve (`engineConfig.js` `RIR_FATIGUE`) already
+assumes 0–2 RIR multiplies to ~1.0 against this window, with only a small
+premium at true failure and a taper below 1.0 as RIR climbs. Getting this
+backwards (treating the window as a submaximal-effort baseline) double-counts
+fatigue at failure — see `recovery-rubric.md` §0 for why.
+
 | Column | Meaning / accepted values |
 |---|---|
 | Exercise Name | Free text. Becomes the `id` (slugified). |
@@ -68,8 +86,8 @@ don't want to touch the raw CSV for, use `data/exercise-overrides.mjs` (keyed by
 | Secondary Muscles (0.50) | …weight ×0.5 |
 | Tertiary Muscles (0.25) | …weight ×0.25 |
 | **Quaternary Muscles (0.125)** | …weight ×0.125 *(optional, leave blank if unused)* |
-| Fatigue Score | Integer `1`–`5` |
-| Estimated Recovery Window | e.g. `48-72 hours` |
+| Fatigue Score | Integer `1`–`5`. Systemic + local disruption from ONE set — scales with muscle mass involved, axial/spinal loading, external stability demand, and eccentric stress at long muscle length. Should move together with Recovery Window and Rest Time (a fatigue-5 row with a 24h window or a 2-min rest is a contradiction — run `node scripts/audit-recovery.mjs` after edits to catch this). Archetype bands in `recovery-rubric.md` §3. |
+| Estimated Recovery Window | e.g. `48-72 hours`. Time to recover after a HARD set (~0-2 RIR) — see the load-bearing definition above. Archetype bands (isolation 24-48h → maximal axial hinges 72-120h) in `recovery-rubric.md` §2. |
 | Progressive Overload Potential | `Low`, `Moderate`, `High`, `Very High` |
 | Stability | `Highly unstable`, `Unstable`, `Moderate`, `Stable`, `Very stable` |
 | Hypertrophy Potential | `Low`, `Moderate`, `High`, `Excellent` |
@@ -77,9 +95,9 @@ don't want to touch the raw CSV for, use `data/exercise-overrides.mjs` (keyed by
 | Stretch-Mediated Hypertrophy | `No`, `Partial`, `Yes` |
 | Resistance Profile | `Balanced`, `Shortened bias`, `Lengthened bias` |
 | Stability Requirement | Actually **equipment**: `Free weight`, `Machine`, `Cable`, `Bodyweight` |
-| Axial Loading | `No`, `Yes` |
+| Axial Loading | `No`, `Yes`. Real spinal-compression risk (squat/deadlift-style) — not just "holds a loaded barbell" (a shrug loads a barbell but isn't axial in this sense; see the Barbell Shrug case in `recovery-rubric.md`). |
 | Skill Requirement | `Low`, `Moderate`, `High`, `Very High` |
-| Recommended Rest Time | e.g. `3.5-5 minutes` (stored as seconds) |
+| Recommended Rest Time | e.g. `3.5-5 minutes` (stored as seconds). Should rise monotonically with Fatigue Score / axial loading — isolation 2-3 min, free-weight compound 3-5 min, heavy axial 4-7 min. Never go below ~2 min regardless of fatigue (app policy, more conservative than the literature's ~90s plateau — see `recovery-rubric.md` §4). |
 | Notes | Free text (optional) |
 
 ### Need a weight other than 1 / 0.5 / 0.25 / 0.125?

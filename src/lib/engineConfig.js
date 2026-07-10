@@ -42,10 +42,17 @@ export function withinSessionMult(k) {
 // score. 3 = the reference movement.
 export const FATIGUE_SCORE_COEF = { 1: 0.7, 2: 0.85, 3: 1.0, 4: 1.25, 5: 1.5 }
 
-// RIR → fatigue multiplier. Accelerates near failure, floors around half a
-// set's worth when you stop far from it.
+// RIR → fatigue multiplier. The exercise DB's Estimated Recovery Window is
+// itself calibrated to a typical HARD set (~0-2 RIR, same band RIR_EFFECTIVENESS
+// already treats as "counts fully") — so 0-2 RIR must multiply to ~1.0, or the
+// model double-counts failure on top of a window that already assumes it. Real
+// failure still costs a bit more than 1-2 RIR (acute velocity-loss studies show
+// ~2x the fatigue of 1-RIR at 4 min post-set) even though full recovery time
+// barely differs, hence the small premium at 0 rather than a flat 1.0. Past
+// 2 RIR the curve tapers below 1.0 — genuinely less fatiguing, faster recovery.
+// See data/recovery-rubric.md §0 for the evidence.
 export const RIR_FATIGUE = {
-  0: 1.25, 1: 1.1, 2: 1.0, 3: 0.9, 4: 0.8, 5: 0.7,
+  0: 1.1, 1: 1.0, 2: 1.0, 3: 0.9, 4: 0.8, 5: 0.7,
   6: 0.62, 7: 0.56, 8: 0.52, 9: 0.5, 10: 0.5,
 }
 export const RIR_FATIGUE_DEFAULT = 1.0
