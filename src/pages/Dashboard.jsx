@@ -4,12 +4,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair, Trash2,
-  BatteryCharging, Lightbulb,
+  BatteryCharging, Lightbulb, CalendarRange,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession } from '../lib/workoutRemote'
-import { todaysDay, scheduleMode, nextTrainingDate } from '../lib/program'
+import { todaysDay, scheduleMode, nextTrainingDate, plannedDayForDate } from '../lib/program'
 import { activeBlock, sortedBlocks, blockWeek } from '../lib/blocks'
 import BlockModal from '../components/BlockModal'
 import { saveProfile } from '../lib/profile'
@@ -463,23 +463,31 @@ export default function Dashboard() {
           <SectionHeading
             icon={CalendarDays}
             right={
-              <div className="flex border border-border shrink-0">
-                <button
-                  onClick={() => setMonthPage('calendar')}
-                  className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
-                    monthPage === 'calendar' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
-                  }`}
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  to="/routine"
+                  className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
                 >
-                  Calendar
-                </button>
-                <button
-                  onClick={() => setMonthPage('summary')}
-                  className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
-                    monthPage === 'summary' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Summary
-                </button>
+                  <CalendarRange className="w-3.5 h-3.5" /> Edit routine
+                </Link>
+                <div className="flex border border-border">
+                  <button
+                    onClick={() => setMonthPage('calendar')}
+                    className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
+                      monthPage === 'calendar' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    Calendar
+                  </button>
+                  <button
+                    onClick={() => setMonthPage('summary')}
+                    className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
+                      monthPage === 'summary' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    Summary
+                  </button>
+                </div>
               </div>
             }
           >
@@ -490,6 +498,7 @@ export default function Dashboard() {
             <>
               <WorkoutCalendar
                 sessions={sessions}
+                program={program}
                 selectedDate={selectedDay?.date}
                 onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
               />
@@ -499,7 +508,33 @@ export default function Dashboard() {
                     {selectedDay.date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
                   </p>
                   {selectedDay.sessions.length === 0 ? (
-                    <p className="text-[12px] text-text-muted">No workout logged this day.</p>
+                    (() => {
+                      // Nothing logged: for today/future dates show what the
+                      // program has planned there instead of a dead end.
+                      const planned = plannedDayForDate(program, selectedDay.date.getTime())
+                      if (planned && planned.kind === 'train') {
+                        return (
+                          <div>
+                            <p className="text-[12px] text-text-muted">
+                              Planned: <span className="font-medium text-text-primary">{planned.name}</span>
+                            </p>
+                            {planned.exercises.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {planned.exercises.map((pe) => (
+                                  <span key={pe.id} className="text-[11px] text-text-muted bg-white border border-border px-2 py-0.5">
+                                    {pe.name} · {pe.sets}×
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
+                      if (planned && planned.kind === 'rest') {
+                        return <p className="text-[12px] text-text-muted">Rest day in your schedule.</p>
+                      }
+                      return <p className="text-[12px] text-text-muted">No workout logged this day.</p>
+                    })()
                   ) : (
                     <div className="space-y-2.5">
                       {selectedDay.sessions.map((s) => (

@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { plannedDayForDate } from '../lib/program'
 
 // Month grid that highlights workout days by split colour, marks today, lets
-// you page between months, and calls onSelectDay when a day is tapped.
+// you page between months, and calls onSelectDay when a day is tapped. When
+// the active program is passed, upcoming planned training days get an EMPTY
+// (outlined) circle — done days keep their filled dots.
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 // Colour a day by the (first) workout's split, falling back to a neutral dot.
@@ -17,13 +20,25 @@ function splitColor(name) {
   return 'bg-text-primary'
 }
 
+// Border twin of splitColor, for the planned (not-yet-done) outline circles.
+function splitBorderColor(name) {
+  const n = (name || '').toLowerCase()
+  if (n.includes('push')) return 'border-blue-500'
+  if (n.includes('pull')) return 'border-green-500'
+  if (n.includes('leg')) return 'border-orange-500'
+  if (n.includes('upper')) return 'border-purple-500'
+  if (n.includes('lower')) return 'border-teal-500'
+  if (n.includes('cardio')) return 'border-red-500'
+  return 'border-text-muted'
+}
+
 function sameDay(a, b) {
   const da = new Date(a)
   const db = new Date(b)
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
 }
 
-export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate }) {
+export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, program = null }) {
   const today = new Date()
   const [view, setView] = useState({ year: today.getFullYear(), month: today.getMonth() })
 
@@ -89,11 +104,15 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate })
           const isToday = sameDay(date, today)
           const isSelected = selectedDate && sameDay(date, selectedDate)
           const hasWorkout = daySessions.length > 0
+          // Program projection: an upcoming planned training day gets an empty
+          // circle — unless the day already has a logged workout (filled wins).
+          const planned = !hasWorkout && program ? plannedDayForDate(program, date.getTime()) : null
+          const plannedTrain = planned && planned.kind === 'train' ? planned : null
           return (
             <button
               key={day}
               onClick={() => onSelectDay(date, daySessions)}
-              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}`}
+              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}`}
               className={`aspect-square flex flex-col items-center justify-center gap-0.5 text-[12px] cursor-pointer border transition-colors ${
                 isSelected
                   ? 'border-text-primary bg-cream-dark'
@@ -103,10 +122,12 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate })
               } ${hasWorkout ? 'text-text-primary font-medium' : 'text-text-muted'}`}
             >
               <span>{day}</span>
-              <span className="flex gap-0.5 h-1">
-                {daySessions.slice(0, 3).map((s, j) => (
-                  <span key={j} className={`w-1 h-1 rounded-full ${splitColor(s.name)}`} />
-                ))}
+              <span className="flex items-center gap-0.5 h-1.5">
+                {hasWorkout
+                  ? daySessions.slice(0, 3).map((s, j) => (
+                      <span key={j} className={`w-1 h-1 rounded-full ${splitColor(s.name)}`} />
+                    ))
+                  : plannedTrain && <span className={`w-1.5 h-1.5 rounded-full border ${splitBorderColor(plannedTrain.name)}`} />}
               </span>
             </button>
           )
