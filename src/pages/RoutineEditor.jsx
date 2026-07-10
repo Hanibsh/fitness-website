@@ -97,7 +97,7 @@ export default function RoutineEditor() {
       ...p,
       days: p.days.map((d) =>
         d.id === dayId
-          ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, repRange: { ...(e.repRange || { low: 8, high: 12 }), [field]: n } } : e)) }
+          ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, repRange: { ...(e.repRange || { low: 6, high: 10 }), [field]: n } } : e)) }
           : d
       ),
     }))

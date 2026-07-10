@@ -537,7 +537,7 @@ export default function WorkoutTracker() {
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
-        e.id === exId ? { ...e, repRange: { ...(e.repRange || { low: 8, high: 12 }), [field]: n } } : e
+        e.id === exId ? { ...e, repRange: { ...(e.repRange || { low: 6, high: 10 }), [field]: n } } : e
       ),
     }))
   }
@@ -1170,7 +1170,7 @@ export default function WorkoutTracker() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setRepTarget(ex.id, { low: 8, high: 12 })}
+                    onClick={() => setRepTarget(ex.id, { low: 6, high: 10 })}
                     className="inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-2 py-1 cursor-pointer transition-colors"
                   >
                     <Plus className="w-3 h-3" /> Rep target
