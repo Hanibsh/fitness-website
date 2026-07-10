@@ -162,8 +162,10 @@ export function saveGuestShare(value) {
 
 // ---- Training goals --------------------------------------------------------
 // Stored on the device (not synced to the account yet). `monthlyWorkouts` is a
-// target count; `lifts` is a list of { id, exercise, target } weight goals in
-// the user's chosen unit.
+// target count; `lifts` is a list of { id, exercise, metric, target } goals —
+// `metric` ('weight' | 'e1rm' | 'reps', defaulting to 'weight' for goals saved
+// before metric existed) picks which stat of the exercise is being chased;
+// `target` is in the user's chosen unit for weight/e1rm, or a rep count.
 const GOALS_KEY = 'leon_goals'
 
 export function getGoals() {

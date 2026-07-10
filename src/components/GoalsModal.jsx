@@ -12,7 +12,7 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
   )
 
   function addLift() {
-    setLifts((ls) => [...ls, { id: newGoalId(), exercise: exerciseNames[0] || '', target: '' }])
+    setLifts((ls) => [...ls, { id: newGoalId(), exercise: exerciseNames[0] || '', metric: 'weight', target: '' }])
   }
   function updateLift(id, patch) {
     setLifts((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)))
@@ -25,12 +25,23 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
     const monthlyWorkouts = Math.max(1, Math.min(60, Math.round(Number(monthly) || 12)))
     const cleaned = lifts
       .filter((l) => l.exercise && Number(l.target) > 0)
-      .map((l) => ({ id: l.id, exercise: l.exercise, target: Math.round(Number(l.target) * 10) / 10 }))
+      .map((l) => ({ id: l.id, exercise: l.exercise, metric: l.metric || 'weight', target: Math.round(Number(l.target) * 10) / 10 }))
     onSave({ monthlyWorkouts, lifts: cleaned })
   }
 
-  const numberInput =
-    'w-full min-w-0 bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  // Base input styling with NO width utility — width is set per call site.
+  // (Previously a shared `w-full` base was overridden with `w-20` at the call
+  // site, but Tailwind resolves same-property utility conflicts by stylesheet
+  // order, not class-string order, so `w-full` silently won and the target
+  // input ballooned to fill the row while the exercise picker got squeezed to
+  // almost nothing.)
+  const inputBase =
+    'min-w-0 bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  const METRICS = [
+    { id: 'weight', label: 'Weight', unitLabel: (u) => u },
+    { id: 'e1rm', label: 'Est. 1RM', unitLabel: (u) => u },
+    { id: 'reps', label: 'Reps', unitLabel: () => 'reps' },
+  ]
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-md">
@@ -45,7 +56,7 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
             max="60"
             value={monthly}
             onChange={(e) => setMonthly(e.target.value)}
-            className={`${numberInput} max-w-[120px]`}
+            className={`${inputBase} w-full max-w-[120px]`}
             aria-label="Monthly workout goal"
           />
         </div>
@@ -67,38 +78,55 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
             {exerciseNames.length ? 'No lift goals yet — add one to track it here.' : 'Log some workouts first to set lift goals.'}
           </p>
         ) : (
-          <div className="space-y-2 mb-6">
-            {lifts.map((l) => (
-              <div key={l.id} className="flex items-center gap-2">
-                <select
-                  value={l.exercise}
-                  onChange={(e) => updateLift(l.id, { exercise: e.target.value })}
-                  aria-label="Goal exercise"
-                  className="flex-1 min-w-0 bg-cream border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary cursor-pointer"
-                >
-                  {exerciseNames.map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="0"
-                  value={l.target}
-                  onChange={(e) => updateLift(l.id, { target: e.target.value })}
-                  placeholder={unit}
-                  aria-label="Target weight"
-                  className={`${numberInput} w-20 shrink-0`}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeLift(l.id)}
-                  aria-label="Remove goal"
-                  className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+          <div className="space-y-3 mb-6">
+            {lifts.map((l) => {
+              const metric = METRICS.find((m) => m.id === l.metric) || METRICS[0]
+              return (
+                <div key={l.id} className="bg-cream border border-border p-2.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={l.exercise}
+                      onChange={(e) => updateLift(l.id, { exercise: e.target.value })}
+                      aria-label="Goal exercise"
+                      className="flex-1 min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary cursor-pointer"
+                    >
+                      {exerciseNames.map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeLift(l.id)}
+                      aria-label="Remove goal"
+                      className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={metric.id}
+                      onChange={(e) => updateLift(l.id, { metric: e.target.value })}
+                      aria-label="Goal stat"
+                      className="bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary cursor-pointer shrink-0"
+                    >
+                      {METRICS.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      value={l.target}
+                      onChange={(e) => updateLift(l.id, { target: e.target.value })}
+                      placeholder={metric.unitLabel(unit)}
+                      aria-label="Target value"
+                      className={`${inputBase} w-24 shrink-0 ml-auto`}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
 
