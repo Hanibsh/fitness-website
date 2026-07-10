@@ -18,7 +18,7 @@
 export const MUSCLE_GROUPS = {
   Shoulders: ['Front Delts', 'Side Delts', 'Rear Delts', 'Rotator Cuff'],
   Chest: ['Upper Chest', 'Middle Chest', 'Lower Chest'],
-  Back: ['Lats', 'Mid Back', 'Rhomboids', 'Upper Traps', 'Mid Traps', 'Lower Traps', 'Spinal Erectors'],
+  Back: ['Lats', 'Mid Back', 'Rhomboids', 'Upper Traps', 'Mid Traps', 'Lower Traps', 'Spinal Erectors', 'Teres Major'],
   Arms: ['Biceps', 'Brachialis', 'Triceps'],
   Forearms: ['Brachioradialis', 'Wrist Flexors', 'Wrist Extensors', 'Deep Finger Flexors'],
   Core: ['Rectus Abdominis', 'Obliques', 'Transverse Abdominis', 'Hip Flexors'],

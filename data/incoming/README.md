@@ -42,3 +42,44 @@ near-duplicate grouping noise). Two new enum values were approved and added to
 Calibration is rule-based (archetype → fatigue → window/rest), so it's a
 consistent starting point, not gospel — same caveat as every other engine
 coefficient. Spot-check anything that looks off and edit the mother CSV directly.
+
+## Batch 2 — 2026-07-11 (66 raw → 51 merged, DB 256 → 307)
+
+Source: `new_exercises_back2.csv` (back — rows, pulldowns, pull-ups, pullovers).
+Single already-well-formed file (no CSV corruption to repair, unlike Batch 1).
+
+One script this time (`node scripts/import-newstuff.mjs`), since there was
+nothing to combine and the judgment-column recalibration was done as an
+explicit per-row lookup table (anchored to this exact exercise family's
+existing mother-file precedents — every row/pulldown/pull-up sits at Fatigue
+3 / 48-72h / 3.5-5min, e.g. `Pull-Up`, `Lat Pulldown`, `Barbell Bent Over Row`,
+`Seated Cable Row`) rather than the generic leg/chest-tuned heuristic from
+Batch 1, which would have under-rated this family. Writes
+`_newstuff_staging.csv` + `_newstuff_cleaning_report.md`.
+
+15 rows dropped: 8 were near-duplicates of an exercise the mother file already
+had under a different name (e.g. new "Overhand Grip Lat Pulldown" vs mother's
+"Lat Pulldown"; new "Overhand/Underhand Grip Pull Up" vs mother's
+"Pull-Up"/"Reverse Grip Pull-Up"); 6 were single-arm rows merged into an
+existing bilateral sibling (laterality set to `Can Be Both`); 1 was an
+intra-file duplicate (two rows for the same plate-loaded chest-supported row,
+one with a redundant "Wide Grip" name). Muscle terms `Traps`/`Core`/`Lower
+Back` mapped to `Upper Traps`/`Rectus Abdominis`/`Spinal Erectors` (same
+aliasing precedent as Batch 1). `Teres Major` was a genuinely new muscle
+(used by Wide Grip Lat Pulldown + 3 pull-up variants) — added to the Back
+group in the taxonomy (approved by Hani), threading through the 5 usual sync
+points: `muscle-taxonomy.mjs`, `engineConfig.js` `ATOM_TO_GROUP`,
+`dashboard.js`'s muscle→group map, `exerciseLibrary.js` search-boost map,
+`data/README.md`'s muscle list.
+
+Then: append `_newstuff_staging.csv` (minus header) to the mother file,
+`npm run build:exercises` (0 lint blockers), and all three audits — 0 flags
+on the recovery audit; the SFR and HP/Stretch audits together flagged 2 minor
+items, both reviewed: `Behind The Neck Lat Pulldown`'s SFR ("average") sits
+below its grip-variant siblings' "excellent", but that's a deliberate,
+Face-Pull-style safety/risk discount for a controversial movement, not an
+error — kept as-is. The banded row variants (`Stretch-Mediated Hypertrophy`
+= "none") vs. the banded pull-up variants ("yes") is a genuine inherited
+source-data judgment call neither script touched — flagged to Hani, not
+auto-changed (Stretch-Mediated isn't read by any app code yet, so it's data
+hygiene, not urgent).

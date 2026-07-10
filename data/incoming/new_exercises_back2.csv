@@ -1,0 +1,67 @@
+Exercise Name,Home Category,Exercise Type,Laterality,Primary Muscles (1.00),Secondary Muscles (0.50),Tertiary Muscles (0.25),Quaternary Muscles (0.125),Fatigue Score,Estimated Recovery Window,Progressive Overload Potential,Stability,Hypertrophy Potential,Stimulus-to-Fatigue Ratio (SFR),Stretch-Mediated Hypertrophy,Resistance Profile,Stability Requirement,Axial Loading,Skill Requirement,Recommended Rest Time,Notes
+"TRX Row, Neutral Grip",Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps","Rear Delts, Core",,2,24-48 hours,Low,Moderate,Moderate,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+"TRX Row, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,2,24-48 hours,Low,Moderate,Moderate,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+"TRX Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats","Biceps, Core",,2,24-48 hours,Low,Moderate,Moderate,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Bent Over Row With Bands,Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",Lower Back,,1,24 hours,Low,Moderate,Low,Moderate,No,Ascending,Resistance Band,Minor,Low,2-3 minutes,
+Seated Row With Bands,Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",,,1,24 hours,Low,Moderate,Low,Moderate,No,Ascending,Resistance Band,No,Low,2-3 minutes,
+"Bent Over Barbell Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Lats","Traps, Rear Delts","Biceps, Lower Back",,4,48-72 hours,Very High,Low,Good,Moderate,No,Ascending,Free Weight,Yes,High,3-5 minutes,High axial loading
+"Bent Over Barbell Row, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Lower Back",,4,48-72 hours,Very High,Low,Good,Moderate,No,Ascending,Free Weight,Yes,High,3-5 minutes,High axial loading
+T-Bar Row,Back,Compound,Bilateral,"Lats, Rhomboids","Traps, Rear Delts","Biceps, Lower Back",,4,48-72 hours,Very High,Low,Excellent,Moderate,Partial,Ascending,Free Weight,Yes,Moderate,3-5 minutes,High mechanical tension
+"Bent Over Dumbbell Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Lats","Traps, Rear Delts","Biceps, Lower Back",,3,48 hours,High,Low,Good,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+"Bent Over Dumbbell Row, Neutral Grip",Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",Lower Back,,3,48 hours,High,Low,Good,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+Kettlebell Bent Over Row,Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",Lower Back,,3,48 hours,Moderate,Low,Good,Good,No,Ascending,Free Weight,Yes,Moderate,3-5 minutes,
+Single Arm Dumbbell Row,Back,Compound,Unilateral,"Lats, Rhomboids","Biceps, Traps",Rear Delts,,3,48 hours,Very High,Moderate,Excellent,Excellent,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,Great for deep stretch
+Single Arm Landmine Row,Back,Compound,Unilateral,"Lats, Rhomboids","Biceps, Traps",Rear Delts,,2,24-48 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,2-4 minutes,
+"Chest Supported Barbell Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats",Biceps,,2,48 hours,High,Very Stable,Excellent,Excellent,No,Ascending,Free Weight,No,Low,3-4 minutes,Zero axial loading
+"Chest Supported Barbell Row, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Very Stable,Excellent,Excellent,No,Ascending,Free Weight,No,Low,3-4 minutes,Zero axial loading
+Chest Supported Dumbbell Row,Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",Rear Delts,,2,48 hours,High,Very Stable,Excellent,Excellent,Yes,Ascending,Free Weight,No,Low,3-4 minutes,Zero axial loading
+"Seated Cable Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats",Biceps,,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+"Seated Cable Row, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+"Seated Cable Row, Neutral Grip",Back,Compound,Bilateral,"Lats, Rhomboids","Biceps, Traps",Rear Delts,,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+"Seated Cable Row, Wide Grip",Back,Compound,Bilateral,"Rear Delts, Rhomboids",Traps,Biceps,,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+"Seated Cable Row, Single Arm",Back,Compound,Unilateral,Lats,"Rhomboids, Biceps","Traps, Rear Delts",,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+"Selector Chest Supported Row Machine, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats",Biceps,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+"Selector Chest Supported Row Machine, Neutral Grip, Narrow",Back,Compound,Bilateral,Lats,"Rhomboids, Biceps",Traps,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+"Selector Chest Supported Row Machine, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+"Selector Chest Supported Row Machine, Wide Grip",Back,Compound,Bilateral,"Rear Delts, Rhomboids",Traps,Biceps,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+"Selector Chest Supported Row Machine, Single Arm",Back,Compound,Unilateral,"Lats, Rhomboids","Biceps, Traps",Rear Delts,,2,48 hours,High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-4 minutes,
+"Plate Loaded Chest Supported Row Machine, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats",Biceps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Chest Supported Row Machine, Overhand, Wide",Back,Compound,Bilateral,"Rear Delts, Rhomboids",Traps,Biceps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Chest Supported Row Machine, Wide Grip",Back,Compound,Bilateral,"Rear Delts, Rhomboids",Traps,Biceps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Chest Supported Row Machine, Neutral Grip, Narrow",Back,Compound,Bilateral,Lats,"Rhomboids, Biceps",Traps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Chest Supported Row Machine, Overhand, Wide, Single Arm",Back,Compound,Unilateral,"Rear Delts, Rhomboids",Traps,Biceps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Single Arm Chest Supported Row Machine, Overhand Grip, Narrow",Back,Compound,Unilateral,"Rhomboids, Lats","Traps, Biceps",Rear Delts,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Plate Loaded Single Arm Chest Supported Low Row Machine, Neutral Grip, Narrow",Back,Compound,Unilateral,Lats,"Rhomboids, Biceps",Traps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Inverted Row, Overhand Grip",Back,Compound,Bilateral,"Rhomboids, Traps","Rear Delts, Lats","Biceps, Core",,2,24-48 hours,Low,Moderate,Good,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+"Inverted Row, Underhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,2,24-48 hours,Low,Moderate,Good,Good,No,Ascending,Bodyweight,No,Low,2-3 minutes,
+Overhand Grip Lat Pulldown,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Rear Delts",,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+Wide Grip Lat Pulldown,Back,Compound,Bilateral,"Lats, Teres Major","Rhomboids, Biceps","Rear Delts, Traps",,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+Neutral Grip Lat Pulldown,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Rear Delts",,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+Underhand Grip Lat Pulldown,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Rear Delts",,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+Behind The Neck Lat Pulldown,Back,Compound,Bilateral,"Lats, Rhomboids","Traps, Rear Delts",Biceps,,2,48 hours,Moderate,Stable,Good,Moderate,Yes,Balanced,Cable,No,High,3-4 minutes,High shoulder mobility required
+"Lat Pulldown, Single Arm",Back,Compound,Unilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,3-4 minutes,
+Overhand Grip Plate Loaded Lat Pulldown,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Rear Delts",,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+Neutral Grip Plate Loaded Lat Pulldown,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+Underhand Grip Plate Loaded Lat Pulldown,Back,Compound,Bilateral,Lats,Biceps,"Rhomboids, Traps",,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Neutral Grip Plate Loaded Lat Pulldown, Single Arm",Back,Compound,Unilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+"Underhand Grip Plate Loaded Lat Pulldown, Single Arm",Back,Compound,Unilateral,Lats,Biceps,"Rhomboids, Traps",,2,48 hours,Very High,Very Stable,Excellent,Excellent,Partial,Balanced,Machine,No,Low,3-5 minutes,
+Overhand Grip Pull Up,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,3,48 hours,Moderate,Moderate,Excellent,Good,Yes,Ascending,Bodyweight,No,Moderate,3-5 minutes,
+"Overhand Grip Pull Up, Weighted",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,4,48-72 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,
+Wide Grip Pull Up,Back,Compound,Bilateral,"Lats, Teres Major","Rhomboids, Biceps","Rear Delts, Core",,3,48 hours,Moderate,Moderate,Excellent,Good,Yes,Ascending,Bodyweight,No,Moderate,3-5 minutes,
+"Wide Grip Pull Up, Weighted",Back,Compound,Bilateral,"Lats, Teres Major","Rhomboids, Biceps","Rear Delts, Core",,4,48-72 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,
+Neutral Grip Pull Up,Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,3,48 hours,Moderate,Moderate,Excellent,Good,Yes,Ascending,Bodyweight,No,Moderate,3-5 minutes,
+"Neutral Grip Pull Up, Weighted",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,4,48-72 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,
+Underhand Grip Pull Up,Back,Compound,Bilateral,Lats,Biceps,"Rhomboids, Core",,3,48 hours,Moderate,Moderate,Excellent,Good,Yes,Ascending,Bodyweight,No,Moderate,3-5 minutes,
+"Underhand Grip Pull Up, Weighted",Back,Compound,Bilateral,Lats,Biceps,"Rhomboids, Core",,4,48-72 hours,High,Moderate,Excellent,Good,Yes,Ascending,Free Weight,Minor,Moderate,3-5 minutes,
+"Machine Supported Pull Ups, Overhand Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Very Stable,Excellent,Excellent,Yes,Balanced,Machine,No,Low,3-4 minutes,Allows pushing closer to failure safely
+"Machine Supported Pull Ups, Wide Grip",Back,Compound,Bilateral,"Lats, Teres Major","Rhomboids, Biceps",Rear Delts,,2,48 hours,High,Very Stable,Excellent,Excellent,Yes,Balanced,Machine,No,Low,3-4 minutes,
+"Machine Supported Pull Ups, Neutral Grip",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids",Traps,,2,48 hours,High,Very Stable,Excellent,Excellent,Yes,Balanced,Machine,No,Low,3-4 minutes,
+"Overhand Grip Pull Up, With Band",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,2,48 hours,Low,Moderate,Good,Good,Yes,Ascending,Resistance Band,No,Low,3-4 minutes,
+"Neutral Grip Pull Up, With Band",Back,Compound,Bilateral,Lats,"Biceps, Rhomboids","Traps, Core",,2,48 hours,Low,Moderate,Good,Good,Yes,Ascending,Resistance Band,No,Low,3-4 minutes,
+"Underhand Grip Pull Up, With Band",Back,Compound,Bilateral,Lats,Biceps,"Rhomboids, Core",,2,48 hours,Low,Moderate,Good,Good,Yes,Ascending,Resistance Band,No,Low,3-4 minutes,
+Human Pullover,Back,Isolation,Bilateral,Lats,Lower Chest,"Triceps, Core",,2,48 hours,Low,Low,Moderate,Moderate,Yes,Ascending,Bodyweight,No,Moderate,2-4 minutes,
+Flat Dumbbell Pullover,Back,Isolation,Bilateral,Lats,Lower Chest,Triceps,,2,48 hours,Moderate,Stable,Good,Good,Yes,Ascending,Free Weight,No,Moderate,3-4 minutes,
+Decline Dumbbell Pullover,Back,Isolation,Bilateral,Lats,Lower Chest,Triceps,,2,48 hours,Moderate,Stable,Excellent,Excellent,Yes,Balanced,Free Weight,No,Moderate,3-4 minutes,Decline increases tension range
+Standing Cable Pullover Bar,Back,Isolation,Bilateral,Lats,,"Triceps, Rear Delts",,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,
+Standing Cable Pullover Rope,Back,Isolation,Bilateral,Lats,,"Triceps, Rear Delts",,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,Allows wider range of motion at bottom
+"Standing Cable Pullover, Single Arm",Back,Isolation,Unilateral,Lats,,"Triceps, Rear Delts",,1,24-48 hours,High,Stable,Excellent,Excellent,Yes,Balanced,Cable,No,Low,2-3 minutes,

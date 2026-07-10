@@ -68,7 +68,7 @@ const DB_MUSCLE_TO_GROUP = {
   Gastrocnemius: 'Calves', Soleus: 'Calves',
   'Front Delts': 'Shoulders', 'Side Delts': 'Shoulders', 'Rear Delts': 'Shoulders', 'Rotator Cuff': 'Shoulders',
   'Upper Chest': 'Chest', 'Middle Chest': 'Chest', 'Lower Chest': 'Chest',
-  Lats: 'Back', 'Mid Back': 'Back', Rhomboids: 'Back', 'Upper Traps': 'Back', 'Mid Traps': 'Back', 'Lower Traps': 'Back', 'Spinal Erectors': 'Back',
+  Lats: 'Back', 'Mid Back': 'Back', Rhomboids: 'Back', 'Upper Traps': 'Back', 'Mid Traps': 'Back', 'Lower Traps': 'Back', 'Spinal Erectors': 'Back', 'Teres Major': 'Back',
   'Rectus Abdominis': 'Abs', 'Transverse Abdominis': 'Abs', Obliques: 'Abs', 'Hip Flexors': 'Abs',
 }
 

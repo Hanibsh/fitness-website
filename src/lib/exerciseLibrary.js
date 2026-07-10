@@ -48,6 +48,7 @@ const MUSCLE_ALIASES = {
   Lats: 'lats back',
   'Mid Back': 'mid back',
   Rhomboids: 'rhomboids upper back',
+  'Teres Major': 'teres major upper back lats',
   'Upper Traps': 'traps',
   'Lower Traps': 'traps',
   Biceps: 'biceps bicep',

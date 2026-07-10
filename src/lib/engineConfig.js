@@ -140,7 +140,7 @@ export const ENGINE_MUSCLES = [
 // (adductors→Quads, abductors→Glutes) and easy to retune here.
 export const ATOM_TO_GROUP = {
   'Upper Chest': 'Chest', 'Middle Chest': 'Chest', 'Lower Chest': 'Chest',
-  Lats: 'Back', 'Mid Back': 'Back', Rhomboids: 'Back', 'Upper Traps': 'Back', 'Mid Traps': 'Back', 'Lower Traps': 'Back', 'Spinal Erectors': 'Back',
+  Lats: 'Back', 'Mid Back': 'Back', Rhomboids: 'Back', 'Upper Traps': 'Back', 'Mid Traps': 'Back', 'Lower Traps': 'Back', 'Spinal Erectors': 'Back', 'Teres Major': 'Back',
   'Front Delts': 'Shoulders', 'Side Delts': 'Shoulders', 'Rear Delts': 'Shoulders', 'Rotator Cuff': 'Shoulders',
   Biceps: 'Biceps', Brachialis: 'Biceps',
   Triceps: 'Triceps',

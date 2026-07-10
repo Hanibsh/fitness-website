@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedAt": "2026-07-10",
-  "count": 256,
+  "count": 307,
   "exercises": [
     {
       "id": "barbell-jm-press",
@@ -7896,6 +7896,1673 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "trx-row-neutral-grip",
+      "name": "TRX Row, Neutral Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "trx-row-underhand-grip",
+      "name": "TRX Row, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "trx-row-overhand-grip",
+      "name": "TRX Row, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Upper Traps": 1,
+        "Rear Delts": 0.5,
+        "Lats": 0.5,
+        "Biceps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "bent-over-row-with-bands",
+      "name": "Bent Over Row With Bands",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "low",
+      "sfr": "average",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-row-with-bands",
+      "name": "Seated Row With Bands",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "low",
+      "sfr": "average",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "bent-over-barbell-row-underhand-grip",
+      "name": "Bent Over Barbell Row, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "high",
+      "notes": "High axial loading"
+    },
+    {
+      "id": "t-bar-row",
+      "name": "T-Bar Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.5,
+        "Biceps": 0.25,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "unstable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "average",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "High mechanical tension"
+    },
+    {
+      "id": "bent-over-dumbbell-row-overhand-grip",
+      "name": "Bent Over Dumbbell Row, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Lats": 1,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.5,
+        "Biceps": 0.25,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "bent-over-dumbbell-row-neutral-grip",
+      "name": "Bent Over Dumbbell Row, Neutral Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "kettlebell-bent-over-row",
+      "name": "Kettlebell Bent Over Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Spinal Erectors": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "unstable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "single-arm-dumbbell-row",
+      "name": "Single Arm Dumbbell Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Great for deep stretch"
+    },
+    {
+      "id": "single-arm-landmine-row",
+      "name": "Single Arm Landmine Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "chest-supported-barbell-row-overhand-grip",
+      "name": "Chest Supported Barbell Row, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Upper Traps": 1,
+        "Rear Delts": 0.5,
+        "Lats": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Zero axial loading"
+    },
+    {
+      "id": "chest-supported-barbell-row-underhand-grip",
+      "name": "Chest Supported Barbell Row, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Zero axial loading"
+    },
+    {
+      "id": "chest-supported-dumbbell-row",
+      "name": "Chest Supported Dumbbell Row",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Zero axial loading"
+    },
+    {
+      "id": "seated-cable-row-underhand-grip",
+      "name": "Seated Cable Row, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "seated-cable-row-wide-grip",
+      "name": "Seated Cable Row, Wide Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rear Delts": 1,
+        "Rhomboids": 1,
+        "Upper Traps": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "selector-chest-supported-row-machine-overhand-grip",
+      "name": "Selector Chest Supported Row Machine, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Upper Traps": 1,
+        "Rear Delts": 0.5,
+        "Lats": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "selector-chest-supported-row-machine-neutral-grip-narrow",
+      "name": "Selector Chest Supported Row Machine, Neutral Grip, Narrow",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "selector-chest-supported-row-machine-underhand-grip",
+      "name": "Selector Chest Supported Row Machine, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "selector-chest-supported-row-machine-wide-grip",
+      "name": "Selector Chest Supported Row Machine, Wide Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rear Delts": 1,
+        "Rhomboids": 1,
+        "Upper Traps": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "selector-chest-supported-row-machine-single-arm",
+      "name": "Selector Chest Supported Row Machine, Single Arm",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Biceps": 0.5,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "plate-loaded-chest-supported-row-machine-overhand-grip",
+      "name": "Plate Loaded Chest Supported Row Machine, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Upper Traps": 1,
+        "Rear Delts": 0.5,
+        "Lats": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "plate-loaded-chest-supported-row-machine-overhand-wide",
+      "name": "Plate Loaded Chest Supported Row Machine, Overhand, Wide",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Rear Delts": 1,
+        "Rhomboids": 1,
+        "Upper Traps": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "plate-loaded-chest-supported-row-machine-neutral-grip-narrow",
+      "name": "Plate Loaded Chest Supported Row Machine, Neutral Grip, Narrow",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "plate-loaded-single-arm-chest-supported-row-machine-overhand-grip-narrow",
+      "name": "Plate Loaded Single Arm Chest Supported Row Machine, Overhand Grip, Narrow",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "unilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Lats": 1,
+        "Upper Traps": 0.5,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "inverted-row-overhand-grip",
+      "name": "Inverted Row, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Rhomboids": 1,
+        "Upper Traps": 1,
+        "Rear Delts": 0.5,
+        "Lats": 0.5,
+        "Biceps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "inverted-row-underhand-grip",
+      "name": "Inverted Row, Underhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "wide-grip-lat-pulldown",
+      "name": "Wide Grip Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Teres Major": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "neutral-grip-lat-pulldown",
+      "name": "Neutral Grip Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "underhand-grip-lat-pulldown",
+      "name": "Underhand Grip Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "behind-the-neck-lat-pulldown",
+      "name": "Behind The Neck Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Rhomboids": 1,
+        "Upper Traps": 0.5,
+        "Rear Delts": 0.5,
+        "Biceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "average",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "high",
+      "notes": "High shoulder mobility required"
+    },
+    {
+      "id": "overhand-grip-plate-loaded-lat-pulldown",
+      "name": "Overhand Grip Plate Loaded Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "neutral-grip-plate-loaded-lat-pulldown",
+      "name": "Neutral Grip Plate Loaded Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "underhand-grip-plate-loaded-lat-pulldown",
+      "name": "Underhand Grip Plate Loaded Lat Pulldown",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "both",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "wide-grip-pull-up",
+      "name": "Wide Grip Pull Up",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Teres Major": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "wide-grip-pull-up-weighted",
+      "name": "Wide Grip Pull Up, Weighted",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Teres Major": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "neutral-grip-pull-up",
+      "name": "Neutral Grip Pull Up",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "neutral-grip-pull-up-weighted",
+      "name": "Neutral Grip Pull Up, Weighted",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "underhand-grip-pull-up-weighted",
+      "name": "Underhand Grip Pull Up, Weighted",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "machine-supported-pull-ups-overhand-grip",
+      "name": "Machine Supported Pull Ups, Overhand Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Allows pushing closer to failure safely"
+    },
+    {
+      "id": "machine-supported-pull-ups-wide-grip",
+      "name": "Machine Supported Pull Ups, Wide Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Teres Major": 1,
+        "Rhomboids": 0.5,
+        "Biceps": 0.5,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "machine-supported-pull-ups-neutral-grip",
+      "name": "Machine Supported Pull Ups, Neutral Grip",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        180,
+        240
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "overhand-grip-pull-up-with-band",
+      "name": "Overhand Grip Pull Up, With Band",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "neutral-grip-pull-up-with-band",
+      "name": "Neutral Grip Pull Up, With Band",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.5,
+        "Upper Traps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "underhand-grip-pull-up-with-band",
+      "name": "Underhand Grip Pull Up, With Band",
+      "category": "Back",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "human-pullover",
+      "name": "Human Pullover",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Lower Chest": 0.5,
+        "Triceps": 0.25,
+        "Rectus Abdominis": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "unstable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "average",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": null
+    },
+    {
+      "id": "decline-dumbbell-pullover",
+      "name": "Decline Dumbbell Pullover",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Lower Chest": 0.5,
+        "Triceps": 0.25
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "notes": "Decline increases tension range"
+    },
+    {
+      "id": "standing-cable-pullover-bar",
+      "name": "Standing Cable Pullover Bar",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Triceps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null
+    },
+    {
+      "id": "standing-cable-pullover-rope",
+      "name": "Standing Cable Pullover Rope",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Triceps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Allows wider range of motion at bottom"
+    },
+    {
+      "id": "standing-cable-pullover-single-arm",
+      "name": "Standing Cable Pullover, Single Arm",
+      "category": "Back",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Lats": 1,
+        "Triceps": 0.25,
+        "Rear Delts": 0.25
+      },
+      "fatigueScore": 2,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
       "notes": null
     }
   ]
