@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../lib/exerciseBank'
+import MuscleMap from '../components/MuscleMap'
 
 // Detail page for one exercise. Commit 1: header + coach stats + muscle list.
 // Commit 3 polishes the layout + adds the "Log this" CTA; commit 4 slots in the
@@ -71,16 +72,21 @@ export default function ExerciseDetail() {
           </div>
 
           <h2 className="font-heading text-base font-medium text-text-primary mt-10 mb-3">Muscles worked</h2>
-          <div className="space-y-1.5">
-            {muscles.map(([m, w]) => (
-              <div
-                key={m}
-                className="flex items-center justify-between bg-white border border-border rounded-lg px-3 py-2"
-              >
-                <span className="text-[13px] text-text-primary">{m}</span>
-                <span className="text-[11px] text-text-muted">{tierLabel(w)} · {w}</span>
-              </div>
-            ))}
+          <div className="grid md:grid-cols-2 gap-6 items-start">
+            <div className="bg-white border border-border rounded-xl p-4">
+              <MuscleMap muscles={ex.muscles} />
+            </div>
+            <div className="space-y-1.5">
+              {muscles.map(([m, w]) => (
+                <div
+                  key={m}
+                  className="flex items-center justify-between bg-white border border-border rounded-lg px-3 py-2"
+                >
+                  <span className="text-[13px] text-text-primary">{m}</span>
+                  <span className="text-[11px] text-text-muted">{tierLabel(w)} · {w}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {ex.notes && <p className="text-text-muted text-[13px] mt-6 leading-relaxed">{ex.notes}</p>}
