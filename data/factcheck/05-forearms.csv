@@ -1,0 +1,10 @@
+Exercise Name,Home Category,Exercise Type,Laterality,Primary Muscles (1.00),Secondary Muscles (0.50),Tertiary Muscles (0.25),Quaternary Muscles (0.125),Fatigue Score,Estimated Recovery Window,Progressive Overload Potential,Stability,Hypertrophy Potential,Stimulus-to-Fatigue Ratio (SFR),Stretch-Mediated Hypertrophy,Resistance Profile,Stability Requirement,Axial Loading,Skill Requirement,Recommended Rest Time,Notes,Video URL,Thumbnail
+Wrist Curl,Forearms,Isolation,Bilateral,Wrist Flexors,,,,1,24-48 hours,Moderate,Moderate,Low,Good,Partial,Balanced,Free Weight,No,Low,2 minutes,,,
+Dumbbell Reverse Curl,Forearms,Isolation,Can Be Both,Brachioradialis,Biceps,,,1,24-48 hours,Low,Moderate,High,Good,Partial,Balanced,Free Weight,No,Low,2-3 minutes,,,
+Dumbbell Wrist Curl,Forearms,Isolation,Can Be Both,Wrist Flexors,,,,1,24-48 hours,Low,Moderate,Low,Good,Partial,Balanced,Free Weight,No,Low,2 minutes,,,
+Barbell Reverse Wrist Curl,Forearms,Isolation,Bilateral,Wrist Extensors,,Brachioradialis,,1,24-48 hours,Very High,Moderate,Low,Good,Partial,Balanced,Free Weight,No,Low,2 minutes,,,
+Barbell Reverse Curl,Forearms,Isolation,Bilateral,Brachioradialis,,,,1,24-48 hours,Very High,Moderate,Low,Good,Partial,Balanced,Free Weight,No,Low,2 minutes,,,
+Preacher Dumbbell Wrist Curl,Forearms,Isolation,Can Be Both,Wrist Flexors,,,,1,24-48 hours,Low,Very Stable,High,Excellent,Yes,Lengthened Bias,Free Weight,No,Low,2 minutes,Bench provides external stability for strict isolation of the flexors.,,
+Preacher Dumbbell Reverse Wrist Curl,Forearms,Isolation,Can Be Both,Wrist Extensors,Brachioradialis:0.3,,,1,24-48 hours,Low,Very Stable,High,Excellent,Yes,Lengthened Bias,Free Weight,No,Low,2 minutes,Bench provides external stability for strict isolation of the extensors.,,
+Seated One Arm Forearm Cable Curls,Forearms,Isolation,Unilateral,Wrist Flexors,Deep Finger Flexors:0.6,,,1,24-48 hours,Moderate,Stable,High,Excellent,Partial,Balanced,Cable,No,Low,2 minutes,,,
+Seated One Arm Forearm Reverse Curls,Forearms,Isolation,Unilateral,"Brachioradialis:0.9,Brachialis:0.8",Wrist Extensors:0.5,,,1,24-48 hours,Moderate,Stable,High,Good,Partial,Balanced,Free Weight,No,Low,2 minutes,,,
