@@ -673,6 +673,16 @@ export default function Dashboard() {
                 return (
                   <div key={v.muscle}>
                     <div className="flex items-center gap-1.5">
+                      {href && (
+                        <Link
+                          to={href}
+                          aria-label={`What is ${v.muscle}?`}
+                          title={`What is ${v.muscle}?`}
+                          className="shrink-0 text-text-light hover:text-text-primary"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
                       <button
                         onClick={() => expandable && setExpandedMuscle(open ? null : v.muscle)}
                         className={`flex-1 min-w-0 text-left bg-transparent border-none p-0 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
@@ -690,16 +700,6 @@ export default function Dashboard() {
                           <div className={`h-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                         </div>
                       </button>
-                      {href && (
-                        <Link
-                          to={href}
-                          aria-label={`What is ${v.muscle}?`}
-                          title={`What is ${v.muscle}?`}
-                          className="shrink-0 text-text-light hover:text-text-primary"
-                        >
-                          <HelpCircle className="w-3.5 h-3.5" />
-                        </Link>
-                      )}
                     </div>
                     {open && (
                       <div className="mt-1.5 ml-3 pl-3 border-l border-border space-y-1.5">
@@ -750,6 +750,16 @@ export default function Dashboard() {
                   return (
                     <div key={m.muscle} title={m.lastTrained ? `Last trained: ${relativeDay(m.lastTrained)}` : undefined}>
                       <div className="flex items-center gap-1.5">
+                        {href && (
+                          <Link
+                            to={href}
+                            aria-label={`What is ${m.muscle}?`}
+                            title={`What is ${m.muscle}?`}
+                            className="shrink-0 text-text-light hover:text-text-primary"
+                          >
+                            <HelpCircle className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                         <button
                           onClick={() => expandable && setExpandedRecovery(open ? null : m.muscle)}
                           className={`flex-1 min-w-0 text-left bg-transparent border-none p-0 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
@@ -776,16 +786,6 @@ export default function Dashboard() {
                             />
                           </div>
                         </button>
-                        {href && (
-                          <Link
-                            to={href}
-                            aria-label={`What is ${m.muscle}?`}
-                            title={`What is ${m.muscle}?`}
-                            className="shrink-0 text-text-light hover:text-text-primary"
-                          >
-                            <HelpCircle className="w-3.5 h-3.5" />
-                          </Link>
-                        )}
                       </div>
                       {open && (
                         <div className="mt-1.5 ml-3 pl-3 border-l border-border space-y-1.5">
