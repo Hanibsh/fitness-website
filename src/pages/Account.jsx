@@ -169,12 +169,16 @@ export default function Account() {
             <p className="text-text-muted text-[13px] mt-6">Loading…</p>
           ) : (
             <>
-              <div className="flex items-center gap-2 flex-wrap mb-10">
+              <div className="flex items-center gap-2 flex-wrap mb-3">
                 <p className="text-text-muted text-[15px]">{user.email}</p>
                 {coachingStatus === 'client' && (
                   <span className="text-[11px] font-medium text-cream bg-text-primary px-2 py-0.5">Coaching client</span>
                 )}
               </div>
+
+              <p className="text-[13px] text-text-muted mb-10 leading-relaxed">
+                Everything here is optional — fill in whatever helps us tailor your training, and skip or clear the rest anytime. Tap a selected option again to clear it.
+              </p>
 
               <div className="space-y-10">
                 {/* ---- About you ---------------------------------------------------- */}
@@ -182,7 +186,7 @@ export default function Account() {
                   <h2 className={sectionHeadCls}>About you</h2>
                   <div className={cardCls}>
                     <div>
-                      <label className={labelCls}>Nickname (optional)</label>
+                      <label className={labelCls}>Nickname</label>
                       <input
                         type="text"
                         value={nickname}
@@ -197,13 +201,13 @@ export default function Account() {
                     <div>
                       <label className={labelCls}>Sex</label>
                       <div className="grid grid-cols-2 gap-3">
-                        {choice(sex === 'male', () => setSex('male'), 'Male')}
-                        {choice(sex === 'female', () => setSex('female'), 'Female')}
+                        {choice(sex === 'male', () => setSex(sex === 'male' ? '' : 'male'), 'Male')}
+                        {choice(sex === 'female', () => setSex(sex === 'female' ? '' : 'female'), 'Female')}
                       </div>
                     </div>
 
                     <div>
-                      <label className={labelCls}>Birth year (optional)</label>
+                      <label className={labelCls}>Birth year</label>
                       <input
                         type="number"
                         min={MIN_BIRTH_YEAR}
@@ -240,7 +244,7 @@ export default function Account() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>Height ({(HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg).label}, optional)</label>
+                        <label className={labelCls}>Height ({(HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg).label})</label>
                         <input
                           type="number"
                           min="0"
@@ -268,19 +272,19 @@ export default function Account() {
                     <div>
                       <label className={labelCls}>Primary goal</label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {GOALS.map((g) => choice(goal === g.value, () => setGoal(g.value), g.label))}
+                        {GOALS.map((g) => choice(goal === g.value, () => setGoal(goal === g.value ? '' : g.value), g.label))}
                       </div>
                     </div>
 
                     <div>
                       <label className={labelCls}>Experience</label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {EXPERIENCE_LEVELS.map((e) => choice(experience === e.value, () => setExperience(e.value), e.label, e.sub))}
+                        {EXPERIENCE_LEVELS.map((e) => choice(experience === e.value, () => setExperience(experience === e.value ? '' : e.value), e.label, e.sub))}
                       </div>
                     </div>
 
                     <div>
-                      <label className={labelCls}>How long have you been training? (optional)</label>
+                      <label className={labelCls}>How long have you been training?</label>
                       <div className="flex gap-3">
                         <input
                           type="number"
@@ -310,21 +314,21 @@ export default function Account() {
                     <div>
                       <label className={labelCls}>Training days per week</label>
                       <div className="grid grid-cols-5 gap-2">
-                        {DAYS_PER_WEEK.map((d) => choice(daysPerWeek === d, () => setDaysPerWeek(d), String(d)))}
+                        {DAYS_PER_WEEK.map((d) => choice(daysPerWeek === d, () => setDaysPerWeek(daysPerWeek === d ? '' : d), String(d)))}
                       </div>
                     </div>
 
                     <div>
                       <label className={labelCls}>Time per session</label>
                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                        {SESSION_MINUTES.map((m) => choice(sessionMinutes === m, () => setSessionMinutes(m), `${m}m`))}
+                        {SESSION_MINUTES.map((m) => choice(sessionMinutes === m, () => setSessionMinutes(sessionMinutes === m ? '' : m), `${m}m`))}
                       </div>
                     </div>
 
                     <div>
                       <label className={labelCls}>Equipment</label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {EQUIPMENT_PRESETS.map((eq) => choice(equipment === eq.value, () => setEquipment(eq.value), eq.label))}
+                        {EQUIPMENT_PRESETS.map((eq) => choice(equipment === eq.value, () => setEquipment(equipment === eq.value ? '' : eq.value), eq.label))}
                       </div>
                     </div>
                   </div>
