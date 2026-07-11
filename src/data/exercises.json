@@ -32,7 +32,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "triceps-dips",
@@ -63,7 +65,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "triceps-dip-machine",
@@ -94,7 +98,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "assisted-triceps-dips",
@@ -125,7 +131,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-skull-crusher",
@@ -154,7 +162,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "push-down",
@@ -183,7 +193,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-rope-overhead-triceps-extension",
@@ -212,7 +224,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lying-barbell-triceps-extension",
@@ -241,7 +255,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lever-triceps-extension",
@@ -270,7 +286,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-ez-bar-overhead-triceps-extension",
@@ -299,7 +317,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-lying-back-of-the-head-tricep-extension",
@@ -328,7 +348,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-curl",
@@ -358,7 +380,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "ez-bar-preacher-curl",
@@ -388,7 +412,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hammer-curl",
@@ -419,7 +445,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lever-preacher-curl",
@@ -449,7 +477,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "prone-incline-barbell-curl-spider-curl",
@@ -479,7 +509,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-rope-hammer-curl",
@@ -510,7 +542,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lever-biceps-curl",
@@ -540,7 +574,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "two-dumbbell-preacher-curl",
@@ -570,7 +606,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "z-bar-curl",
@@ -600,7 +638,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wrist-curl",
@@ -629,7 +669,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-dumbbell-triceps-extension",
@@ -658,7 +700,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-curl",
@@ -688,7 +732,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-preacher-curl",
@@ -718,7 +764,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-incline-dumbbell-curl",
@@ -748,7 +796,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lying-cable-curl",
@@ -778,7 +828,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-reverse-curl",
@@ -808,7 +860,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-curl",
@@ -838,7 +892,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-wrist-curl",
@@ -867,7 +923,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-one-arm-dumbbell-triceps-extension",
@@ -896,7 +954,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-one-arm-overhead-triceps-extension",
@@ -925,7 +985,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "one-arm-cable-curl",
@@ -955,7 +1017,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "ez-bar-skull-crusher",
@@ -984,7 +1048,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "pull-up",
@@ -1015,7 +1081,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "weighted-pull-up",
@@ -1046,7 +1114,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "reverse-grip-pull-up",
@@ -1077,7 +1147,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chin-up",
@@ -1108,7 +1180,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-chin-up",
@@ -1139,7 +1213,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lat-pulldown",
@@ -1170,7 +1246,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-row-machine",
@@ -1202,7 +1280,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-bent-over-row",
@@ -1234,7 +1314,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-t-bar-row",
@@ -1266,7 +1348,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "deadlift",
@@ -1299,7 +1383,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "romanian-deadlift",
@@ -1331,7 +1417,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "sumo-deadlift",
@@ -1363,7 +1451,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "weighted-roman-chair-back-extension",
@@ -1394,7 +1484,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Use a barbell across shoulders or hold a plate/dumbbell. Focus on spinal extension/flexion for erectors, or keep spine rigid to bias glutes/hamstrings."
+      "notes": "Use a barbell across shoulders or hold a plate/dumbbell. Focus on spinal extension/flexion for erectors, or keep spine rigid to bias glutes/hamstrings.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-cable-row",
@@ -1426,7 +1518,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-cable-row",
@@ -1458,7 +1552,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-one-arm-lat-pulldown",
@@ -1489,7 +1585,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement."
+      "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "one-arm-cable-row",
@@ -1521,7 +1619,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "braced-single-arm-cable-pulldown",
@@ -1552,7 +1652,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Underhand/neutral grip with non-working hand bracing against a bench. Exceptional lat isolation."
+      "notes": "Underhand/neutral grip with non-working hand bracing against a bench. Exceptional lat isolation.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "weighted-muscle-up",
@@ -1584,7 +1686,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "very high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "band-assisted-muscle-up",
@@ -1616,7 +1720,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "very high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bench-press",
@@ -1647,7 +1753,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
+      "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "low-cable-crossover",
@@ -1677,7 +1785,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "high-cable-crossover",
@@ -1707,7 +1817,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-barbell-bench-press",
@@ -1738,7 +1850,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-bench-press",
@@ -1769,7 +1883,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
+      "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-crossover",
@@ -1799,7 +1915,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-dips",
@@ -1830,7 +1948,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "assisted-chest-dip",
@@ -1861,7 +1981,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lying-chest-press-machine",
@@ -1892,7 +2014,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-bench-press",
@@ -1923,7 +2047,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
+      "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-incline-bench-press",
@@ -1954,7 +2080,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wide-grip-bench-press",
@@ -1985,7 +2113,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
+      "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-bench-press",
@@ -2015,7 +2145,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Arching and grip width shift bias between Middle Chest and Triceps."
+      "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "push-up",
@@ -2046,7 +2178,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-press-machine",
@@ -2077,7 +2211,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-dumbbell-press",
@@ -2108,7 +2244,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "single-arm-cable-crossover",
@@ -2138,7 +2276,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-pullover",
@@ -2170,7 +2310,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-chest-fly-machine",
@@ -2200,7 +2342,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "pec-deck-fly",
@@ -2230,7 +2374,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-fly",
@@ -2260,7 +2406,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-dumbbell-fly",
@@ -2290,7 +2438,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-cable-fly",
@@ -2320,7 +2470,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dragon-flag",
@@ -2351,7 +2503,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "very high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "decline-crunches",
@@ -2382,7 +2536,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "crunch-machine",
@@ -2413,7 +2569,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "russian-twist",
@@ -2443,7 +2601,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Can be weighted. Focus on torso rotation, not just moving the hands."
+      "notes": "Can be weighted. Focus on torso rotation, not just moving the hands.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "decline-russian-twist",
@@ -2473,7 +2633,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Decline bench increases mechanical tension on the rectus abdominis while twisting."
+      "notes": "Decline bench increases mechanical tension on the rectus abdominis while twisting.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hanging-knee-raise",
@@ -2503,7 +2665,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Focus on posterior pelvic tilt (curling the pelvis up) rather than just flexing the hips."
+      "notes": "Focus on posterior pelvic tilt (curling the pelvis up) rather than just flexing the hips.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "toes-to-bar",
@@ -2534,7 +2698,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "high",
-      "notes": "Requires lat strength to stabilize the swing. Great deep stretch for the lower abs."
+      "notes": "Requires lat strength to stabilize the swing. Great deep stretch for the lower abs.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "kneeling-cable-crunch",
@@ -2565,7 +2731,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-obliques",
@@ -2596,7 +2764,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "leg-raises",
@@ -2627,7 +2797,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-reverse-wrist-curl",
@@ -2657,7 +2829,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-reverse-curl",
@@ -2686,7 +2860,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "preacher-dumbbell-wrist-curl",
@@ -2715,7 +2891,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Bench provides external stability for strict isolation of the flexors."
+      "notes": "Bench provides external stability for strict isolation of the flexors.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "preacher-dumbbell-reverse-wrist-curl",
@@ -2745,7 +2923,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Bench provides external stability for strict isolation of the extensors."
+      "notes": "Bench provides external stability for strict isolation of the extensors.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-one-arm-forearm-cable-curls",
@@ -2775,7 +2955,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-one-arm-forearm-reverse-curls",
@@ -2806,7 +2988,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-squat",
@@ -2837,7 +3021,9 @@
       "equipment": "machine",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-hip-thrusts",
@@ -2868,7 +3054,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-walking-lunge",
@@ -2899,7 +3087,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-squat",
@@ -2930,7 +3120,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "glute-kickback-machine",
@@ -2960,7 +3152,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-good-morning",
@@ -2991,7 +3185,9 @@
       "equipment": "machine",
       "axialLoading": true,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "belt-squat",
@@ -3022,7 +3218,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "stiff-leg-deadlift",
@@ -3053,7 +3251,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-glute-bridge",
@@ -3084,7 +3284,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hip-adduction-machine",
@@ -3115,7 +3317,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hip-abduction-machine",
@@ -3145,7 +3349,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-hip-thrust",
@@ -3176,7 +3382,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "pendulum-squat",
@@ -3207,7 +3415,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hack-squats-machine",
@@ -3238,7 +3448,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trap-bar-deadlift",
@@ -3269,7 +3481,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "leg-press",
@@ -3300,7 +3514,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "single-leg-dumbbell-hip-thrust",
@@ -3331,7 +3547,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-lunge",
@@ -3362,7 +3580,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-kickbacks",
@@ -3392,7 +3612,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-bulgarian-split-squat",
@@ -3423,7 +3645,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "sissy-squat",
@@ -3453,7 +3677,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": "Stance width and depth dictate Glute vs Quad bias."
+      "notes": "Stance width and depth dictate Glute vs Quad bias.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "leg-press-calf-raise",
@@ -3483,7 +3709,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hack-squat-calf-raise",
@@ -3513,7 +3741,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-calf-raise",
@@ -3543,7 +3773,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hack-machine-one-leg-calf-raise",
@@ -3573,7 +3805,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lever-donkey-calf-raise",
@@ -3603,7 +3837,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lying-leg-curl",
@@ -3634,7 +3870,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-leg-curl",
@@ -3665,7 +3903,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "leg-extension",
@@ -3694,7 +3934,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-barbell-shoulder-press",
@@ -3725,7 +3967,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-behind-the-neck-press",
@@ -3756,7 +4000,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-shoulder-press",
@@ -3787,7 +4033,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "lever-shoulder-press",
@@ -3818,7 +4066,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "face-pull",
@@ -3849,7 +4099,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-shoulder-press",
@@ -3880,7 +4132,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-upright-row",
@@ -3911,7 +4165,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-chest-supported-lateral-raise",
@@ -3942,7 +4198,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "notes": "Lean slightly forward to better align Side Delts against gravity.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "two-arm-cable-front-raise",
@@ -3973,7 +4231,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "two-arm-dumbbell-front-raise",
@@ -4004,7 +4264,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "rear-delt-fly-machine",
@@ -4035,7 +4297,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-front-raise",
@@ -4066,7 +4330,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-lateral-raise",
@@ -4097,7 +4363,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "notes": "Lean slightly forward to better align Side Delts against gravity.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-rear-lateral-dumbbell-raise",
@@ -4128,7 +4396,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-dumbbell-lateral-raise",
@@ -4159,7 +4429,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "notes": "Lean slightly forward to better align Side Delts against gravity.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-rear-delt-fly",
@@ -4190,7 +4462,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-dumbbell-side-lateral-raise",
@@ -4221,7 +4495,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Lean slightly forward to better align Side Delts against gravity."
+      "notes": "Lean slightly forward to better align Side Delts against gravity.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "ez-bar-upright-row",
@@ -4253,7 +4529,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cable-upright-row",
@@ -4285,7 +4563,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-upright-row",
@@ -4317,7 +4597,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts."
+      "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-shrug",
@@ -4348,7 +4630,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "prone-incline-shrug",
@@ -4379,7 +4663,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-shrug",
@@ -4410,7 +4696,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-dumbbell-y-raise",
@@ -4441,7 +4729,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-incline-t-raise",
@@ -4472,7 +4762,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-dumbbell-overhead-press",
@@ -4504,7 +4796,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-dumbbell-overhead-press",
@@ -4537,7 +4831,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-dumbbell-overhead-press-neutral-grip",
@@ -4568,7 +4864,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-barbell-overhead-press",
@@ -4601,7 +4899,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-barbell-overhead-press",
@@ -4633,7 +4933,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-barbell-behind-the-neck-press",
@@ -4665,7 +4967,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "Requires good shoulder mobility"
+      "notes": "Requires good shoulder mobility",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-barbell-behind-the-neck-press",
@@ -4698,7 +5002,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "very high",
-      "notes": "High mobility requirement"
+      "notes": "High mobility requirement",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-landmine-press",
@@ -4730,7 +5036,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "half-kneeling-landmine-press",
@@ -4762,7 +5070,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Excellent for strict tension"
+      "notes": "Excellent for strict tension",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-overhead-press-wide-grip",
@@ -4794,7 +5104,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Allows pushing closer to failure safely"
+      "notes": "Allows pushing closer to failure safely",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-overhead-press-narrow-grip",
@@ -4825,7 +5137,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Allows pushing closer to failure safely"
+      "notes": "Allows pushing closer to failure safely",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "banded-seated-overhead-press",
@@ -4857,7 +5171,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "banded-upright-row",
@@ -4888,7 +5204,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-dumbbell-front-raise",
@@ -4918,7 +5236,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-dumbbell-front-raise",
@@ -4948,7 +5268,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Eliminates momentum"
+      "notes": "Eliminates momentum",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-bent-over-reverse-fly",
@@ -4979,7 +5301,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-dumbbell-reverse-fly",
@@ -5010,7 +5334,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Highly stable for maximal mechanical tension"
+      "notes": "Highly stable for maximal mechanical tension",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "pike-push-up",
@@ -5041,7 +5367,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "pike-hold",
@@ -5072,7 +5400,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Good baseline progression for learning freestanding handstands"
+      "notes": "Good baseline progression for learning freestanding handstands",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-floor-press",
@@ -5103,7 +5433,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Limits ROM, emphasizes triceps and lock-out"
+      "notes": "Limits ROM, emphasizes triceps and lock-out",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-floor-press-neutral-grip",
@@ -5134,7 +5466,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "mid-cable-fly",
@@ -5164,7 +5498,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Provides constant tension through the stretch"
+      "notes": "Provides constant tension through the stretch",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "high-to-low-cable-fly",
@@ -5194,7 +5530,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "low-to-high-cable-fly",
@@ -5224,7 +5562,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "plate-loaded-incline-chest-press",
@@ -5255,7 +5595,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Maximal tension yield with low injury risk"
+      "notes": "Maximal tension yield with low injury risk",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-chest-press",
@@ -5286,7 +5628,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-push-up",
@@ -5318,7 +5662,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "incline-push-up",
@@ -5350,7 +5696,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Regressed push-up variation"
+      "notes": "Regressed push-up variation",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-incline-push-up",
@@ -5382,7 +5730,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "knee-push-up",
@@ -5413,7 +5763,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Regressed push-up variation"
+      "notes": "Regressed push-up variation",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "close-grip-knee-push-up",
@@ -5444,7 +5796,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "weighted-chest-dips",
@@ -5476,7 +5830,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "High mechanical tension with external load"
+      "notes": "High mechanical tension with external load",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "h-bar-skull-crusher",
@@ -5505,7 +5861,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "h-bar-skull-crusher-behind-head",
@@ -5534,7 +5892,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-ez-bar-overhead-tricep-extensions",
@@ -5563,7 +5923,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-ez-bar-overhead-tricep-extensions",
@@ -5592,7 +5954,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "triceps-press-machine",
@@ -5623,7 +5987,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bench-dips",
@@ -5654,7 +6020,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-overhead-tricep-extensions-with-bands",
@@ -5683,7 +6051,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-tricep-extension",
@@ -5713,7 +6083,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-tricep-kick-back-incline-prone",
@@ -5742,7 +6114,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "prone-tricep-kick-back-single-arm",
@@ -5771,7 +6145,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-hammer-preacher-curl",
@@ -5802,7 +6178,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "h-bar-preacher-curl",
@@ -5832,7 +6210,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "overhand-grip-straight-bar-preacher-curl",
@@ -5862,7 +6242,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "reverse-grip-bicep-curl-with-bands",
@@ -5893,7 +6275,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-bicep-curl",
@@ -5924,7 +6308,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "towel-bicep-curl",
@@ -5954,7 +6340,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "preacher-curl-machine",
@@ -5984,7 +6372,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bicep-curl-with-bands",
@@ -6014,7 +6404,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "concentration-curl",
@@ -6044,7 +6436,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-good-morning",
@@ -6076,7 +6470,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": "High axial loading"
+      "notes": "High axial loading",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-staggered-stance-good-morning",
@@ -6108,7 +6504,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "kettlebell-swing",
@@ -6140,7 +6538,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": "Explosive movement"
+      "notes": "Explosive movement",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-staggered-stance-good-morning",
@@ -6172,7 +6572,9 @@
       "equipment": "machine",
       "axialLoading": true,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "roman-chair-single-leg-back-extension",
@@ -6203,7 +6605,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hamstring-sliders",
@@ -6234,7 +6638,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-hamstring-sliders",
@@ -6265,7 +6671,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-hip-thrust-with-bands",
@@ -6296,7 +6704,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Bands increase peak tension"
+      "notes": "Bands increase peak tension",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-hip-thrust-with-bands",
@@ -6327,7 +6737,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-glute-bridge",
@@ -6358,7 +6770,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-glute-bridge-with-bands",
@@ -6389,7 +6803,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hip-thrust-machine",
@@ -6419,7 +6835,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Most stable hip thrust option"
+      "notes": "Most stable hip thrust option",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hip-thrust-with-bands",
@@ -6449,7 +6867,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-cable-hip-extension",
@@ -6479,7 +6899,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "elevated-heel-goblet-squat-with-constant-tension",
@@ -6510,7 +6932,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Constant tension"
+      "notes": "Constant tension",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "goblet-lunge",
@@ -6542,7 +6966,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "goblet-bulgarian-split-squat",
@@ -6574,7 +7000,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-bulgarian-split-squat",
@@ -6606,7 +7034,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-lunge",
@@ -6638,7 +7068,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "front-rack-barbell-lunge",
@@ -6670,7 +7102,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "landmine-reverse-lunge",
@@ -6702,7 +7136,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "goblet-squat",
@@ -6733,7 +7169,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "goblet-squat-wide-stance",
@@ -6765,7 +7203,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "goblet-box-squat",
@@ -6796,7 +7236,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-back-squat-wide-stance",
@@ -6828,7 +7270,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-front-squat",
@@ -6859,7 +7303,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "barbell-front-squat-wide-stance",
@@ -6891,7 +7337,9 @@
       "equipment": "free weight",
       "axialLoading": true,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "landmine-squat",
@@ -6922,7 +7370,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "landmine-squat-wide-stance",
@@ -6954,7 +7404,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "hack-squat-wide-stance",
@@ -6985,7 +7437,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "dumbbell-step-up",
@@ -7017,7 +7471,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-bulgarian-split-squat",
@@ -7049,7 +7505,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-lunge",
@@ -7081,7 +7539,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bodyweight-lunge",
@@ -7113,7 +7573,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bodyweight-bulgarian-split-squat",
@@ -7145,7 +7607,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cossack-squat",
@@ -7177,7 +7641,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "cossack-squat-weighted",
@@ -7209,7 +7675,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-jump-squat",
@@ -7241,7 +7709,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-jumping-lunge",
@@ -7273,7 +7743,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "squat-with-bands",
@@ -7304,7 +7776,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "reverse-lunge-with-bands",
@@ -7336,7 +7810,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "kettlebell-front-squat",
@@ -7367,7 +7843,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "double-kettlebell-front-squat",
@@ -7398,7 +7876,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "kettlebell-reverse-lunge",
@@ -7430,7 +7910,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "box-squat-single-leg",
@@ -7462,7 +7944,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "jump-squat",
@@ -7494,7 +7978,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "jumping-lunge",
@@ -7526,7 +8012,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wall-squat",
@@ -7556,7 +8044,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-pistol-squat",
@@ -7588,7 +8078,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "high",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "smith-machine-standing-calf-raise",
@@ -7618,7 +8110,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "calf-raise-machine",
@@ -7648,7 +8142,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-calf-raise",
@@ -7678,7 +8174,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-calf-raise-weighted",
@@ -7708,7 +8206,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "single-leg-cable-adduction",
@@ -7737,7 +8237,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "copenhagen-adduction",
@@ -7767,7 +8269,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "copenhagen-adduction-weighted",
@@ -7797,7 +8301,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-row-neutral-grip",
@@ -7831,7 +8337,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-row-underhand-grip",
@@ -7864,7 +8372,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "trx-row-overhand-grip",
@@ -7898,7 +8408,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bent-over-row-with-bands",
@@ -7931,7 +8443,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-row-with-bands",
@@ -7963,7 +8477,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bent-over-barbell-row-underhand-grip",
@@ -7996,7 +8512,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "high",
-      "notes": "High axial loading"
+      "notes": "High axial loading",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "t-bar-row",
@@ -8030,7 +8548,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "High mechanical tension"
+      "notes": "High mechanical tension",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bent-over-dumbbell-row-overhand-grip",
@@ -8064,7 +8584,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "bent-over-dumbbell-row-neutral-grip",
@@ -8097,7 +8619,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "kettlebell-bent-over-row",
@@ -8130,7 +8654,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "single-arm-dumbbell-row",
@@ -8163,7 +8689,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Great for deep stretch"
+      "notes": "Great for deep stretch",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "single-arm-landmine-row",
@@ -8196,7 +8724,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-barbell-row-overhand-grip",
@@ -8229,7 +8759,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Zero axial loading"
+      "notes": "Zero axial loading",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-barbell-row-underhand-grip",
@@ -8261,7 +8793,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Zero axial loading"
+      "notes": "Zero axial loading",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-dumbbell-row",
@@ -8294,7 +8828,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Zero axial loading"
+      "notes": "Zero axial loading",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-cable-row-underhand-grip",
@@ -8326,7 +8862,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "seated-cable-row-wide-grip",
@@ -8358,7 +8896,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-row-machine-overhand-grip",
@@ -8391,7 +8931,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-row-machine-neutral-grip-narrow",
@@ -8423,7 +8965,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-row-machine-underhand-grip",
@@ -8455,7 +8999,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-row-machine-wide-grip",
@@ -8487,7 +9033,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "chest-supported-row-machine-single-arm",
@@ -8520,7 +9068,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "inverted-row-overhand-grip",
@@ -8554,7 +9104,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "inverted-row-underhand-grip",
@@ -8587,7 +9139,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wide-grip-lat-pulldown",
@@ -8621,7 +9175,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "neutral-grip-lat-pulldown",
@@ -8654,7 +9210,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "underhand-grip-lat-pulldown",
@@ -8687,7 +9245,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "behind-the-neck-lat-pulldown",
@@ -8720,7 +9280,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "high",
-      "notes": "High shoulder mobility required"
+      "notes": "High shoulder mobility required",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wide-grip-pull-up",
@@ -8754,7 +9316,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "wide-grip-pull-up-weighted",
@@ -8788,7 +9352,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "neutral-grip-pull-up",
@@ -8821,7 +9387,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "neutral-grip-pull-up-weighted",
@@ -8854,7 +9422,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "underhand-grip-pull-up-weighted",
@@ -8886,7 +9456,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-supported-pull-ups-overhand-grip",
@@ -8918,7 +9490,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Allows pushing closer to failure safely"
+      "notes": "Allows pushing closer to failure safely",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-supported-pull-ups-wide-grip",
@@ -8951,7 +9525,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "machine-supported-pull-ups-neutral-grip",
@@ -8983,7 +9559,9 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "overhand-grip-pull-up-with-band",
@@ -9016,7 +9594,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "neutral-grip-pull-up-with-band",
@@ -9049,7 +9629,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "underhand-grip-pull-up-with-band",
@@ -9081,7 +9663,9 @@
       "equipment": "resistance band",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "human-pullover",
@@ -9113,7 +9697,9 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "decline-dumbbell-pullover",
@@ -9144,7 +9730,9 @@
       "equipment": "free weight",
       "axialLoading": false,
       "skill": "moderate",
-      "notes": "Decline increases tension range"
+      "notes": "Decline increases tension range",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-cable-pullover-bar",
@@ -9175,7 +9763,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-cable-pullover-rope",
@@ -9206,7 +9796,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": "Allows wider range of motion at bottom"
+      "notes": "Allows wider range of motion at bottom",
+      "video": null,
+      "thumbnail": null
     },
     {
       "id": "standing-cable-pullover-single-arm",
@@ -9237,7 +9829,9 @@
       "equipment": "cable",
       "axialLoading": false,
       "skill": "low",
-      "notes": null
+      "notes": null,
+      "video": null,
+      "thumbnail": null
     }
   ]
 }

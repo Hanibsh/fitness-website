@@ -127,6 +127,11 @@ function resolveColumns(header) {
     skill: need(/skill/i, 'Skill Requirement'),
     rest: need(/rest time/i, 'Recommended Rest Time'),
     notes: idx(/notes/i), // optional
+    // Optional media columns — reserved for the exercise bank's future movement
+    // clips / thumbnails (Leon's own recordings). Absent for now; a filled cell
+    // flows straight to the JSON with no schema change.
+    video: idx(/video( url)?/i),
+    thumbnail: idx(/thumbnail/i),
   }
 }
 
@@ -200,6 +205,8 @@ function main() {
       axialLoading: normEnum('axial', r[COL.axial]),
       skill: normEnum('level', r[COL.skill]),
       notes: (COL.notes !== -1 ? (r[COL.notes] || '').trim() : '') || null,
+      video: (COL.video !== -1 ? (r[COL.video] || '').trim() : '') || null,
+      thumbnail: (COL.thumbnail !== -1 ? (r[COL.thumbnail] || '').trim() : '') || null,
     }
 
     // ---- apply approved override (raw CSV stays pristine) ----
