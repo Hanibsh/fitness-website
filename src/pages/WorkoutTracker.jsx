@@ -360,6 +360,17 @@ export default function WorkoutTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loadingHistory, history])
 
+  // Arriving via the exercise bank's "Log this" action: add that exercise to the
+  // current draft (same path as picking it from the picker), then clear the nav
+  // state so a refresh/back doesn't re-add it.
+  useEffect(() => {
+    const addName = location.state?.addExerciseName
+    if (!addName || loadingHistory) return
+    addExercise(addName, 'strength', location.state?.addExerciseId || null)
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, loadingHistory])
+
   // History plus the in-progress session as a provisional "today" point, so
   // graphs stay live while you're logging.
   const progressSessions = useMemo(() => {

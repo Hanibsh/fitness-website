@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Plus } from 'lucide-react'
 import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../lib/exerciseBank'
 
 // Detail page for one exercise. Commit 1: header + coach stats + muscle list.
@@ -8,6 +8,7 @@ import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../
 // muscle heatmap.
 export default function ExerciseDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const ex = getFullExercise(id)
 
   if (!ex) {
@@ -52,6 +53,13 @@ export default function ExerciseDetail() {
           <p className="text-text-muted text-[13px]">
             {titleCase(ex.equipment)} · {titleCase(ex.type)} · {titleCase(ex.laterality)}
           </p>
+
+          <button
+            onClick={() => navigate('/log', { state: { addExerciseId: ex.id, addExerciseName: ex.name } })}
+            className="inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 rounded-lg mt-5 border-none cursor-pointer hover:bg-accent-hover transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log this exercise
+          </button>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-8">
             {stats.map(([label, val]) => (
