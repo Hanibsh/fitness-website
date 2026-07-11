@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -224,6 +224,7 @@ export default function WorkoutTracker() {
   const [unit, setUnit] = useState(() => getUnit())
   const [openSession, setOpenSession] = useState(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
+  const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [selectedCalDay, setSelectedCalDay] = useState(null)
   const [editingSessionDate, setEditingSessionDate] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
@@ -559,6 +560,24 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) => (e.id === exId ? { ...e, repRange } : e)),
     }))
+  }
+
+  // Free-text note on an exercise — session-only unless the user is editing
+  // the routine itself (that's a separate note, set in RoutineEditor).
+  function setExerciseNote(exId, note) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, note: note.slice(0, 300) } : e)),
+    }))
+  }
+
+  function toggleNote(exId) {
+    setNoteOpenFor((prev) => {
+      const next = new Set(prev)
+      if (next.has(exId)) next.delete(exId)
+      else next.add(exId)
+      return next
+    })
   }
 
   // Cycle a set's type: working → warm-up → back-off → working. Warm-ups are
@@ -1026,6 +1045,14 @@ export default function WorkoutTracker() {
               </button>
             )}
             <button
+              onClick={() => toggleNote(ex.id)}
+              aria-label={ex.note ? `Edit note for ${ex.name}` : `Add note for ${ex.name}`}
+              title="Note"
+              className={`bg-transparent border-none cursor-pointer p-1 transition-colors ${ex.note ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+            >
+              <StickyNote className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
               aria-label={`View ${ex.name} progress`}
               className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
@@ -1084,6 +1111,16 @@ export default function WorkoutTracker() {
         </div>
 
         <div className="px-4 py-3">
+          {(noteOpenFor.has(ex.id) || !!ex.note) && (
+            <textarea
+              value={ex.note || ''}
+              onChange={(e) => setExerciseNote(ex.id, e.target.value)}
+              placeholder="Note — form cue, machine setting, anything worth remembering…"
+              aria-label={`Note for ${ex.name}`}
+              rows={2}
+              className="w-full mb-3 bg-white border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
+            />
+          )}
           {ex.kind === 'cardio' ? (
             <>
               <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
@@ -1258,14 +1295,18 @@ export default function WorkoutTracker() {
                         aria-label={`Set ${i + 1} reps`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                       />
-                      <input
-                        type="number" inputMode="numeric" min="0" max="10"
-                        value={set.rir ?? ''}
-                        onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                        placeholder="—"
-                        aria-label={`Set ${i + 1} reps in reserve`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                      />
+                      {set.type === 'warmup' ? (
+                        <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
+                      ) : (
+                        <input
+                          type="number" inputMode="numeric" min="0" max="10"
+                          value={set.rir ?? ''}
+                          onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                          placeholder="—"
+                          aria-label={`Set ${i + 1} reps in reserve`}
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                        />
+                      )}
                       <button
                         onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
                         className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1274,7 +1315,7 @@ export default function WorkoutTracker() {
                       </button>
                     </div>
                   ))}
-                  <p className="text-[11px] text-text-light mt-1 mb-2">Load = bodyweight + added (use a negative number for assisted reps).</p>
+                  <p className="text-[11px] text-text-light mt-1 mb-2">Load = bodyweight + added (use a negative number for assisted reps). Warm-up sets skip RIR.</p>
                   <button
                     onClick={() => addSet(ex.id)}
                     className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
@@ -1340,13 +1381,17 @@ export default function WorkoutTracker() {
                             placeholder="—" aria-label={`Set ${i + 1} ${side} reps`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
-                          <input
-                            type="number" inputMode="numeric" min="0" max="10"
-                            value={set[side]?.rir ?? ''}
-                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
-                            placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
-                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                          />
+                          {set.type === 'warmup' ? (
+                            <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
+                          ) : (
+                            <input
+                              type="number" inputMode="numeric" min="0" max="10"
+                              value={set[side]?.rir ?? ''}
+                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
+                              placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1395,13 +1440,17 @@ export default function WorkoutTracker() {
                         placeholder="—" aria-label={`Set ${i + 1} reps`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                       />
-                      <input
-                        type="number" inputMode="numeric" min="0" max="10"
-                        value={set.rir ?? ''}
-                        onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                        placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                      />
+                      {set.type === 'warmup' ? (
+                        <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
+                      ) : (
+                        <input
+                          type="number" inputMode="numeric" min="0" max="10"
+                          value={set.rir ?? ''}
+                          onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                          placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                        />
+                      )}
                       <button
                         onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
                         className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"

@@ -127,6 +127,10 @@ export function createExercise(name, kind = 'strength', opts = {}) {
     // from a previous session). Otherwise the user adds it per exercise.
     ex.repRange = opts.repRange || null
   }
+  // Free-text note (form cues, machine settings, anything worth remembering).
+  // Seeded from the routine's planned note when starting a session; editable
+  // per-session without writing back to the routine template.
+  ex.note = opts.note || ''
   return ex
 }
 

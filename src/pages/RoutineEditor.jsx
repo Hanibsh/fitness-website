@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, StickyNote } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import ConfirmModal from '../components/ConfirmModal'
 import {
@@ -29,6 +29,7 @@ export default function RoutineEditor() {
   const isNew = id === 'new'
   const { programsState, loading, saveProgram, addRoutine, setActiveRoutine, deleteRoutine } = useProgramsState()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
 
   const editingProgram = !isNew ? programsState.programs.find((p) => p.id === id) || null : null
   const isEditingActive = !!editingProgram && editingProgram.id === programsState.activeId
@@ -102,6 +103,18 @@ export default function RoutineEditor() {
       ),
     }))
   }
+  const setExerciseNote = (dayId, exId, note) =>
+    update((p) => ({
+      ...p,
+      days: p.days.map((d) => (d.id === dayId ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, note: note.slice(0, 300) } : e)) } : d)),
+    }))
+  const toggleNote = (exId) =>
+    setNoteOpenFor((prev) => {
+      const next = new Set(prev)
+      if (next.has(exId)) next.delete(exId)
+      else next.add(exId)
+      return next
+    })
 
   // Weekly (exactly 7 days): the date decides the day, so the pointer and its
   // affordances (Up next badge, Set as today) disappear — instead the card for
@@ -291,48 +304,71 @@ export default function RoutineEditor() {
                             <span className="text-center">Reps</span>
                             <span />
                           </div>
-                          {day.exercises.map((ex, exIndex) => (
-                            <div key={ex.id} className="grid grid-cols-[1fr_44px_92px_28px] gap-2 items-center">
-                              <div className="min-w-0 flex items-center gap-1">
-                                <div className="flex flex-col shrink-0">
-                                  <button onClick={() => moveExercise(day.id, exIndex, -1)} disabled={exIndex === 0} aria-label="Move exercise up" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <ChevronUp className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={() => moveExercise(day.id, exIndex, 1)} disabled={exIndex === day.exercises.length - 1} aria-label="Move exercise down" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed">
-                                    <ChevronDown className="w-3 h-3" />
+                          {day.exercises.map((ex, exIndex) => {
+                            const noteOpen = noteOpenFor.has(ex.id) || !!ex.note
+                            return (
+                              <div key={ex.id}>
+                                <div className="grid grid-cols-[1fr_44px_92px_28px] gap-2 items-center">
+                                  <div className="min-w-0 flex items-center gap-1">
+                                    <div className="flex flex-col shrink-0">
+                                      <button onClick={() => moveExercise(day.id, exIndex, -1)} disabled={exIndex === 0} aria-label="Move exercise up" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed">
+                                        <ChevronUp className="w-3 h-3" />
+                                      </button>
+                                      <button onClick={() => moveExercise(day.id, exIndex, 1)} disabled={exIndex === day.exercises.length - 1} aria-label="Move exercise down" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed">
+                                        <ChevronDown className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                    <span className="text-[13px] text-text-primary truncate">{ex.name}</span>
+                                    <button
+                                      onClick={() => toggleNote(ex.id)}
+                                      aria-label={ex.note ? `Edit note for ${ex.name}` : `Add note for ${ex.name}`}
+                                      title="Note"
+                                      className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${ex.note ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                                    >
+                                      <StickyNote className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <input
+                                    type="number" inputMode="numeric" min="1" max="20"
+                                    value={ex.sets}
+                                    onChange={(e) => setExerciseSets(day.id, ex.id, e.target.value)}
+                                    aria-label={`${ex.name} target sets`}
+                                    className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                                  />
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number" inputMode="numeric" min="1" max="50"
+                                      value={ex.repRange?.low ?? ''}
+                                      onChange={(e) => setExerciseRep(day.id, ex.id, 'low', e.target.value)}
+                                      aria-label={`${ex.name} rep low`}
+                                      className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                                    />
+                                    <span className="text-text-light text-[12px]">–</span>
+                                    <input
+                                      type="number" inputMode="numeric" min="1" max="50"
+                                      value={ex.repRange?.high ?? ''}
+                                      onChange={(e) => setExerciseRep(day.id, ex.id, 'high', e.target.value)}
+                                      aria-label={`${ex.name} rep high`}
+                                      className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                                    />
+                                  </div>
+                                  <button onClick={() => removeExercise(day.id, ex.id)} aria-label={`Remove ${ex.name}`} className="flex justify-center text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer">
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
-                                <span className="text-[13px] text-text-primary truncate">{ex.name}</span>
+                                {noteOpen && (
+                                  <textarea
+                                    value={ex.note || ''}
+                                    onChange={(e) => setExerciseNote(day.id, ex.id, e.target.value)}
+                                    placeholder="Note — form cue, machine setting, anything worth remembering…"
+                                    aria-label={`Note for ${ex.name}`}
+                                    rows={2}
+                                    className="w-full mt-1.5 bg-cream border border-border px-2 py-1.5 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
+                                  />
+                                )}
                               </div>
-                              <input
-                                type="number" inputMode="numeric" min="1" max="20"
-                                value={ex.sets}
-                                onChange={(e) => setExerciseSets(day.id, ex.id, e.target.value)}
-                                aria-label={`${ex.name} target sets`}
-                                className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                              />
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number" inputMode="numeric" min="1" max="50"
-                                  value={ex.repRange?.low ?? ''}
-                                  onChange={(e) => setExerciseRep(day.id, ex.id, 'low', e.target.value)}
-                                  aria-label={`${ex.name} rep low`}
-                                  className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                                />
-                                <span className="text-text-light text-[12px]">–</span>
-                                <input
-                                  type="number" inputMode="numeric" min="1" max="50"
-                                  value={ex.repRange?.high ?? ''}
-                                  onChange={(e) => setExerciseRep(day.id, ex.id, 'high', e.target.value)}
-                                  aria-label={`${ex.name} rep high`}
-                                  className="w-full bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                                />
-                              </div>
-                              <button onClick={() => removeExercise(day.id, ex.id)} aria-label={`Remove ${ex.name}`} className="flex justify-center text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                       <ExercisePicker

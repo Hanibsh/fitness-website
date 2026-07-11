@@ -40,8 +40,8 @@ export function moveInArray(arr, index, delta) {
 // picked from the library (null for custom), `sets` is the target count, and
 // `repRange` is the double-progression target.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 } } = opts
-  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange }
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '' } = opts
+  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note }
 }
 
 export function createDay(kind = 'train', name = '') {
@@ -173,6 +173,7 @@ export function draftFromDay(day, opts = {}) {
       bodyweight,
       bw: sessionBw,
       exerciseId: pe.exerciseId || null,
+      note: pe.note || '',
     })
     // createExercise seeds one set; add the rest to hit the target count.
     const target = Math.max(1, Number(pe.sets) || 1)
