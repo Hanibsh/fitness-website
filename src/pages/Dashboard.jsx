@@ -35,6 +35,12 @@ function greeting(d = new Date()) {
   return 'Good evening'
 }
 
+// Display-only rename — the engine's internal group is still "Abs" (see
+// engineConfig.js ENGINE_MUSCLES); this just relabels it in the UI.
+function displayMuscle(m) {
+  return m === 'Abs' ? 'Core' : m
+}
+
 function fmtNum(n) {
   return (n || 0).toLocaleString()
 }
@@ -676,8 +682,8 @@ export default function Dashboard() {
                       {href && (
                         <Link
                           to={href}
-                          aria-label={`What is ${v.muscle}?`}
-                          title={`What is ${v.muscle}?`}
+                          aria-label={`What is ${displayMuscle(v.muscle)}?`}
+                          title={`What is ${displayMuscle(v.muscle)}?`}
                           className="shrink-0 text-text-light hover:text-text-primary"
                         >
                           <HelpCircle className="w-3.5 h-3.5" />
@@ -689,7 +695,7 @@ export default function Dashboard() {
                       >
                         <div className="flex justify-between items-center text-[12px] mb-1">
                           <span className="text-text-secondary flex items-center gap-1">
-                            {v.muscle}
+                            {displayMuscle(v.muscle)}
                             {expandable && <ChevronRight className={`w-3 h-3 text-text-light transition-transform ${open ? 'rotate-90' : ''}`} />}
                           </span>
                           <span className="text-text-muted tabular-nums">
@@ -753,8 +759,8 @@ export default function Dashboard() {
                         {href && (
                           <Link
                             to={href}
-                            aria-label={`What is ${m.muscle}?`}
-                            title={`What is ${m.muscle}?`}
+                            aria-label={`What is ${displayMuscle(m.muscle)}?`}
+                            title={`What is ${displayMuscle(m.muscle)}?`}
                             className="shrink-0 text-text-light hover:text-text-primary"
                           >
                             <HelpCircle className="w-3.5 h-3.5" />
@@ -766,7 +772,7 @@ export default function Dashboard() {
                         >
                           <div className="flex justify-between items-center gap-2 flex-wrap text-[12px] mb-1">
                             <span className="text-text-secondary flex items-center gap-2">
-                              {m.muscle}
+                              {displayMuscle(m.muscle)}
                               {expandable && <ChevronRight className={`w-3 h-3 text-text-light transition-transform ${open ? 'rotate-90' : ''}`} />}
                               <StatusChip tone={m.status === 'ready' ? 'green' : 'amber'}>
                                 {m.status === 'ready' ? 'Ready' : 'Recovering'}
@@ -810,14 +816,14 @@ export default function Dashboard() {
                 })}
                 {untouched.length > 0 && (
                   <p className="text-[11px] text-text-light pt-2">
-                    Fully recovered: {untouched.map((m) => m.muscle).join(' · ')}
+                    Fully recovered: {untouched.map((m) => displayMuscle(m.muscle)).join(' · ')}
                   </p>
                 )}
                 {recovery.personal.observations > 0 && (
                   <p className="text-[11px] text-text-light pt-2">
                     Recovery speeds personalized from {recovery.personal.observations} performance observation{recovery.personal.observations !== 1 ? 's' : ''}
                     {recovery.personal.notes.length > 0 && (
-                      <> — {recovery.personal.notes.map((n) => `${n.muscle} ${n.mult < 1 ? 'faster' : 'slower'}`).join(' · ')} than default for you</>
+                      <> — {recovery.personal.notes.map((n) => `${displayMuscle(n.muscle)} ${n.mult < 1 ? 'faster' : 'slower'}`).join(' · ')} than default for you</>
                     )}.
                   </p>
                 )}
