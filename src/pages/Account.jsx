@@ -5,7 +5,15 @@ import { ArrowLeft, LogOut, Check } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
+import {
+  GOALS, EXPERIENCE_LEVELS, DAYS_PER_WEEK, SESSION_MINUTES,
+  EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS,
+} from '../lib/profileFields'
 import UnitHelp from '../components/UnitHelp'
+
+const NOW_YEAR = new Date().getFullYear()
+const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
+const MAX_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.min
 
 export default function Account() {
   const { user, signOut, setNickname: setAuthNickname } = useAuth()
@@ -14,10 +22,24 @@ export default function Account() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
+  // About you
   const [nickname, setNickname] = useState('')
   const [sex, setSex] = useState('')
-  const [bodyweight, setBodyweight] = useState('')
+  const [birthYear, setBirthYear] = useState('')
   const [unit, setUnit] = useState('kg')
+  const [bodyweight, setBodyweight] = useState('')
+  const [height, setHeight] = useState('')
+
+  // Your training
+  const [goal, setGoal] = useState('')
+  const [experience, setExperience] = useState('')
+  const [trainingLen, setTrainingLen] = useState('')
+  const [trainingLenUnit, setTrainingLenUnit] = useState('years')
+  const [daysPerWeek, setDaysPerWeek] = useState('')
+  const [sessionMinutes, setSessionMinutes] = useState('')
+  const [equipment, setEquipment] = useState('')
+
+  // Preferences
   const [shareData, setShareData] = useState(false)
   const [coachingStatus, setCoachingStatus] = useState('none')
 
@@ -30,8 +52,20 @@ export default function Account() {
         if (!cancelled && p) {
           setNickname(p.display_name || '')
           setSex(p.sex || '')
-          setBodyweight(p.bodyweight != null ? String(p.bodyweight) : '')
+          setBirthYear(p.birth_year != null ? String(p.birth_year) : '')
           setUnit(p.unit || 'kg')
+          setBodyweight(p.bodyweight != null ? String(p.bodyweight) : '')
+          setHeight(p.height != null ? String(p.height) : '')
+          setGoal(p.goal || '')
+          setExperience(p.experience_level || '')
+          if (p.training_months != null) {
+            const m = p.training_months
+            if (m > 0 && m % 12 === 0) { setTrainingLen(String(m / 12)); setTrainingLenUnit('years') }
+            else { setTrainingLen(String(m)); setTrainingLenUnit('months') }
+          }
+          setDaysPerWeek(p.days_per_week != null ? Number(p.days_per_week) : '')
+          setSessionMinutes(p.session_minutes != null ? Number(p.session_minutes) : '')
+          setEquipment(p.equipment || '')
           setShareData(!!p.share_data)
           setCoachingStatus(p.coaching_status || 'none')
         }
@@ -44,21 +78,47 @@ export default function Account() {
     return () => { cancelled = true }
   }, [user])
 
+  function edited() { if (saved) setSaved(false) }
+
   async function save() {
     setError('')
     setSaved(false)
     const nick = validateNickname(nickname)
-    if (!nick.ok) {
-      setError(nick.error)
-      return
+    if (!nick.ok) { setError(nick.error); return }
+    if (birthYear !== '') {
+      const y = Number(birthYear)
+      if (!Number.isInteger(y) || y < MIN_BIRTH_YEAR || y > MAX_BIRTH_YEAR) {
+        setError(`Birth year should be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`); return
+      }
     }
+    if (height !== '') {
+      const h = Number(height), b = HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg
+      if (!Number.isFinite(h) || h < b.min || h > b.max) {
+        setError(`Height should be between ${b.min} and ${b.max} ${b.label}.`); return
+      }
+    }
+    if (trainingLen !== '') {
+      const n = Number(trainingLen)
+      if (!Number.isFinite(n) || n < 0) { setError('Training length must be a positive number.'); return }
+    }
+
     setSaving(true)
     try {
       await saveProfile(user.id, {
         display_name: nick.value || null,
         sex: sex || null,
-        bodyweight: bodyweight === '' ? null : Number(bodyweight),
+        birth_year: birthYear === '' ? null : Number(birthYear),
         unit,
+        bodyweight: bodyweight === '' ? null : Number(bodyweight),
+        height: height === '' ? null : Number(height),
+        goal: goal || null,
+        experience_level: experience || null,
+        training_months: trainingLen === ''
+          ? null
+          : (trainingLenUnit === 'years' ? Math.round(Number(trainingLen) * 12) : Math.round(Number(trainingLen))),
+        days_per_week: daysPerWeek === '' ? null : Number(daysPerWeek),
+        session_minutes: sessionMinutes === '' ? null : Number(sessionMinutes),
+        equipment: equipment || null,
         share_data: shareData,
       })
       setNickname(nick.value)
@@ -71,16 +131,25 @@ export default function Account() {
     }
   }
 
-  const toggle = (active, onClick, label) => (
+  // Segmented option button. `sub` is an optional second line.
+  const choice = (active, onClick, label, sub) => (
     <button
-      onClick={onClick}
-      className={`flex-1 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${
+      key={label}
+      type="button"
+      onClick={() => { onClick(); edited() }}
+      className={`px-2 py-3 text-[13px] font-medium border cursor-pointer transition-colors text-center leading-tight ${
         active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
       }`}
     >
       {label}
+      {sub && <span className={`block text-[10px] font-normal mt-0.5 ${active ? 'text-cream/60' : 'text-text-light'}`}>{sub}</span>}
     </button>
   )
+
+  const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
+  const inputCls = 'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  const cardCls = 'bg-white border border-border p-6 sm:p-9 space-y-7'
+  const sectionHeadCls = 'font-heading text-xl font-medium text-text-primary mb-4'
 
   return (
     <div className="pt-28 pb-24 px-6">
@@ -90,11 +159,11 @@ export default function Account() {
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Your account</h1>
+          <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Your profile</h1>
 
           {!user ? (
             <p className="text-text-muted text-[15px] mt-6">
-              You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your account.
+              You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
             </p>
           ) : loading ? (
             <p className="text-text-muted text-[13px] mt-6">Loading…</p>
@@ -107,93 +176,202 @@ export default function Account() {
                 )}
               </div>
 
-              <div className="bg-white border border-border p-9 space-y-7">
-                <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Nickname (optional)</label>
-                  <input
-                    type="text"
-                    value={nickname}
-                    maxLength={NICKNAME_MAX}
-                    onChange={(e) => setNickname(e.target.value)}
-                    placeholder="What should we call you?"
-                    className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                  />
-                  <p className="text-[11px] text-text-light mt-1.5">Shown on your dashboard instead of your email. Leave blank to use your email name.</p>
-                </div>
+              <div className="space-y-10">
+                {/* ---- About you ---------------------------------------------------- */}
+                <section>
+                  <h2 className={sectionHeadCls}>About you</h2>
+                  <div className={cardCls}>
+                    <div>
+                      <label className={labelCls}>Nickname (optional)</label>
+                      <input
+                        type="text"
+                        value={nickname}
+                        maxLength={NICKNAME_MAX}
+                        onChange={(e) => { setNickname(e.target.value); edited() }}
+                        placeholder="What should we call you?"
+                        className={inputCls}
+                      />
+                      <p className="text-[11px] text-text-light mt-1.5">Shown on your dashboard instead of your email. Leave blank to use your email name.</p>
+                    </div>
 
-                <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Sex</label>
-                  <div className="flex gap-3">
-                    {toggle(sex === 'male', () => setSex('male'), 'Male')}
-                    {toggle(sex === 'female', () => setSex('female'), 'Female')}
+                    <div>
+                      <label className={labelCls}>Sex</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {choice(sex === 'male', () => setSex('male'), 'Male')}
+                        {choice(sex === 'female', () => setSex('female'), 'Female')}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Birth year (optional)</label>
+                      <input
+                        type="number"
+                        min={MIN_BIRTH_YEAR}
+                        max={MAX_BIRTH_YEAR}
+                        value={birthYear}
+                        onChange={(e) => { setBirthYear(e.target.value); edited() }}
+                        placeholder="1998"
+                        className={`${inputCls} max-w-[140px]`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">Preferred unit <UnitHelp /></label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {choice(unit === 'kg', () => setUnit('kg'), 'Metric (kg)')}
+                        {choice(unit === 'lbs', () => setUnit('lbs'), 'Imperial (lbs)')}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={labelCls}>Bodyweight ({unit})</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={bodyweight}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
+                            setBodyweight(v); edited()
+                          }}
+                          placeholder={unit === 'kg' ? '80' : '176'}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Height ({(HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg).label}, optional)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={height}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
+                            setHeight(v); edited()
+                          }}
+                          placeholder={unit === 'kg' ? '180' : '71'}
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">Preferred unit <UnitHelp /></label>
-                  <div className="flex gap-3">
-                    {toggle(unit === 'kg', () => setUnit('kg'), 'Metric (kg)')}
-                    {toggle(unit === 'lbs', () => setUnit('lbs'), 'Imperial (lbs)')}
+                {/* ---- Your training ----------------------------------------------- */}
+                <section>
+                  <h2 className={sectionHeadCls}>Your training</h2>
+                  <p className="text-[13px] text-text-muted -mt-2 mb-4 leading-relaxed">
+                    This is what we'll use to tailor your training when workout programs land.
+                  </p>
+                  <div className={cardCls}>
+                    <div>
+                      <label className={labelCls}>Primary goal</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {GOALS.map((g) => choice(goal === g.value, () => setGoal(g.value), g.label))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Experience</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {EXPERIENCE_LEVELS.map((e) => choice(experience === e.value, () => setExperience(e.value), e.label, e.sub))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>How long have you been training? (optional)</label>
+                      <div className="flex gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={trainingLen}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
+                            setTrainingLen(v); edited()
+                          }}
+                          placeholder="2"
+                          className={`${inputCls} max-w-[120px]`}
+                        />
+                        <select
+                          value={trainingLenUnit}
+                          onChange={(e) => { setTrainingLenUnit(e.target.value); edited() }}
+                          aria-label="Training length unit"
+                          className="bg-cream border border-border px-3 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary cursor-pointer"
+                        >
+                          <option value="years">Years</option>
+                          <option value="months">Months</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Training days per week</label>
+                      <div className="grid grid-cols-5 gap-2">
+                        {DAYS_PER_WEEK.map((d) => choice(daysPerWeek === d, () => setDaysPerWeek(d), String(d)))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Time per session</label>
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        {SESSION_MINUTES.map((m) => choice(sessionMinutes === m, () => setSessionMinutes(m), `${m}m`))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Equipment</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {EQUIPMENT_PRESETS.map((eq) => choice(equipment === eq.value, () => setEquipment(eq.value), eq.label))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </section>
 
-                <div>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">
-                    Bodyweight ({unit})
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={bodyweight}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                      setBodyweight(v)
-                    }}
-                    placeholder={unit === 'kg' ? '80' : '176'}
-                    className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                  />
-                </div>
+                {/* ---- Privacy ----------------------------------------------------- */}
+                <section>
+                  <h2 className={sectionHeadCls}>Privacy</h2>
+                  <div className="bg-white border border-border p-6 sm:p-9">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={shareData}
+                        onChange={(e) => { setShareData(e.target.checked); edited() }}
+                        className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
+                      />
+                      <span className="text-[13px] text-text-secondary leading-relaxed">
+                        <span className="font-medium text-text-primary">Help improve the strength standards.</span>{' '}
+                        Share my lifts (exercise, weight, reps, RIR) along with my bodyweight and sex — <span className="font-medium text-text-primary">anonymously</span>, with no name or email attached. You can turn this off anytime.
+                      </span>
+                    </label>
+                  </div>
+                </section>
+              </div>
 
-                {/* Data-sharing consent */}
-                <div className="border border-border bg-cream p-5">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={shareData}
-                      onChange={(e) => setShareData(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
-                    />
-                    <span className="text-[13px] text-text-secondary leading-relaxed">
-                      <span className="font-medium text-text-primary">Help improve the strength standards.</span>{' '}
-                      Share my lifts (exercise, weight, reps, RIR) along with my bodyweight and sex — <span className="font-medium text-text-primary">anonymously</span>, with no name or email attached. You can turn this off anytime.
-                    </span>
-                  </label>
-                </div>
+              {error && <p className="text-[13px] text-red-600 mt-6">{error}</p>}
 
-                {error && <p className="text-[13px] text-red-600">{error}</p>}
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={save}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium px-7 py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saved ? <Check className="w-4 h-4" /> : null}
-                    {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
-                  </button>
-                  <button
-                    onClick={signOut}
-                    className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-5 py-3 cursor-pointer text-[13px] transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" /> Log out
-                  </button>
-                </div>
+              <div className="flex items-center gap-3 mt-8">
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium px-7 py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saved ? <Check className="w-4 h-4" /> : null}
+                  {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
+                </button>
+                <button
+                  onClick={signOut}
+                  className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-5 py-3 cursor-pointer text-[13px] transition-colors"
+                >
+                  <LogOut className="w-4 h-4" /> Log out
+                </button>
               </div>
 
               <p className="text-[12px] text-text-light leading-relaxed mt-6">
-                Your bodyweight and sex are only used to make the tools more accurate for you and, if you opt in above,
-                to improve the strength standards anonymously. They're never shown to anyone.
+                Everything here is used only to make the tools and your training more accurate for you and, if you opt in above,
+                to improve the strength standards anonymously. It's never shown to anyone else.
               </p>
             </>
           )}

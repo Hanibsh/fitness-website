@@ -49,6 +49,7 @@ function App() {
         <Route path="/routine" element={<Routine />} />
         <Route path="/routine/:id" element={<RoutineEditor />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/profile" element={<Account />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/programs" element={<Programs />} />
         <Route path="/contact" element={<Contact />} />

@@ -10,7 +10,19 @@ create table if not exists public.profiles (
   display_name text,
   sex text check (sex in ('male', 'female')),
   bodyweight numeric,
+  -- Height is stored in the user's `unit` system (cm when kg, inches when lbs),
+  -- same as bodyweight.
+  height numeric,
+  birth_year int,
   unit text not null default 'kg',
+  -- Training profile — feeds the (future) workout generator and prefills the
+  -- calculators. All optional; the app validates the values on save too.
+  goal text check (goal in ('lose_fat', 'gain_muscle', 'recomp', 'maintain')),
+  experience_level text check (experience_level in ('beginner', 'intermediate', 'advanced')),
+  training_months int,          -- optional: how long they've been training
+  days_per_week int,            -- target training days per week
+  session_minutes int,          -- target time per session
+  equipment text check (equipment in ('gym', 'home', 'dumbbells', 'bodyweight')),
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.
   coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
@@ -18,8 +30,16 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- If the profiles table already exists from an earlier run, add the column:
+-- If the profiles table already exists from an earlier run, add the columns:
 alter table public.profiles add column if not exists coaching_status text not null default 'none';
+alter table public.profiles add column if not exists height numeric;
+alter table public.profiles add column if not exists birth_year int;
+alter table public.profiles add column if not exists goal text;
+alter table public.profiles add column if not exists experience_level text;
+alter table public.profiles add column if not exists training_months int;
+alter table public.profiles add column if not exists days_per_week int;
+alter table public.profiles add column if not exists session_minutes int;
+alter table public.profiles add column if not exists equipment text;
 
 alter table public.profiles enable row level security;
 
