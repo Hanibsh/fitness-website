@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-10",
+  "generatedAt": "2026-07-11",
   "count": 307,
   "exercises": [
     {
@@ -165,8 +165,7 @@
       "type": "compound",
       "laterality": "both",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -195,8 +194,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -225,8 +223,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -255,8 +252,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -285,8 +281,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -315,8 +310,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -345,8 +339,7 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -643,7 +636,7 @@
     {
       "id": "wrist-curl",
       "name": "Wrist Curl",
-      "category": "Arms",
+      "category": "Forearms",
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
@@ -676,8 +669,7 @@
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -822,7 +814,7 @@
     {
       "id": "dumbbell-reverse-curl",
       "name": "Dumbbell Reverse Curl",
-      "category": "Arms",
+      "category": "Forearms",
       "type": "isolation",
       "laterality": "both",
       "muscles": {
@@ -882,7 +874,7 @@
     {
       "id": "dumbbell-wrist-curl",
       "name": "Dumbbell Wrist Curl",
-      "category": "Arms",
+      "category": "Forearms",
       "type": "isolation",
       "laterality": "both",
       "muscles": {
@@ -915,8 +907,7 @@
       "type": "isolation",
       "laterality": "unilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -945,8 +936,7 @@
       "type": "isolation",
       "laterality": "unilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -1005,8 +995,7 @@
       "type": "compound",
       "laterality": "bilateral",
       "muscles": {
-        "Triceps": 1,
-        "Brachioradialis": 0.5
+        "Triceps": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -1346,7 +1335,7 @@
     {
       "id": "romanian-deadlift",
       "name": "Romanian Deadlift",
-      "category": "Back",
+      "category": "Legs",
       "type": "compound",
       "laterality": "bilateral",
       "muscles": {
@@ -1378,7 +1367,7 @@
     {
       "id": "sumo-deadlift",
       "name": "Sumo Deadlift",
-      "category": "Back",
+      "category": "Legs",
       "type": "compound",
       "laterality": "bilateral",
       "muscles": {
@@ -1608,14 +1597,14 @@
         "Rear Delts": 0.25,
         "Upper Traps": 0.25
       },
-      "fatigueScore": 5,
+      "fatigueScore": 3,
       "recoveryWindowHours": [
         48,
         72
       ],
       "restSeconds": [
-        240,
-        420
+        210,
+        300
       ],
       "progressiveOverload": "low",
       "stability": "highly unstable",
@@ -1640,14 +1629,14 @@
         "Rear Delts": 0.25,
         "Upper Traps": 0.25
       },
-      "fatigueScore": 5,
+      "fatigueScore": 2,
       "recoveryWindowHours": [
-        48,
-        72
+        24,
+        48
       ],
       "restSeconds": [
-        240,
-        420
+        180,
+        240
       ],
       "progressiveOverload": "low",
       "stability": "highly unstable",
@@ -3507,14 +3496,14 @@
         "Quadriceps": 1,
         "Hip Flexors": 0.35
       },
-      "fatigueScore": 5,
+      "fatigueScore": 3,
       "recoveryWindowHours": [
         48,
         72
       ],
       "restSeconds": [
-        240,
-        420
+        180,
+        240
       ],
       "progressiveOverload": "very high",
       "stability": "moderate",
@@ -3523,7 +3512,7 @@
       "stretchMediated": "yes",
       "resistanceProfile": "lengthened",
       "equipment": "free weight",
-      "axialLoading": true,
+      "axialLoading": false,
       "skill": "high",
       "notes": "Stance width and depth dictate Glute vs Quad bias."
     },
@@ -3957,7 +3946,7 @@
     {
       "id": "barbell-upright-row",
       "name": "Barbell Upright Row",
-      "category": "Shoulders",
+      "category": "Traps",
       "type": "hybrid",
       "laterality": "bilateral",
       "muscles": {
@@ -4491,9 +4480,9 @@
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Upper Traps": 1,
+        "Lower Traps": 1,
         "Rear Delts": 0.5,
-        "Rhomboids": 0.25
+        "Mid Traps": 0.25
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -4522,7 +4511,7 @@
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Upper Traps": 1,
+        "Mid Traps": 1,
         "Rear Delts": 0.5,
         "Rhomboids": 0.25
       },
@@ -6209,7 +6198,7 @@
       "stretchMediated": "yes",
       "resistanceProfile": "lengthened",
       "equipment": "free weight",
-      "axialLoading": false,
+      "axialLoading": true,
       "skill": "moderate",
       "notes": null
     },
@@ -7700,7 +7689,8 @@
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Gastrocnemius": 1
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -7729,7 +7719,8 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Gastrocnemius": 1
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -7758,7 +7749,8 @@
       "type": "isolation",
       "laterality": "both",
       "muscles": {
-        "Gastrocnemius": 1
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -7787,7 +7779,8 @@
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Gastrocnemius": 1
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
