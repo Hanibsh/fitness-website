@@ -375,6 +375,22 @@ export function buildSharedLifts(session, profile) {
   return rows
 }
 
+// The most recently logged entry for this exercise — matched by exerciseId
+// when both sides have one, else case-insensitive name — with the unit it was
+// logged in. `sessions` must be newest-first (as getHistory()/
+// fetchRemoteHistory both return). Powers "prefill from last time you did this".
+export function lastLoggedExercise(sessions, { exerciseId, name }) {
+  const key = (name || '').trim().toLowerCase()
+  for (const session of sessions) {
+    for (const ex of session.exercises) {
+      if (ex.kind === 'cardio') continue
+      const match = exerciseId && ex.exerciseId ? ex.exerciseId === exerciseId : ex.name.trim().toLowerCase() === key
+      if (match) return { ex, unit: session.unit || 'kg' }
+    }
+  }
+  return null
+}
+
 // Every unique exercise name ever logged, most-recent first.
 export function loggedExerciseNames(sessions) {
   const seen = new Map()

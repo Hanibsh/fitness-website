@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -10,6 +10,7 @@ import {
   createExercise,
   createSet,
   convertSet,
+  setsFromPrevious,
   getHistory,
   makeSession,
   addLocalSession,
@@ -32,7 +33,7 @@ import {
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram } from '../lib/workoutRemote'
 import { todaysDay, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate } from '../lib/program'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise } from '../lib/workoutStats'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -225,6 +226,8 @@ export default function WorkoutTracker() {
   const [openSession, setOpenSession] = useState(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
+  const [substituteFor, setSubstituteFor] = useState(null)
+  const [pendingSub, setPendingSub] = useState(null) // { exId, name, kind, exerciseId, plannedExerciseId }
   const [selectedCalDay, setSelectedCalDay] = useState(null)
   const [editingSessionDate, setEditingSessionDate] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
@@ -441,6 +444,82 @@ export default function WorkoutTracker() {
       if (bodyweight && (d.bodyweight == null || d.bodyweight === '')) next.bodyweight = bw
       return next
     })
+  }
+
+  // Replace an exercise's identity (name/kind/DB link) mid-session, keeping
+  // its slot (position, superset membership, planned-exercise link) but
+  // resetting its sets to the new movement's shape — same number of sets as
+  // before, blank values, fresh rep-target lookup. Notes are cleared since
+  // they likely referred to the old movement.
+  function substituteExercise(exId, name, kind, exerciseId) {
+    const trimmed = name.trim().slice(0, 60)
+    if (!trimmed) return
+    const isStrength = kind !== 'cardio'
+    const lib = isStrength ? getExercise(exerciseId) : null
+    const laterality = isStrength ? (lib ? lib.laterality : lateralityFor(trimmed)) : undefined
+    const bodyweight = isStrength ? (lib ? lib.bodyweight : usesBodyweight(trimmed)) : false
+    const repRange = isStrength ? getExerciseTarget(trimmed) || undefined : undefined
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => {
+        if (e.id !== exId) return e
+        const bw = bodyweight ? (d.bodyweight != null && d.bodyweight !== '' ? Number(d.bodyweight) : Number(prefillBodyweight()) || 0) : 0
+        const fresh = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw, exerciseId: exerciseId || null })
+        const targetCount = Math.max(1, e.sets.length)
+        while (fresh.sets.length < targetCount) {
+          const setOpts = fresh.bodyweight ? { bodyweight: true, bw } : { unilateral: fresh.unilateral }
+          fresh.sets.push(createSet(fresh.sets[fresh.sets.length - 1], setOpts))
+        }
+        return {
+          ...fresh,
+          id: e.id,
+          supersetId: kind === 'cardio' || e.kind === 'cardio' ? null : e.supersetId,
+          plannedExerciseId: e.plannedExerciseId,
+        }
+      }),
+    }))
+  }
+
+  // Apply the same swap to the active routine's plan slot this session
+  // exercise came from — so future sessions start with the new movement too.
+  function substituteInRoutine(plannedExerciseId, name, kind, exerciseId) {
+    if (!program || !draft.programDayId || !plannedExerciseId) return
+    const trimmed = name.trim().slice(0, 60)
+    const updated = {
+      ...program,
+      days: program.days.map((d) =>
+        d.id === draft.programDayId
+          ? { ...d, exercises: d.exercises.map((pe) => (pe.id === plannedExerciseId ? { ...pe, name: trimmed, exerciseId: exerciseId || null, kind } : pe)) }
+          : d
+      ),
+      updatedAt: Date.now(),
+    }
+    setProgram(updated)
+    persistProgram(updated)
+  }
+
+  // The picker chose a replacement. If this exercise came from today's
+  // program day, ask whether to also update the routine; otherwise apply
+  // straight away (there's nothing to save into).
+  function pickSubstitute(exId, name, category, exerciseId) {
+    const kind = category === 'Cardio' ? 'cardio' : 'strength'
+    const ex = draft.exercises.find((e) => e.id === exId)
+    const eligible = !!(program && draft.programId === program.id && draft.programDayId && ex?.plannedExerciseId)
+    if (eligible) {
+      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: ex.plannedExerciseId })
+    } else {
+      substituteExercise(exId, name, kind, exerciseId)
+      setSubstituteFor(null)
+    }
+  }
+
+  function confirmSubstitute(alsoRoutine) {
+    if (!pendingSub) return
+    const { exId, name, kind, exerciseId, plannedExerciseId } = pendingSub
+    substituteExercise(exId, name, kind, exerciseId)
+    if (alsoRoutine) substituteInRoutine(plannedExerciseId, name, kind, exerciseId)
+    setPendingSub(null)
+    setSubstituteFor(null)
   }
 
   // Flip an exercise between bilateral and per-limb (left/right) logging,
@@ -749,6 +828,21 @@ export default function WorkoutTracker() {
     if (user) upsertRemoteProgram(user.id, p).catch(() => {})
   }
 
+  // Auto-fill a freshly-planned exercise's sets from the last time it was
+  // logged (any session, not just this same routine day) — set count
+  // (warm-ups included), weights, reps and RIR all come from there, converted
+  // to the current unit, overriding the routine's static target-set count.
+  // Only applies when the shape matches (bilateral/unilateral, bodyweight or
+  // not); otherwise the planned default (blank sets at the target count)
+  // stands. Everything filled in stays fully editable.
+  function prefillFromHistory(ex, sessionBw) {
+    if (ex.kind === 'cardio') return ex
+    const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
+    if (!last) return ex
+    const sets = setsFromPrevious(last.ex, last.unit, unit, { unilateral: ex.unilateral, bodyweight: ex.bodyweight, bw: sessionBw })
+    return sets && sets.length ? { ...ex, sets } : ex
+  }
+
   // Start today's planned session: fill the draft from the program day (name +
   // exercises + targets) and tag it so finishing advances the rotation. Any
   // in-progress non-program draft is stashed (like edit mode) and restored later.
@@ -756,11 +850,12 @@ export default function WorkoutTracker() {
     setDraft((cur) => {
       if (cur.exercises.length > 0 && !cur.editingId && !cur.programId) stashDraft(cur)
       const bodyweight = prefillBodyweight()
+      const exercises = draftFromDay(day, { bodyweight }).map((ex) => prefillFromHistory(ex, Number(bodyweight) || 0))
       return {
         startedAt: Date.now(),
         date: Date.now(),
         name: day.name || '',
-        exercises: draftFromDay(day, { bodyweight }),
+        exercises,
         bodyweight,
         programId: program.id,
         programDayId: day.id,
@@ -1053,6 +1148,15 @@ export default function WorkoutTracker() {
               <StickyNote className="w-4 h-4" />
             </button>
             <button
+              onClick={() => { setSubstituteFor(substituteFor === ex.id ? null : ex.id); setPendingSub(null) }}
+              aria-label={`Substitute ${ex.name}`}
+              aria-pressed={substituteFor === ex.id}
+              title="Substitute exercise"
+              className={`bg-transparent border-none cursor-pointer p-1 transition-colors ${substituteFor === ex.id ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+            >
+              <Repeat className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
               aria-label={`View ${ex.name} progress`}
               className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1"
@@ -1120,6 +1224,44 @@ export default function WorkoutTracker() {
               rows={2}
               className="w-full mb-3 bg-white border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
             />
+          )}
+          {substituteFor === ex.id && (
+            <div className="mb-3">
+              {pendingSub?.exId === ex.id ? (
+                <div className="p-2.5 border border-border bg-white text-[12px] text-text-primary">
+                  <p className="mb-2">
+                    Replace <span className="font-medium">{ex.name}</span> with <span className="font-medium">{pendingSub.name}</span>?
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => confirmSubstitute(false)}
+                      className="text-[11px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-2.5 py-1.5 cursor-pointer transition-colors"
+                    >
+                      Just this session
+                    </button>
+                    <button
+                      onClick={() => confirmSubstitute(true)}
+                      className="text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1.5 border-none cursor-pointer hover:bg-accent-hover transition-colors"
+                    >
+                      Save to routine
+                    </button>
+                    <button
+                      onClick={() => setPendingSub(null)}
+                      className="text-[11px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer px-2.5 py-1.5"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <ExercisePicker
+                  onSelect={(name, category, id) => pickSubstitute(ex.id, name, category, id)}
+                  onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}
+                  excludeCategory={ex.kind === 'cardio' ? undefined : 'Cardio'}
+                  placeholder="Replace with…"
+                />
+              )}
+            </div>
           )}
           {ex.kind === 'cardio' ? (
             <>

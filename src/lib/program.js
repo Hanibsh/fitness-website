@@ -181,6 +181,9 @@ export function draftFromDay(day, opts = {}) {
       const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: ex.unilateral }
       ex.sets.push(createSet(ex.sets[ex.sets.length - 1], setOpts))
     }
+    // Traces this session exercise back to its slot in the routine, so a
+    // mid-session substitution can optionally update the plan too.
+    ex.plannedExerciseId = pe.id
     return ex
   })
 }

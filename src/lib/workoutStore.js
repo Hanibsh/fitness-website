@@ -5,6 +5,8 @@
 // if we later add accounts + a backend (e.g. Supabase), we swap the bodies of
 // these functions for API calls and the tracker UI keeps working unchanged.
 
+import { convertWeight } from './workoutStats'
+
 const DRAFT_KEY = 'leon_workout_draft'
 const HISTORY_KEY = 'leon_workout_history'
 const UNIT_KEY = 'leon_workout_unit'
@@ -98,6 +100,42 @@ export function convertSet(s, unilateral) {
   }
   if (!s.left) return s
   return { id: s.id, weight: s.left.weight ?? '', reps: s.left.reps ?? '', rir: s.left.rir ?? '', duration: '', distance: '', ...keep }
+}
+
+// Build a fresh sets array for an exercise from the last time it was logged —
+// same weight/reps/rir/type (including warm-ups), converted to the current
+// unit, with new ids and no completion timestamps (this is a new session).
+// Returns null if the shapes don't match (bilateral vs unilateral, or
+// bodyweight-loaded vs not) — the caller falls back to its own default set.
+export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
+  const { unilateral = false, bodyweight = false, bw = 0 } = opts
+  if (!prevEx || !Array.isArray(prevEx.sets) || !prevEx.sets.length) return null
+  if (bodyweight !== !!prevEx.bodyweight || unilateral !== !!prevEx.unilateral) return null
+  const conv = (w) => (w === '' || w == null ? (w ?? '') : Math.round(convertWeight(Number(w), fromUnit, toUnit) * 100) / 100)
+  const keep = (s) => (s.type ? { type: s.type } : {})
+  if (unilateral) {
+    return prevEx.sets.map((s) => ({
+      id: newId(),
+      ...keep(s),
+      left: { weight: conv(s.left?.weight), reps: s.left?.reps ?? '', rir: s.left?.rir ?? '' },
+      right: { weight: conv(s.right?.weight), reps: s.right?.reps ?? '', rir: s.right?.rir ?? '' },
+    }))
+  }
+  if (bodyweight) {
+    return prevEx.sets.map((s) => {
+      const added = conv(s.added)
+      return { id: newId(), ...keep(s), added, reps: s.reps ?? '', rir: s.rir ?? '', bw, weight: (Number(bw) || 0) + (Number(added) || 0) }
+    })
+  }
+  return prevEx.sets.map((s) => ({
+    id: newId(),
+    ...keep(s),
+    reps: s.reps ?? '',
+    weight: conv(s.weight),
+    rir: s.rir ?? '',
+    duration: s.duration ?? '',
+    distance: s.distance ?? '',
+  }))
 }
 
 // `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance) — it

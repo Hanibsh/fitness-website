@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, StickyNote } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, StickyNote, Repeat } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import ConfirmModal from '../components/ConfirmModal'
 import {
@@ -30,6 +30,7 @@ export default function RoutineEditor() {
   const { programsState, loading, saveProgram, addRoutine, setActiveRoutine, deleteRoutine } = useProgramsState()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
+  const [swapOpenFor, setSwapOpenFor] = useState(null)
 
   const editingProgram = !isNew ? programsState.programs.find((p) => p.id === id) || null : null
   const isEditingActive = !!editingProgram && editingProgram.id === programsState.activeId
@@ -115,6 +116,18 @@ export default function RoutineEditor() {
       else next.add(exId)
       return next
     })
+
+  // Swap a planned exercise's identity (name/DB link/kind) in place — sets,
+  // rep target and note all stay as planned, only WHAT you're doing changes.
+  const substituteExercise = (dayId, exId, name, category, exerciseId) =>
+    update((p) => ({
+      ...p,
+      days: p.days.map((d) =>
+        d.id === dayId
+          ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, name: name.trim().slice(0, 60), exerciseId, kind: category === 'Cardio' ? 'cardio' : 'strength' } : e)) }
+          : d
+      ),
+    }))
 
   // Weekly (exactly 7 days): the date decides the day, so the pointer and its
   // affordances (Up next badge, Set as today) disappear — instead the card for
@@ -327,6 +340,15 @@ export default function RoutineEditor() {
                                     >
                                       <StickyNote className="w-3 h-3" />
                                     </button>
+                                    <button
+                                      onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                                      aria-label={`Substitute ${ex.name}`}
+                                      aria-pressed={swapOpenFor === ex.id}
+                                      title="Substitute exercise"
+                                      className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${swapOpenFor === ex.id ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                                    >
+                                      <Repeat className="w-3 h-3" />
+                                    </button>
                                   </div>
                                   <input
                                     type="number" inputMode="numeric" min="1" max="20"
@@ -365,6 +387,16 @@ export default function RoutineEditor() {
                                     rows={2}
                                     className="w-full mt-1.5 bg-cream border border-border px-2 py-1.5 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
                                   />
+                                )}
+                                {swapOpenFor === ex.id && (
+                                  <div className="mt-1.5">
+                                    <ExercisePicker
+                                      onSelect={(name, category, id) => { substituteExercise(day.id, ex.id, name, category, id); setSwapOpenFor(null) }}
+                                      onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}
+                                      excludeCategory={ex.kind === 'cardio' ? undefined : 'Cardio'}
+                                      placeholder="Replace with…"
+                                    />
+                                  </div>
                                 )}
                               </div>
                             )
