@@ -224,6 +224,54 @@ export async function deleteRemoteBodyweight(id) {
   if (error) throw error
 }
 
+// ---- Day annotations --------------------------------------------------------
+// Mirrors the localStorage day-annotation functions but talks to the
+// `day_annotations` table. Degrades gracefully if the migration hasn't been
+// run yet (reads empty, writes throw so the caller falls back to local —
+// same pattern as blocks).
+function missingDayAnnotationsTable(error) {
+  if (!error) return false
+  return error.code === '42P01' || (typeof error.message === 'string' && /relation .*day_annotations.* does not exist/i.test(error.message))
+}
+
+function dayLogFromRow(row) {
+  return { id: row.id, date: new Date(row.date).getTime(), reason: row.reason, note: row.note || '' }
+}
+
+function dayLogToRow(userId, entry) {
+  return {
+    id: entry.id,
+    user_id: userId,
+    date: new Date(entry.date).toISOString(),
+    reason: entry.reason,
+    note: entry.note || null,
+  }
+}
+
+export async function fetchRemoteDayAnnotations(userId) {
+  const { data, error } = await supabase
+    .from('day_annotations')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+  if (error) {
+    if (missingDayAnnotationsTable(error)) return []
+    throw error
+  }
+  return (data || []).map(dayLogFromRow)
+}
+
+export async function upsertRemoteDayAnnotation(userId, entry) {
+  const { error } = await supabase.from('day_annotations').upsert(dayLogToRow(userId, entry))
+  if (error) throw error
+  return entry
+}
+
+export async function deleteRemoteDayAnnotation(id) {
+  const { error } = await supabase.from('day_annotations').delete().eq('id', id)
+  if (error) throw error
+}
+
 // Anonymized contribution to the shared strength dataset. No user id is
 // attached (the table has no such column) — RLS lets any signed-in user insert
 // but no one read it back through the app; you read it in the dashboard.

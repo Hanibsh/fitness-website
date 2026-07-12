@@ -27,6 +27,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Exercises = lazy(() => import('./pages/Exercises'))
 const ExerciseCategory = lazy(() => import('./pages/ExerciseCategory'))
 const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
+const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 
 function App() {
   const { user, loading } = useAuth()
@@ -46,6 +47,7 @@ function App() {
         <Route path="/exercises/group/:cat/:sub" element={<ExerciseCategory />} />
         <Route path="/exercises/:id" element={<ExerciseDetail />} />
         <Route path="/log" element={<WorkoutTracker />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/routine" element={<Routine />} />
         <Route path="/routine/:id" element={<RoutineEditor />} />
         <Route path="/account" element={<Account />} />

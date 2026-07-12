@@ -169,6 +169,34 @@ create policy "Users can delete their own blocks"
   on public.blocks for delete using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
+-- 2e) DAY_ANNOTATIONS — non-workout day markers: sick, injured, traveling,
+--     resting, or another reason, each with an optional note. Independent of
+--     sessions — a day can have both a logged workout and an annotation (you
+--     trained through it). One row per annotated day.
+-- ---------------------------------------------------------------------------
+create table if not exists public.day_annotations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date timestamptz not null,
+  reason text not null,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.day_annotations enable row level security;
+
+create policy "Users can view their own day annotations"
+  on public.day_annotations for select using (auth.uid() = user_id);
+create policy "Users can insert their own day annotations"
+  on public.day_annotations for insert with check (auth.uid() = user_id);
+create policy "Users can update their own day annotations"
+  on public.day_annotations for update using (auth.uid() = user_id);
+create policy "Users can delete their own day annotations"
+  on public.day_annotations for delete using (auth.uid() = user_id);
+
+create index if not exists day_annotations_user_date_idx on public.day_annotations (user_id, date desc);
+
+-- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.
 --    Signed-in users may contribute (insert), but the app can't read it back
 --    (no select policy) — only the Supabase dashboard can, for your analysis.

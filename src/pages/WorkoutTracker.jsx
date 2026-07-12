@@ -1878,9 +1878,14 @@ export default function WorkoutTracker() {
 
               {/* Browse past days — tap a day to see and edit that day's workouts. */}
               <div className="bg-white border border-border p-5 sm:p-6 mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays className="w-4 h-4 text-text-primary" />
-                  <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Calendar</h3>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-text-primary" />
+                    <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Calendar</h3>
+                  </div>
+                  <Link to="/calendar" className="text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors">
+                    Full calendar
+                  </Link>
                 </div>
                 <WorkoutCalendar
                   sessions={sortedHistory}

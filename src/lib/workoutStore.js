@@ -444,6 +444,42 @@ export function deleteBodyweightEntry(id) {
   return log
 }
 
+// ---- Day annotations (sick / injury / travel / rest / other) --------------
+//
+// Independent of workouts — a day can have BOTH a logged session and an
+// annotation (e.g. "trained anyway, still recovering"). One annotation per
+// calendar day; noon-anchored like the bodyweight log so it never lands on a
+// day boundary. Reason list + summary math live in dayLog.js (pure, no
+// storage), same split as workoutStats.js for sessions.
+const DAY_LOG_KEY = 'leon_day_annotations'
+
+export function getDayAnnotations() {
+  return read(DAY_LOG_KEY, [])
+}
+
+export function makeDayAnnotation(reason, note, date) {
+  let when = date
+  if (when == null) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    when = d.getTime()
+  }
+  return { id: newId(), date: when, reason, note: (note || '').trim().slice(0, 300) }
+}
+
+// Upsert by id, keeping the log sorted newest-first.
+export function saveDayAnnotation(entry) {
+  const log = [entry, ...getDayAnnotations().filter((e) => e.id !== entry.id)].sort((a, b) => b.date - a.date)
+  write(DAY_LOG_KEY, log)
+  return log
+}
+
+export function deleteDayAnnotation(id) {
+  const log = getDayAnnotations().filter((e) => e.id !== id)
+  write(DAY_LOG_KEY, log)
+  return log
+}
+
 // ---- Stats -----------------------------------------------------------------
 
 export function sessionStats(session) {
