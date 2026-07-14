@@ -131,15 +131,17 @@ export function estimatedOneRepMax(weight, reps) {
 // Gather every set of one exercise within a single session (an exercise can
 // appear more than once — combine them). Unilateral sets are flattened to one
 // entry per limb so the metrics below treat each limb as its own working set.
+// Checked per set (not the exercise-wide flag) so a "both" exercise with a mix
+// of bilateral and unilateral sets is gathered correctly.
 function setsForExercise(session, name) {
   const target = name.trim().toLowerCase()
   const sets = []
   for (const ex of session.exercises) {
     if (ex.name.trim().toLowerCase() !== target) continue
-    if (ex.kind !== 'cardio' && ex.unilateral) {
-      for (const s of ex.sets) { if (s.type === 'warmup') continue; if (s.left) sets.push(s.left); if (s.right) sets.push(s.right) }
-    } else {
-      sets.push(...ex.sets.filter((s) => s.type !== 'warmup'))
+    for (const s of ex.sets) {
+      if (s.type === 'warmup') continue
+      if (ex.kind !== 'cardio' && s.left) { sets.push(s.left); if (s.right) sets.push(s.right) }
+      else sets.push(s)
     }
   }
   return sets
@@ -147,13 +149,14 @@ function setsForExercise(session, name) {
 
 // Double-progression status for an in-progress exercise: with a fixed weight,
 // once every working set reaches the top of the rep range it's time to add
-// weight. For unilateral work the weaker limb gates progress (uses min L/R).
+// weight. For a unilateral set the weaker limb gates progress (uses min L/R);
+// checked per set so a "both" exercise can mix bilateral and unilateral sets.
 export function repRangeStatus(ex) {
   if (!ex || ex.kind === 'cardio' || !ex.repRange) return null
   const { low, high } = ex.repRange
   if (!(low > 0) || !(high >= low)) return null
   const repsOf = (s) =>
-    ex.unilateral
+    s.left
       ? Math.min(Number(s.left?.reps) || 0, Number(s.right?.reps) || 0)
       : Number(s.reps) || 0
   const working = ex.sets.map(repsOf).filter((r) => r > 0)
@@ -364,8 +367,8 @@ export function buildSharedLifts(session, profile) {
   for (const ex of session.exercises) {
     for (const s of ex.sets) {
       if (s.type === 'warmup') continue // don't contribute warm-ups to the dataset
-      if (ex.kind !== 'cardio' && ex.unilateral) {
-        if (s.left) addRow(ex.name, s.left)
+      if (ex.kind !== 'cardio' && s.left) {
+        addRow(ex.name, s.left)
         if (s.right) addRow(ex.name, s.right)
       } else {
         addRow(ex.name, s)

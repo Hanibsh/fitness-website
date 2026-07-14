@@ -105,37 +105,39 @@ export function convertSet(s, unilateral) {
 // Build a fresh sets array for an exercise from the last time it was logged —
 // same weight/reps/rir/type (including warm-ups), converted to the current
 // unit, with new ids and no completion timestamps (this is a new session).
-// Returns null if the shapes don't match (bilateral vs unilateral, or
-// bodyweight-loaded vs not) — the caller falls back to its own default set.
+// Returns null if bodyweight-loaded doesn't match (that's a different logging
+// mechanism entirely) — the caller falls back to its own default set.
+//
+// Laterality is mirrored PER SET from what was actually logged last time,
+// not forced to a single exercise-wide shape — this is the per-day memory: a
+// "both" exercise done unilateral on Push day and bilateral on a Full-Body day
+// recreates that exact mix next time, with no flag to keep in sync. Only a
+// FIXED-laterality exercise (`opts.laterality` is 'unilateral' or 'bilateral')
+// coerces every set to that shape, since its rows can never legitimately differ.
 export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
-  const { unilateral = false, bodyweight = false, bw = 0 } = opts
+  const { bodyweight = false, bw = 0, laterality } = opts
   if (!prevEx || !Array.isArray(prevEx.sets) || !prevEx.sets.length) return null
-  if (bodyweight !== !!prevEx.bodyweight || unilateral !== !!prevEx.unilateral) return null
+  if (bodyweight !== !!prevEx.bodyweight) return null
   const conv = (w) => (w === '' || w == null ? (w ?? '') : Math.round(convertWeight(Number(w), fromUnit, toUnit) * 100) / 100)
   const keep = (s) => (s.type ? { type: s.type } : {})
-  if (unilateral) {
-    return prevEx.sets.map((s) => ({
-      id: newId(),
-      ...keep(s),
-      left: { weight: conv(s.left?.weight), reps: s.left?.reps ?? '', rir: s.left?.rir ?? '' },
-      right: { weight: conv(s.right?.weight), reps: s.right?.reps ?? '', rir: s.right?.rir ?? '' },
-    }))
-  }
   if (bodyweight) {
     return prevEx.sets.map((s) => {
       const added = conv(s.added)
       return { id: newId(), ...keep(s), added, reps: s.reps ?? '', rir: s.rir ?? '', bw, weight: (Number(bw) || 0) + (Number(added) || 0) }
     })
   }
-  return prevEx.sets.map((s) => ({
-    id: newId(),
-    ...keep(s),
-    reps: s.reps ?? '',
-    weight: conv(s.weight),
-    rir: s.rir ?? '',
-    duration: s.duration ?? '',
-    distance: s.distance ?? '',
-  }))
+  const forceUnilateral = laterality === 'unilateral' ? true : laterality === 'bilateral' ? false : null
+  return prevEx.sets.map((s) => {
+    const mirrored = s.left
+      ? {
+          id: newId(),
+          ...keep(s),
+          left: { weight: conv(s.left?.weight), reps: s.left?.reps ?? '', rir: s.left?.rir ?? '' },
+          right: { weight: conv(s.right?.weight), reps: s.right?.reps ?? '', rir: s.right?.rir ?? '' },
+        }
+      : { id: newId(), ...keep(s), reps: s.reps ?? '', weight: conv(s.weight), rir: s.rir ?? '', duration: s.duration ?? '', distance: s.distance ?? '' }
+    return forceUnilateral === null || forceUnilateral === !!mirrored.left ? mirrored : convertSet(mirrored, forceUnilateral)
+  })
 }
 
 // `kind` is 'strength' (weight/reps/RIR) or 'cardio' (duration/distance) — it
@@ -173,14 +175,14 @@ export function createExercise(name, kind = 'strength', opts = {}) {
 }
 
 // Flatten an exercise's sets to plain {weight,reps,rir} entries — one per limb
-// for unilateral work — so stats/graph code can treat everything uniformly.
-// Warm-up sets are dropped: they don't count toward working volume.
+// for unilateral sets — so stats/graph code can treat everything uniformly.
+// Warm-up sets are dropped: they don't count toward working volume. Checked
+// PER SET (not the exercise-wide flag) so a "both" exercise with a mix of
+// bilateral and unilateral sets flattens correctly.
 export function effectiveSets(ex) {
   const working = ex.sets.filter((s) => s.type !== 'warmup')
-  if (ex.kind !== 'cardio' && ex.unilateral) {
-    return working.flatMap((s) => [s.left, s.right].filter(Boolean))
-  }
-  return working
+  if (ex.kind === 'cardio') return working
+  return working.flatMap((s) => (s.left ? [s.left, s.right].filter(Boolean) : [s]))
 }
 
 export function emptyDraft() {
@@ -493,9 +495,10 @@ export function sessionStats(session) {
       if (cardio) {
         // A cardio entry "counts" once it has time on it; it adds no volume.
         if (Number(set.duration) > 0) sets += 1
-      } else if (ex.unilateral) {
+      } else if (set.left) {
         // A unilateral set counts once (one set of the exercise), but volume
-        // sums both limbs.
+        // sums both limbs. Checked per set, not the exercise flag, so a
+        // "both" exercise can mix bilateral and unilateral sets correctly.
         const l = set.left || {}, r = set.right || {}
         const lr = Number(l.reps) || 0, rr = Number(r.reps) || 0
         if (lr > 0 || rr > 0) sets += 1

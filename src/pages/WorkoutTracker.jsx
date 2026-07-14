@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat } from 'lucide-react'
+import { ArrowLeft, Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Users } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -50,6 +50,9 @@ import { muscleRecovery, musclesForExercises } from '../lib/engine'
 import UnitHelp from '../components/UnitHelp'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
+// Same as SET_GRID plus a trailing column for the per-set laterality toggle —
+// only used on "both" exercises, where a flat row can be split into L/R.
+const SET_GRID_TOGGLE = 'grid grid-cols-[18px_1fr_1fr_50px_18px_18px] gap-2 items-center'
 const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px] gap-2 items-center'
 
 function formatDate(ts) {
@@ -550,6 +553,22 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // Flip ONE set's shape (bilateral <-> left/right), independent of its
+  // siblings — lets a "both" exercise mix shapes set to set within a single
+  // session (e.g. a bilateral warm-up, then unilateral working sets). Only
+  // offered on "both" exercises; fixed-laterality exercises keep every set
+  // the same shape by construction, so toggling one would leave it stranded.
+  function toggleSetUnilateral(exId, setId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => {
+        if (e.id !== exId || e.kind === 'cardio') return e
+        if ((e.laterality || 'both') !== 'both') return e
+        return { ...e, sets: e.sets.map((s) => (s.id === setId ? convertSet(s, !s.left) : s)) }
+      }),
+    }))
+  }
+
   // Any supersetId shared by fewer than two exercises is meaningless — clear it
   // so a leftover partner falls back to standalone.
   function pruneSupersets(exercises) {
@@ -723,14 +742,18 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) => {
         if (e.id !== exId) return e
-        const opts = e.bodyweight ? { bodyweight: true, bw: Number(d.bodyweight) || 0 } : { unilateral: e.unilateral }
         // Moving on to a new set means the current last set is done — stamp it
         // (if logged but not yet stamped) so rest is captured even when you keep
         // the same reps and never touch the inputs.
         const sets = e.sets.map((s, i) =>
           i === e.sets.length - 1 && !s.completedAt && isWorkingSet(s, e.kind) ? { ...s, completedAt: now } : s
         )
-        return { ...e, sets: [...sets, createSet(sets[sets.length - 1], opts)] }
+        const prev = sets[sets.length - 1]
+        // A new set inherits the PREVIOUS set's own shape (not an exercise-wide
+        // flag) — so on a "both" exercise, adding a set after a unilateral one
+        // defaults to unilateral, and after a bilateral one defaults to bilateral.
+        const opts = e.bodyweight ? { bodyweight: true, bw: Number(d.bodyweight) || 0 } : { unilateral: !!prev?.left }
+        return { ...e, sets: [...sets, createSet(prev, opts)] }
       }),
     }))
   }
@@ -843,17 +866,23 @@ export default function WorkoutTracker() {
 
   // Auto-fill a freshly-planned exercise's sets from the last time it was
   // logged (any session, not just this same routine day) — set count
-  // (warm-ups included), weights, reps and RIR all come from there, converted
-  // to the current unit, overriding the routine's static target-set count.
-  // Only applies when the shape matches (bilateral/unilateral, bodyweight or
-  // not); otherwise the planned default (blank sets at the target count)
-  // stands. Everything filled in stays fully editable.
+  // (warm-ups included), weights, reps, RIR AND each set's own bilateral/
+  // unilateral shape all come from there, converted to the current unit,
+  // overriding the routine's static target-set count. This is the per-day
+  // memory: a "both" exercise logged unilateral on Push day and bilateral on a
+  // Full-Body day recreates that exact per-set mix next time. Only bails when
+  // bodyweight-loaded doesn't match; everything filled in stays fully editable.
   function prefillFromHistory(ex, sessionBw) {
     if (ex.kind === 'cardio') return ex
     const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
     if (!last) return ex
-    const sets = setsFromPrevious(last.ex, last.unit, unit, { unilateral: ex.unilateral, bodyweight: ex.bodyweight, bw: sessionBw })
-    return sets && sets.length ? { ...ex, sets } : ex
+    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality: ex.laterality, bodyweight: ex.bodyweight, bw: sessionBw })
+    if (!sets || !sets.length) return ex
+    // Keep the display flag roughly in sync with what a fresh "add set" would
+    // now inherit (the last set's shape) — purely cosmetic for the toggle
+    // button's label; each set's real shape is what actually gets logged.
+    const unilateral = ex.bodyweight ? false : !!sets[sets.length - 1].left
+    return { ...ex, sets, unilateral }
   }
 
   // Start today's planned session: fill the draft from the program day (name +
@@ -1090,6 +1119,9 @@ export default function WorkoutTracker() {
     let workNo = 0
     const setLabels = ex.sets.map((s) => (s.type === 'warmup' ? 'W' : s.type === 'backoff' ? 'B' : String(++workNo)))
     const typeClass = (s) => (s.type === 'warmup' ? 'text-amber-500 font-semibold' : s.type === 'backoff' ? 'text-sky-500 font-semibold' : 'text-text-muted')
+    // "Both" exercises can mix bilateral/unilateral set by set, so each row
+    // gets its own toggle; fixed-laterality exercises can't mix, so no toggle.
+    const showsSetToggle = ex.kind !== 'cardio' && !ex.bodyweight && (ex.laterality || 'both') === 'both'
     const group = ex.kind === 'cardio' ? null : resistanceGroups.get(ex.id)
     const inSuperset = !!group && group.size > 1
     // Other resistance exercises this one can be supersetted with.
@@ -1480,89 +1512,9 @@ export default function WorkoutTracker() {
                     <Plus className="w-3.5 h-3.5" /> Add set
                   </button>
                 </>
-              ) : ex.unilateral ? (
-                <>
-                  <div className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 mb-1.5 text-[10px] uppercase tracking-wider text-text-light">
-                    <span />
-                    <span>{unit}</span>
-                    <span>Reps</span>
-                    <span className="flex items-center gap-1">RIR
-                      <button type="button" onClick={() => setShowRirHelp(true)} aria-label="What is RIR?" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none">
-                        <HelpCircle className="w-3 h-3" />
-                      </button>
-                    </span>
-                  </div>
-                  {ex.sets.map((set, i) => (
-                    <div key={set.id} className="mb-2.5 pb-2.5 border-b border-border/60 last:border-0 last:pb-0 last:mb-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <button
-                          type="button"
-                          onClick={() => cycleSetType(ex.id, set.id)}
-                          title="Tap: working → warm-up (W) → back-off (B)"
-                          className={`text-[11px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
-                        >
-                          {set.type === 'warmup' ? 'Warm-up' : set.type === 'backoff' ? 'Back-off' : `Set ${setLabels[i]}`}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => swapLimbs(ex.id, set.id)}
-                            aria-label={`Swap left and right for set ${i + 1}`}
-                            title="Swap left / right"
-                            className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
-                          >
-                            <ArrowLeftRight className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
-                            className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      {['left', 'right'].map((side) => (
-                        <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
-                          <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
-                          <input
-                            type="number" inputMode="decimal" min="0"
-                            value={set[side]?.weight ?? ''}
-                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
-                            placeholder="—" aria-label={`Set ${i + 1} ${side} weight`}
-                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                          />
-                          <input
-                            type="number" inputMode="numeric" min="0"
-                            value={set[side]?.reps ?? ''}
-                            onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
-                            placeholder="—" aria-label={`Set ${i + 1} ${side} reps`}
-                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                          />
-                          {set.type === 'warmup' ? (
-                            <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
-                          ) : (
-                            <input
-                              type="number" inputMode="numeric" min="0" max="10"
-                              value={set[side]?.rir ?? ''}
-                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
-                              placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => addSet(ex.id)}
-                    className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add set
-                  </button>
-                </>
               ) : (
                 <>
-                  <div className={`${SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
+                  <div className={`${showsSetToggle ? SET_GRID_TOGGLE : SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
                     <span className="text-center">#</span>
                     <span>{unit}</span>
                     <span>Reps</span>
@@ -1572,50 +1524,138 @@ export default function WorkoutTracker() {
                       </button>
                     </span>
                     <span />
+                    {showsSetToggle && <span />}
                   </div>
-                  {ex.sets.map((set, i) => (
-                    <div key={set.id} className={`${SET_GRID} mb-2`}>
-                      <button
-                        type="button"
-                        onClick={() => cycleSetType(ex.id, set.id)}
-                        title="Tap: working → warm-up (W) → back-off (B)"
-                        className={`text-center text-[13px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
-                      >
-                        {setLabels[i]}
-                      </button>
-                      <input
-                        type="number" inputMode="decimal" min="0"
-                        value={set.weight}
-                        onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
-                        placeholder="—" aria-label={`Set ${i + 1} weight in ${unit}`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                      />
-                      <input
-                        type="number" inputMode="numeric" min="0"
-                        value={set.reps}
-                        onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
-                        placeholder="—" aria-label={`Set ${i + 1} reps`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
-                      />
-                      {set.type === 'warmup' ? (
-                        <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
-                      ) : (
+                  {/* Each set renders by its OWN shape (set.left), not the
+                      exercise-wide flag — a "both" exercise can mix bilateral
+                      and unilateral sets in the same list. */}
+                  {ex.sets.map((set, i) =>
+                    set.left ? (
+                      <div key={set.id} className="mb-2.5 pb-2.5 border-b border-border/60 last:border-0 last:pb-0 last:mb-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <button
+                            type="button"
+                            onClick={() => cycleSetType(ex.id, set.id)}
+                            title="Tap: working → warm-up (W) → back-off (B)"
+                            className={`text-[11px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
+                          >
+                            {set.type === 'warmup' ? 'Warm-up' : set.type === 'backoff' ? 'Back-off' : `Set ${setLabels[i]}`}
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {showsSetToggle && (
+                              <button
+                                type="button"
+                                onClick={() => toggleSetUnilateral(ex.id, set.id)}
+                                aria-label={`Log set ${i + 1} with both limbs together`}
+                                title="Combine into one bilateral set"
+                                className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
+                              >
+                                <Users className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => swapLimbs(ex.id, set.id)}
+                              aria-label={`Swap left and right for set ${i + 1}`}
+                              title="Swap left / right"
+                              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
+                            >
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
+                              className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {['left', 'right'].map((side) => (
+                          <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
+                            <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
+                            <input
+                              type="number" inputMode="decimal" min="0"
+                              value={set[side]?.weight ?? ''}
+                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
+                              placeholder="—" aria-label={`Set ${i + 1} ${side} weight`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            <input
+                              type="number" inputMode="numeric" min="0"
+                              value={set[side]?.reps ?? ''}
+                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
+                              placeholder="—" aria-label={`Set ${i + 1} ${side} reps`}
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            />
+                            {set.type === 'warmup' ? (
+                              <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
+                            ) : (
+                              <input
+                                type="number" inputMode="numeric" min="0" max="10"
+                                value={set[side]?.rir ?? ''}
+                                onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
+                                placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
+                                className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div key={set.id} className={`${showsSetToggle ? SET_GRID_TOGGLE : SET_GRID} mb-2`}>
+                        <button
+                          type="button"
+                          onClick={() => cycleSetType(ex.id, set.id)}
+                          title="Tap: working → warm-up (W) → back-off (B)"
+                          className={`text-center text-[13px] bg-transparent border-none cursor-pointer p-0 ${typeClass(set)}`}
+                        >
+                          {setLabels[i]}
+                        </button>
                         <input
-                          type="number" inputMode="numeric" min="0" max="10"
-                          value={set.rir ?? ''}
-                          onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                          placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
+                          type="number" inputMode="decimal" min="0"
+                          value={set.weight}
+                          onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
+                          placeholder="—" aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
-                      )}
-                      <button
-                        onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
-                        className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <input
+                          type="number" inputMode="numeric" min="0"
+                          value={set.reps}
+                          onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                          placeholder="—" aria-label={`Set ${i + 1} reps`}
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                        />
+                        {set.type === 'warmup' ? (
+                          <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
+                        ) : (
+                          <input
+                            type="number" inputMode="numeric" min="0" max="10"
+                            value={set.rir ?? ''}
+                            onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                            placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
+                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                        )}
+                        <button
+                          onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
+                          className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        {showsSetToggle && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSetUnilateral(ex.id, set.id)}
+                            aria-label={`Log set ${i + 1} left and right separately`}
+                            title="Split into left / right"
+                            className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )
+                  )}
                   <button
                     onClick={() => addSet(ex.id)}
                     className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
