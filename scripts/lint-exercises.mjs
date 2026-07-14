@@ -21,7 +21,7 @@ import { resolveMuscleTerm, HOME_CATEGORIES } from './muscle-taxonomy.mjs'
 import { OVERRIDES } from '../data/exercise-overrides.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const SRC_CSV = join(ROOT, 'data', 'professional_hypertrophy_db_v3.csv')
+const SRC_CSV = join(ROOT, 'data', 'professional_hypertrophy_db_v4.csv')
 const OUT_JSON = join(ROOT, 'data', 'exercises.candidate.json')
 const OUT_REPORT = join(ROOT, 'data', 'lint-report.md')
 
@@ -108,6 +108,7 @@ function resolveColumns(header) {
   return {
     name: need(/^exercise name$/i, 'Exercise Name'),
     category: need(/^(home )?category$/i, 'Home Category'),
+    subCategory: idx(/^sub ?category$/i), // optional — -1 when absent
     type: need(/exercise type/i, 'Exercise Type'),
     laterality: need(/laterality/i, 'Laterality'),
     primary: need(/primary muscle/i, 'Primary Muscles'),
@@ -189,6 +190,7 @@ function main() {
     }
     const ex = {
       id, name, category: (r[COL.category] || '').trim(),
+      subCategory: (COL.subCategory !== -1 ? (r[COL.subCategory] || '').trim() : '') || null,
       type: normEnum('type', r[COL.type]),
       laterality: normEnum('laterality', r[COL.laterality]),
       muscles,

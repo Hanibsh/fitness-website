@@ -8,6 +8,7 @@
 // the rest of the engine.
 
 import exercisesDb from '../data/exercises.json'
+import { withAliases } from '../data/exerciseAliases'
 import { effectiveWeeklyVolume, muscleRecovery, personalizedModel, primaryMusclesFor } from './engine'
 import { activeBlock } from './blocks'
 import { muscleForExercise } from './dashboard'
@@ -21,7 +22,7 @@ import {
 } from './engineConfig'
 
 const DAY = 86400000
-const DB_BY_ID = new Map((exercisesDb.exercises || []).map((e) => [e.id, e]))
+const DB_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e.id, e])))
 const dbFor = (ex) => {
   const id = ex.exerciseId || exerciseIdForName(ex.name)
   return id ? DB_BY_ID.get(id) : null

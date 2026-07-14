@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { categoryExercises, subcategoryExercises, subcategoryTiles } from '../lib/exerciseBank'
 import { categoryBySlug, SUBCATEGORIES, MUSCLE_INFO } from '../data/muscleInfo'
 import ExerciseCard from '../components/ExerciseCard'
@@ -126,15 +126,6 @@ export default function ExerciseCategory() {
                   <SubTile key={t.slug} parentSlug={cat} sub={t} />
                 ))}
               </div>
-              {cat === 'legs' && (
-                <p className="text-text-muted text-[12.5px] mt-4">
-                  Looking for glute work?{' '}
-                  <Link to="/exercises/group/glutes" className="text-accent-hover no-underline hover:underline">
-                    Glutes has its own section
-                  </Link>{' '}
-                  <ChevronRight className="w-3 h-3 inline align-[-1px]" />
-                </p>
-              )}
             </>
           ) : (
             <>

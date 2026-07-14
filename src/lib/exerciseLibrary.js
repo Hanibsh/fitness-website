@@ -14,6 +14,7 @@
 
 import exercisesDb from '../data/exercises.json'
 import { MOVEMENTS } from './movements'
+import { withAliases } from '../data/exerciseAliases'
 
 // ---- Search vocabulary -----------------------------------------------------
 
@@ -143,7 +144,7 @@ const SUPPLEMENTAL = MOVEMENTS.filter((m) => SUPPLEMENT_CATEGORIES.has(m.categor
 })
 
 const POOL = [...LIBRARY, ...SUPPLEMENTAL]
-const BY_ID = new Map(LIBRARY.map((e) => [e.id, e]))
+const BY_ID = withAliases(new Map(LIBRARY.map((e) => [e.id, e])))
 const BY_NAME = new Map(POOL.map((e) => [e.name.trim().toLowerCase(), e]))
 
 // ---- Public lookups --------------------------------------------------------
@@ -217,8 +218,9 @@ const PRIORITY = new Set([
 // in that list) — add a value in both places together.
 const CATEGORY_WORDS = {
   chest: 'Chest', back: 'Back', legs: 'Legs', leg: 'Legs', arms: 'Arms', arm: 'Arms',
-  shoulders: 'Shoulders', shoulder: 'Shoulders', core: 'Core', abs: 'Core', traps: 'Traps', trap: 'Traps',
-  forearms: 'Forearms', forearm: 'Forearms', grip: 'Forearms',
+  shoulders: 'Shoulders', shoulder: 'Shoulders', core: 'Core', abs: 'Core',
+  traps: 'Neck and Traps', trap: 'Neck and Traps', neck: 'Neck and Traps',
+  forearms: 'Arms', forearm: 'Arms', grip: 'Arms',
 }
 
 // How well an item answers the query. The key idea: matches in the exercise's

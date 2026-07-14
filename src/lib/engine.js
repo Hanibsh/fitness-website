@@ -9,6 +9,7 @@
 // and rolls them up to engine muscle groups (the drill-down shows the atoms).
 
 import exercisesDb from '../data/exercises.json'
+import { withAliases } from '../data/exerciseAliases'
 import {
   rirEffectiveness, ATOM_TO_GROUP, ENGINE_MUSCLES, landmarksFor, withinSessionMult,
   rirFatigue, FATIGUE_SCORE_COEF, DEFAULT_FATIGUE_SCORE, DEFAULT_RECOVERY_WINDOW,
@@ -23,7 +24,7 @@ import { exerciseIdForName } from './exerciseLibrary'
 import { estimatedOneRepMax, convertWeight } from './workoutStats'
 
 const DAY = 86400000
-const DB_BY_ID = new Map((exercisesDb.exercises || []).map((e) => [e.id, e]))
+const DB_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e.id, e])))
 
 function startOfDay(ts) {
   const d = new Date(ts)

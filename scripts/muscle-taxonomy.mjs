@@ -17,10 +17,10 @@
 
 export const MUSCLE_GROUPS = {
   Shoulders: ['Front Delts', 'Side Delts', 'Rear Delts', 'Rotator Cuff'],
-  Chest: ['Upper Chest', 'Middle Chest', 'Lower Chest'],
+  Chest: ['Upper Chest', 'Middle Chest', 'Lower Chest', 'Serratus Anterior'],
   Back: ['Lats', 'Mid Back', 'Rhomboids', 'Upper Traps', 'Mid Traps', 'Lower Traps', 'Spinal Erectors', 'Teres Major'],
   Arms: ['Biceps', 'Brachialis', 'Triceps'],
-  Forearms: ['Brachioradialis', 'Wrist Flexors', 'Wrist Extensors', 'Deep Finger Flexors'],
+  Forearms: ['Brachioradialis', 'Wrist Flexors', 'Wrist Extensors', 'Deep Finger Flexors', 'Pronators', 'Supinator'],
   Core: ['Rectus Abdominis', 'Obliques', 'Transverse Abdominis', 'Hip Flexors'],
   Legs: ['Quadriceps', 'Glute Max', 'Hamstrings', 'Adductors', 'Abductors', 'Gastrocnemius', 'Soleus'],
 }
@@ -39,7 +39,7 @@ export const MUSCLES = new Set(Object.values(MUSCLE_GROUPS).flat())
 // (e.g. "Neck") gets surfaced for a deliberate decision instead of silently
 // sitting inert with no app support. Keep in sync with exerciseLibrary.js's
 // CATEGORY_WORDS values by hand — see the note there.
-export const HOME_CATEGORIES = new Set(['Shoulders', 'Back', 'Chest', 'Arms', 'Forearms', 'Core', 'Legs', 'Traps'])
+export const HOME_CATEGORIES = new Set(['Shoulders', 'Back', 'Chest', 'Arms', 'Core', 'Legs', 'Neck and Traps'])
 
 // The group a canonical atom belongs to (for roll-up displays).
 export const GROUP_OF = Object.fromEntries(

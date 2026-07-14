@@ -25,29 +25,30 @@ export const CATEGORIES = [
   { slug: 'chest', name: 'Chest', source: 'Chest' },
   { slug: 'back', name: 'Back', source: 'Back' },
   { slug: 'shoulders', name: 'Shoulders', source: 'Shoulders', subs: ['front-delts', 'side-delts', 'rear-delts'] },
-  { slug: 'arms', name: 'Arms', source: 'Arms', subs: ['biceps', 'triceps'] },
-  { slug: 'forearms', name: 'Forearms', source: 'Forearms', subs: ['forearm-flexors', 'forearm-extensors'] },
-  { slug: 'traps', name: 'Traps', source: 'Traps' },
+  { slug: 'arms', name: 'Arms', source: 'Arms', subs: ['biceps', 'triceps', 'forearms'] },
+  { slug: 'legs', name: 'Legs', source: 'Legs', subs: ['glutes', 'quads', 'hamstrings', 'calves', 'adductors'] },
+  { slug: 'traps', name: 'Neck and Traps', source: 'Neck and Traps' },
   { slug: 'core', name: 'Core', source: 'Core' },
-  { slug: 'legs', name: 'Legs', source: 'Legs', subs: ['quads', 'hamstrings', 'calves', 'adductors'] },
-  { slug: 'glutes', name: 'Glutes', atoms: ['Glute Max'] },
 ]
 
-// Subcategory slug → { name, parent, atoms }. An exercise falls in a
-// subcategory when one of these atoms is among its PRIMARY (highest-weight)
-// movers, so e.g. a squat (Quads+Glutes tie) shows under both Quads and Glutes.
+// Subcategory slug → { name, parent, value|atoms }. Two membership modes:
+//   - `value` → matches the row's stored `subCategory` column exactly (Arms and
+//     Legs are split in the data itself — the source of truth).
+//   - `atoms` → derived: an exercise falls in the subcategory when one of these
+//     atoms is among its PRIMARY (highest-weight) movers. Used where the data
+//     carries no explicit subCategory (the three shoulder delt heads).
 export const SUBCATEGORIES = {
   'front-delts': { name: 'Front Delts', parent: 'shoulders', atoms: ['Front Delts'] },
   'side-delts': { name: 'Side Delts', parent: 'shoulders', atoms: ['Side Delts'] },
   'rear-delts': { name: 'Rear Delts', parent: 'shoulders', atoms: ['Rear Delts', 'Rotator Cuff'] },
-  biceps: { name: 'Biceps', parent: 'arms', atoms: ['Biceps', 'Brachialis'] },
-  triceps: { name: 'Triceps', parent: 'arms', atoms: ['Triceps'] },
-  'forearm-flexors': { name: 'Flexors', parent: 'forearms', atoms: ['Wrist Flexors', 'Deep Finger Flexors'] },
-  'forearm-extensors': { name: 'Extensors', parent: 'forearms', atoms: ['Wrist Extensors', 'Brachioradialis'] },
-  quads: { name: 'Quads', parent: 'legs', atoms: ['Quadriceps'] },
-  hamstrings: { name: 'Hamstrings', parent: 'legs', atoms: ['Hamstrings'] },
-  calves: { name: 'Calves', parent: 'legs', atoms: ['Gastrocnemius', 'Soleus'] },
-  adductors: { name: 'Adductors', parent: 'legs', atoms: ['Adductors', 'Abductors'] },
+  biceps: { name: 'Biceps', parent: 'arms', value: 'Biceps' },
+  triceps: { name: 'Triceps', parent: 'arms', value: 'Triceps' },
+  forearms: { name: 'Forearms', parent: 'arms', value: 'Forearms' },
+  glutes: { name: 'Glutes', parent: 'legs', value: 'Glutes' },
+  quads: { name: 'Quads', parent: 'legs', value: 'Quads' },
+  hamstrings: { name: 'Hamstrings', parent: 'legs', value: 'Hamstrings' },
+  calves: { name: 'Calves', parent: 'legs', value: 'Calves' },
+  adductors: { name: 'Adductors', parent: 'legs', value: 'Adductors' },
 }
 
 // Educational copy, keyed by category OR subcategory slug.
@@ -101,7 +102,7 @@ export const MUSCLE_INFO = {
   legs: {
     teaser: 'Your biggest muscle mass',
     blurb:
-      'The legs hold your largest muscles: the quads on the front of the thigh, the hamstrings behind them, the adductors on the inner thigh and the calves below. (Glutes are big enough to get their own category.)',
+      'The legs hold your largest muscles: the glutes driving the hips, the quads on the front of the thigh, the hamstrings behind them, the adductors on the inner thigh and the calves below.',
     size: 'The largest muscle mass in the body, by far.',
   },
   glutes: {

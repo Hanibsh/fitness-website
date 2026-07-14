@@ -8,13 +8,14 @@
 
 import exercisesDb from '../data/exercises.json'
 import { CATEGORIES, SUBCATEGORIES, categoryBySlug } from '../data/muscleInfo'
+import { withAliases } from '../data/exerciseAliases'
 
 // Display order for the browse page's category sections.
 // Keep the VALUES in sync with HOME_CATEGORIES in scripts/muscle-taxonomy.mjs.
-export const CATEGORY_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Forearms', 'Traps', 'Core', 'Legs']
+export const CATEGORY_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Neck and Traps', 'Core']
 
 const ALL = exercisesDb.exercises || []
-const BY_ID = new Map(ALL.map((e) => [e.id, e]))
+const BY_ID = withAliases(new Map(ALL.map((e) => [e.id, e])))
 
 export const EXERCISE_COUNT = ALL.length
 
@@ -61,6 +62,13 @@ export function subcategoryExercises(subSlug) {
   const sub = SUBCATEGORIES[subSlug]
   if (!sub) return []
   const parent = categoryBySlug(sub.parent)
+  // Explicit split (Arms/Legs): match the row's stored subCategory column.
+  if (sub.value) {
+    return ALL.filter(
+      (e) => e.category === parent?.source && e.subCategory === sub.value
+    ).sort(byTypeThenName)
+  }
+  // Derived split (shoulder delt heads): match by primary mover.
   const atoms = new Set(sub.atoms)
   return ALL.filter(
     (e) => e.category === parent?.source && primaryAtoms(e).some((a) => atoms.has(a))
