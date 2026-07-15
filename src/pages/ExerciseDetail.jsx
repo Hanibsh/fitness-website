@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../lib/exerciseBank'
 import MuscleMap from '../components/MuscleMap'
+import ExercisePerformance from '../components/ExercisePerformance'
 
 // Detail page for one exercise. Commit 1: header + coach stats + muscle list.
 // Commit 3 polishes the layout + adds the "Log this" CTA; commit 4 slots in the
@@ -90,6 +91,8 @@ export default function ExerciseDetail() {
           </div>
 
           {ex.notes && <p className="text-text-muted text-[13px] mt-6 leading-relaxed">{ex.notes}</p>}
+
+          <ExercisePerformance exercise={ex} />
         </motion.div>
       </div>
     </div>

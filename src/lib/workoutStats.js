@@ -4,6 +4,9 @@
 // No storage, no UI. This is the layer that turns your logged sets into the
 // data behind the graphs, and it'll move to the app untouched.
 
+import { EXERCISE_ID_ALIASES } from '../data/exerciseAliases'
+import { exerciseIdForName } from './exerciseLibrary'
+
 const LB_PER_KG = 2.2046226218
 const KM_PER_MI = 1.609344
 
@@ -128,16 +131,39 @@ export function estimatedOneRepMax(weight, reps) {
   return (weight * 36) / (37 - r)
 }
 
+// ---- Exercise identity ------------------------------------------------------
+// A logged entry can point at the DB three ways: a current exercise id, a
+// pre-v4 id (renamed/merged — resolved forward through EXERCISE_ID_ALIASES),
+// or just a name (older logs and custom/typed exercises). Matching accepts a
+// bare name (legacy callers pass strings) or `{ id, name }`, and prefers id
+// identity whenever both sides resolve to one — so a renamed exercise keeps
+// its whole history attached. Unresolvable entries fall back to name compare.
+const canonicalExerciseId = (id) => (id ? EXERCISE_ID_ALIASES[id] || id : null)
+
+function normalizeExerciseTarget(target) {
+  if (typeof target === 'string') return { id: null, key: target.trim().toLowerCase() }
+  return { id: canonicalExerciseId(target?.id), key: (target?.name || '').trim().toLowerCase() }
+}
+
+function exerciseEntryMatches(ex, target) {
+  if (target.id) {
+    const entryId = canonicalExerciseId(ex.exerciseId || exerciseIdForName(ex.name))
+    if (entryId) return entryId === target.id
+  }
+  return ex.name.trim().toLowerCase() === target.key
+}
+
 // Gather every set of one exercise within a single session (an exercise can
 // appear more than once — combine them). Unilateral sets are flattened to one
 // entry per limb so the metrics below treat each limb as its own working set.
 // Checked per set (not the exercise-wide flag) so a "both" exercise with a mix
-// of bilateral and unilateral sets is gathered correctly.
-function setsForExercise(session, name) {
-  const target = name.trim().toLowerCase()
+// of bilateral and unilateral sets is gathered correctly. `exercise` is a name
+// string or `{ id, name }` (see exercise identity above).
+function setsForExercise(session, exercise) {
+  const target = normalizeExerciseTarget(exercise)
   const sets = []
   for (const ex of session.exercises) {
-    if (ex.name.trim().toLowerCase() !== target) continue
+    if (!exerciseEntryMatches(ex, target)) continue
     for (const s of ex.sets) {
       if (s.type === 'warmup') continue
       if (ex.kind !== 'cardio' && s.left) { sets.push(s.left); if (s.right) sets.push(s.right) }
@@ -305,11 +331,11 @@ export function metricById(id, cardio = false) {
 }
 
 // Build the plotted series: one point per session that has data, filtered to
-// the chosen time range, sorted oldest → newest. `metric` is a metric object
-// (strength or cardio). Weights are normalised to the display unit for
-// strength; distances for cardio — so a line stays continuous across a unit
-// switch.
-export function buildSeries(sessions, exerciseName, metric, rangeId, displayUnit = 'kg', cardio = false) {
+// the chosen time range, sorted oldest → newest. `exercise` is a name string
+// or `{ id, name }`; `metric` is a metric object (strength or cardio).
+// Weights are normalised to the display unit for strength; distances for
+// cardio — so a line stays continuous across a unit switch.
+export function buildSeries(sessions, exercise, metric, rangeId, displayUnit = 'kg', cardio = false) {
   const range = RANGES.find((r) => r.id === rangeId) || RANGES[RANGES.length - 1]
   const cutoff = range.days === Infinity ? 0 : Date.now() - range.days * 86400000
   const dispDist = distanceUnit(displayUnit)
@@ -318,7 +344,7 @@ export function buildSeries(sessions, exerciseName, metric, rangeId, displayUnit
   for (const session of sessions) {
     if (session.date < cutoff) continue
     const sessionUnit = session.unit || 'kg'
-    const sets = setsForExercise(session, exerciseName).map((s) => {
+    const sets = setsForExercise(session, exercise).map((s) => {
       if (cardio) {
         return {
           ...s,
@@ -340,6 +366,53 @@ export function buildSeries(sessions, exerciseName, metric, rangeId, displayUnit
   }
   points.sort((a, b) => a.date - b.date)
   return points
+}
+
+// Lifetime stats for one exercise across every session, normalised to the
+// display unit. Warm-ups are excluded and unilateral limbs count as their own
+// sets (both via setsForExercise). Returns null if it was never logged.
+export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
+  let timesPerformed = 0
+  let firstDate = null
+  let lastDate = null
+  let bestWeight = null
+  let bestReps = null
+  let bestE1rm = null
+  let lifetimeVolume = 0
+  for (const session of sessions) {
+    const sets = setsForExercise(session, exercise)
+    if (!sets.length) continue
+    const sessionUnit = session.unit || 'kg'
+    timesPerformed++
+    if (firstDate === null || session.date < firstDate) firstDate = session.date
+    if (lastDate === null || session.date > lastDate) lastDate = session.date
+    for (const s of sets) {
+      const reps = Number(s.reps)
+      const weight = convertWeight(Number(s.weight), sessionUnit, displayUnit)
+      if (weight > 0 && (bestWeight === null || weight > bestWeight)) bestWeight = weight
+      if (reps > 0 && (bestReps === null || reps > bestReps)) bestReps = reps
+      const e1 = estimatedOneRepMax(weight, reps)
+      if (e1 !== null && (bestE1rm === null || e1 > bestE1rm)) bestE1rm = e1
+      if (weight > 0 && reps > 0) lifetimeVolume += weight * reps
+    }
+  }
+  if (!timesPerformed) return null
+  return { timesPerformed, firstDate, lastDate, bestWeight, bestReps, bestE1rm, lifetimeVolume }
+}
+
+// The last few sessions containing this exercise, newest-first (the order
+// sessions are stored in), each with only that exercise's entries — powers the
+// "recent sessions" list on the exercise detail page.
+export function recentExerciseSessions(sessions, exercise, limit = 5) {
+  const target = normalizeExerciseTarget(exercise)
+  const out = []
+  for (const session of sessions) {
+    const entries = session.exercises.filter((ex) => exerciseEntryMatches(ex, target))
+    if (!entries.length) continue
+    out.push({ id: session.id, date: session.date, name: session.name, unit: session.unit || 'kg', entries })
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 // Turn a session into anonymized rows for the shared strength dataset,

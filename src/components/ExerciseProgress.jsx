@@ -11,7 +11,18 @@ function fullDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg', kind = 'strength' }) {
+// `exerciseId` (optional) upgrades matching from name-only to id-or-name, so
+// logged entries with renamed/aliased ids still attach. `compact` drops the
+// outer padding + title for embedding inside a page section (the standalone
+// modal keeps its own header).
+export default function ExerciseProgress({
+  exerciseName,
+  sessions,
+  unit = 'kg',
+  kind = 'strength',
+  exerciseId = null,
+  compact = false,
+}) {
   const isCardio = kind === 'cardio'
   const metrics = isCardio ? CARDIO_METRICS : METRICS
   const [metricId, setMetricId] = useState(isCardio ? 'duration' : 'e1rm')
@@ -23,8 +34,8 @@ export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg', 
   // distance metric shows km/mi; everything else uses its own fixed unit.
   const unitLabel = metric.unit === 'kg' ? unit : metric.unit === 'dist' ? distanceUnit(unit) : metric.unit
   const series = useMemo(
-    () => buildSeries(sessions, exerciseName, metric, rangeId, unit, isCardio),
-    [sessions, exerciseName, metric, rangeId, unit, isCardio]
+    () => buildSeries(sessions, exerciseId ? { id: exerciseId, name: exerciseName } : exerciseName, metric, rangeId, unit, isCardio),
+    [sessions, exerciseName, exerciseId, metric, rangeId, unit, isCardio]
   )
 
   const active = hovered != null && series[hovered] ? series[hovered] : series[series.length - 1]
@@ -36,9 +47,13 @@ export default function ExerciseProgress({ exerciseName, sessions, unit = 'kg', 
   const trendColor = change === null || change === 0 ? 'text-text-muted' : change > 0 ? 'text-green-600' : 'text-red-600'
 
   return (
-    <div className="p-6 md:p-8 pt-8">
-      <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">Progress</p>
-      <h2 className="font-heading text-2xl font-medium text-text-primary mb-6 break-words">{exerciseName}</h2>
+    <div className={compact ? '' : 'p-6 md:p-8 pt-8'}>
+      {!compact && (
+        <>
+          <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">Progress</p>
+          <h2 className="font-heading text-2xl font-medium text-text-primary mb-6 break-words">{exerciseName}</h2>
+        </>
+      )}
 
       {/* metric toggle */}
       <div className="flex flex-wrap gap-2 mb-3">
