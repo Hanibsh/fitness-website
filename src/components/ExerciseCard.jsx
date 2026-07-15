@@ -1,8 +1,16 @@
 import { Link } from 'react-router-dom'
 import { primaryMuscles, titleCase } from '../lib/exerciseBank'
 
+// Deliberately rare mini-badge: only exercises the DB rates excellent on BOTH
+// stimulus-to-fatigue and hypertrophy potential (~1 in 6) qualify, so a badge
+// on a card still means something while scanning a grid.
+function badges(e) {
+  return e.sfr === 'excellent' && e.hypertrophyPotential === 'excellent' ? ['Top pick'] : []
+}
+
 // Compact card for one exercise in the bank (browse landing, hubs, search).
 export default function ExerciseCard({ e }) {
+  const tags = badges(e)
   return (
     <Link
       to={`/exercises/${e.id}`}
@@ -15,6 +23,18 @@ export default function ExerciseCard({ e }) {
         {titleCase(e.equipment)} · {titleCase(e.type)}
       </p>
       <p className="text-text-light text-[11px] mt-1 truncate">{primaryMuscles(e).join(', ')}</p>
+      {tags.length > 0 && (
+        <p className="mt-2 flex flex-wrap gap-1.5">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="text-[10px] font-medium text-text-secondary border border-border rounded-full px-2 py-0.5"
+            >
+              {t}
+            </span>
+          ))}
+        </p>
+      )}
     </Link>
   )
 }
