@@ -5,6 +5,31 @@ import { categoryExercises, subcategoryExercises, subcategoryTiles } from '../li
 import { categoryBySlug, SUBCATEGORIES, MUSCLE_INFO } from '../data/muscleInfo'
 import ExerciseCard from '../components/ExerciseCard'
 import MuscleGuide from '../components/MuscleGuide'
+import InteractiveAnatomy from '../components/InteractiveAnatomy'
+import { regionsForHub, viewsFor } from '../data/anatomyRegions'
+
+// The muscle guide beside a highlighted mini body-map. If the hub has no mapped
+// region (e.g. a delt sub-head), it falls back to the parent's regions; if even
+// that is empty, the guide simply spans full width.
+function HubHeader({ slug, parentSlug, info }) {
+  let mapSlug = regionsForHub(slug).length ? slug : null
+  if (!mapSlug && parentSlug && regionsForHub(parentSlug).length) mapSlug = parentSlug
+  return (
+    <div className={mapSlug ? 'grid md:grid-cols-[1fr_240px] gap-6 items-start' : ''}>
+      <MuscleGuide info={info} />
+      {mapSlug && (
+        <InteractiveAnatomy
+          interactive={false}
+          highlight={mapSlug}
+          views={viewsFor(mapSlug)}
+          showSexToggle={false}
+          compact
+          className="mt-6 mb-8"
+        />
+      )}
+    </div>
+  )
+}
 
 function NotFound() {
   return (
@@ -73,7 +98,7 @@ export default function ExerciseCategory() {
             <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary tracking-tight">
               {subDef.name}
             </h1>
-            <MuscleGuide info={MUSCLE_INFO[sub]} />
+            <HubHeader slug={sub} parentSlug={cat} info={MUSCLE_INFO[sub]} />
             <p className="text-text-light text-[12px] mb-4">
               {rows.length} {rows.length === 1 ? 'exercise' : 'exercises'}
             </p>
@@ -101,7 +126,7 @@ export default function ExerciseCategory() {
           <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary tracking-tight">
             {category.name}
           </h1>
-          <MuscleGuide info={MUSCLE_INFO[cat]} />
+          <HubHeader slug={cat} info={MUSCLE_INFO[cat]} />
 
           {tiles && (
             <>

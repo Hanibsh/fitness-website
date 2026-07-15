@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Search, X, Home, ChevronRight } from 'lucide-react'
+import { Search, X, Home } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
 import {
   allByCategory,
@@ -12,8 +12,8 @@ import {
   titleCase,
   EXERCISE_COUNT,
 } from '../lib/exerciseBank'
-import { MUSCLE_INFO } from '../data/muscleInfo'
 import ExerciseCard from '../components/ExerciseCard'
+import InteractiveAnatomy from '../components/InteractiveAnatomy'
 
 const AT_HOME = ['bodyweight', 'resistance band']
 
@@ -32,24 +32,18 @@ function Chip({ active, onClick, children }) {
   )
 }
 
-// Home-category tile for the default browse view.
-function CategoryTile({ cat }) {
-  const info = MUSCLE_INFO[cat.slug]
+// Compact category link — the keyboard/screen-reader path and quick nav that
+// sits under the interactive anatomy hero.
+function CategoryPill({ cat }) {
   return (
     <Link
       to={`/exercises/group/${cat.slug}`}
-      className="block bg-white border border-border rounded-xl p-5 no-underline hover:border-border-hover transition-all group"
+      className="inline-flex items-baseline gap-1.5 bg-white border border-border rounded-full px-3.5 py-1.5 no-underline hover:border-border-hover transition-colors group"
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="font-heading text-[17px] font-medium text-text-primary group-hover:text-accent-hover transition-colors">
-          {cat.name}
-        </h2>
-        <span className="text-text-light text-[12px] shrink-0">{cat.count}</span>
-      </div>
-      {info?.teaser && <p className="text-text-muted text-[12.5px] mt-1.5 leading-snug">{info.teaser}</p>}
-      <span className="inline-flex items-center gap-0.5 text-[12px] text-text-light group-hover:text-accent-hover transition-colors mt-3">
-        Explore <ChevronRight className="w-3.5 h-3.5" />
+      <span className="text-[13px] font-medium text-text-primary group-hover:text-accent-hover transition-colors">
+        {cat.name}
       </span>
+      <span className="text-text-light text-[11px]">{cat.count}</span>
     </Link>
   )
 }
@@ -169,12 +163,15 @@ export default function Exercises() {
           )}
         </div>
 
-        {/* Category tiles (pristine view) */}
+        {/* Interactive anatomy hero + category pills (pristine view) */}
         {categories && (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {categories.map((cat) => (
-              <CategoryTile key={cat.slug} cat={cat} />
-            ))}
+          <div>
+            <InteractiveAnatomy />
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+              {categories.map((cat) => (
+                <CategoryPill key={cat.slug} cat={cat} />
+              ))}
+            </div>
           </div>
         )}
 

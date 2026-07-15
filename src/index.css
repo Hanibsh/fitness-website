@@ -85,3 +85,40 @@ body {
   background: rgba(26, 26, 26, 0.1);
   color: var(--color-text-primary);
 }
+
+/* Interactive anatomy map hotspots (components/InteractiveAnatomy.jsx). The
+   panel is deliberately dark in both themes, so these colors are hardcoded
+   gold rather than theme tokens. Clickable regions are invisible until
+   hover/focus; the glow doubles as the keyboard focus ring. */
+.anatomy-region {
+  cursor: pointer;
+  outline: none;
+}
+.anatomy-region polygon {
+  fill: #efc65b;
+  fill-opacity: 0;
+  stroke: #efc65b;
+  stroke-width: 2;
+  stroke-opacity: 0;
+  transition: fill-opacity 0.15s ease, stroke-opacity 0.15s ease;
+}
+.anatomy-region:hover polygon,
+.anatomy-region:focus-visible polygon {
+  fill-opacity: 0.22;
+  stroke-opacity: 0.9;
+  filter: drop-shadow(0 0 6px rgba(239, 198, 91, 0.7));
+}
+/* Static highlight for hub mini-maps (non-interactive). */
+.anatomy-region-active polygon {
+  fill: #efc65b;
+  fill-opacity: 0.2;
+  stroke: #efc65b;
+  stroke-width: 2;
+  stroke-opacity: 0.85;
+  filter: drop-shadow(0 0 5px rgba(239, 198, 91, 0.55));
+}
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-region polygon {
+    transition: none;
+  }
+}
