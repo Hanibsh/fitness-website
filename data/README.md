@@ -5,17 +5,21 @@ The workout-log picker and (later) the hypertrophy engine are built from it.
 
 ## The one file you edit
 
-**`data/professional_hypertrophy_db_v3.csv`** — this repo copy is the single
+**`data/professional_hypertrophy_db_v4.csv`** — this repo copy is the single
 source of truth. Open it in Excel / Google Sheets, edit, and **save back as CSV**.
 
-> ⚠️ There may be an older copy on your Desktop (`C:\Users\hanib\Desktop\data\`).
-> That one is **not** used by the app — ignore it, or delete it, to avoid
-> confusion. Only the file in this repo is built.
+> ⚠️ Any copy on the Desktop (e.g. `DATA-for the website\`) is a personal
+> staging/backup area — **not** used by the app. Only the file in this repo
+> is built.
+
+Completed one-off imports/audits and their staging files live in
+`data/archive/` and `scripts/archive/` (e.g. the 2026-07 category-by-category
+fact-check) — reference only, nothing there is read by the build.
 
 ## The build pipeline
 
 ```
-data/professional_hypertrophy_db_v3.csv     ← you edit this
+data/professional_hypertrophy_db_v4.csv     ← you edit this
         │   npm run build:exercises
         ▼
 data/exercises.candidate.json  +  data/lint-report.md   ← validation output
@@ -79,8 +83,9 @@ fatigue at failure — see `recovery-rubric.md` §0 for why.
 | Column | Meaning / accepted values |
 |---|---|
 | Exercise Name | Free text. Becomes the `id` (slugified). |
-| Home Category | `Shoulders`, `Back`, `Chest`, `Arms`, `Forearms`, `Core`, `Legs`, `Traps` — free text, but these are the ones the app recognizes for search/browse and specialization blocks |
-| Exercise Type | `Compound`, `Isolation`, `Hybrid`, `Isometric` (`Isometric` for holds — planks, wall sits, Copenhagen holds) |
+| Home Category | `Shoulders`, `Back`, `Chest`, `Arms`, `Legs`, `Neck and Traps`, `Core` — free text, but these are the ones the app recognizes for search/browse and specialization blocks. Forearms lives under `Arms` and Traps under `Neck and Traps` now (see Sub Category below); Glutes is promoted out of `Legs` into its own browse tile via muscle, not this column. |
+| Sub Category | Optional. Only meaningful for `Arms` (`Biceps` / `Triceps` / `Forearms`) and `Legs` (`Glutes` / `Quads` / `Hamstrings` / `Calves` / `Adductors` / `Abductors`) — drives their bank sub-tiles directly. Leave blank for every other category (Shoulders' delt-head tiles and everything else are still derived from Primary Muscles). |
+| Exercise Type | `Compound`, `Isolation`, `Isometric` for holds. `Hybrid` is technically still accepted by the linter but is against house style (established 2026-07-14) — pick whichever of Compound/Isolation is the closer fit instead. |
 | Laterality | `Bilateral`, `Unilateral`, `Can be both` |
 | Primary Muscles (1.00) | Muscle name(s), comma-separated. Weight ×1.0 |
 | Secondary Muscles (0.50) | …weight ×0.5 |
@@ -120,11 +125,13 @@ nothing changes.
 Muscle cells must use these canonical names (the taxonomy lives in
 `scripts/muscle-taxonomy.mjs`). Unknown names become a 🔴 blocker in the report.
 
+These are grouped by muscle family for volume-rollup purposes (`scripts/muscle-taxonomy.mjs` `MUSCLE_GROUPS`) — a different grouping from the Home Category column above (e.g. Forearms atoms roll up separately from Arms even though they now share a Home Category; Traps atoms are part of the Back family even though their Home Category is `Neck and Traps`).
+
 - **Shoulders:** Front Delts · Side Delts · Rear Delts · Rotator Cuff
-- **Chest:** Upper Chest · Middle Chest · Lower Chest
+- **Chest:** Upper Chest · Middle Chest · Lower Chest · Serratus Anterior
 - **Back:** Lats · Mid Back · Rhomboids · Upper Traps · Mid Traps · Lower Traps · Spinal Erectors · Teres Major
 - **Arms:** Biceps · Brachialis · Triceps
-- **Forearms:** Brachioradialis · Wrist Flexors · Wrist Extensors · Deep Finger Flexors
+- **Forearms:** Brachioradialis · Wrist Flexors · Wrist Extensors · Deep Finger Flexors · Pronators · Supinator
 - **Core:** Rectus Abdominis · Obliques · Transverse Abdominis · Hip Flexors
 - **Legs:** Quadriceps · Glute Max · Hamstrings · Adductors · Abductors · Gastrocnemius · Soleus
 

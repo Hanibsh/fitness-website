@@ -1,3 +1,7 @@
+// ARCHIVED 2026-07-15: one-off, already run — its output was merged into the
+// mother CSV long ago. Kept for reference only; paths below assume this
+// file's archived location (scripts/archive/).
+//
 // ONE-OFF: combine + clean the 4 incoming exercise CSVs into a single staging
 // file that matches the mother DB's schema and conventions, ahead of a manual
 // review + merge. Run:  node scripts/combine-incoming.mjs
@@ -10,7 +14,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const INC = join(ROOT, 'data', 'incoming')
 const FILES = ['new_exercises.csv', 'new_exercises1.csv', 'new_exercises2.csv', 'new_exercises3.csv']
 
@@ -104,7 +108,7 @@ const isSingleLimb = (name) => SINGLE_RE.test(name)
 const baseName = (name) => name.replace(SINGLE_RE, '').replace(/,\s*$/, '').replace(/\s+/g, ' ').trim()
 
 // ---- load mother file names/slugs for dedup ----
-const motherRows = parseCSV(readFileSync(join(ROOT, 'data', 'professional_hypertrophy_db_v3.csv'), 'utf8'))
+const motherRows = parseCSV(readFileSync(join(ROOT, 'data', 'professional_hypertrophy_db_v4.csv'), 'utf8'))
 const motherHeader = motherRows[0]
 const motherNames = motherRows.slice(1).map((r) => r[0].trim())
 const motherSlugs = new Set(motherNames.map(slug))

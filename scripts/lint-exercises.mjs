@@ -2,7 +2,7 @@
 //
 //   node scripts/lint-exercises.mjs
 //
-// Reads data/professional_hypertrophy_db_v3.csv, applies the approved
+// Reads data/professional_hypertrophy_db_v4.csv, applies the approved
 // corrections in data/exercise-overrides.mjs (the raw CSV is never edited),
 // validates every row against the canonical taxonomy and a set of consistency
 // rules, writes a human report to data/lint-report.md, and emits a normalized,

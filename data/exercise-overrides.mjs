@@ -1,5 +1,5 @@
 // Corrections applied ON TOP of the raw CSV by the linter, for cases where
-// you don't want to touch a cell in data/professional_hypertrophy_db_v3.csv
+// you don't want to touch a cell in data/professional_hypertrophy_db_v4.csv
 // directly (e.g. a fix still under discussion, or something you want undone
 // easily). Each entry is keyed by the exercise's stable id (slug) and
 // carries a `_reason`. Keys beginning with `_` are documentation only.

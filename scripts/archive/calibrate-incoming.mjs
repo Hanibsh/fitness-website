@@ -1,3 +1,7 @@
+// ARCHIVED 2026-07-15: one-off, already run — the 51-row back-exercise batch
+// this staged is long since merged into the mother CSV. Kept for reference
+// only; paths below assume this file's archived location (scripts/archive/).
+//
 // Stage 2 of the incoming merge: read data/incoming/_combined_staging.csv
 // (deterministically cleaned by combine-incoming.mjs), drop the 3 confirmed
 // redundant rows, fix the enum-vocabulary errors the source AIs introduced,
@@ -10,7 +14,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const INC = join(ROOT, 'data', 'incoming')
 
 function parseCSV(t) {

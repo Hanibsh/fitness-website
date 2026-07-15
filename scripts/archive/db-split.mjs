@@ -1,11 +1,17 @@
+// ARCHIVED 2026-07-15: the category-by-category fact-check this was built for
+// is done and merged into v4 (see [[db-factcheck-by-category]]) — the actual
+// editing ended up happening in an external Desktop staging folder instead of
+// this script's data/factcheck/ output, so that folder is archived alongside
+// it. Kept for reference / in case a similar split is ever needed again.
+//
 // Split the master exercise CSV into one file per Home Category, for
 // category-by-category fact-checking.
 //
 //   node scripts/db-split.mjs
 //
-// Reads data/professional_hypertrophy_db_v3.csv and writes one CSV per category
-// into data/factcheck/ (01-chest.csv … 08-legs.csv), each with the FULL header
-// plus that category's rows, unchanged. Also writes data/factcheck/_manifest.json.
+// Reads data/professional_hypertrophy_db_v4.csv and writes one CSV per category
+// into data/factcheck/, each with the FULL header plus that category's rows,
+// unchanged. Also writes data/factcheck/_manifest.json.
 //
 // The master CSV is NOT modified — it stays the untouched baseline until we merge
 // the fact-checked category files back at the end (scripts/db-merge.mjs, later).
@@ -18,12 +24,12 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const SRC_CSV = join(ROOT, 'data', 'professional_hypertrophy_db_v3.csv')
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const SRC_CSV = join(ROOT, 'data', 'professional_hypertrophy_db_v4.csv')
 const OUT_DIR = join(ROOT, 'data', 'factcheck')
 
 // Category display + file order — mirrors CATEGORY_ORDER in src/lib/exerciseBank.js.
-const CATEGORY_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Forearms', 'Traps', 'Core', 'Legs']
+const CATEGORY_ORDER = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Neck and Traps', 'Core']
 
 // ---- CSV parse (identical to scripts/lint-exercises.mjs) --------------------
 function parseCSV(text) {
@@ -116,7 +122,7 @@ function main() {
 
   // ---- Write ---------------------------------------------------------------
   mkdirSync(OUT_DIR, { recursive: true })
-  const manifest = { generatedAt: new Date().toISOString().slice(0, 10), source: 'data/professional_hypertrophy_db_v3.csv', total: dataRows.length, columns: header.length, categories: [] }
+  const manifest = { generatedAt: new Date().toISOString().slice(0, 10), source: 'data/professional_hypertrophy_db_v4.csv', total: dataRows.length, columns: header.length, categories: [] }
   for (const f of files) {
     writeFileSync(join(OUT_DIR, f.name), f.content)
     manifest.categories.push({ file: f.name, category: f.cat, count: f.rowsForCat.length, exercises: f.rowsForCat.map((r) => (r[nameIdx] || '').trim()) })

@@ -1,3 +1,9 @@
+// ARCHIVED 2026-07-15: one-off, already run — its corrections are long since
+// applied and merged (v3 → v4). Still hardcoded to the retired v3 CSV path
+// ON PURPOSE — do not repoint at v4; its row-specific logic assumes the exact
+// pre-fact-check v3 state and would misapply against current data. Kept for
+// reference only.
+//
 // ONE-OFF follow-up to import-newstuff.mjs: apply the Hani-approved 2026-07-11
 // double-check corrections to the 51 newly-imported back rows, IN the mother
 // CSV (the sole source of truth). Four decision groups:
@@ -22,7 +28,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CSV = join(ROOT, 'data', 'professional_hypertrophy_db_v3.csv')
 
 function parseCSV(text) {

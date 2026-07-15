@@ -1,3 +1,7 @@
+// ARCHIVED 2026-07-15: one-off, already run — its output was merged into the
+// mother CSV long ago. Kept for reference only; paths below assume this
+// file's archived location (scripts/archive/).
+//
 // ONE-OFF: clean + calibrate the newstuff.csv back-exercise batch ahead of a
 // manual append to the mother file. Deterministic + explicit per-row
 // calibration (not a blind heuristic) — see data/incoming/_newstuff_cleaning_report.md
@@ -9,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const INC = join(ROOT, 'data', 'incoming')
 const SRC = join(INC, 'new_exercises_back2.csv')
 
