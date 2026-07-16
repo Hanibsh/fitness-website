@@ -88,9 +88,11 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], now = 
     })
   }
 
-  // R1 — over the productive ceiling: trim the worst stimulus-to-fatigue
-  // exercise feeding that muscle. Specialization-block focus muscles get slack
-  // (pushing them is the point of the block).
+  // R1 — past the point where sets stop paying for their recovery cost: trim the
+  // worst stimulus-to-fatigue exercise feeding that muscle. NB this is an
+  // EFFICIENCY call, not a "junk volume" one — Pelland et al. found no inverted-U,
+  // so these sets aren't harmful, they're just a poor trade. Specialization-block
+  // focus muscles get slack (pushing them is the point of the block).
   const overMuscles = new Set()
   for (const v of volume) {
     const ceiling = v.landmarks.high * (focus.has(v.muscle) ? ADVISOR_BLOCK_SLACK : 1)
@@ -104,12 +106,13 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], now = 
     recs.push({
       id: `over-${v.muscle}`,
       severity: 'amber',
-      title: `${v.muscle} volume is past the productive ceiling`,
+      title: `${v.muscle} volume is past the efficient range`,
       detail:
-        `${v.sets} effective sets this week vs the ~${v.landmarks.high} ceiling — extra sets past that are mostly fatigue. ` +
+        `${v.sets} effective sets this week vs ~${v.landmarks.high}, where each extra set starts costing far more fatigue than it returns. ` +
+        `Not wasted — just a poor trade. ` +
         (cut
-          ? `Trim ~${excess}, starting with ${cut.name} (the week's worst stimulus-to-fatigue ratio for ${v.muscle.toLowerCase()}).`
-          : `Trim ~${excess} sets from your ${v.muscle.toLowerCase()} work.`),
+          ? `If you want that recovery back, trim ~${excess}, starting with ${cut.name} (the week's worst stimulus-to-fatigue ratio for ${v.muscle.toLowerCase()}).`
+          : `If you want that recovery back, trim ~${excess} sets from your ${v.muscle.toLowerCase()} work.`),
     })
   }
 

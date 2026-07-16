@@ -11,7 +11,7 @@
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
 import {
-  rirEffectiveness, ATOM_TO_GROUP, ENGINE_MUSCLES, landmarksFor, withinSessionMult,
+  rirEffectiveness, ATOM_TO_GROUP, ENGINE_MUSCLES, landmarksFor, volumeTier, fallbackMuscle, withinSessionMult,
   rirFatigue, FATIGUE_SCORE_COEF, DEFAULT_FATIGUE_SCORE, DEFAULT_RECOVERY_WINDOW,
   RECOVERY_DECAY_FACTOR, capacityFor, READY_THRESHOLD, RECOVERY_LOOKBACK_DAYS,
   AXIAL_MULT, FREE_WEIGHT_MULT, SYSTEMIC_TAU, SYSTEMIC_CAPACITY, systemicLevel,
@@ -19,7 +19,6 @@ import {
   EWMA_ALPHA, RESIDUAL_CLAMP, MIN_EXPOSURES_TO_LEARN, MAX_E1RM_REPS,
   PERSONAL_LEARNING_RATE, TAU_MULT_MIN, TAU_MULT_MAX, TAU_MULT_NOTEWORTHY, noveltyMult,
 } from './engineConfig'
-import { muscleForExercise } from './dashboard'
 import { exerciseIdForName } from './exerciseLibrary'
 import { estimatedOneRepMax, convertWeight } from './workoutStats'
 
@@ -77,10 +76,14 @@ function forEachWorkingSet(sessions, since, cb) {
 
 // Effective weekly volume per muscle over the last `days` days (inclusive).
 // Returns one entry per ENGINE_MUSCLES group: { muscle, sets, atoms:[{atom,
-// sets}], landmarks:{low,high}, status:'under'|'in'|'over' }.
+// sets}], landmarks:{low,high}, tier, status } where status is the tier id
+// ('under' | 'prime' | 'solid' | 'taxing' | 'excess') — a position on the
+// diminishing-returns curve, not a pass/fail band. One hard set credits at most
+// 1.0 to any one muscle.
 export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } = {}) {
   const cutoff = startOfDay(now) - (days - 1) * DAY
-  const atomSets = {} // DB atom -> effective sets
+  const atomSets = {} // DB atom -> effective sets (regional detail, drill-down only)
+  const groupSets = {} // engine muscle -> effective sets (the volume verdict)
   const groupFallback = {} // engine muscle -> effective sets (custom exercises, no DB atoms)
 
   // Within-session diminishing returns: per session, per muscle group, later
@@ -104,16 +107,20 @@ export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } =
       }
       for (const [g, atoms] of Object.entries(byGroup)) {
         const dim = withinSessionMult(k[g] || 0)
-        let credited = 0
-        for (const [atom, w] of atoms) {
-          atomSets[atom] = (atomSets[atom] || 0) + w * eff * dim
-          credited += w
-        }
-        k[g] = (k[g] || 0) + credited
+        // A set is at most a set. The muscle's credit is its best-trained atom,
+        // NEVER the sum: incline bench lists Upper 1.0 / Middle 0.5 / Lower 0.25
+        // to say which region it biases toward — summing that to 1.75 "chest
+        // sets" is a category error (the same one the taxonomy already avoids by
+        // collapsing the three triceps heads). Cross-muscle credit stays
+        // independent, so a squat still earns Quads AND Glutes on its own terms.
+        const groupW = Math.max(...atoms.map(([, w]) => w))
+        for (const [atom, w] of atoms) atomSets[atom] = (atomSets[atom] || 0) + w * eff * dim
+        groupSets[g] = (groupSets[g] || 0) + groupW * eff * dim
+        k[g] = (k[g] || 0) + groupW
       }
     } else {
-      // Custom / unmatched exercise: coarse group from the name (no atoms).
-      const g = muscleForExercise(ex.name)
+      // Custom / unmatched exercise: guess the muscle from the name (no atoms).
+      const g = fallbackMuscle(ex.name)
       if (g) {
         groupFallback[g] = (groupFallback[g] || 0) + eff * withinSessionMult(k[g] || 0)
         k[g] = (k[g] || 0) + 1
@@ -122,30 +129,38 @@ export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } =
   })
 
   const byGroup = {} // muscle -> { sets, atoms: {atom: sets} }
-  const bump = (muscle, sets, atom) => {
-    if (!muscle) return
+  const ensure = (muscle) => {
     byGroup[muscle] = byGroup[muscle] || { sets: 0, atoms: {} }
-    byGroup[muscle].sets += sets
-    if (atom) byGroup[muscle].atoms[atom] = (byGroup[muscle].atoms[atom] || 0) + sets
+    return byGroup[muscle]
   }
-  for (const [atom, sets] of Object.entries(atomSets)) bump(ATOM_TO_GROUP[atom], sets, atom)
-  for (const [muscle, sets] of Object.entries(groupFallback)) bump(muscle, sets, null)
+  // Totals come from the per-set capped credit…
+  for (const [muscle, sets] of Object.entries(groupSets)) ensure(muscle).sets += sets
+  for (const [muscle, sets] of Object.entries(groupFallback)) ensure(muscle).sets += sets
+  // …while atoms carry the regional detail for the drill-down and heatmap only.
+  for (const [atom, sets] of Object.entries(atomSets)) {
+    const muscle = ATOM_TO_GROUP[atom]
+    if (!muscle) continue
+    const g = ensure(muscle)
+    g.atoms[atom] = (g.atoms[atom] || 0) + sets
+  }
 
-  // Landmarks are weekly guidance; scale them to the requested window (e.g. a
-  // 30-day view compares against ~4.3x the weekly range) so status stays
-  // meaningful at any range, not just the default 7 days.
+  // Tiers are weekly; normalise the window's total to a weekly rate before
+  // grading it (a 30-day view holds ~4.3x a week's sets) so the verdict stays
+  // meaningful at any range. Landmarks are scaled the other way, to the window,
+  // for the progress bar and the advisor's trim maths.
   const scale = days / 7
   return ENGINE_MUSCLES.map((muscle) => {
     const g = byGroup[muscle] || { sets: 0, atoms: {} }
     const sets = round1(g.sets)
     const weekly = landmarksFor(muscle)
-    const lm = { low: Math.round(weekly.low * scale), high: Math.round(weekly.high * scale) }
-    const status = sets < lm.low ? 'under' : sets > lm.high ? 'over' : 'in'
+    const lm = { low: round1(weekly.low * scale), high: round1(weekly.high * scale) }
+    const tier = volumeTier(sets / scale, muscle)
     return {
       muscle,
       sets,
       landmarks: lm,
-      status,
+      tier,
+      status: tier.id,
       atoms: Object.entries(g.atoms)
         .map(([atom, s]) => ({ atom, sets: round1(s) }))
         .sort((a, b) => b.sets - a.sets),
@@ -196,7 +211,7 @@ function setFatigueDeposits(set, ex, db, extraMult = 1) {
       if (g) entries.push({ muscle: g, atom, f0: w * base, tau })
     }
   } else {
-    const g = muscleForExercise(ex.name)
+    const g = fallbackMuscle(ex.name)
     if (g) entries.push({ muscle: g, atom: null, f0: base, tau })
   }
   const systemicF0 =
@@ -219,7 +234,7 @@ function primaryMuscles(ex, db) {
       if (w >= TARGET_CONTRIBUTION_MIN && ATOM_TO_GROUP[atom]) out.add(ATOM_TO_GROUP[atom])
     }
   } else {
-    const g = muscleForExercise(ex.name)
+    const g = fallbackMuscle(ex.name)
     if (g) out.add(g)
   }
   return out
@@ -460,7 +475,7 @@ export function musclesForExercises(list) {
         if (w >= TARGET_CONTRIBUTION_MIN && ATOM_TO_GROUP[atom]) out.add(ATOM_TO_GROUP[atom])
       }
     } else {
-      const g = muscleForExercise(e.name)
+      const g = fallbackMuscle(e.name)
       if (g) out.add(g)
     }
   }

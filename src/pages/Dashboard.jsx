@@ -37,10 +37,22 @@ function greeting(d = new Date()) {
   return 'Good evening'
 }
 
-// Display-only rename — the engine's internal group is still "Abs" (see
-// engineConfig.js ENGINE_MUSCLES); this just relabels it in the UI.
+// Engine muscle labels are already the UI labels (see engineConfig.js
+// ENGINE_MUSCLES) — Abs and Obliques are tracked separately now, so the old
+// blanket "Abs → Core" rename would have been ambiguous.
 function displayMuscle(m) {
-  return m === 'Abs' ? 'Core' : m
+  return m
+}
+
+// Volume tier → bar colour. Tiers describe a position on the diminishing-returns
+// curve, not pass/fail: only genuinely under-dosed ('under') and heavily
+// diminished ('excess') are worth a warning colour. 'prime' is the ideal.
+const TIER_BAR = {
+  under: 'bg-amber-400',
+  prime: 'bg-green-500',
+  solid: 'bg-green-500',
+  taxing: 'bg-amber-400',
+  excess: 'bg-red-500',
 }
 
 function fmtNum(n) {
@@ -696,14 +708,14 @@ export default function Dashboard() {
             Muscle volume
           </SectionHeading>
           <p className="text-[12px] text-text-muted mb-4 -mt-2">
-            Effective sets per muscle over {VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel} — weighted by how directly each set trains the muscle, how close to failure, and diminishing returns within a marathon session. Tap a muscle for the breakdown, or the ? to learn what it is.
+            Effective sets per muscle over {VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel} — weighted by how directly each set trains the muscle, how close to failure, and diminishing returns within a marathon session. More volume keeps adding growth, just less and less per set, so these are efficiency bands rather than a pass mark — “high efficiency” is the sweet spot, not a floor to beat. Tap a muscle for the breakdown, or the ? to learn what it is.
           </p>
           {volume.every((v) => v.sets === 0) ? (
             <p className="text-[13px] text-text-muted">No sets logged in this range.</p>
           ) : (
             <div className="space-y-2">
               {volume.map((v) => {
-                const barColor = v.status === 'over' ? 'bg-red-500' : v.status === 'in' ? 'bg-green-500' : 'bg-amber-400'
+                const barColor = TIER_BAR[v.status] || 'bg-amber-400'
                 const pct = Math.min(100, Math.round((v.sets / v.landmarks.high) * 100))
                 const expandable = v.atoms.length > 0
                 const open = expandedMuscle === v.muscle
@@ -730,8 +742,8 @@ export default function Dashboard() {
                             {displayMuscle(v.muscle)}
                             {expandable && <ChevronRight className={`w-3 h-3 text-text-light transition-transform ${open ? 'rotate-90' : ''}`} />}
                           </span>
-                          <span className="text-text-muted tabular-nums">
-                            {v.sets}<span className="text-text-light"> / {v.landmarks.low}–{v.landmarks.high}</span>
+                          <span className="text-text-muted tabular-nums" title={v.tier?.hint}>
+                            {v.sets}<span className="text-text-light"> sets · {v.tier?.label}</span>
                           </span>
                         </div>
                         <div className="w-full h-2 bg-cream border border-border overflow-hidden">

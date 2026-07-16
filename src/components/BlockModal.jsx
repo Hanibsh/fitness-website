@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import Modal from './Modal'
-import { MUSCLE_GROUPS } from '../lib/dashboard'
+// Focus muscles must be ENGINE_MUSCLES, not dashboard.js's coarser keyword-based
+// ENGINE_MUSCLES: the advisor grants a block's slack via `focus.has(v.muscle)`
+// against engine muscles, so anything else silently never matches.
+import { ENGINE_MUSCLES } from '../lib/engineConfig'
 import { createBlock } from '../lib/blocks'
 
 // Timestamp <-> the YYYY-MM-DD a date input wants, pinned to noon local so it
@@ -33,7 +36,7 @@ export default function BlockModal({ block, onSave, onDelete, onClose }) {
   }
 
   function save() {
-    const focusMuscles = MUSCLE_GROUPS.filter((m) => focus.has(m))
+    const focusMuscles = ENGINE_MUSCLES.filter((m) => focus.has(m))
     if (!focusMuscles.length) return
     const startDate = fromInputDate(start)
     const endDate = ongoing ? null : fromInputDate(end)
@@ -67,7 +70,7 @@ export default function BlockModal({ block, onSave, onDelete, onClose }) {
         <div className="mb-5">
           <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Focus muscles</label>
           <div className="flex flex-wrap gap-2">
-            {MUSCLE_GROUPS.map((m) => (
+            {ENGINE_MUSCLES.map((m) => (
               <button
                 key={m}
                 type="button"

@@ -574,16 +574,24 @@ export const MUSCLE_INFO = {
 // answer "what even is that?" — the exact gap a beginner hit.
 const ENGINE_MUSCLE_TO_SLUG = {
   Chest: 'chest',
-  Back: 'back',
-  Shoulders: 'shoulders',
+  Lats: 'lats',
+  'Upper Back': 'mid-back',
+  'Lower Back': 'spinal-erectors',
+  'Neck & Traps': 'traps',
+  'Front Delts': 'front-delts',
+  'Side Delts': 'side-delts',
+  'Rear Delts': 'rear-delts',
   Biceps: 'biceps',
   Triceps: 'triceps',
   Forearms: 'forearms',
+  Abs: 'core',
+  Obliques: 'core',
   Quads: 'quads',
   Hamstrings: 'hamstrings',
   Glutes: 'glutes',
+  Adductors: 'adductors',
+  Abductors: 'abductors',
   Calves: 'calves',
-  Abs: 'core',
 }
 
 // Path to a slug's hub, resolving subcategory slugs through their parent.

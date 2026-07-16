@@ -128,43 +128,164 @@ export function systemicLevel(pct) {
 }
 
 // ---- Muscle model ----------------------------------------------------------
-// The muscle groups the engine reports volume for (finer than the taxonomy's 6
-// so arms/legs are actionable). Sub-muscle atoms from the exercise DB roll up
-// into these; the drill-down shows the atoms.
+// The muscles the engine reports volume for. These are actual MUSCLES, not body
+// regions: "Back" and "Shoulders" are regions the way "Legs" is — lats, traps
+// and erectors are no more one muscle than quads and calves are. Regions that
+// belong to the SAME muscle (upper/mid/lower chest; upper/mid/lower traps) stay
+// as atoms underneath and never become their own group.
+//
+// Sub-muscle atoms from the exercise DB roll up into these; the drill-down shows
+// the atoms. See ../../scripts/muscle-taxonomy.mjs for the atom list itself —
+// atoms exist to capture which region an exercise BIASES toward, which is why
+// effectiveWeeklyVolume takes their max and never their sum.
 export const ENGINE_MUSCLES = [
-  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms',
-  'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs',
+  'Chest',
+  'Lats', 'Upper Back', 'Lower Back', 'Neck & Traps',
+  'Front Delts', 'Side Delts', 'Rear Delts',
+  'Biceps', 'Triceps', 'Forearms',
+  'Abs', 'Obliques',
+  'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Abductors', 'Calves',
 ]
 
-// Exercise-DB muscle atom → engine muscle group. A couple are judgement calls
-// (adductors→Quads, abductors→Glutes) and easy to retune here.
+// Exercise-DB muscle atom → engine muscle. Judgement calls worth knowing about:
+//   - Teres Major → Upper Back, matching the 'mid-back' explainer hub, which
+//     already groups it with Mid Back + Rhomboids (muscleInfo.js SUBCATEGORIES).
+//   - Rotator Cuff → Rear Delts (the external rotators are trained by the same
+//     face-pull/rotation work, and it's never a primary — its own group would
+//     read "below minimum" forever). Matches the 'rear-delts' hub's atoms.
+//   - Hip Flexors → Abs (leg raises drive both; never primary on its own).
+// Adductors/Abductors are now their OWN muscles rather than being folded into
+// Quads/Glutes — an adduction machine crediting a full quad set was nonsense.
 export const ATOM_TO_GROUP = {
-  'Upper Chest': 'Chest', 'Middle Chest': 'Chest', 'Lower Chest': 'Chest',
-  Lats: 'Back', 'Mid Back': 'Back', Rhomboids: 'Back', 'Upper Traps': 'Back', 'Mid Traps': 'Back', 'Lower Traps': 'Back', 'Spinal Erectors': 'Back', 'Teres Major': 'Back',
-  'Front Delts': 'Shoulders', 'Side Delts': 'Shoulders', 'Rear Delts': 'Shoulders', 'Rotator Cuff': 'Shoulders',
+  'Upper Chest': 'Chest', 'Middle Chest': 'Chest', 'Lower Chest': 'Chest', 'Serratus Anterior': 'Chest',
+  Lats: 'Lats',
+  'Mid Back': 'Upper Back', Rhomboids: 'Upper Back', 'Teres Major': 'Upper Back',
+  'Spinal Erectors': 'Lower Back',
+  'Upper Traps': 'Neck & Traps', 'Mid Traps': 'Neck & Traps', 'Lower Traps': 'Neck & Traps',
+  'Front Delts': 'Front Delts', 'Side Delts': 'Side Delts',
+  'Rear Delts': 'Rear Delts', 'Rotator Cuff': 'Rear Delts',
   Biceps: 'Biceps', Brachialis: 'Biceps',
   Triceps: 'Triceps',
-  Brachioradialis: 'Forearms', 'Wrist Flexors': 'Forearms', 'Wrist Extensors': 'Forearms', 'Deep Finger Flexors': 'Forearms',
-  Quadriceps: 'Quads', Adductors: 'Quads',
+  Brachioradialis: 'Forearms', 'Wrist Flexors': 'Forearms', 'Wrist Extensors': 'Forearms',
+  'Deep Finger Flexors': 'Forearms', Pronators: 'Forearms', Supinator: 'Forearms',
+  'Rectus Abdominis': 'Abs', 'Transverse Abdominis': 'Abs', 'Hip Flexors': 'Abs',
+  Obliques: 'Obliques',
+  Quadriceps: 'Quads',
   Hamstrings: 'Hamstrings',
-  'Glute Max': 'Glutes', Abductors: 'Glutes',
+  'Glute Max': 'Glutes',
+  Adductors: 'Adductors',
+  Abductors: 'Abductors',
   Gastrocnemius: 'Calves', Soleus: 'Calves',
-  'Rectus Abdominis': 'Abs', 'Transverse Abdominis': 'Abs', Obliques: 'Abs', 'Hip Flexors': 'Abs',
 }
 
-// ---- Weekly volume landmarks (effective sets per muscle group) -------------
-// Rough guidance for a productive weekly range — a floor worth clearing and a
-// ceiling past which more is usually junk. Guidance only; the app never forces
-// deloads (fatigue is managed by trimming volume — see app thesis).
-export const VOLUME_LANDMARKS = {
-  default: { low: 10, high: 20 },
-  Abs: { low: 6, high: 16 },
-  Calves: { low: 8, high: 16 },
-  Forearms: { low: 4, high: 12 },
+// Custom / typed exercises have no DB entry, so there are no atoms to roll up —
+// guess the engine muscle from the name instead. dashboard.js has a similar
+// matcher, but it resolves to that module's COARSER groups ('Back',
+// 'Shoulders'), which are no longer engine muscles; reusing it here would drop
+// the set entirely, and mapping its output onto a single fine muscle would make
+// every shrug a lat and every lateral raise a front delt. Hence a separate list.
+//
+// Ordered specific → general, FIRST MATCH WINS. The ordering carries real
+// meaning — 'upright row' must beat 'row', 'reverse fly' must beat 'fly',
+// 'leg curl' must beat 'curl' — so add new patterns at the right depth, not the
+// end. Note 'grip' is deliberately absent: it would capture every "wide-grip
+// pulldown" as forearm work.
+export const FALLBACK_MUSCLE_PATTERNS = [
+  ['Hamstrings', ['leg curl', 'lying curl', 'ham curl', 'nordic', 'hamstring', 'rdl', 'romanian', 'good morning', 'stiff leg', 'stiff-leg']],
+  ['Glutes', ['hip thrust', 'glute', 'bridge', 'pull-through', 'pull through']],
+  ['Abductors', ['abduction', 'abductor']],
+  ['Adductors', ['adduction', 'adductor', 'copenhagen']],
+  ['Calves', ['calf', 'soleus']],
+  ['Quads', ['squat', 'lunge', 'leg extension', 'leg press', 'step up', 'step-up', 'hack', 'sissy']],
+  ['Triceps', ['pushdown', 'pressdown', 'tricep', 'skull', 'overhead extension', 'close-grip', 'close grip']],
+  ['Forearms', ['wrist curl', 'forearm', 'reverse curl', 'brachioradialis', 'farmer', 'gripper']],
+  ['Biceps', ['curl', 'biceps', 'bicep', 'brachialis']],
+  ['Neck & Traps', ['shrug', 'trap', 'neck']],
+  ['Lower Back', ['back extension', 'hyperextension', 'erector', 'deadlift']],
+  ['Rear Delts', ['rear delt', 'rear-delt', 'reverse fly', 'reverse flye', 'rear fly', 'face pull']],
+  ['Side Delts', ['lateral raise', 'side raise', 'side delt', 'upright row']],
+  ['Front Delts', ['front raise', 'front delt', 'overhead press', 'shoulder press', 'ohp', 'arnold', 'military press']],
+  ['Upper Back', ['row', 'rhomboid', 'mid back', 'mid-back', 'retraction']],
+  ['Lats', ['pulldown', 'pull-up', 'pullup', 'pull up', 'chin', 'pullover', 'lat ']],
+  ['Chest', ['bench', 'chest', 'fly', 'flye', 'push-up', 'pushup', 'press up', 'pec', 'dip']],
+  ['Obliques', ['oblique', 'woodchop', 'russian twist', 'side bend']],
+  ['Abs', ['crunch', 'plank', 'sit-up', 'situp', 'leg raise', 'rollout', 'ab ', 'abs', 'core']],
+]
+
+// Engine muscle for an exercise we have no DB entry for, or null if unrecognised
+// (in which case the set is left out rather than guessed at).
+export function fallbackMuscle(name) {
+  const raw = (name || '').trim().toLowerCase()
+  if (!raw) return null
+  for (const [muscle, words] of FALLBACK_MUSCLE_PATTERNS) {
+    if (words.some((w) => raw.includes(w))) return muscle
+  }
+  return null
 }
 
+// ---- Weekly volume model (effective sets per muscle per week) ---------------
+// Pelland et al. (Sports Medicine, 2026) meta-regressed 67 studies / 2058
+// participants and found hypertrophy keeps rising as volume rises — with
+// accelerating diminishing returns, but NO plateau and NO inverted-U. So volume
+// is not pass/fail against a floor; it's a position on an efficiency curve. A
+// hard "you need 10+ sets" threshold invents a cliff the data doesn't have —
+// 6 hard sets isn't under-training, it's the best return you'll ever get.
+//
+// Units matter: ONE hard set of a muscle's own work = 1.0, never more (see the
+// max-rollup in effectiveWeeklyVolume), so these are directly comparable to the
+// "sets per muscle per week" the literature reports.
+//
+// Bands are Pelland's reported efficiency tiers: minimum effective dose at ~4
+// sets, then each further DETECTABLE increment costs progressively more sets
+// (~6 → ~8.5 → ~10.75 → ~12.5).
+// Listed high→low so the first match in volumeTier() wins. `from` is the
+// INCLUSIVE weekly-set floor of the band, mirroring Pelland's tiers exactly
+// (4 = minimum effective dose, 5–10, 11–18, 19–29, 30+).
+export const VOLUME_TIERS = [
+  { id: 'excess', from: 30, label: 'Heavily diminished', hint: 'Little evidence of further benefit for the fatigue it carries.' },
+  { id: 'taxing', from: 19, label: 'Low efficiency', hint: 'Another detectable gain costs ~10+ more sets here. Fatigue-heavy.' },
+  { id: 'solid', from: 11, label: 'Productive', hint: 'Still growing, but each extra set buys noticeably less than the last.' },
+  { id: 'prime', from: 4, label: 'High efficiency', hint: 'The best return per set — most growth for the least fatigue.' },
+  { id: 'under', from: 0, label: 'Below minimum', hint: 'Under the ~4 weekly sets that reliably produce measurable growth.' },
+]
+
+// Minimum effective dose, and the point past which sets stop paying for their
+// recovery cost (top of 'solid' — where the advisor starts suggesting trims).
+export const VOLUME_MEV = 4
+export const VOLUME_CEILING = 18
+
+// Scales the tier boundaries for small/accessory muscles nobody trains to the
+// same absolute set counts. IMPORTANT: the literature has no good per-muscle
+// volume data — Pelland's tiers are generic across muscles — so these are
+// deliberately conservative practice-based adjustments, NOT findings. They
+// exist to stop small muscles reading "below minimum" forever. Tune freely.
+export const VOLUME_SCALE = {
+  Forearms: 0.6,
+  Obliques: 0.5,
+  'Lower Back': 0.5,
+  Adductors: 0.5,
+  Abductors: 0.5,
+  'Neck & Traps': 0.75,
+  'Rear Delts': 0.75,
+}
+export function volumeScale(muscle) {
+  return VOLUME_SCALE[muscle] ?? 1
+}
+
+// Weekly `sets` → its efficiency tier. Pass the WEEKLY rate, not a window total.
+export function volumeTier(sets, muscle) {
+  const s = volumeScale(muscle)
+  return VOLUME_TIERS.find((t) => sets >= t.from * s) || VOLUME_TIERS[VOLUME_TIERS.length - 1]
+}
+
+export function mevFor(muscle) {
+  return VOLUME_MEV * volumeScale(muscle)
+}
+export function ceilingFor(muscle) {
+  return VOLUME_CEILING * volumeScale(muscle)
+}
 export function landmarksFor(muscle) {
-  return VOLUME_LANDMARKS[muscle] || VOLUME_LANDMARKS.default
+  return { low: mevFor(muscle), high: ceilingFor(muscle) }
 }
 
 // ---- Advisor (engine v3) ------------------------------------------------------
