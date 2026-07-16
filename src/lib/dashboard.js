@@ -6,6 +6,7 @@
 import { convertWeight, estimatedOneRepMax } from './workoutStats'
 import { MOVEMENTS } from './movements'
 import exercisesDb from '../data/exercises.json'
+import { withAliases } from '../data/exerciseAliases'
 
 const DAY = 86400000
 
@@ -113,6 +114,19 @@ export function muscleForExercise(name) {
     if (patterns.some((p) => raw.includes(p))) return muscle
   }
   return null
+}
+
+// Logged exercises carry the DB id they were picked with — resolve the group
+// from that first (survives renames; aliases cover retired ids), and only fall
+// back to the name inference above for custom/legacy entries.
+const DB_GROUP_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e.id, dominantGroup(e.muscles)])))
+
+export function muscleForLoggedExercise(ex) {
+  if (ex?.exerciseId) {
+    const group = DB_GROUP_BY_ID.get(ex.exerciseId)
+    if (group) return group
+  }
+  return muscleForExercise(ex?.name)
 }
 
 // ---- Small helpers ---------------------------------------------------------
@@ -320,7 +334,7 @@ function muscleSetsInRange(sessions, fromTs, toTs) {
     if (d < from || d > to) continue
     for (const ex of s.exercises) {
       if (isCardio(ex)) continue
-      const muscle = muscleForExercise(ex.name)
+      const muscle = muscleForLoggedExercise(ex)
       if (!muscle) continue
       counts[muscle] += workingSets(ex).length
     }
@@ -331,6 +345,15 @@ function muscleSetsInRange(sessions, fromTs, toTs) {
 export function weeklyMuscleSets(sessions, days = 7) {
   const counts = muscleSetsInRange(sessions, Date.now() - (days - 1) * DAY, Date.now())
   return MUSCLE_GROUPS.map((m) => ({ muscle: m, sets: counts[m] }))
+}
+
+// Hard sets per muscle group for one calendar month — only groups that were
+// actually trained, biggest first. Feeds the summary donut.
+export function monthMuscleSets(sessions, year, month) {
+  const counts = muscleSetsInRange(sessions, new Date(year, month, 1).getTime(), new Date(year, month + 1, 0).getTime())
+  return MUSCLE_GROUPS.map((m) => ({ muscle: m, sets: counts[m] }))
+    .filter((x) => x.sets > 0)
+    .sort((a, b) => b.sets - a.sets)
 }
 
 // ---- Specialization-block summary ------------------------------------------

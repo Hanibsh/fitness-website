@@ -18,8 +18,9 @@ import { loggedExerciseNames } from '../lib/workoutStats'
 import {
   heroSummary, monthStats, lifetimeStats, personalRecords, recentPRs,
   splitDistribution, recentActivity, thisDayInHistory, formatDuration,
-  exerciseBests, blockSummary,
+  exerciseBests, blockSummary, monthMuscleSets,
 } from '../lib/dashboard'
+import MuscleDonut from '../components/MuscleDonut'
 import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/engine'
 import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
@@ -97,11 +98,12 @@ function StatusChip({ tone, children }) {
   return <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 border ${CHIP_TONES[tone]}`}>{children}</span>
 }
 
-function MiniStat({ label, value }) {
+function MiniStat({ label, value, sub }) {
   return (
     <div className="bg-cream border border-border px-3 py-3 text-center">
       <p className="text-[10px] uppercase tracking-wider text-text-light mb-1">{label}</p>
       <p className="text-[15px] font-medium text-text-primary break-words">{value}</p>
+      {sub && <p className="text-[10px] text-text-muted mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -282,9 +284,12 @@ export default function Dashboard() {
   const now = new Date()
   const stats = useMemo(() => {
     if (!sessions.length) return null
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     return {
       hero: heroSummary(sessions, unit),
       month: monthStats(sessions, now.getFullYear(), now.getMonth(), unit),
+      prevMonthVolume: monthStats(sessions, prev.getFullYear(), prev.getMonth(), unit).volume,
+      monthMuscles: monthMuscleSets(sessions, now.getFullYear(), now.getMonth()),
       lifetime: lifetimeStats(sessions, unit),
       records: personalRecords(sessions, unit),
       prs: recentPRs(sessions, unit, 6),
@@ -378,7 +383,10 @@ export default function Dashboard() {
     )
   }
 
-  const { hero, month, lifetime, records, prs, split, activity, throwback } = stats
+  const { hero, month, prevMonthVolume, monthMuscles, lifetime, records, prs, split, activity, throwback } = stats
+  // "+12% vs last month" under the Volume tile — only when both months have
+  // volume, so a first month or an empty one doesn't show a misleading ±100%.
+  const volumeDelta = prevMonthVolume > 0 && month.volume > 0 ? Math.round(((month.volume - prevMonthVolume) / prevMonthVolume) * 100) : null
   // With an active program the hero shows the schedule explicitly: what's
   // planned TODAY (with its logged state) and what's coming TOMORROW.
   // todayPlan is the same canonical source the logger card and the calendar
@@ -640,17 +648,27 @@ export default function Dashboard() {
               )}
             </>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <MiniStat label="Workouts" value={month.workouts} />
-              <MiniStat label="Days trained" value={month.daysTrained} />
-              <MiniStat label="Volume" value={`${fmtNum(month.volume)}`} />
-              <MiniStat label="Sets" value={fmtNum(month.sets)} />
-              <MiniStat label="Reps" value={fmtNum(month.reps)} />
-              <MiniStat label="Avg RIR" value={month.avgRir ?? '—'} />
-              <MiniStat label="Avg duration" value={formatDuration(month.avgDurationMs) || '—'} />
-              <MiniStat label="PRs" value={month.prs} />
-              <MiniStat label="Exercises" value={month.exercises} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <MiniStat label="Workouts" value={month.workouts} />
+                <MiniStat
+                  label="Volume"
+                  value={`${fmtNum(month.volume)} ${unit}`}
+                  sub={volumeDelta !== null ? `${volumeDelta >= 0 ? '+' : ''}${volumeDelta}% vs last month` : null}
+                />
+                <MiniStat label="Avg RIR" value={month.avgRir ?? '—'} />
+                <MiniStat label="PRs" value={month.prs} />
+                <MiniStat label="Exercises" value={month.exercises} />
+              </div>
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-[10px] uppercase tracking-wider text-text-light mb-3">Muscle focus · hard sets this month</p>
+                {monthMuscles.length === 0 ? (
+                  <p className="text-[13px] text-text-muted">No sets logged this month yet.</p>
+                ) : (
+                  <MuscleDonut items={monthMuscles.map((x) => ({ muscle: x.muscle, label: displayMuscle(x.muscle), value: x.sets }))} />
+                )}
+              </div>
+            </>
           )}
         </Card>
         </div>
