@@ -33,9 +33,9 @@ import {
   getDayAnnotations,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { todaysDay, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise } from '../lib/workoutStats'
-import { annotationForDate, reasonLabel } from '../lib/dayLog'
+import { reasonLabel } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -264,34 +264,38 @@ export default function WorkoutTracker() {
   const draftDate = draft.date || Date.now()
   const isToday = isSameDay(draftDate, Date.now())
   const isEditing = !!draft.editingId
-  // The program's next day up — shown as a "Today's session" card unless we're
-  // already editing or mid-way through a started program session.
-  const todayDay = program ? todaysDay(program) : null
-  const showTodayCard = !!todayDay && !isEditing && !draft.programId
-  // Weekly programs are date-driven: finishing a session doesn't advance
-  // anything, so the card needs its own "already trained today" state (and
-  // rest days have nothing to mark done). Rotating programs keep the pointer.
+  // The program's answer for today — todayPlan is the same source the
+  // dashboard hero and the calendar projection use, so the three surfaces
+  // always agree. `plan.status === 'done'` covers both modes: weekly (a
+  // session logged today) and rotating (the pointer advanced today — in that
+  // case plan.day is the NEXT day up, planned for tomorrow).
   const isWeeklyProgram = !!program && scheduleMode(program) === 'weekly'
   const loggedToday = useMemo(() => history.some((s) => isSameDay(s.date, Date.now())), [history])
-  const weeklyDoneToday = isWeeklyProgram && todayDay?.kind === 'train' && loggedToday
-  const weeklyNext = useMemo(
-    () => (isWeeklyProgram && (weeklyDoneToday || todayDay?.kind === 'rest') ? nextTrainingDate(program, { annotations }) : null),
-    [isWeeklyProgram, weeklyDoneToday, todayDay, program, annotations]
+  const plan = useMemo(
+    () => todayPlan(program, { annotations, trainedToday: loggedToday }),
+    [program, annotations, loggedToday]
   )
-  // Today marked off (sick/injury/travel/rest/other) — a training day still
-  // shows up here (todaysDay doesn't know about annotations, see program.js),
-  // so the card below swaps to an acknowledgment + skip instead of "Start session".
-  const todayAnnotation = useMemo(() => annotationForDate(annotations, Date.now()), [annotations])
-  const skipTodayCard = !!todayAnnotation && todayDay?.kind === 'train' && !weeklyDoneToday
+  const todayDay = plan.day
+  const showTodayCard = !!todayDay && !isEditing && !draft.programId
+  const doneToday = plan.status === 'done'
+  const nextUp = useMemo(
+    () => (doneToday || plan.status === 'rest' || plan.status === 'off' ? nextTrainingDate(program, { annotations }) : null),
+    [doneToday, plan.status, program, annotations]
+  )
+  // Today marked off (sick/injury/travel/rest/other) on a training day — the
+  // card below swaps to an acknowledgment + skip instead of "Start session".
+  const todayAnnotation = plan.annotation
+  const skipTodayCard = plan.status === 'off' && todayDay?.kind === 'train'
 
   // Engine v2 nudge: which of today's target muscles are still recovering.
-  // Informational only — never a gate on training.
+  // Informational only — never a gate on training. Only meaningful when
+  // there's a pending training day (done/rest days never show it).
   const recoveringToday = useMemo(() => {
-    const day = program ? todaysDay(program) : null
+    const day = plan.status === 'train' || plan.status === 'off' ? plan.day : null
     if (!day || day.kind === 'rest' || !day.exercises.length || !history.length) return []
     const hit = musclesForExercises(day.exercises)
     return muscleRecovery(history).muscles.filter((m) => hit.has(m.muscle) && m.status === 'recovering')
-  }, [program, history])
+  }, [plan, history])
 
   // Live rest timer: time since the most recent logged set (or a manual "rest
   // starts now" tap), whichever is later. Only while logging a live session.
@@ -992,8 +996,10 @@ export default function WorkoutTracker() {
         if (ex.kind !== 'cardio' && ex.repRange) saveExerciseTarget(ex.name, ex.repRange)
       }
       // If this session was started from the program, advance the rotation.
+      // The advance stamp comes from the session's date, not the wall clock,
+      // so a backdated log consumes a past slot instead of marking today done.
       if (draft.programId && program && draft.programId === program.id && draft.programDayId) {
-        const advanced = advanceProgram(program, draft.programDayId)
+        const advanced = advanceProgram(program, draft.programDayId, { sessionDate: session.date || Date.now() })
         setProgram(advanced)
         persistProgram(advanced)
       }
@@ -1697,14 +1703,26 @@ export default function WorkoutTracker() {
                 <Link to={`/routine/${program.id}`} className="text-[11px] text-cream/70 underline hover:text-cream no-underline shrink-0">Edit program</Link>
               </div>
 
-              {todayDay.kind === 'rest' ? (
+              {/* `done` must win over the rest branch: for a rotating program
+                  that advanced today, plan.day is TOMORROW's day and may well
+                  be a rest slot — today is still "done", not "rest". */}
+              {doneToday ? (
+                <div>
+                  <p className="font-heading text-xl font-medium flex items-center gap-2">
+                    <Check className="w-5 h-5" /> {isWeeklyProgram ? `${todayDay.name} — logged` : 'Done for today'}
+                  </p>
+                  <p className="text-[12px] text-cream/60 mt-0.5">
+                    {isWeeklyProgram ? 'Done for today.' : 'Nice work.'}{nextUp ? ` Next up: ${nextUp.day.name} ${nextDayLabel(nextUp.date)}.` : ''}
+                  </p>
+                </div>
+              ) : todayDay.kind === 'rest' ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <p className="font-heading text-xl font-medium">Rest day</p>
                     <p className="text-[12px] text-cream/60 mt-0.5">
                       {isWeeklyProgram
-                        ? `Enjoy your day off — relax and recover.${weeklyNext ? ` Back at it ${nextDayLabel(weeklyNext.date)} with ${weeklyNext.day.name}.` : ''}`
-                        : 'Recovery in your rotation — log freely below, or mark it done to move on.'}
+                        ? `Enjoy your day off — relax and recover.${nextUp ? ` Back at it ${nextDayLabel(nextUp.date)} with ${nextUp.day.name}.` : ''}`
+                        : 'Recovery in your rotation — it passes on its own tomorrow. Log freely below, or mark it done to move on now.'}
                     </p>
                   </div>
                   {!isWeeklyProgram && (
@@ -1715,15 +1733,6 @@ export default function WorkoutTracker() {
                       Mark rest done
                     </button>
                   )}
-                </div>
-              ) : weeklyDoneToday ? (
-                <div>
-                  <p className="font-heading text-xl font-medium flex items-center gap-2">
-                    <Check className="w-5 h-5" /> {todayDay.name} — logged
-                  </p>
-                  <p className="text-[12px] text-cream/60 mt-0.5">
-                    Done for today.{weeklyNext ? ` Next up: ${weeklyNext.day.name} ${nextDayLabel(weeklyNext.date)}.` : ''}
-                  </p>
                 </div>
               ) : skipTodayCard ? (
                 <div>

@@ -9,7 +9,8 @@ import {
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { scheduleMode, plannedDayForDate } from '../lib/program'
+import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
+import { reasonLabel } from '../lib/dayLog'
 import { activeBlock, sortedBlocks, blockWeek } from '../lib/blocks'
 import BlockModal from '../components/BlockModal'
 import { saveProfile } from '../lib/profile'
@@ -380,26 +381,28 @@ export default function Dashboard() {
   const { hero, month, lifetime, records, prs, split, activity, throwback } = stats
   // With an active program the hero shows the schedule explicitly: what's
   // planned TODAY (with its logged state) and what's coming TOMORROW.
-  // plannedDayForDate covers both weekly and rotating schedules — for a
-  // rotation that already advanced today it returns null, i.e. done.
-  // No program falls back to the name-based "Up next" heuristic.
+  // todayPlan is the same canonical source the logger card and the calendar
+  // projection use, so the surfaces can't disagree. A day marked off gets its
+  // own 'off' state (it used to read as a false "Done for today"). No program
+  // falls back to the name-based "Up next" heuristic.
   const weeklyProgram = !!program && scheduleMode(program) === 'weekly'
   const todaySessions = sessions.filter((s) => new Date(s.date).toDateString() === new Date().toDateString())
   const trainedToday = todaySessions.length > 0
-  const todayPlanned = plannedDayForDate(program, Date.now(), { annotations })
+  const plan = todayPlan(program, { annotations, trainedToday })
   const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
   const tomorrowSessions = sessions.filter((s) => new Date(s.date).toDateString() === tomorrowDate.toDateString())
   const tomorrowPlanned = plannedDayForDate(program, tomorrowDate.getTime(), { annotations })
   const exerciseCount = (day) => `${day.exercises.length} exercise${day.exercises.length !== 1 ? 's' : ''}`
-  const upToday = !program
-    ? { label: hero.next, sub: null }
-    : !todayPlanned
-      ? { label: 'Done for today', sub: null, done: true }
-      : todayPlanned.kind === 'rest'
-        ? { label: 'Rest day', sub: weeklyProgram ? 'Scheduled day off' : 'Recovery in your rotation', rest: true }
-        : weeklyProgram && trainedToday
-          ? { label: todayPlanned.name, sub: null, done: true }
-          : { label: todayPlanned.name, sub: `${exerciseCount(todayPlanned)} planned` }
+  const upToday =
+    plan.status === 'none'
+      ? { label: hero.next, sub: null }
+      : plan.status === 'done'
+        ? { label: weeklyProgram ? plan.day.name : 'Done for today', sub: null, done: true }
+        : plan.status === 'off'
+          ? { label: 'Day off', sub: reasonLabel(plan.annotation.reason), off: true }
+          : plan.status === 'rest'
+            ? { label: 'Rest day', sub: weeklyProgram ? 'Scheduled day off' : 'Recovery in your rotation', rest: true }
+            : { label: plan.day.name, sub: `${exerciseCount(plan.day)} planned` }
   const upTomorrow = tomorrowPlanned
     ? tomorrowPlanned.kind === 'rest'
       ? { label: 'Rest day', sub: null }
@@ -477,7 +480,7 @@ export default function Dashboard() {
                     <p className="text-[11px] text-cream/70">Enjoy your day off — relax and recover.</p>
                   ) : null}
                 </button>
-                {!upToday.done && !upToday.rest && (
+                {!upToday.done && !upToday.rest && !upToday.off && (
                   <Link
                     to="/log"
                     onClick={(e) => e.stopPropagation()}

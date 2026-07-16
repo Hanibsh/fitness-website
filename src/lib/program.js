@@ -8,8 +8,10 @@
 //     Sunday (rest days are ordinary rest slots among the 7). The same day
 //     always lands on the same weekday; missing a day never shifts anything.
 //   - Any other length ⇒ a rotating CYCLE: `pointer` is the index of the next
-//     day up; completing that day advances the pointer (mod the cycle length),
-//     so a missed calendar day never desyncs it and off days rotate.
+//     day up. Completing a day advances the pointer (mod the cycle length).
+//     Training days WAIT for you — a missed day shifts the plan forward, it
+//     never skips a workout — while rest days pass on their own, one per
+//     elapsed calendar day (see effectiveRotation).
 //
 // Each training day lists planned exercises with a target set count + rep
 // range that pre-fill the logger when you start the session.
@@ -79,44 +81,114 @@ function startOfDay(ts) {
   return d.getTime()
 }
 
+// Step n calendar days from ts, landing on local midnight. Uses setDate so a
+// DST shift (23/25-hour day) still lands on the right day — `ts + n * DAY_MS`
+// doesn't.
+function addDays(ts, n) {
+  const d = new Date(ts)
+  d.setDate(d.getDate() + n)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
 // Normalise a pointer into a valid day index.
 function safeIndex(program) {
   const n = program.days.length
   return n ? ((program.pointer % n) + n) % n : 0
 }
 
-// The day that's up now (may be a rest day), or null for an empty program.
-// Weekly: whatever today's weekday maps to. Rotating: the pointer day.
-export function todaysDay(program, now = Date.now()) {
-  if (!program || !program.days.length) return null
-  if (scheduleMode(program) === 'weekly') return program.days[mondayIndex(now)]
-  return program.days[safeIndex(program)]
+// Where a ROTATING program actually stands as of `now` — the single source of
+// truth for "which day is up" (todayPlan and plannedDayForDate both build on
+// it, so the logger, dashboard and calendar can never disagree again).
+//
+// Returns { index, anchor }: days[index] is the pending day, planned for the
+// `anchor` date (today, or tomorrow when the rotation already advanced today).
+//
+// Training days wait for the user — the rotation drifts with reality, a missed
+// day never skips a workout. Rest days pass on their own: each fully-elapsed
+// calendar day since the last advance consumes one pending rest day, no tap
+// needed. Today itself is still ongoing, so a rest day SHOWS as rest today and
+// auto-passes at tomorrow's read. Annotated (marked-off) dates never consume a
+// slot, matching plannedDayForDate's skip rule. Pure read-time computation —
+// nothing is written, so viewing on two devices can't race the synced blob.
+export function effectiveRotation(program, { now = Date.now(), annotations = [] } = {}) {
+  const today = startOfDay(now)
+  if (!program || !program.days?.length) return { index: 0, anchor: today }
+  const n = program.days.length
+  let index = safeIndex(program)
+  // Clamp a future stamp (clock skew, another device ahead of us) to today.
+  const stamp = program.lastAdvancedAt ? Math.min(startOfDay(program.lastAdvancedAt), today) : null
+  if (stamp === today) return { index, anchor: addDays(today, 1) } // advanced today → pointer day is tomorrow's
+  if (stamp == null) return { index, anchor: today } // never advanced / legacy blob: no reference point, no auto-pass
+  const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
+  for (let d = addDays(stamp, 1); d < today; d = addDays(d, 1)) {
+    if (program.days[index].kind !== 'rest') break // training day: waits for the user
+    if (!pausedDays.has(d)) index = (index + 1) % n // rest day consumed by elapsed day d
+  }
+  return { index, anchor: today }
+}
+
+// THE canonical answer to "what does the program say about today?" — every
+// surface (logger card, dashboard hero, calendar) derives from this, never
+// from the raw pointer. Returns { status, day, annotation }:
+//
+//   'none'  — no program / empty program (day is null)
+//   'done'  — today's slot is complete. Weekly: a training day with a session
+//             already logged (`trainedToday`, caller-supplied — this module
+//             knows nothing about sessions). Rotating: the pointer advanced
+//             today, so `day` is the NEXT day up (planned for tomorrow).
+//   'off'   — today is annotated (sick/travel/…); `day` is what was planned.
+//   'rest' / 'train' — today's pending day, in `day`.
+//
+// Precedence: done > off > rest/train (finishing a workout outranks a mark-off).
+export function todayPlan(program, { now = Date.now(), annotations = [], trainedToday = false } = {}) {
+  if (!program || !program.days?.length) return { status: 'none', day: null, annotation: null }
+  const today = startOfDay(now)
+  const annotation = annotations.find((a) => startOfDay(a.date) === today) || null
+  if (scheduleMode(program) === 'weekly') {
+    const day = program.days[mondayIndex(today)]
+    if (day.kind === 'train' && trainedToday) return { status: 'done', day, annotation }
+    if (annotation) return { status: 'off', day, annotation }
+    return { status: day.kind === 'rest' ? 'rest' : 'train', day, annotation }
+  }
+  const { index, anchor } = effectiveRotation(program, { now, annotations })
+  const day = program.days[index]
+  if (anchor > today) return { status: 'done', day, annotation }
+  if (annotation) return { status: 'off', day, annotation }
+  return { status: day.kind === 'rest' ? 'rest' : 'train', day, annotation }
 }
 
 // Move the pointer to the slot after `dayId` (mod length). Falls back to
 // advancing the current pointer if the id isn't found (e.g. the day was
 // deleted). Returns a new program object. `lastAdvancedAt` anchors the
-// calendar projection: if the rotation already advanced today, the pointer
-// day is planned for TOMORROW, not today. Weekly programs are date-driven —
-// nothing to advance, so this is a safe no-op there.
-export function advanceProgram(program, dayId) {
+// projection (see effectiveRotation): it's stamped from the SESSION's date —
+// not the wall clock — so logging yesterday's missed workout today consumes
+// yesterday's slot and today still shows today's plan. Clamped to no later
+// than today. Weekly programs are date-driven — nothing to advance, so this
+// is a safe no-op there.
+export function advanceProgram(program, dayId, { sessionDate = Date.now(), now = Date.now() } = {}) {
   if (!program || !program.days.length) return program
   if (scheduleMode(program) === 'weekly') return program
   const idx = program.days.findIndex((d) => d.id === dayId)
   const from = idx === -1 ? safeIndex(program) : idx
-  return { ...program, pointer: (from + 1) % program.days.length, lastAdvancedAt: Date.now(), updatedAt: Date.now() }
+  const stamp = Math.min(startOfDay(sessionDate), startOfDay(now))
+  return { ...program, pointer: (from + 1) % program.days.length, lastAdvancedAt: stamp, updatedAt: Date.now() }
 }
 
 // Manual correction: point AT `dayId` directly (unlike advanceProgram, which
 // moves past a day). Lets a user fix the rotation if it drifted from reality
-// — a forgotten "mark rest done," a workout logged out of order, etc. Clears
-// the advance stamp so the chosen day projects onto TODAY. No-op if the day
-// isn't found.
-export function setPointerToDay(program, dayId) {
+// — a forgotten skip, a workout logged out of order, etc. The stamp is set to
+// YESTERDAY, which effectiveRotation reads as "this day became pending today":
+// the chosen day projects onto today (same as the old null-stamp behavior),
+// and if it's a rest day it auto-passes starting tomorrow instead of sticking
+// until tapped. Deliberately reuses the one existing field — no schema change,
+// old blobs with a null/undefined stamp stay valid. No-op if the day isn't
+// found.
+export function setPointerToDay(program, dayId, { now = Date.now() } = {}) {
   if (!program || !program.days.length) return program
   const idx = program.days.findIndex((d) => d.id === dayId)
   if (idx === -1) return program
-  return { ...program, pointer: idx, lastAdvancedAt: null, updatedAt: Date.now() }
+  return { ...program, pointer: idx, lastAdvancedAt: addDays(now, -1), updatedAt: Date.now() }
 }
 
 // ---- Calendar projection -----------------------------------------------------
@@ -130,12 +202,14 @@ export const PROJECTION_HORIZON_DAYS = 28
 // are deterministic — the weekday decides, except an annotated date is
 // suppressed (you already know you're off; no need for a training-day
 // projection to say otherwise — the fixed weekly schedule itself doesn't
-// shift). Rotating programs project the cycle forward from the pointer, one
-// day per date, starting today — or tomorrow if the rotation already
-// advanced today (see advanceProgram) — and an annotated date doesn't consume
-// a slot: it's skipped and everything after it shifts up by one, same as if
-// that day simply hadn't happened yet. `annotations` is optional so callers
-// that haven't been updated for this still work, just without the skip.
+// shift). Rotating programs project the cycle forward from where the rotation
+// actually stands (effectiveRotation — the same answer the logger and
+// dashboard use), one day per date, starting at its anchor: today, or
+// tomorrow if the rotation already advanced today. An annotated date doesn't
+// consume a slot: it's skipped and everything after it shifts up by one, same
+// as if that day simply hadn't happened yet. `annotations` is optional so
+// callers that haven't been updated for this still work, just without the
+// skip.
 export function plannedDayForDate(program, date, { now = Date.now(), annotations = [] } = {}) {
   if (!program || !program.days.length) return null
   const target = startOfDay(date)
@@ -145,12 +219,11 @@ export function plannedDayForDate(program, date, { now = Date.now(), annotations
   if (pausedDays.has(target)) return null
   if (scheduleMode(program) === 'weekly') return program.days[mondayIndex(target)]
   if (target > today + PROJECTION_HORIZON_DAYS * DAY_MS) return null
-  const anchor = program.lastAdvancedAt && startOfDay(program.lastAdvancedAt) === today ? today + DAY_MS : today
+  const { index, anchor } = effectiveRotation(program, { now, annotations })
   if (target < anchor) return null
-  let paused = 0
-  for (let d = anchor; d < target; d += DAY_MS) if (pausedDays.has(d)) paused++
-  const offset = Math.round((target - anchor) / DAY_MS) - paused
-  return program.days[(safeIndex(program) + offset) % program.days.length]
+  let offset = 0
+  for (let d = anchor; d < target; d = addDays(d, 1)) if (!pausedDays.has(d)) offset++
+  return program.days[(index + offset) % program.days.length]
 }
 
 // The next upcoming TRAINING day strictly after `now`'s date — { date, day }

@@ -11,9 +11,11 @@ import {
   programFromTemplate,
   setPointerToDay,
   scheduleMode,
+  effectiveRotation,
   moveInArray,
   STARTER_PROGRAMS,
 } from '../lib/program'
+import { getDayAnnotations } from '../lib/workoutStore'
 import ExercisePicker from '../components/ExercisePicker'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -134,7 +136,11 @@ export default function RoutineEditor() {
   // today's weekday is highlighted.
   const isWeekly = !!editingProgram && scheduleMode(editingProgram) === 'weekly'
   const todayWeekdayIndex = (new Date().getDay() + 6) % 7 // Mon=0 … Sun=6
-  const pointerIndex = editingProgram && editingProgram.days.length ? editingProgram.pointer % editingProgram.days.length : -1
+  // Effective (rest-days-auto-passed) position, not the raw stored pointer, so
+  // the badge matches what the logger and calendar say is up. A one-time local
+  // annotations snapshot is fine for a display-only badge.
+  const [dayAnnotations] = useState(() => getDayAnnotations())
+  const pointerIndex = editingProgram && editingProgram.days.length ? effectiveRotation(editingProgram, { annotations: dayAnnotations }).index : -1
   const highlightIndex = isWeekly ? todayWeekdayIndex : pointerIndex
 
   const backLink = (
