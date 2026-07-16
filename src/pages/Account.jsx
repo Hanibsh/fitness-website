@@ -16,7 +16,7 @@ const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
 const MAX_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.min
 
 export default function Account() {
-  const { user, signOut, setNickname: setAuthNickname } = useAuth()
+  const { user, signOut, setNickname: setAuthNickname, refreshProfile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -124,6 +124,9 @@ export default function Account() {
       setNickname(nick.value)
       setAuthNickname(nick.value)
       setSaved(true)
+      // Re-read the shared profile so the anatomy map's sex default and the
+      // calculators' prefill pick up this save without a reload.
+      refreshProfile()
     } catch {
       setError('Could not save. Please try again.')
     } finally {

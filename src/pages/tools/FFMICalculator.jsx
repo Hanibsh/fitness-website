@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
+import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
+import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
 
 const inputBounds = {
@@ -78,6 +80,14 @@ export default function FFMICalculator() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  // Unit first — a cm height would fail the imperial bounds.
+  const prefill = usePrefillEffect((p) => {
+    if (p.unitSystem) setUnit(p.unitSystem)
+    if (p.sex) { setSex(p.sex); setBodyFat(bodyFatBounds[p.sex].default) }
+    if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
+    if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
+  })
+
   function calculate() {
     const w = parseFloat(weight), h = parseFloat(height)
     if (!w || !h) {
@@ -135,14 +145,15 @@ export default function FFMICalculator() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => setUnit('metric'), 'Metric (kg/cm)')}
-              {toggle(unit === 'imperial', () => setUnit('imperial'), 'Imperial (lbs/in)')}
+              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg/cm)')}
+              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs/in)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">
-              {toggle(sex === 'male', () => { setSex('male'); setBodyFat(bodyFatBounds.male.default) }, 'Male')}
-              {toggle(sex === 'female', () => { setSex('female'); setBodyFat(bodyFatBounds.female.default) }, 'Female')}
+              {toggle(sex === 'male', () => { prefill.touch(); setSex('male'); setBodyFat(bodyFatBounds.male.default) }, 'Male')}
+              {toggle(sex === 'female', () => { prefill.touch(); setSex('female'); setBodyFat(bodyFatBounds.female.default) }, 'Female')}
             </div>
+            <PrefillNote from={prefill.from} />
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Estimate your body fat %</label>

@@ -1,25 +1,36 @@
-import { useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { asset } from '../lib/assets'
+import { useAuth } from '../lib/auth'
 import { hubPath } from '../data/muscleInfo'
 import {
   ANATOMY_SOURCES,
   SEXES,
-  readAnatomySex,
+  readAnatomySexChoice,
   writeAnatomySex,
   zonesFor,
-  zonesForHub,
-  polygonPoints,
+  rectAttrs,
 } from '../data/anatomyRegions'
 
 const DEBUG = import.meta.env.DEV &&
   typeof window !== 'undefined' &&
   new URLSearchParams(window.location.search).has('anatomy-debug')
 
-// One cropped figure (front or back) with its clickable SVG overlay. The image
-// is oversized and offset so the figure's bounding box fills the container;
-// the overlay's viewBox is that same box, so polygons line up at any width.
-function Figure({ src, view, zones, interactive, onActivate, onDebugClick }) {
+// One cropped figure (front or back) with its label overlay. The image is
+// oversized and offset so the figure's bounding box fills the container; the
+// overlay's viewBox is that same box, so the zones line up at any width.
+//
+// Zones sit on the labels drawn into the art. With `values` they render as
+// tinted chips (the tint is data — recovery/volume); otherwise they're links
+// that only tint on hover/focus/press, leaving the artwork clean at rest.
+// Labels are drawn into the art at a fixed size, so how legible they are is
+// purely a function of how wide the figure renders. MIN_FIGURE_PX keeps them
+// readable (~11px) on narrow screens by letting the figure overflow its column
+// and scroll sideways, rather than shrinking into 6px noise. It never upscales
+// past the art's native width, which would just blur it.
+const MIN_FIGURE_PX = 360
+
+function Figure({ src, view, zones, interactive, values, onActivate, onDebugClick }) {
   const box = src[view]
   const style = {
     width: `${(src.w / box.w) * 100}%`,
@@ -29,8 +40,12 @@ function Figure({ src, view, zones, interactive, onActivate, onDebugClick }) {
   }
   return (
     <div
-      className="relative overflow-hidden rounded-lg"
-      style={{ aspectRatio: `${box.w} / ${box.h}` }}
+      className="relative overflow-hidden rounded-lg mx-auto"
+      style={{
+        aspectRatio: `${box.w} / ${box.h}`,
+        minWidth: `${MIN_FIGURE_PX}px`,
+        maxWidth: `${box.w}px`,
+      }}
     >
       <img
         src={asset(src.src)}
@@ -46,8 +61,19 @@ function Figure({ src, view, zones, interactive, onActivate, onDebugClick }) {
         role={interactive ? 'group' : 'presentation'}
         onClick={onDebugClick}
       >
-        {zones.map((z) =>
-          interactive ? (
+        {zones.map((z) => {
+          const r = rectAttrs(z.rect, box)
+          if (values) {
+            const v = values[z.slug]
+            if (!v) return null
+            return (
+              <g key={z.slug} className="anatomy-zone-value">
+                <title>{v.title || z.label}</title>
+                <rect {...r} rx="4" style={{ fill: v.fill }} />
+              </g>
+            )
+          }
+          return (
             <a
               key={z.slug}
               href={hubPath(z.slug)}
@@ -63,31 +89,23 @@ function Figure({ src, view, zones, interactive, onActivate, onDebugClick }) {
               onBlur={() => onActivate(null, 'focus')}
             >
               <title>{z.label}</title>
-              {z.shapes.map((s, i) => (
-                <polygon key={i} points={polygonPoints(s, box)} />
-              ))}
+              <rect {...r} rx="4" />
             </a>
-          ) : (
-            <g key={z.slug} className="anatomy-zone-active">
-              {z.shapes.map((s, i) => (
-                <polygon key={i} points={polygonPoints(s, box)} />
-              ))}
-            </g>
           )
-        )}
+        })}
         {DEBUG &&
           zones.map((z) => {
-            const [cx, cy] = z.shapes[0][0]
+            const r = rectAttrs(z.rect, box)
             return (
-              <text
+              <rect
                 key={`dbg-${z.slug}`}
-                x={box.x + cx * box.w}
-                y={box.y + cy * box.h}
-                className="fill-yellow-300 text-[11px]"
+                {...r}
+                rx="4"
+                fill="none"
+                stroke="#facc15"
+                strokeWidth="1"
                 style={{ pointerEvents: 'none' }}
-              >
-                {z.slug}
-              </text>
+              />
             )
           })}
       </svg>
@@ -95,24 +113,32 @@ function Figure({ src, view, zones, interactive, onActivate, onDebugClick }) {
   )
 }
 
-// The interactive body map. Props:
-//   highlight    — hub slug to statically glow (paired with interactive={false})
-//   interactive  — clickable hotspots + sex toggle (default) vs a static mini-map
+// The anatomy map. Props:
+//   values       — { [slug]: { fill, title } }; renders static tinted chips
+//                  instead of links (used by the dashboard body map)
 //   views        — which figures to show (['front','back'] by default)
 //   showSexToggle, compact, className
 export default function InteractiveAnatomy({
-  highlight = null,
-  interactive = true,
+  values = null,
   views = ['front', 'back'],
   showSexToggle = true,
   compact = false,
   className = '',
 }) {
   const navigate = useNavigate()
-  const [sex, setSex] = useState(readAnatomySex)
+  const { profile } = useAuth()
+  const [sex, setSex] = useState(() => readAnatomySexChoice() || 'female')
   const [active, setActive] = useState(null)
   const [failed, setFailed] = useState(false)
+  const interactive = !values
   const src = ANATOMY_SOURCES[sex]
+
+  // The profile arrives after first paint, so the saved sex can't be a useState
+  // initializer. An explicit toggle choice always wins over it.
+  useEffect(() => {
+    const chosen = readAnatomySexChoice()
+    if (!chosen && (profile?.sex === 'male' || profile?.sex === 'female')) setSex(profile.sex)
+  }, [profile])
 
   const chooseSex = (id) => {
     setSex(id)
@@ -143,11 +169,8 @@ export default function InteractiveAnatomy({
       }
     : undefined
 
-  const zonesForView = (view) =>
-    interactive ? zonesFor(sex, view) : zonesForHub(sex, highlight).filter((z) => z.view === view)
-
   // A failed image still leaves the page usable — the category pills below the
-  // hero (or the hub's exercise list) remain the navigation path.
+  // hero (or the dashboard's own lists) remain the path to the same data.
   if (failed) return <div className={className} />
 
   return (
@@ -159,7 +182,7 @@ export default function InteractiveAnatomy({
         {(showSexToggle || (interactive && !compact)) && (
           <div className="flex items-center justify-between gap-3 mb-3">
             {interactive && !compact ? (
-              <p className="text-[12px] text-[#c7c6c0]">Tap a highlighted muscle to see its exercises</p>
+              <p className="text-[12px] text-[#c7c6c0]">Tap a muscle label to see its exercises</p>
             ) : (
               <span />
             )}
@@ -182,17 +205,22 @@ export default function InteractiveAnatomy({
           </div>
         )}
 
-        <div className={`grid gap-3 ${views.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Side by side only once each figure still gets a legible width; below
+            that they stack, and each scrolls on its own if the screen is too
+            narrow for the labels. */}
+        <div className={`grid gap-3 ${views.length > 1 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
           {views.map((view) => (
-            <Figure
-              key={view}
-              src={src}
-              view={view}
-              zones={zonesForView(view)}
-              interactive={interactive}
-              onActivate={onActivate}
-              onDebugClick={debugClick}
-            />
+            <div key={view} className="overflow-x-auto">
+              <Figure
+                src={src}
+                view={view}
+                zones={zonesFor(sex, view)}
+                interactive={interactive}
+                values={values}
+                onActivate={onActivate}
+                onDebugClick={debugClick}
+              />
+            </div>
           ))}
         </div>
 

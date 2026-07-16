@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
+import { usePrefillEffect } from '../../lib/profilePrefill'
 
 const inputBounds = {
   weight: { metric: { min: 1, max: 500 }, imperial: { min: 2, max: 1100 } },
@@ -26,6 +27,12 @@ export default function OneRepMax() {
   const [unit, setUnit] = useState('metric')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  // Only the unit carries over: `weight` here is what's on the bar, not the
+  // lifter, so there's nothing on the profile to seed it with.
+  const prefill = usePrefillEffect((p) => {
+    if (p.unitSystem) setUnit(p.unitSystem)
+  })
 
   function calculate() {
     const w = parseFloat(weight), r = parseInt(reps)
@@ -74,8 +81,8 @@ export default function OneRepMax() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => setUnit('metric'), 'Metric (kg)')}
-              {toggle(unit === 'imperial', () => setUnit('imperial'), 'Imperial (lbs)')}
+              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg)')}
+              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs)')}
               <UnitHelp />
             </div>
             <div className="grid grid-cols-2 gap-4 items-end">

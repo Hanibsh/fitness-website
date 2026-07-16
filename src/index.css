@@ -108,41 +108,42 @@ body {
   color: var(--color-text-primary);
 }
 
-/* Interactive anatomy map zones (components/InteractiveAnatomy.jsx). The panel
-   is deliberately dark in both themes, so these colors are hardcoded gold
-   rather than theme tokens. Zones carry a faint always-on tint so muscles read
-   as tappable (essential on touch, where there is no hover), and brighten on
-   hover / focus / press; the glow doubles as the keyboard focus ring. */
+/* Anatomy map zones (components/InteractiveAnatomy.jsx). Zones sit on the muscle
+   labels drawn into the art. The panel is deliberately dark in both themes, so
+   these colors are hardcoded gold rather than theme tokens.
+
+   The labels are already legible as text, so zones rest fully transparent —
+   an always-on tint would just fight the artwork — and light up on hover /
+   focus / press. The glow doubles as the keyboard focus ring. */
 .anatomy-zone {
   cursor: pointer;
   outline: none;
 }
-.anatomy-zone polygon {
+.anatomy-zone rect {
   fill: #efc65b;
-  fill-opacity: 0.1;
+  fill-opacity: 0;
   stroke: #efc65b;
   stroke-width: 1.5;
-  stroke-opacity: 0.4;
+  stroke-opacity: 0;
   transition: fill-opacity 0.15s ease, stroke-opacity 0.15s ease;
 }
-.anatomy-zone:hover polygon,
-.anatomy-zone:focus-visible polygon,
-.anatomy-zone:active polygon {
+.anatomy-zone:hover rect,
+.anatomy-zone:focus-visible rect,
+.anatomy-zone:active rect {
   fill-opacity: 0.32;
   stroke-opacity: 0.95;
   filter: drop-shadow(0 0 6px rgba(239, 198, 91, 0.7));
 }
-/* Static highlight for hub mini-maps (non-interactive). */
-.anatomy-zone-active polygon {
-  fill: #efc65b;
-  fill-opacity: 0.24;
-  stroke: #efc65b;
-  stroke-width: 2;
-  stroke-opacity: 0.85;
-  filter: drop-shadow(0 0 5px rgba(239, 198, 91, 0.55));
+/* Data-driven chips (dashboard body map): here the tint IS the value, so it is
+   always on and the fill comes from the `values` prop rather than this rule.
+   That fill is an rgba() whose alpha encodes magnitude, so fill-opacity stays
+   at 1 and lets the colour speak for itself. */
+.anatomy-zone-value rect {
+  fill-opacity: 1;
+  stroke: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .anatomy-zone polygon {
+  .anatomy-zone rect {
     transition: none;
   }
 }

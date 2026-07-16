@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
+import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
+import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
 
 const inputBounds = {
@@ -33,6 +35,15 @@ export default function MuscleGainPotential() {
   const [years, setYears] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  // Unit first — a cm height would fail the imperial bounds. Wrist and ankle
+  // aren't on the profile, so they stay manual.
+  const prefill = usePrefillEffect((p) => {
+    if (p.unitSystem) setUnit(p.unitSystem)
+    if (p.sex) { setSex(p.sex); setTargetBf(targetBfDefault[p.sex]) }
+    if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
+    if (p.trainingYears != null) setYears((v) => (v === '' ? String(p.trainingYears) : v))
+  })
 
   function calculate() {
     const h = parseFloat(height), w = parseFloat(wrist), a = parseFloat(ankle), y = parseFloat(years)
@@ -100,14 +111,15 @@ export default function MuscleGainPotential() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => setUnit('metric'), 'Metric (cm)')}
-              {toggle(unit === 'imperial', () => setUnit('imperial'), 'Imperial (in)')}
+              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (cm)')}
+              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (in)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">
-              {toggle(sex === 'male', () => { setSex('male'); setTargetBf(targetBfDefault.male) }, 'Male')}
-              {toggle(sex === 'female', () => { setSex('female'); setTargetBf(targetBfDefault.female) }, 'Female')}
+              {toggle(sex === 'male', () => { prefill.touch(); setSex('male'); setTargetBf(targetBfDefault.male) }, 'Male')}
+              {toggle(sex === 'female', () => { prefill.touch(); setSex('female'); setTargetBf(targetBfDefault.female) }, 'Female')}
             </div>
+            <PrefillNote from={prefill.from} />
 
             <div className="grid grid-cols-3 gap-4 items-end">
               <div>

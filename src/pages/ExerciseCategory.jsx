@@ -5,35 +5,6 @@ import { categoryExercises, subcategoryExercises, subcategoryTiles } from '../li
 import { categoryBySlug, SUBCATEGORIES, MUSCLE_INFO } from '../data/muscleInfo'
 import ExerciseCard from '../components/ExerciseCard'
 import MuscleGuide from '../components/MuscleGuide'
-import InteractiveAnatomy from '../components/InteractiveAnatomy'
-import { readAnatomySex, viewsForHub } from '../data/anatomyRegions'
-
-// The muscle guide beside a highlighted mini body-map. Shows the map only when
-// the current sex has traced zones for this hub (or its parent, e.g. a delt
-// sub-head falls back to the shoulders zones); otherwise the guide is full
-// width. Zones are added muscle-group by muscle-group, so many hubs have none
-// yet and simply render the guide alone.
-function HubHeader({ slug, parentSlug, info }) {
-  const sex = readAnatomySex()
-  let mapSlug = viewsForHub(sex, slug).length ? slug : null
-  if (!mapSlug && parentSlug && viewsForHub(sex, parentSlug).length) mapSlug = parentSlug
-  const views = mapSlug ? viewsForHub(sex, mapSlug) : []
-  return (
-    <div className={mapSlug ? 'grid md:grid-cols-[1fr_240px] gap-6 items-start' : ''}>
-      <MuscleGuide info={info} />
-      {mapSlug && (
-        <InteractiveAnatomy
-          interactive={false}
-          highlight={mapSlug}
-          views={views}
-          showSexToggle={false}
-          compact
-          className="mt-6 mb-8"
-        />
-      )}
-    </div>
-  )
-}
 
 function NotFound() {
   return (
@@ -102,7 +73,7 @@ export default function ExerciseCategory() {
             <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary tracking-tight">
               {subDef.name}
             </h1>
-            <HubHeader slug={sub} parentSlug={cat} info={MUSCLE_INFO[sub]} />
+            <MuscleGuide info={MUSCLE_INFO[sub]} />
             <p className="text-text-light text-[12px] mb-4">
               {rows.length} {rows.length === 1 ? 'exercise' : 'exercises'}
             </p>
@@ -130,7 +101,7 @@ export default function ExerciseCategory() {
           <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary tracking-tight">
             {category.name}
           </h1>
-          <HubHeader slug={cat} info={MUSCLE_INFO[cat]} />
+          <MuscleGuide info={MUSCLE_INFO[cat]} />
 
           {tiles && (
             <>

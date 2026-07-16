@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair, Trash2,
-  BatteryCharging, Lightbulb, CalendarRange, HelpCircle,
+  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, PersonStanding,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations } from '../lib/workoutStore'
@@ -21,6 +21,7 @@ import {
   exerciseBests, blockSummary, monthMuscleSets,
 } from '../lib/dashboard'
 import MuscleDonut from '../components/MuscleDonut'
+import MuscleBodyMap from '../components/MuscleBodyMap'
 import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/engine'
 import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
@@ -65,6 +66,25 @@ const VOLUME_RANGES = [
   { days: 7, label: 'Week', windowLabel: 'the last 7 days' },
   { days: 30, label: 'Month', windowLabel: 'the last 30 days' },
   { days: 90, label: '3 Months', windowLabel: 'the last 3 months' },
+]
+
+// The body map reads the same numbers as the two lists below it, just spatially.
+// It's coarser than they are — the art labels one "Shoulders", not three delts —
+// so it points at the lists rather than replacing them.
+const BODY_MAP_MODES = [
+  {
+    id: 'recovery',
+    label: 'Recovery',
+    blurb: () =>
+      'How recovered each muscle is right now. Where one label covers several muscles — Shoulders, Core — it shows the least recovered of them; hover for the breakdown. Upper Back has no label on the art, so it only appears in the list below.',
+  },
+  {
+    id: 'volume',
+    label: 'Volume',
+    // Reads the same window as the Muscle volume card below, so the two agree.
+    blurb: (windowLabel) =>
+      `Effective sets per muscle over ${windowLabel}, by efficiency band — set the window on the Muscle volume card below. Where one label covers several muscles it shows the most extreme of them; hover for the breakdown.`,
+  },
 ]
 
 function relativeDay(ts) {
@@ -213,6 +233,7 @@ export default function Dashboard() {
   const [expandedRecovery, setExpandedRecovery] = useState(null) // recovery drill-down
   const [volumeRangeDays, setVolumeRangeDays] = useState(7) // weekly-volume window: 7/30/90
   const [editingNick, setEditingNick] = useState(false)
+  const [bodyMapMode, setBodyMapMode] = useState('recovery') // body map: recovery/volume
 
   useEffect(() => {
     let cancelled = false
@@ -690,6 +711,37 @@ export default function Dashboard() {
           )}
         </Card>
         </div>
+
+        {/* SECTION 4b — BODY MAP (the visual read on the two lists below) */}
+        <Card>
+          <SectionHeading
+            icon={PersonStanding}
+            right={
+              <div className="flex border border-border shrink-0">
+                {BODY_MAP_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setBodyMapMode(m.id)}
+                    aria-pressed={bodyMapMode === m.id}
+                    className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
+                      bodyMapMode === m.id ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            Body map
+          </SectionHeading>
+          <p className="text-[12px] text-text-muted mb-4 -mt-2">
+            {BODY_MAP_MODES.find((m) => m.id === bodyMapMode).blurb(
+              VOLUME_RANGES.find((r) => r.days === volumeRangeDays).windowLabel
+            )}
+          </p>
+          <MuscleBodyMap mode={bodyMapMode} recovery={recovery} volume={volume} />
+        </Card>
 
         {/* SECTION 5 — MUSCLE VOLUME (effective sets, range-selectable) */}
         <Card>

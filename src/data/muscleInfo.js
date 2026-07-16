@@ -572,7 +572,7 @@ export const MUSCLE_INFO = {
 // The dashboard reports volume/recovery per ENGINE_MUSCLE (engineConfig.js).
 // Map each of those labels to its explainer hub so a "?" next to "Quads" can
 // answer "what even is that?" — the exact gap a beginner hit.
-const ENGINE_MUSCLE_TO_SLUG = {
+export const ENGINE_MUSCLE_TO_SLUG = {
   Chest: 'chest',
   Lats: 'lats',
   'Upper Back': 'mid-back',

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
+import PrefillNote from '../../components/PrefillNote'
+import { usePrefillEffect } from '../../lib/profilePrefill'
 import { lifts, CATEGORY_ORDER, zoneColors5, zoneColors6, matchTier } from '../../lib/strengthStandards'
 
 const inputBounds = {
@@ -21,6 +23,13 @@ export default function StrengthStandards() {
   const [reps, setReps] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+
+  // Only bodyweight is prefillable here — `lifted` is the weight on the bar.
+  const prefill = usePrefillEffect((p) => {
+    if (p.unitSystem) setUnit(p.unitSystem)
+    if (p.sex) setSex(p.sex)
+    if (p.weight != null) setBodyweight((v) => (v === '' ? String(p.weight) : v))
+  })
 
   function calculate() {
     const bw = parseFloat(bodyweight), w = parseFloat(lifted), r = parseInt(reps)
@@ -89,14 +98,15 @@ export default function StrengthStandards() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => setUnit('metric'), 'Metric (kg)')}
-              {toggle(unit === 'imperial', () => setUnit('imperial'), 'Imperial (lbs)')}
+              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg)')}
+              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">
-              {toggle(sex === 'male', () => setSex('male'), 'Male')}
-              {toggle(sex === 'female', () => setSex('female'), 'Female')}
+              {toggle(sex === 'male', () => { prefill.touch(); setSex('male') }, 'Male')}
+              {toggle(sex === 'female', () => { prefill.touch(); setSex('female') }, 'Female')}
             </div>
+            <PrefillNote from={prefill.from} />
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Lift</label>
