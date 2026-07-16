@@ -534,7 +534,13 @@ export default function Dashboard() {
           <SectionHeading
             icon={CalendarDays}
             right={
-              <div className="flex items-center gap-3 shrink-0">
+              // Three controls (~353px min-content) can't fit a 320px screen's
+              // ~287px card interior, so this group has to be able to break
+              // internally: shrink-0 pinned it wide and blew out the page. The
+              // parent's flex-wrap alone doesn't help — it only moves the group
+              // to its own line, still 353px wide. flex-wrap here drops its
+              // min-content to the widest single control instead.
+              <div className="flex items-center justify-end gap-x-3 gap-y-2 flex-wrap">
                 <Link
                   to="/calendar"
                   className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
