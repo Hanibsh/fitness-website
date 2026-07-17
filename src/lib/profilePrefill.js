@@ -50,17 +50,16 @@ function bodyweightIn(profile, unit) {
 // What a calculator should start with, in its own units. Every field is null
 // when unknown, so callers can tell "no data" from a real zero.
 //
-//   ready         — the profile has loaded (false while signed out or in flight)
-//   from          — true if anything was filled, for the "from your profile" hint
-//   unitSystem    — 'metric' | 'imperial', null when the user has no saved preference
-//   trainingYears — the profile keeps months; the tools ask in years
+//   ready      — the profile has loaded (false while signed out or in flight)
+//   from       — true if anything was filled, for the "from your profile" hint
+//   unitSystem — 'metric' | 'imperial', null when the user has no saved preference
 export function usePrefill() {
   const { user, profile } = useAuth()
 
   return useMemo(() => {
     const empty = {
       ready: false, from: false, sex: null, unitSystem: null,
-      height: null, weight: null, age: null, trainingYears: null,
+      height: null, weight: null, age: null,
     }
     if (!user || !profile) return empty
 
@@ -71,19 +70,15 @@ export function usePrefill() {
     const height = profile.height != null && profile.height !== '' ? round1(Number(profile.height)) : null
     const weight = bodyweightIn(profile, weightUnitFor(unitSystem))
     const age = ageFromBirthYear(profile.birth_year)
-    const trainingYears = profile.training_months != null && profile.training_months !== ''
-      ? round1(Number(profile.training_months) / 12)
-      : null
 
     return {
       ready: true,
-      from: !!(sex || height || weight || age || trainingYears != null),
+      from: !!(sex || height || weight || age),
       sex,
       unitSystem: profile.unit ? unitSystem : null,
       height,
       weight,
       age,
-      trainingYears,
     }
   }, [user, profile])
 }

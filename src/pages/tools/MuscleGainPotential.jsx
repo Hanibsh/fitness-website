@@ -36,13 +36,12 @@ export default function MuscleGainPotential() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
-  // Unit first — a cm height would fail the imperial bounds. Wrist and ankle
-  // aren't on the profile, so they stay manual.
+  // Unit first — a cm height would fail the imperial bounds. Wrist, ankle and
+  // years trained aren't on the profile, so they stay manual.
   const prefill = usePrefillEffect((p) => {
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setTargetBf(targetBfDefault[p.sex]) }
     if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
-    if (p.trainingYears != null) setYears((v) => (v === '' ? String(p.trainingYears) : v))
   })
 
   function calculate() {

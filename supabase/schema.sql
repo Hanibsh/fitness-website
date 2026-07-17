@@ -19,9 +19,13 @@ create table if not exists public.profiles (
   -- calculators. All optional; the app validates the values on save too.
   goal text check (goal in ('lose_fat', 'gain_muscle', 'recomp', 'maintain')),
   experience_level text check (experience_level in ('beginner', 'intermediate', 'advanced')),
-  training_months int,          -- optional: how long they've been training
-  days_per_week int,            -- target training days per week
-  session_minutes int,          -- target time per session
+  -- RETIRED 2026-07-17: no longer collected or read (experience_level already
+  -- states its year range, and the real schedule is observable from logged
+  -- sessions). Kept, not dropped, so existing rows aren't destroyed — dropping a
+  -- column is irreversible and buys nothing here.
+  training_months int,
+  days_per_week int,
+  session_minutes int,
   equipment text check (equipment in ('gym', 'home', 'dumbbells', 'bodyweight')),
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.

@@ -6,8 +6,7 @@ import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
 import {
-  GOALS, EXPERIENCE_LEVELS, DAYS_PER_WEEK, SESSION_MINUTES,
-  EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS,
+  GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS,
 } from '../lib/profileFields'
 import UnitHelp from '../components/UnitHelp'
 
@@ -33,10 +32,6 @@ export default function Account() {
   // Your training
   const [goal, setGoal] = useState('')
   const [experience, setExperience] = useState('')
-  const [trainingLen, setTrainingLen] = useState('')
-  const [trainingLenUnit, setTrainingLenUnit] = useState('years')
-  const [daysPerWeek, setDaysPerWeek] = useState('')
-  const [sessionMinutes, setSessionMinutes] = useState('')
   const [equipment, setEquipment] = useState('')
 
   // Preferences
@@ -58,13 +53,6 @@ export default function Account() {
           setHeight(p.height != null ? String(p.height) : '')
           setGoal(p.goal || '')
           setExperience(p.experience_level || '')
-          if (p.training_months != null) {
-            const m = p.training_months
-            if (m > 0 && m % 12 === 0) { setTrainingLen(String(m / 12)); setTrainingLenUnit('years') }
-            else { setTrainingLen(String(m)); setTrainingLenUnit('months') }
-          }
-          setDaysPerWeek(p.days_per_week != null ? Number(p.days_per_week) : '')
-          setSessionMinutes(p.session_minutes != null ? Number(p.session_minutes) : '')
           setEquipment(p.equipment || '')
           setShareData(!!p.share_data)
           setCoachingStatus(p.coaching_status || 'none')
@@ -97,11 +85,6 @@ export default function Account() {
         setError(`Height should be between ${b.min} and ${b.max} ${b.label}.`); return
       }
     }
-    if (trainingLen !== '') {
-      const n = Number(trainingLen)
-      if (!Number.isFinite(n) || n < 0) { setError('Training length must be a positive number.'); return }
-    }
-
     setSaving(true)
     try {
       await saveProfile(user.id, {
@@ -113,11 +96,6 @@ export default function Account() {
         height: height === '' ? null : Number(height),
         goal: goal || null,
         experience_level: experience || null,
-        training_months: trainingLen === ''
-          ? null
-          : (trainingLenUnit === 'years' ? Math.round(Number(trainingLen) * 12) : Math.round(Number(trainingLen))),
-        days_per_week: daysPerWeek === '' ? null : Number(daysPerWeek),
-        session_minutes: sessionMinutes === '' ? null : Number(sessionMinutes),
         equipment: equipment || null,
         share_data: shareData,
       })
@@ -283,48 +261,6 @@ export default function Account() {
                       <label className={labelCls}>Experience</label>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {EXPERIENCE_LEVELS.map((e) => choice(experience === e.value, () => setExperience(experience === e.value ? '' : e.value), e.label, e.sub))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={labelCls}>How long have you been training?</label>
-                      <div className="flex gap-3">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={trainingLen}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                            setTrainingLen(v); edited()
-                          }}
-                          placeholder="2"
-                          className={`${inputCls} max-w-[120px]`}
-                        />
-                        <select
-                          value={trainingLenUnit}
-                          onChange={(e) => { setTrainingLenUnit(e.target.value); edited() }}
-                          aria-label="Training length unit"
-                          className="bg-cream border border-border px-3 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary cursor-pointer"
-                        >
-                          <option value="years">Years</option>
-                          <option value="months">Months</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={labelCls}>Training days per week</label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {DAYS_PER_WEEK.map((d) => choice(daysPerWeek === d, () => setDaysPerWeek(daysPerWeek === d ? '' : d), String(d)))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={labelCls}>Time per session</label>
-                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                        {SESSION_MINUTES.map((m) => choice(sessionMinutes === m, () => setSessionMinutes(sessionMinutes === m ? '' : m), `${m}m`))}
                       </div>
                     </div>
 

@@ -15,17 +15,19 @@ export const GOALS = [
 ]
 
 // Self-selected training tier. Research is consistent that the tier predicts
-// programming needs better than raw calendar time, so this is the real signal;
-// the optional "how long training" duration is a friendly secondary input.
+// programming needs better than raw calendar time, so this is the real signal —
+// and since each tier already states its year range, it IS the answer to "how
+// long have you been training". A separate duration input asked the same
+// question twice, so it's gone (2026-07-17), along with days/week and time per
+// session. The schedule the user actually trains is observable from their logged
+// sessions and routine; asking them to also declare it invited the two to
+// disagree. Don't reintroduce them without a consumer that needs the stated
+// intent rather than the real behaviour.
 export const EXPERIENCE_LEVELS = [
   { value: 'beginner', label: 'Beginner', sub: '< 1 yr' },
   { value: 'intermediate', label: 'Intermediate', sub: '1–3 yrs' },
   { value: 'advanced', label: 'Advanced', sub: '3+ yrs' },
 ]
-
-export const DAYS_PER_WEEK = [2, 3, 4, 5, 6]
-
-export const SESSION_MINUTES = [30, 45, 60, 75, 90]
 
 // Equipment presets map onto the exercise DB's five `equipment` values
 // (free weight / machine / cable / bodyweight / resistance band). `includes` is
