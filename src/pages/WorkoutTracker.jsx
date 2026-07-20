@@ -551,6 +551,35 @@ export default function WorkoutTracker() {
     })
   }
 
+  // Copy THIS session's superset grouping onto the split day it came from, for
+  // the exercises the two have in common (matched by plannedExerciseId). Draft
+  // group ids are session-scoped, so they're re-minted into the plan's id space;
+  // planned exercises not in today's session are left untouched. Explicit, not
+  // automatic — the button that calls this only shows when the two differ.
+  function saveSupersetsToRoutine() {
+    if (!program || draft.programId !== program.id || !draft.programDayId) return
+    const draftGroupOf = new Map() // plannedExerciseId -> draft supersetId | null
+    for (const e of draft.exercises) if (e.plannedExerciseId) draftGroupOf.set(e.plannedExerciseId, e.supersetId || null)
+    const planGroupId = new Map() // draft group id -> fresh plan group id
+    const updated = {
+      ...program,
+      days: program.days.map((d) => {
+        if (d.id !== draft.programDayId) return d
+        const exercises = d.exercises.map((pe) => {
+          if (!draftGroupOf.has(pe.id)) return pe // not in this session — leave as-is
+          const g = draftGroupOf.get(pe.id)
+          if (!g) return { ...pe, supersetId: null }
+          if (!planGroupId.has(g)) planGroupId.set(g, newSupersetId())
+          return { ...pe, supersetId: planGroupId.get(g) }
+        })
+        return { ...d, exercises: regroupSupersets(pruneSupersets(exercises)) }
+      }),
+      updatedAt: Date.now(),
+    }
+    setProgram(updated)
+    persistProgram(updated)
+  }
+
   // Move an exercise up/down, keeping resistance and cardio reordered
   // independently (they render in separate sections) and superset groups
   // moving as a single unit (exerciseBlocks treats a contiguous group as one
@@ -1063,6 +1092,33 @@ export default function WorkoutTracker() {
   // Superset grouping is a resistance-only concept, derived from each exercise's
   // `linkedToPrev` flag over the section in order.
   const resistanceGroups = supersetLabels(resistanceExercises)
+
+  // Does this session's superset grouping differ from the split day it came
+  // from? Compares the two partitions restricted to the exercises they share
+  // (matched by plannedExerciseId); drives the "Save supersets to split" button.
+  const planDayForDraft =
+    program && draft.programId === program.id && draft.programDayId
+      ? program.days.find((d) => d.id === draft.programDayId)
+      : null
+  const supersetsDifferFromPlan = (() => {
+    if (!planDayForDraft) return false
+    // partition signature over a set of {key, group} — canonical + comparable
+    const sig = (items) => {
+      const groups = new Map()
+      const singles = []
+      for (const { key, group } of items) {
+        if (group) { if (!groups.has(group)) groups.set(group, []); groups.get(group).push(key) }
+        else singles.push([key])
+      }
+      return [...groups.values(), ...singles].map((g) => g.slice().sort().join('+')).sort().join('|')
+    }
+    const linked = resistanceExercises.filter((e) => e.plannedExerciseId)
+    if (linked.length < 2) return false
+    const common = new Set(linked.map((e) => e.plannedExerciseId))
+    const draftSig = sig(linked.map((e) => ({ key: e.plannedExerciseId, group: e.supersetId })))
+    const planSig = sig(planDayForDraft.exercises.filter((pe) => common.has(pe.id)).map((pe) => ({ key: pe.id, group: pe.supersetId })))
+    return draftSig !== planSig
+  })()
 
   const CHIP_TONE = {
     go: 'text-green-700 bg-green-50 border-green-300',
@@ -1825,6 +1881,15 @@ export default function WorkoutTracker() {
               <div className="flex items-center gap-2 mb-3">
                 <Dumbbell className="w-4 h-4 text-text-primary" />
                 <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Resistance training</h3>
+                {supersetsDifferFromPlan && (
+                  <button
+                    onClick={saveSupersetsToRoutine}
+                    title="Update the split with how you supersetted today"
+                    className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-2 py-1 cursor-pointer transition-colors"
+                  >
+                    <Link2 className="w-3 h-3" /> Save supersets to split
+                  </button>
+                )}
               </div>
               <AnimatePresence initial={false}>
                 {resistanceExercises.map(renderExercise)}
