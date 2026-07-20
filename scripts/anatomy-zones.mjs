@@ -57,6 +57,7 @@ const LABELS = {
       ['core', 'Core'],
       ['adductors', 'Inner Thighs'],
       ['quads', 'Quadriceps'],
+      ['tibialis', 'Tibialis Anterior'],
     ],
     back: [
       ['traps', 'Neck and Trapezius'],
@@ -207,13 +208,17 @@ for (const g of glyphs.sort((a, b) => a.x - b.x)) {
   }
 }
 
+// A real label is at least a short word; a lone line fragment that survived the
+// glyph filter stays a tiny single-component cluster. Drop those.
+const textLines = lines.filter((l) => l.w >= 15)
+
 // ---- 3. assign + print ------------------------------------------------------
 const PAD_X = 7, PAD_Y = 5
 const round = (n) => Math.round(n * 1e4) / 1e4
 for (const view of ['front', 'back']) {
   const expected = LABELS[sex][view]
   const box = boxes[view]
-  const sideLines = lines
+  const sideLines = textLines
     .filter((l) => (l.x + l.w / 2 < gutterMid) === (view === 'front'))
     .sort((a, b) => a.y - b.y)
   if (sideLines.length !== expected.length) {
