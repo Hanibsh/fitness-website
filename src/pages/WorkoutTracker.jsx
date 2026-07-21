@@ -33,7 +33,7 @@ import {
   getDayAnnotations,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForPlannedExercise } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from '../lib/workoutStats'
 import { reasonLabel } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
@@ -468,15 +468,17 @@ export default function WorkoutTracker() {
     }))
   }
 
-  // Apply the same swap to the active routine's plan slot this session
-  // exercise came from — so future sessions start with the new movement too.
-  function substituteInRoutine(plannedExerciseId, name, kind, exerciseId) {
-    if (!program || !draft.programDayId || !plannedExerciseId) return
+  // Apply the same swap to the plan slot this session exercise came from — so
+  // future sessions start with the new movement too. The day is passed in
+  // rather than read off the draft: a session being edited afterwards no
+  // longer knows which day it started from (see planDayForDraft).
+  function substituteInRoutine(dayId, plannedExerciseId, name, kind, exerciseId) {
+    if (!program || !dayId || !plannedExerciseId) return
     const trimmed = name.trim().slice(0, 60)
     const updated = {
       ...program,
       days: program.days.map((d) =>
-        d.id === draft.programDayId
+        d.id === dayId
           ? { ...d, exercises: d.exercises.map((pe) => (pe.id === plannedExerciseId ? { ...pe, name: trimmed, exerciseId: exerciseId || null, kind } : pe)) }
           : d
       ),
@@ -486,15 +488,16 @@ export default function WorkoutTracker() {
     persistProgram(updated)
   }
 
-  // The picker chose a replacement. If this exercise came from today's
-  // program day, ask whether to also update the routine; otherwise apply
+  // The picker chose a replacement. If this exercise still traces back to a
+  // slot in the active split — whether it's today's session or a past one
+  // being edited — ask whether to also update the split; otherwise apply
   // straight away (there's nothing to save into).
   function pickSubstitute(exId, name, category, exerciseId) {
     const kind = category === 'Cardio' ? 'cardio' : 'strength'
     const ex = draft.exercises.find((e) => e.id === exId)
-    const eligible = !!(program && draft.programId === program.id && draft.programDayId && ex?.plannedExerciseId)
-    if (eligible) {
-      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: ex.plannedExerciseId })
+    const planDay = dayForPlannedExercise(program, ex?.plannedExerciseId)
+    if (planDay) {
+      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: ex.plannedExerciseId, dayId: planDay.id })
     } else {
       substituteExercise(exId, name, kind, exerciseId)
       setSubstituteFor(null)
@@ -503,9 +506,9 @@ export default function WorkoutTracker() {
 
   function confirmSubstitute(alsoRoutine) {
     if (!pendingSub) return
-    const { exId, name, kind, exerciseId, plannedExerciseId } = pendingSub
+    const { exId, name, kind, exerciseId, plannedExerciseId, dayId } = pendingSub
     substituteExercise(exId, name, kind, exerciseId)
-    if (alsoRoutine) substituteInRoutine(plannedExerciseId, name, kind, exerciseId)
+    if (alsoRoutine) substituteInRoutine(dayId, plannedExerciseId, name, kind, exerciseId)
     setPendingSub(null)
     setSubstituteFor(null)
   }
@@ -557,20 +560,37 @@ export default function WorkoutTracker() {
     })
   }
 
+  // The split day this session came from, or null. A session started from the
+  // split says so outright; a past session being edited doesn't (the day isn't
+  // persisted with the log), so it's recovered from the first exercise whose
+  // plan link still resolves — which also rules out sessions from a split
+  // that's no longer active, and hand-logged sessions that never had one.
+  const planDayForDraft = (() => {
+    if (!program) return null
+    if (draft.programId === program.id && draft.programDayId) {
+      return program.days.find((d) => d.id === draft.programDayId) || null
+    }
+    for (const e of draft.exercises) {
+      const day = dayForPlannedExercise(program, e.plannedExerciseId)
+      if (day) return day
+    }
+    return null
+  })()
+
   // Copy THIS session's superset grouping onto the split day it came from, for
   // the exercises the two have in common (matched by plannedExerciseId). Draft
   // group ids are session-scoped, so they're re-minted into the plan's id space;
   // planned exercises not in today's session are left untouched. Explicit, not
   // automatic — the button that calls this only shows when the two differ.
   function saveSupersetsToRoutine() {
-    if (!program || draft.programId !== program.id || !draft.programDayId) return
+    if (!program || !planDayForDraft) return
     const draftGroupOf = new Map() // plannedExerciseId -> draft supersetId | null
     for (const e of draft.exercises) if (e.plannedExerciseId) draftGroupOf.set(e.plannedExerciseId, e.supersetId || null)
     const planGroupId = new Map() // draft group id -> fresh plan group id
     const updated = {
       ...program,
       days: program.days.map((d) => {
-        if (d.id !== draft.programDayId) return d
+        if (d.id !== planDayForDraft.id) return d
         const exercises = d.exercises.map((pe) => {
           if (!draftGroupOf.has(pe.id)) return pe // not in this session — leave as-is
           const g = draftGroupOf.get(pe.id)
@@ -1102,10 +1122,6 @@ export default function WorkoutTracker() {
   // Does this session's superset grouping differ from the split day it came
   // from? Compares the two partitions restricted to the exercises they share
   // (matched by plannedExerciseId); drives the "Save supersets to split" button.
-  const planDayForDraft =
-    program && draft.programId === program.id && draft.programDayId
-      ? program.days.find((d) => d.id === draft.programDayId)
-      : null
   const supersetsDifferFromPlan = (() => {
     if (!planDayForDraft) return false
     // partition signature over a set of {key, group} — canonical + comparable

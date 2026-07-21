@@ -238,6 +238,16 @@ export function nextTrainingDate(program, { now = Date.now(), annotations = [] }
   return null
 }
 
+// The training day a logged exercise came from, found by its plan link
+// (`plannedExerciseId`, stamped by draftFromDay below). Planned-exercise ids
+// are program-unique, so the day is unambiguous. This is how a past session —
+// which doesn't store the day it was started from — is traced back to the
+// split, so edits to it can be offered back to the plan.
+export function dayForPlannedExercise(program, plannedExerciseId) {
+  if (!program || !plannedExerciseId) return null
+  return program.days.find((d) => (d.exercises || []).some((pe) => pe.id === plannedExerciseId)) || null
+}
+
 // ---- Prefill the logger from a planned day ---------------------------------
 
 // Build a draft's `exercises` array from a training day, reusing the same
