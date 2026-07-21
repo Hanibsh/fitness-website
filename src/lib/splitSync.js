@@ -7,15 +7,16 @@
 // applies the ones the user picks.
 //
 // Pure and portable (same shape as program.js / workoutStats.js): no storage, no
-// React. Exercises are matched to plan rows by `plannedExerciseId`, stamped when
-// the session was prefilled (see draftFromDay in program.js).
+// React. Exercises line up against plan rows via plannedRowFor — plan link when
+// there is one, otherwise library id or name, so workouts logged before plan
+// links existed (or logged by hand) reconcile just the same.
 //
 // Deliberately NOT synced:
 //   - weight: a planned exercise has nowhere to put one. Weights carry forward
 //     from your last session via prefillFromHistory, not from the plan.
 //   - notes: session notes are scratch, editable without touching the template.
 
-import { createPlannedExercise } from './program'
+import { createPlannedExercise, plannedRowFor } from './program'
 import { newSupersetId, pruneSupersets, regroupSupersets, setHasWork } from './workoutStats'
 
 const DEFAULT_REP_RANGE = { low: 6, high: 10 }
@@ -52,14 +53,26 @@ function partitionSignature(items) {
   return [...groups.values(), ...singles].map((g) => g.slice().sort().join('+')).sort().join('|')
 }
 
+// Line every session exercise up with its plan row, walking the session in
+// order so two sets of the same movement can't both claim one row. `pe` is null
+// for exercises the plan doesn't have.
+function pairWithPlan(exercises, day) {
+  const claimed = new Set()
+  return exercises.map((ex) => {
+    const pe = plannedRowFor(day, ex, claimed)
+    if (pe) claimed.add(pe.id)
+    return { ex, pe }
+  })
+}
+
 // Do the session and the plan day disagree about which exercises are paired?
 // Compared over the exercises they share, so a hand-added finisher (no plan row)
 // or a planned exercise you skipped never counts as a difference on its own.
-function supersetsDiffer(exercises, day) {
-  const linked = exercises.filter((e) => e.kind !== 'cardio' && e.plannedExerciseId)
-  if (linked.length < 2) return false
-  const common = new Set(linked.map((e) => e.plannedExerciseId))
-  const draftSig = partitionSignature(linked.map((e) => ({ key: e.plannedExerciseId, group: e.supersetId })))
+function supersetsDiffer(pairs, day) {
+  const shared = pairs.filter(({ ex, pe }) => pe && ex.kind !== 'cardio')
+  if (shared.length < 2) return false
+  const common = new Set(shared.map(({ pe }) => pe.id))
+  const draftSig = partitionSignature(shared.map(({ ex, pe }) => ({ key: pe.id, group: ex.supersetId })))
   const planSig = partitionSignature(
     day.exercises.filter((pe) => common.has(pe.id)).map((pe) => ({ key: pe.id, group: pe.supersetId }))
   )
@@ -78,15 +91,14 @@ function supersetsDiffer(exercises, day) {
 // Once the session is done, logging two of three planned sets is a real signal.
 export function diffSessionAgainstDay(exercises = [], day, { complete = false } = {}) {
   if (!day) return []
-  const planById = new Map(day.exercises.map((pe) => [pe.id, pe]))
+  const pairs = pairWithPlan(exercises, day)
   const changes = []
 
   // Exercises the session has that the plan doesn't — positioned by the nearest
   // preceding exercise the two DO share, so a finisher added after Lat Pulldown
   // lands after Lat Pulldown rather than at the end of the day.
   let afterPeId = null
-  for (const ex of exercises) {
-    const pe = ex.plannedExerciseId ? planById.get(ex.plannedExerciseId) : null
+  for (const { ex, pe } of pairs) {
     if (pe) {
       afterPeId = pe.id
       continue
@@ -106,8 +118,7 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false } 
   }
 
   // Per-exercise prescription drift, for the rows the two share.
-  for (const ex of exercises) {
-    const pe = ex.plannedExerciseId ? planById.get(ex.plannedExerciseId) : null
+  for (const { ex, pe } of pairs) {
     if (!pe) continue
 
     const count = prescribedSetCount(ex)
@@ -129,14 +140,24 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false } 
   }
 
   // Plan rows this session dropped.
-  const kept = new Set(exercises.map((e) => e.plannedExerciseId).filter(Boolean))
+  const kept = new Set(pairs.map(({ pe }) => pe?.id).filter(Boolean))
   for (const pe of day.exercises) {
     if (!kept.has(pe.id)) changes.push({ id: `remove:${pe.id}`, kind: 'remove', name: pe.name, peId: pe.id })
   }
 
   // Pairing is one all-or-nothing change: the partition only makes sense whole.
-  if (supersetsDiffer(exercises, day)) {
-    changes.push({ id: 'supersets', kind: 'supersets', name: 'Superset pairing' })
+  // It carries its own resolved pairing so applying never has to re-match.
+  if (supersetsDiffer(pairs, day)) {
+    changes.push({
+      id: 'supersets',
+      kind: 'supersets',
+      name: 'Superset pairing',
+      groups: pairs.map(({ ex, pe }) => ({
+        draftExerciseId: ex.id,
+        peId: pe?.id || null,
+        supersetId: ex.supersetId || null,
+      })),
+    })
   }
 
   return changes
@@ -146,7 +167,7 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false } 
 // program plus `links` (draft exercise id → new plannedExerciseId) so the caller
 // can stamp newly added exercises and keep them tied to the plan from now on.
 // Never mutates its arguments; days other than `dayId` are returned untouched.
-export function applySplitChanges(program, dayId, changes, sessionExercises = []) {
+export function applySplitChanges(program, dayId, changes) {
   if (!program || !dayId || !changes?.length) return { program, links: new Map() }
 
   const links = new Map()
@@ -191,13 +212,14 @@ export function applySplitChanges(program, dayId, changes, sessionExercises = []
     // Pairing last, over the final exercise list: session group ids are
     // session-scoped, so they're re-minted into the plan's own id space. Rows
     // the session didn't touch keep whatever pairing they already had.
-    if (byKind('supersets').length) {
+    const pairing = byKind('supersets')[0]
+    if (pairing) {
       const sessionGroupOf = new Map()
-      for (const e of sessionExercises) {
-        if (e.plannedExerciseId) sessionGroupOf.set(e.plannedExerciseId, e.supersetId || null)
-        // A just-added exercise is paired via its brand-new plan row.
-        const linked = links.get(e.id)
-        if (linked) sessionGroupOf.set(linked, e.supersetId || null)
+      for (const g of pairing.groups) {
+        // A just-added exercise pairs via its brand-new plan row; everything
+        // else via the row the diff already matched it to.
+        const peId = g.peId || links.get(g.draftExerciseId)
+        if (peId) sessionGroupOf.set(peId, g.supersetId)
       }
       const planGroupId = new Map()
       exercises = exercises.map((pe) => {

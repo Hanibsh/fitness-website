@@ -248,6 +248,78 @@ export function dayForPlannedExercise(program, plannedExerciseId) {
   return program.days.find((d) => (d.exercises || []).some((pe) => pe.id === plannedExerciseId)) || null
 }
 
+function nameKey(s) {
+  return (s || '').trim().toLowerCase()
+}
+
+// Does this logged exercise correspond to this planned one? Library id first
+// (survives renames), then name. Used wherever a session has to be lined up
+// against a plan without the benefit of a plan link.
+export function matchesPlanned(ex, pe) {
+  if (!ex || !pe) return false
+  if (ex.exerciseId && pe.exerciseId) return ex.exerciseId === pe.exerciseId
+  return nameKey(ex.name) === nameKey(pe.name)
+}
+
+// The plan row a logged exercise came from, within one day: its plan link if it
+// has one, else the first unclaimed row that matches by id/name. `claimed` lets
+// callers walk a session in order without two exercises grabbing the same row.
+export function plannedRowFor(day, ex, claimed = new Set()) {
+  if (!day || !ex) return null
+  if (ex.plannedExerciseId) {
+    const linked = day.exercises.find((pe) => pe.id === ex.plannedExerciseId)
+    if (linked) return linked
+  }
+  return day.exercises.find((pe) => !claimed.has(pe.id) && matchesPlanned(ex, pe)) || null
+}
+
+// Which split day does this session belong to?
+//
+// Sessions started from the split since mid-2026 carry plan links and answer
+// this outright. Everything logged before that — or logged by hand — doesn't,
+// so the day is inferred from the workout itself: the day sharing the most
+// exercises with it wins. That's a strong signal (an Upper day and a Lower day
+// have almost nothing in common) but it must be UNAMBIGUOUS, so a tie is only
+// broken by an exact session-name match, and a weak overlap answers null rather
+// than guessing. Callers always confirm before writing, naming the day.
+export function dayForSession(program, session) {
+  if (!program?.days?.length || !session) return null
+  const exercises = session.exercises || []
+  if (!exercises.length) return null
+
+  for (const ex of exercises) {
+    const day = dayForPlannedExercise(program, ex.plannedExerciseId)
+    if (day) return day
+  }
+
+  const trainingDays = program.days.filter((d) => d.kind !== 'rest' && d.exercises?.length)
+  if (!trainingDays.length) return null
+
+  const scored = trainingDays.map((day) => {
+    const claimed = new Set()
+    let overlap = 0
+    for (const ex of exercises) {
+      const pe = day.exercises.find((p) => !claimed.has(p.id) && matchesPlanned(ex, p))
+      if (pe) {
+        claimed.add(pe.id)
+        overlap++
+      }
+    }
+    return { day, overlap, nameMatch: !!session.name && nameKey(session.name) === nameKey(day.name) }
+  })
+
+  const best = scored.reduce((a, b) => (b.overlap > a.overlap ? b : a))
+  // At least half the session has to be recognisable as this day, and at least
+  // two exercises — one shared movement means nothing when squats show up on
+  // three different days.
+  if (best.overlap < 2 || best.overlap < Math.ceil(exercises.length / 2)) return null
+
+  const tied = scored.filter((s) => s.overlap === best.overlap)
+  if (tied.length === 1) return best.day
+  const named = tied.filter((s) => s.nameMatch)
+  return named.length === 1 ? named[0].day : null
+}
+
 // ---- Prefill the logger from a planned day ---------------------------------
 
 // Build a draft's `exercises` array from a training day, reusing the same

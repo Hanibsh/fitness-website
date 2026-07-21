@@ -33,7 +33,7 @@ import {
   getDayAnnotations,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForPlannedExercise } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, plannedRowFor } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { reasonLabel } from '../lib/dayLog'
@@ -463,6 +463,18 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // The split day this session came from, or null. A session started from the
+  // split says so outright; anything else — a past session being edited, a
+  // workout logged by hand — is recognised by dayForSession, which falls back
+  // to matching the exercises themselves.
+  const planDayForDraft = (() => {
+    if (!program) return null
+    if (draft.programId === program.id && draft.programDayId) {
+      return program.days.find((d) => d.id === draft.programDayId) || null
+    }
+    return dayForSession(program, draft)
+  })()
+
   // Apply the same swap to the plan slot this session exercise came from — so
   // future sessions start with the new movement too. The day is passed in
   // rather than read off the draft: a session being edited afterwards no
@@ -483,16 +495,15 @@ export default function WorkoutTracker() {
     persistProgram(updated)
   }
 
-  // The picker chose a replacement. If this exercise still traces back to a
-  // slot in the active split — whether it's today's session or a past one
-  // being edited — ask whether to also update the split; otherwise apply
-  // straight away (there's nothing to save into).
+  // The picker chose a replacement. If the exercise sits in a row of the split
+  // day this session belongs to, ask whether to update the split as well;
+  // otherwise apply straight away (there's nothing to save into).
   function pickSubstitute(exId, name, category, exerciseId) {
     const kind = category === 'Cardio' ? 'cardio' : 'strength'
     const ex = draft.exercises.find((e) => e.id === exId)
-    const planDay = dayForPlannedExercise(program, ex?.plannedExerciseId)
-    if (planDay) {
-      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: ex.plannedExerciseId, dayId: planDay.id })
+    const pe = plannedRowFor(planDayForDraft, ex)
+    if (pe) {
+      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: pe.id, dayId: planDayForDraft.id, dayName: planDayForDraft.name })
     } else {
       substituteExercise(exId, name, kind, exerciseId)
       setSubstituteFor(null)
@@ -555,23 +566,6 @@ export default function WorkoutTracker() {
     })
   }
 
-  // The split day this session came from, or null. A session started from the
-  // split says so outright; a past session being edited doesn't (the day isn't
-  // persisted with the log), so it's recovered from the first exercise whose
-  // plan link still resolves — which also rules out sessions from a split
-  // that's no longer active, and hand-logged sessions that never had one.
-  const planDayForDraft = (() => {
-    if (!program) return null
-    if (draft.programId === program.id && draft.programDayId) {
-      return program.days.find((d) => d.id === draft.programDayId) || null
-    }
-    for (const e of draft.exercises) {
-      const day = dayForPlannedExercise(program, e.plannedExerciseId)
-      if (day) return day
-    }
-    return null
-  })()
-
   // How this session has drifted from its split day — drives the "Update split"
   // row and the review modal. Empty when they already agree, when the session
   // isn't linked to a split, or when there's no split at all.
@@ -582,7 +576,7 @@ export default function WorkoutTracker() {
   // swap on one will offer to update the split too.
   function applyChangesToSplit(accepted) {
     if (!program || !planDayForDraft || !accepted.length) return
-    const { program: updated, links } = applySplitChanges(program, planDayForDraft.id, accepted, draft.exercises)
+    const { program: updated, links } = applySplitChanges(program, planDayForDraft.id, accepted)
     setProgram(updated)
     persistProgram(updated)
     if (links.size) {
@@ -1292,7 +1286,9 @@ export default function WorkoutTracker() {
                       onClick={() => confirmSubstitute(true)}
                       className="text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1.5 border-none cursor-pointer hover:bg-accent-hover transition-colors"
                     >
-                      Save to split
+                      {/* Names the day: when the split day was inferred rather
+                          than recorded, a wrong guess has to be visible here. */}
+                      Save to {pendingSub.dayName || 'split'}
                     </button>
                     <button
                       onClick={() => setPendingSub(null)}
