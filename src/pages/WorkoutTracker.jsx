@@ -11,6 +11,8 @@ import {
   createSet,
   convertSet,
   setsFromPrevious,
+  promoteHint,
+  stripHints,
   getHistory,
   makeSession,
   addLocalSession,
@@ -172,6 +174,26 @@ function migrateSupersets(exercises) {
     delete out[i].linkedToPrev
   }
   return regroupSupersets(out)
+}
+
+// A set's suggestion for one field, rendered as the input's placeholder — grey
+// by default, so last time's numbers are visible to aim at without ever reading
+// as something you logged. `side` picks a limb on a left/right set. Falls back
+// to the neutral dash when there's nothing to suggest.
+function hintFor(set, field, side, fallback = '—') {
+  const src = side ? set.hint?.[side] : set.hint
+  const v = src?.[field]
+  return v === '' || v == null ? fallback : String(v)
+}
+
+// Does this exercise have a suggestion still waiting to be taken up?
+function hasUntakenHint(ex) {
+  return ex.sets.some((s) => {
+    if (!s.hint) return false
+    if (s.left) return ['left', 'right'].some((k) => ['weight', 'reps', 'rir'].some((f) => s[k]?.[f] === '' && s.hint[k]?.[f] !== '' && s.hint[k]?.[f] != null))
+    const fields = s.bw != null ? ['added', 'reps', 'rir'] : ['weight', 'reps', 'rir', 'duration', 'distance']
+    return fields.some((f) => (s[f] === '' || s[f] == null) && s.hint[f] !== '' && s.hint[f] != null)
+  })
 }
 
 function migrateDraft(draft) {
@@ -905,6 +927,16 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // Take up every suggestion still showing on this exercise, in one tap — the
+  // "same as last time" path, back after suggestions stopped being pre-typed.
+  // Only fills blanks, so it can't overwrite anything already entered.
+  function fillFromHint(exId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, sets: e.sets.map(promoteHint) } : e)),
+    }))
+  }
+
   function removeSet(exId, setId) {
     setDraft((d) => ({
       ...d,
@@ -962,14 +994,19 @@ export default function WorkoutTracker() {
     if (user) upsertRemoteProgram(user.id, p).catch(() => {})
   }
 
-  // Auto-fill a freshly-planned exercise's sets from the last time it was
-  // logged (any session, not just this same routine day) — set count
-  // (warm-ups included), weights, reps, RIR AND each set's own bilateral/
-  // unilateral shape all come from there, converted to the current unit,
-  // overriding the routine's static target-set count. This is the per-day
-  // memory: a "both" exercise logged unilateral on Push day and bilateral on a
-  // Full-Body day recreates that exact per-set mix next time. Only bails when
-  // bodyweight-loaded doesn't match; everything filled in stays fully editable.
+  // Seed an exercise's sets from the last time it was logged (any session, not
+  // just this same routine day): set count (warm-ups included) and each set's
+  // own bilateral/unilateral shape come from there, and so do the numbers — but
+  // as GREY SUGGESTIONS, not as entries. This is the per-day memory: a "both"
+  // exercise logged unilateral on Push day and bilateral on a Full-Body day
+  // recreates that exact per-set mix next time.
+  //
+  // Suggestions rather than values because the split now learns from what you
+  // logged: pre-typing last week's numbers would mean every planned exercise
+  // read as "done" the moment the session opened, and skipping one would be
+  // impossible to express. The plan's set count is kept as a floor, so a day
+  // that asks for four sets still shows four rows even if you only did two last
+  // time. Only bails when bodyweight-loaded doesn't match.
   function prefillFromHistory(ex, sessionBw, plannedUnilateral = null) {
     if (ex.kind === 'cardio') return ex
     const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
@@ -984,8 +1021,15 @@ export default function WorkoutTracker() {
         : plannedUnilateral
           ? 'unilateral'
           : 'bilateral'
-    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality, bodyweight: ex.bodyweight, bw: sessionBw })
+    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality, bodyweight: ex.bodyweight, bw: sessionBw, asHint: true })
     if (!sets || !sets.length) return ex
+    // Top back up to whatever the plan asked for, so a day prescribing four sets
+    // still shows four rows when last time only got two.
+    while (sets.length < ex.sets.length) {
+      const prev = sets[sets.length - 1]
+      const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: !!prev?.left }
+      sets.push({ ...createSet(undefined, setOpts), ...(prev?.hint ? { hint: prev.hint } : {}) })
+    }
     // Keep the display flag roughly in sync with what a fresh "add set" would
     // now inherit (the last set's shape) — purely cosmetic for the toggle
     // button's label; each set's real shape is what actually gets logged.
@@ -1118,7 +1162,7 @@ export default function WorkoutTracker() {
         name: draft.name || '',
         unit,
         durationMs: draft.durationMs ?? null,
-        exercises,
+        exercises: stripHints(exercises),
       }
       try {
         if (user) {
@@ -1513,14 +1557,14 @@ export default function WorkoutTracker() {
                     type="number" inputMode="decimal" min="0"
                     value={set.duration ?? ''}
                     onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
-                    placeholder="—" aria-label={`Entry ${i + 1} duration in minutes`}
+                    placeholder={hintFor(set, 'duration')} aria-label={`Entry ${i + 1} duration in minutes`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
                   <input
                     type="number" inputMode="decimal" min="0"
                     value={set.distance ?? ''}
                     onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
-                    placeholder="—" aria-label={`Entry ${i + 1} distance in ${distUnit}`}
+                    placeholder={hintFor(set, 'distance')} aria-label={`Entry ${i + 1} distance in ${distUnit}`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
                   <button
@@ -1660,7 +1704,7 @@ export default function WorkoutTracker() {
                         type="number" inputMode="decimal"
                         value={set.added ?? ''}
                         onChange={(e) => updateAdded(ex.id, set.id, e.target.value)}
-                        placeholder="0"
+                        placeholder={hintFor(set, 'added', null, '0')}
                         aria-label={`Set ${i + 1} added weight in ${unit}`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                       />
@@ -1668,7 +1712,7 @@ export default function WorkoutTracker() {
                         type="number" inputMode="numeric" min="0"
                         value={set.reps}
                         onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
-                        placeholder="—"
+                        placeholder={hintFor(set, 'reps')}
                         aria-label={`Set ${i + 1} reps`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                       />
@@ -1679,7 +1723,7 @@ export default function WorkoutTracker() {
                           type="number" inputMode="numeric" min="0" max="10"
                           value={set.rir ?? ''}
                           onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                          placeholder="—"
+                          placeholder={hintFor(set, 'rir')}
                           aria-label={`Set ${i + 1} reps in reserve`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
@@ -1765,14 +1809,14 @@ export default function WorkoutTracker() {
                               type="number" inputMode="decimal" min="0"
                               value={set[side]?.weight ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
-                              placeholder="—" aria-label={`Set ${i + 1} ${side} weight`}
+                              placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
                             <input
                               type="number" inputMode="numeric" min="0"
                               value={set[side]?.reps ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
-                              placeholder="—" aria-label={`Set ${i + 1} ${side} reps`}
+                              placeholder={hintFor(set, 'reps', side)} aria-label={`Set ${i + 1} ${side} reps`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
                             {set.type === 'warmup' ? (
@@ -1782,7 +1826,7 @@ export default function WorkoutTracker() {
                                 type="number" inputMode="numeric" min="0" max="10"
                                 value={set[side]?.rir ?? ''}
                                 onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
-                                placeholder="—" aria-label={`Set ${i + 1} ${side} reps in reserve`}
+                                placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                               />
                             )}
@@ -1803,14 +1847,14 @@ export default function WorkoutTracker() {
                           type="number" inputMode="decimal" min="0"
                           value={set.weight}
                           onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
-                          placeholder="—" aria-label={`Set ${i + 1} weight in ${unit}`}
+                          placeholder={hintFor(set, 'weight')} aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         <input
                           type="number" inputMode="numeric" min="0"
                           value={set.reps}
                           onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
-                          placeholder="—" aria-label={`Set ${i + 1} reps`}
+                          placeholder={hintFor(set, 'reps')} aria-label={`Set ${i + 1} reps`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         {set.type === 'warmup' ? (
@@ -1820,7 +1864,7 @@ export default function WorkoutTracker() {
                             type="number" inputMode="numeric" min="0" max="10"
                             value={set.rir ?? ''}
                             onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
-                            placeholder="—" aria-label={`Set ${i + 1} reps in reserve`}
+                            placeholder={hintFor(set, 'rir')} aria-label={`Set ${i + 1} reps in reserve`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
                         )}
@@ -1853,6 +1897,19 @@ export default function WorkoutTracker() {
                 </>
               )}
             </>
+          )}
+
+          {/* Last time's numbers are showing as grey suggestions, not entries —
+              this takes them all up at once, for the sessions where nothing
+              changed. Only blanks are filled, so it can't overwrite you. */}
+          {hasUntakenHint(ex) && (
+            <button
+              type="button"
+              onClick={() => fillFromHint(ex.id)}
+              className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
+            >
+              <Repeat className="w-3.5 h-3.5" /> Same as last time
+            </button>
           )}
         </div>
       </motion.div>

@@ -87,19 +87,86 @@ export function createSet(prev, opts = false) {
   }
 }
 
+// ---- Suggestions ("hints") --------------------------------------------------
+//
+// What you lifted last time shows as a GREY SUGGESTION rather than a typed-in
+// value: the numbers are there to aim at, but the set stays empty until you
+// actually enter something. That's what lets "I didn't write reps" mean "I
+// didn't do that exercise" — which is how a finished session tells the split
+// what it skipped. A set carries its suggestion in `hint`, mirroring the shape
+// of the set itself, and every reader of a set's real fields ignores it.
+
+// Move a fully-valued set's numbers into `hint`, leaving the set blank.
+function asHintSet(s, bw = 0) {
+  if (s.left) {
+    return { id: s.id, ...(s.type ? { type: s.type } : {}), left: blankSide(), right: blankSide(), hint: { left: s.left, right: s.right } }
+  }
+  if (s.bw != null) {
+    return { id: s.id, ...(s.type ? { type: s.type } : {}), added: '', reps: '', rir: '', bw, weight: Number(bw) || 0, hint: { added: s.added, reps: s.reps, rir: s.rir } }
+  }
+  return {
+    id: s.id, ...(s.type ? { type: s.type } : {}),
+    reps: '', weight: '', rir: '', duration: '', distance: '',
+    hint: { reps: s.reps, weight: s.weight, rir: s.rir, duration: s.duration, distance: s.distance },
+  }
+}
+
+// Copy a set's suggestion into its real fields — the "fill from last time" tap.
+// Only fills what's still empty, so it can't overwrite something you typed.
+export function promoteHint(s) {
+  if (!s.hint) return s
+  const take = (cur, sug) => (cur === '' || cur == null ? sug ?? '' : cur)
+  if (s.left) {
+    const side = (k) => ({
+      weight: take(s[k]?.weight, s.hint[k]?.weight),
+      reps: take(s[k]?.reps, s.hint[k]?.reps),
+      rir: take(s[k]?.rir, s.hint[k]?.rir),
+    })
+    return { ...s, left: side('left'), right: side('right') }
+  }
+  if (s.bw != null) {
+    const added = take(s.added, s.hint.added)
+    return { ...s, added, reps: take(s.reps, s.hint.reps), rir: take(s.rir, s.hint.rir), weight: (Number(s.bw) || 0) + (Number(added) || 0) }
+  }
+  return {
+    ...s,
+    reps: take(s.reps, s.hint.reps),
+    weight: take(s.weight, s.hint.weight),
+    rir: take(s.rir, s.hint.rir),
+    duration: take(s.duration, s.hint.duration),
+    distance: take(s.distance, s.hint.distance),
+  }
+}
+
+// Drop suggestions before a session is stored. They're scaffolding for logging,
+// not part of the record — and leaving them in would make the NEXT session's
+// suggestions come from the last one's suggestions.
+export function stripHints(exercises) {
+  return exercises.map((ex) => ({
+    ...ex,
+    sets: ex.sets.map((s) => {
+      if (!s.hint) return s
+      const { hint: _hint, ...rest } = s
+      return rest
+    }),
+  }))
+}
+
 // Convert a set between the flat (bilateral) and left/right (unilateral)
 // shapes, preserving whatever was already typed.
 export function convertSet(s, unilateral) {
-  // Carry the set's type (warm-up/back-off) and rest timestamp across a shape
-  // change so nothing is lost when toggling laterality.
+  // Carry the set's type (warm-up/back-off), rest timestamp and suggestion
+  // across a shape change so nothing is lost when toggling laterality.
   const keep = { ...(s.type ? { type: s.type } : {}), ...(s.completedAt ? { completedAt: s.completedAt } : {}) }
   if (unilateral) {
     if (s.left) return s
     const side = { weight: s.weight ?? '', reps: s.reps ?? '', rir: s.rir ?? '' }
-    return { id: s.id, left: side, right: { ...side }, ...keep }
+    const hint = s.hint ? { hint: { left: { ...s.hint }, right: { ...s.hint } } } : {}
+    return { id: s.id, left: side, right: { ...side }, ...keep, ...hint }
   }
   if (!s.left) return s
-  return { id: s.id, weight: s.left.weight ?? '', reps: s.left.reps ?? '', rir: s.left.rir ?? '', duration: '', distance: '', ...keep }
+  const hint = s.hint?.left ? { hint: { ...s.hint.left } } : {}
+  return { id: s.id, weight: s.left.weight ?? '', reps: s.left.reps ?? '', rir: s.left.rir ?? '', duration: '', distance: '', ...keep, ...hint }
 }
 
 // Build a fresh sets array for an exercise from the last time it was logged —
@@ -114,16 +181,20 @@ export function convertSet(s, unilateral) {
 // recreates that exact mix next time, with no flag to keep in sync. Only a
 // FIXED-laterality exercise (`opts.laterality` is 'unilateral' or 'bilateral')
 // coerces every set to that shape, since its rows can never legitimately differ.
+// `asHint` returns the same set-for-set structure with the numbers moved into
+// `hint` and the fields left blank — the shape and the ramp carry over, the
+// values are only a suggestion until you log them.
 export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
-  const { bodyweight = false, bw = 0, laterality } = opts
+  const { bodyweight = false, bw = 0, laterality, asHint = false } = opts
   if (!prevEx || !Array.isArray(prevEx.sets) || !prevEx.sets.length) return null
   if (bodyweight !== !!prevEx.bodyweight) return null
   const conv = (w) => (w === '' || w == null ? (w ?? '') : Math.round(convertWeight(Number(w), fromUnit, toUnit) * 100) / 100)
   const keep = (s) => (s.type ? { type: s.type } : {})
+  const out = (s) => (asHint ? asHintSet(s, bw) : s)
   if (bodyweight) {
     return prevEx.sets.map((s) => {
       const added = conv(s.added)
-      return { id: newId(), ...keep(s), added, reps: s.reps ?? '', rir: s.rir ?? '', bw, weight: (Number(bw) || 0) + (Number(added) || 0) }
+      return out({ id: newId(), ...keep(s), added, reps: s.reps ?? '', rir: s.rir ?? '', bw, weight: (Number(bw) || 0) + (Number(added) || 0) })
     })
   }
   const forceUnilateral = laterality === 'unilateral' ? true : laterality === 'bilateral' ? false : null
@@ -136,7 +207,8 @@ export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
           right: { weight: conv(s.right?.weight), reps: s.right?.reps ?? '', rir: s.right?.rir ?? '' },
         }
       : { id: newId(), ...keep(s), reps: s.reps ?? '', weight: conv(s.weight), rir: s.rir ?? '', duration: s.duration ?? '', distance: s.distance ?? '' }
-    return forceUnilateral === null || forceUnilateral === !!mirrored.left ? mirrored : convertSet(mirrored, forceUnilateral)
+    const shaped = forceUnilateral === null || forceUnilateral === !!mirrored.left ? mirrored : convertSet(mirrored, forceUnilateral)
+    return out(shaped)
   })
 }
 
@@ -373,7 +445,7 @@ export function makeSession(draft, unit = 'kg') {
     // 6h). Used by the dashboard. Persisted locally; remote sync ignores it
     // for now (no DB column), so synced sessions simply won't show a duration.
     durationMs: plausibleDuration(draft.startedAt),
-    exercises: draft.exercises,
+    exercises: stripHints(draft.exercises),
   }
 }
 
