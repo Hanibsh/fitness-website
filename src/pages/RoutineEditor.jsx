@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, StickyNote, Repeat, Link2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, StickyNote, Repeat, Link2, ArrowLeftRight } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import ConfirmModal from '../components/ConfirmModal'
 import {
@@ -12,6 +12,7 @@ import {
   scheduleMode,
   effectiveRotation,
   moveInArray,
+  canChooseLaterality,
 } from '../lib/program'
 import { supersetLabels, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from '../lib/workoutStats'
 import { getDayAnnotations } from '../lib/workoutStore'
@@ -145,6 +146,18 @@ export default function RoutineEditor() {
       ),
     }))
   }
+  // Whether this movement is logged one limb at a time. Two-state, not tri-:
+  // for a movement the DB leaves open, "no opinion" and "bilateral" look the
+  // same in the logger, so a third state would have nothing to say. Toggling
+  // just makes the row explicit — which is what a session syncing back writes
+  // anyway.
+  const toggleExerciseUnilateral = (dayId, exId) =>
+    update((p) => ({
+      ...p,
+      days: p.days.map((d) =>
+        d.id === dayId ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, unilateral: !e.unilateral } : e)) } : d
+      ),
+    }))
   const setExerciseNote = (dayId, exId, note) =>
     update((p) => ({
       ...p,
@@ -370,6 +383,17 @@ export default function RoutineEditor() {
                                         className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${groups.get(ex.id) ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
                                       >
                                         <Link2 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    {canChooseLaterality(ex) && (
+                                      <button
+                                        onClick={() => toggleExerciseUnilateral(day.id, ex.id)}
+                                        aria-pressed={!!ex.unilateral}
+                                        aria-label={`${ex.name} — ${ex.unilateral ? 'logged one limb at a time' : 'logged both limbs together'}`}
+                                        title={ex.unilateral ? 'Logged one limb at a time' : 'Logged both limbs together'}
+                                        className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${ex.unilateral ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                                      >
+                                        <ArrowLeftRight className="w-3 h-3" />
                                       </button>
                                     )}
                                   </div>

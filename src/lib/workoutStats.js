@@ -191,7 +191,7 @@ export function estimatedOneRepMax(weight, reps) {
 // bare name (legacy callers pass strings) or `{ id, name }`, and prefers id
 // identity whenever both sides resolve to one — so a renamed exercise keeps
 // its whole history attached. Unresolvable entries fall back to name compare.
-const canonicalExerciseId = (id) => (id ? EXERCISE_ID_ALIASES[id] || id : null)
+export const canonicalExerciseId = (id) => (id ? EXERCISE_ID_ALIASES[id] || id : null)
 
 function normalizeExerciseTarget(target) {
   if (typeof target === 'string') return { id: null, key: target.trim().toLowerCase() }

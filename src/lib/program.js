@@ -16,9 +16,10 @@
 // Each training day lists planned exercises with a target set count + rep
 // range that pre-fill the logger when you start the session.
 
-import { createExercise, createSet } from './workoutStore'
+import { createExercise, createSet, convertSet } from './workoutStore'
 import { getExercise } from './exerciseLibrary'
 import { lateralityFor, usesBodyweight } from './movements'
+import { canonicalExerciseId } from './workoutStats'
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -41,9 +42,17 @@ export function moveInArray(arr, index, delta) {
 // A planned exercise inside a training day. `exerciseId` links to the DB when
 // picked from the library (null for custom), `sets` is the target count, and
 // `repRange` is the double-progression target.
+//
+// `unilateral` is the plan's opinion on left/right logging, for the movements
+// the exercise DB leaves open (a dumbbell press works either way): true = log
+// each limb, false = both limbs together, null = no opinion, follow the DB.
+// Only ever read for 'both', non-bodyweight movements — a DB-fixed laterality
+// can't be overridden by a plan, and bodyweight-loaded sets have no L/R shape.
+// Null rather than false so splits built before this field read identically to
+// a fresh row, with no migration.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '' } = opts
-  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note }
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '', unilateral = null } = opts
+  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note, unilateral }
 }
 
 export function createDay(kind = 'train', name = '') {
@@ -253,11 +262,15 @@ function nameKey(s) {
 }
 
 // Does this logged exercise correspond to this planned one? Library id first
-// (survives renames), then name. Used wherever a session has to be lined up
-// against a plan without the benefit of a plan link.
+// (survives renames — BOTH sides walk forward through the id aliases, so a
+// split built before a rename still recognises a session logged after it),
+// then name. Used wherever a session has to be lined up against a plan without
+// the benefit of a plan link.
 export function matchesPlanned(ex, pe) {
   if (!ex || !pe) return false
-  if (ex.exerciseId && pe.exerciseId) return ex.exerciseId === pe.exerciseId
+  const a = canonicalExerciseId(ex.exerciseId)
+  const b = canonicalExerciseId(pe.exerciseId)
+  if (a && b) return a === b
   return nameKey(ex.name) === nameKey(pe.name)
 }
 
@@ -322,6 +335,25 @@ export function dayForSession(program, session) {
 
 // ---- Prefill the logger from a planned day ---------------------------------
 
+// Can this planned exercise carry a laterality opinion? Only where the DB
+// leaves the question open: a fixed-laterality movement is decided by the
+// library, and a bodyweight-loaded one has no left/right shape to choose. The
+// builder's toggle and draftFromDay's override below both gate on this, so
+// they can never disagree about which rows the field means anything for.
+export function canChooseLaterality(pe) {
+  if (!pe || pe.kind === 'cardio') return false
+  const lib = pe.exerciseId ? getExercise(pe.exerciseId) : null
+  if (lib ? lib.bodyweight : usesBodyweight(pe.name)) return false
+  return (lib ? lib.laterality : lateralityFor(pe.name)) === 'both'
+}
+
+// The shape a planned row asks for, or null when it has no opinion (or isn't
+// entitled to one). Callers treat null as "whatever the DB / history says".
+export function plannedLaterality(pe) {
+  if (typeof pe?.unilateral !== 'boolean') return null
+  return canChooseLaterality(pe) ? pe.unilateral : null
+}
+
 // Build a draft's `exercises` array from a training day, reusing the same
 // factories the manual "add exercise" flow uses so laterality / bodyweight /
 // targets all match. `bodyweight` is the session bodyweight for BW-loaded moves.
@@ -340,6 +372,14 @@ export function draftFromDay(day, opts = {}) {
       exerciseId: pe.exerciseId || null,
       note: pe.note || '',
     })
+    // The plan's laterality outranks the DB default for the movements the DB
+    // leaves open. Applied BEFORE the padding loop below, so every set the
+    // target count adds inherits the planned shape rather than the default one.
+    const wanted = plannedLaterality(pe)
+    if (wanted !== null && wanted !== ex.unilateral) {
+      ex.unilateral = wanted
+      ex.sets = ex.sets.map((s) => convertSet(s, wanted))
+    }
     // createExercise seeds one set; add the rest to hit the target count.
     const target = Math.max(1, Number(pe.sets) || 1)
     while (ex.sets.length < target) {

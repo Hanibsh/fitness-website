@@ -33,7 +33,7 @@ import {
   getDayAnnotations,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, plannedRowFor } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { reasonLabel } from '../lib/dayLog'
@@ -179,6 +179,26 @@ function migrateDraft(draft) {
   return { ...draft, exercises: migrateSupersets(draft.exercises.map(migrateExercise)) }
 }
 
+// The split day this session PROVABLY came from: the day it was started from,
+// or a day still reachable through one of its plan links — which is how a past
+// session finds its way home, since makeSession drops programId/programDayId.
+//
+// dayForSession's exercise-overlap GUESS is deliberately not consulted here.
+// The guess is good enough to offer ("3 changes not in Upper A — review?") but
+// not to act on: a wrong guess would rewrite a day you never trained. Anything
+// written without the user looking has to come from a recorded fact.
+function confidentDay(program, draft) {
+  if (!program) return null
+  if (draft.programId === program.id && draft.programDayId) {
+    return program.days.find((d) => d.id === draft.programDayId) || null
+  }
+  for (const ex of draft.exercises || []) {
+    const day = dayForPlannedExercise(program, ex.plannedExerciseId)
+    if (day) return day
+  }
+  return null
+}
+
 export default function WorkoutTracker() {
   const { user } = useAuth()
   const location = useLocation()
@@ -197,6 +217,12 @@ export default function WorkoutTracker() {
   const [substituteFor, setSubstituteFor] = useState(null)
   const [pendingSub, setPendingSub] = useState(null) // { exId, name, kind, exerciseId, plannedExerciseId, dayId }
   const [splitSyncOpen, setSplitSyncOpen] = useState(false)
+  // The finish is waiting on the review sheet — only ever set when the split day
+  // was inferred rather than known. { day, changes, confident }
+  const [pendingSync, setPendingSync] = useState(null)
+  // What the last finish wrote to the split, so it can be said out loud and
+  // taken back. { dayName, count, snapshot }
+  const [splitSyncDone, setSplitSyncDone] = useState(null)
   const [selectedCalDay, setSelectedCalDay] = useState(null)
   const [editingSessionDate, setEditingSessionDate] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
@@ -423,7 +449,17 @@ export default function WorkoutTracker() {
     setDraft((d) => {
       const bw = bodyweight ? (d.bodyweight != null && d.bodyweight !== '' ? d.bodyweight : prefillBodyweight()) : undefined
       const ex = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw: Number(bw) || 0, exerciseId: exerciseId || null })
-      const next = { ...d, exercises: [...d.exercises, ex] }
+      // File it after the last exercise of its OWN kind rather than at the end
+      // of the array: the logger renders resistance and cardio as two sections,
+      // and the split learns its order from this array. Appending blindly would
+      // teach the plan to put a new lift behind the cardio block.
+      const isCardio = kind === 'cardio'
+      let at = -1
+      d.exercises.forEach((e, i) => {
+        if ((e.kind === 'cardio') === isCardio) at = i
+      })
+      const insertAt = at !== -1 ? at + 1 : isCardio ? d.exercises.length : 0
+      const next = { ...d, exercises: [...d.exercises.slice(0, insertAt), ex, ...d.exercises.slice(insertAt)] }
       if (bodyweight && (d.bodyweight == null || d.bodyweight === '')) next.bodyweight = bw
       return next
     })
@@ -465,45 +501,51 @@ export default function WorkoutTracker() {
 
   // The split day this session came from, or null. A session started from the
   // split says so outright; anything else — a past session being edited, a
-  // workout logged by hand — is recognised by dayForSession, which falls back
-  // to matching the exercises themselves.
-  const planDayForDraft = (() => {
-    if (!program) return null
-    if (draft.programId === program.id && draft.programDayId) {
-      return program.days.find((d) => d.id === draft.programDayId) || null
-    }
-    return dayForSession(program, draft)
-  })()
+  // workout logged by hand — falls back to dayForSession, which recognises the
+  // day by matching the exercises themselves. Memoized because everything below
+  // reruns on every keystroke otherwise, and dayForSession rescans every day.
+  const planDayForDraft = useMemo(
+    () => (program ? confidentDay(program, draft) || dayForSession(program, draft) : null),
+    [program, draft]
+  )
 
   // Apply the same swap to the plan slot this session exercise came from — so
   // future sessions start with the new movement too. The day is passed in
   // rather than read off the draft: a session being edited afterwards no
   // longer knows which day it started from (see planDayForDraft).
+  // Rewrites the plan row through the functional setter rather than the
+  // closure's `program`, so a swap can't spread a stale copy over whatever the
+  // split just learned from another change in the same session.
   function substituteInRoutine(dayId, plannedExerciseId, name, kind, exerciseId) {
-    if (!program || !dayId || !plannedExerciseId) return
+    if (!dayId || !plannedExerciseId) return
     const trimmed = name.trim().slice(0, 60)
-    const updated = {
-      ...program,
-      days: program.days.map((d) =>
-        d.id === dayId
-          ? { ...d, exercises: d.exercises.map((pe) => (pe.id === plannedExerciseId ? { ...pe, name: trimmed, exerciseId: exerciseId || null, kind } : pe)) }
-          : d
-      ),
-      updatedAt: Date.now(),
-    }
-    setProgram(updated)
-    persistProgram(updated)
+    setProgram((p) => {
+      if (!p) return p
+      const updated = {
+        ...p,
+        days: p.days.map((d) =>
+          d.id === dayId
+            ? { ...d, exercises: d.exercises.map((pe) => (pe.id === plannedExerciseId ? { ...pe, name: trimmed, exerciseId: exerciseId || null, kind } : pe)) }
+            : d
+        ),
+        updatedAt: Date.now(),
+      }
+      persistProgram(updated)
+      return updated
+    })
   }
 
   // The picker chose a replacement. If the exercise sits in a row of the split
   // day this session belongs to, ask whether to update the split as well;
-  // otherwise apply straight away (there's nothing to save into).
+  // otherwise apply straight away (there's nothing to save into) — and the swap
+  // is still offered at finish, once the day IS resolvable.
   function pickSubstitute(exId, name, category, exerciseId) {
     const kind = category === 'Cardio' ? 'cardio' : 'strength'
     const ex = draft.exercises.find((e) => e.id === exId)
-    const pe = plannedRowFor(planDayForDraft, ex)
+    const day = planDayForDraft
+    const pe = plannedRowFor(day, ex)
     if (pe) {
-      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: pe.id, dayId: planDayForDraft.id, dayName: planDayForDraft.name })
+      setPendingSub({ exId, name, kind, exerciseId, plannedExerciseId: pe.id, dayId: day.id, dayName: day.name })
     } else {
       substituteExercise(exId, name, kind, exerciseId)
       setSubstituteFor(null)
@@ -514,7 +556,14 @@ export default function WorkoutTracker() {
     if (!pendingSub) return
     const { exId, name, kind, exerciseId, plannedExerciseId, dayId } = pendingSub
     substituteExercise(exId, name, kind, exerciseId)
-    if (alsoRoutine) substituteInRoutine(dayId, plannedExerciseId, name, kind, exerciseId)
+    if (alsoRoutine) {
+      substituteInRoutine(dayId, plannedExerciseId, name, kind, exerciseId)
+    } else {
+      // Asked and declined: don't ask again about this row at the end of the
+      // session. Recorded against the PLAN row, so swapping the same slot twice
+      // still only costs one answer.
+      setDraft((d) => ({ ...d, declinedSwaps: [...new Set([...(d.declinedSwaps || []), plannedExerciseId])] }))
+    }
     setPendingSub(null)
     setSubstituteFor(null)
   }
@@ -569,7 +618,15 @@ export default function WorkoutTracker() {
   // How this session has drifted from its split day — drives the "Update split"
   // row and the review modal. Empty when they already agree, when the session
   // isn't linked to a split, or when there's no split at all.
-  const splitChanges = diffSessionAgainstDay(draft.exercises, planDayForDraft, { complete: isEditing })
+  const splitChanges = useMemo(
+    () =>
+      diffSessionAgainstDay(draft.exercises, planDayForDraft, {
+        complete: isEditing,
+        droppedPlannedIds: draft.droppedPlannedIds || [],
+        ignoreSwaps: draft.declinedSwaps || [],
+      }),
+    [draft.exercises, draft.droppedPlannedIds, draft.declinedSwaps, planDayForDraft, isEditing]
+  )
 
   // Write the accepted changes into the split. Exercises added to the plan are
   // stamped back onto the session so they stay linked from here on — a later
@@ -585,6 +642,42 @@ export default function WorkoutTracker() {
         exercises: d.exercises.map((e) => (links.has(e.id) ? { ...e, plannedExerciseId: links.get(e.id) } : e)),
       }))
     }
+  }
+
+  // What this session has to say to the split, resolved as the session ENDS.
+  // `complete: true` here and nowhere else: at finish a set count below the plan
+  // is a real signal rather than "not there yet", and an exercise with nothing
+  // logged didn't happen.
+  function splitSyncPlan() {
+    if (!program) return null
+    const sure = confidentDay(program, draft)
+    const day = sure || dayForSession(program, draft)
+    if (!day) return null
+    const changes = diffSessionAgainstDay(draft.exercises, day, {
+      complete: true,
+      droppedPlannedIds: draft.droppedPlannedIds || [],
+      ignoreSwaps: draft.declinedSwaps || [],
+    })
+    if (!changes.length) return null
+    return { day, changes, confident: !!sure }
+  }
+
+  // A soft removal is an absence, not an instruction — you ran out of time. It's
+  // offered in the review sheet but never written unattended, so one short
+  // session can't quietly delete a lift from the split.
+  const autoAcceptable = (changes) => changes.filter((c) => !(c.kind === 'remove' && c.soft))
+
+  // Put the split back exactly as it was before the last finish. The snapshot is
+  // a deep copy taken before the write — applySplitChanges doesn't mutate, so a
+  // reference would do today, but a safety net that can silently stop being one
+  // isn't a safety net. updatedAt is bumped so the restore reads as the newest
+  // write rather than a stale blob losing to what it just replaced.
+  function undoSplitSync() {
+    if (!splitSyncDone?.snapshot) return
+    const restored = { ...splitSyncDone.snapshot, updatedAt: Date.now() }
+    setProgram(restored)
+    persistProgram(restored)
+    setSplitSyncDone(null)
   }
 
   // Move an exercise up/down, keeping resistance and cardio reordered
@@ -727,7 +820,17 @@ export default function WorkoutTracker() {
   }
 
   function removeExercise(exId) {
-    setDraft((d) => ({ ...d, exercises: d.exercises.filter((e) => e.id !== exId) }))
+    setDraft((d) => {
+      const ex = d.exercises.find((e) => e.id === exId)
+      // Deleting a planned exercise is a decision; skipping one is running out of
+      // time. Only the decision may shrink the split unattended (see splitSync's
+      // soft removals) — and this tap is the only moment the two are
+      // distinguishable, since once it's out of the list they look identical.
+      const droppedPlannedIds = ex?.plannedExerciseId
+        ? [...new Set([...(d.droppedPlannedIds || []), ex.plannedExerciseId])]
+        : d.droppedPlannedIds
+      return { ...d, exercises: d.exercises.filter((e) => e.id !== exId), droppedPlannedIds }
+    })
   }
 
   function addSet(exId) {
@@ -838,6 +941,7 @@ export default function WorkoutTracker() {
     setOpenSession(null)
     setEditingDate(false)
     setSaveError('')
+    setSplitSyncDone(null)
     lastFinishedRef.current = null
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 40)
   }
@@ -866,11 +970,21 @@ export default function WorkoutTracker() {
   // memory: a "both" exercise logged unilateral on Push day and bilateral on a
   // Full-Body day recreates that exact per-set mix next time. Only bails when
   // bodyweight-loaded doesn't match; everything filled in stays fully editable.
-  function prefillFromHistory(ex, sessionBw) {
+  function prefillFromHistory(ex, sessionBw, plannedUnilateral = null) {
     if (ex.kind === 'cardio') return ex
     const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
     if (!last) return ex
-    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality: ex.laterality, bodyweight: ex.bodyweight, bw: sessionBw })
+    // Per-day memory replays last time's per-set mix — EXCEPT where the split
+    // has stated an opinion. A laterality you just set in the builder must not
+    // be quietly undone by last week's log; a split that says nothing still
+    // defers to history, exactly as before.
+    const laterality =
+      ex.bodyweight || typeof plannedUnilateral !== 'boolean'
+        ? ex.laterality
+        : plannedUnilateral
+          ? 'unilateral'
+          : 'bilateral'
+    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality, bodyweight: ex.bodyweight, bw: sessionBw })
     if (!sets || !sets.length) return ex
     // Keep the display flag roughly in sync with what a fresh "add set" would
     // now inherit (the last set's shape) — purely cosmetic for the toggle
@@ -886,7 +1000,12 @@ export default function WorkoutTracker() {
     setDraft((cur) => {
       if (cur.exercises.length > 0 && !cur.editingId && !cur.programId) stashDraft(cur)
       const bodyweight = prefillBodyweight()
-      const exercises = draftFromDay(day, { bodyweight }).map((ex) => prefillFromHistory(ex, Number(bodyweight) || 0))
+      // Resolved by plan link rather than array index, so this survives
+      // draftFromDay ever filtering or reordering what it returns.
+      const byPeId = new Map((day.exercises || []).map((pe) => [pe.id, pe]))
+      const exercises = draftFromDay(day, { bodyweight }).map((ex) =>
+        prefillFromHistory(ex, Number(bodyweight) || 0, plannedLaterality(byPeId.get(ex.plannedExerciseId)))
+      )
       return {
         startedAt: Date.now(),
         date: Date.now(),
@@ -899,6 +1018,7 @@ export default function WorkoutTracker() {
     })
     setEditingDate(false)
     setSaveError('')
+    setSplitSyncDone(null)
     lastFinishedRef.current = null
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 40)
   }
@@ -913,11 +1033,81 @@ export default function WorkoutTracker() {
     persistProgram(advanced)
   }
 
+  // Finishing is two steps whenever the split day was only a guess: show the
+  // list, then commit with the answer. The double-submit guard is READ but not
+  // armed here — nothing has been written yet, so coming back through the sheet
+  // isn't a second finish, it's the same one continuing.
   async function finish() {
+    if (saving || pendingSync || lastFinishedRef.current === draft.startedAt) return
+    const sync = splitSyncPlan()
+    if (sync && !sync.confident) {
+      setPendingSync(sync)
+      return
+    }
+    await commitSession(sync ? { day: sync.day, accepted: autoAcceptable(sync.changes) } : null)
+  }
+
+  // The review sheet resolved. `accepted` is [] when the user chose to finish
+  // without updating.
+  function resolvePendingSync(accepted) {
+    const sync = pendingSync
+    setPendingSync(null)
+    if (sync) commitSession({ day: sync.day, accepted })
+  }
+
+  async function commitSession(sync) {
     if (saving || lastFinishedRef.current === draft.startedAt) return
     lastFinishedRef.current = draft.startedAt
     setSaveError('')
     setSaving(true)
+
+    // ONE program write for the whole finish. The rotation advance and the split
+    // changes are folded into a single object before either is persisted:
+    // persistProgram's remote half is a read-modify-write, so two writes a round
+    // trip apart would race — and advanceProgram SPREADS what it's handed, so
+    // running the two in sequence off the original would discard whichever went
+    // first. The write lands before the session save so the plan-row ids it
+    // mints can be baked into the session; a failed save rolls it back below.
+    //
+    // The advance goes FIRST so it can be snapshotted into `base`: undoing the
+    // split sync must not un-log the workout. The two touch disjoint fields
+    // (pointer vs days), so the order is free.
+    let base = program
+    if (!draft.editingId && program && draft.programId === program.id && draft.programDayId) {
+      // The advance stamp comes from the session's date, not the wall clock, so
+      // a backdated log consumes a past slot instead of marking today done.
+      base = advanceProgram(base, draft.programDayId, { sessionDate: draft.date || Date.now() })
+    }
+    let nextProgram = base
+    let links = new Map()
+    if (sync?.accepted?.length) {
+      const applied = applySplitChanges(base, sync.day.id, sync.accepted)
+      nextProgram = applied.program
+      links = applied.links
+    }
+    if (nextProgram !== program) {
+      setProgram(nextProgram)
+      persistProgram(nextProgram)
+    }
+    // Undo targets the split edits only — the rotation stays where finishing put
+    // it, because the session that advanced it is still saved.
+    const banner = sync?.accepted?.length
+      ? { dayName: sync.day.name, count: sync.accepted.length, snapshot: JSON.parse(JSON.stringify(base)) }
+      : null
+    // Bake the links the split just minted into the exercises we're about to
+    // SAVE, not only into the live draft: re-open this session next month and it
+    // still knows which day it came from, so an edit can be offered back.
+    const exercises = links.size
+      ? draft.exercises.map((e) => (links.has(e.id) ? { ...e, plannedExerciseId: links.get(e.id) } : e))
+      : draft.exercises
+    // The program write already happened, so put it ALL back if the session
+    // doesn't land — split edits and rotation advance both. A split that learned
+    // from a workout that was never saved is worse than one that learned nothing.
+    const rollback = () => {
+      if (nextProgram === program) return
+      setProgram(program)
+      persistProgram(program)
+    }
 
     // Editing an existing session: overwrite it in place (keep its id and
     // original duration) instead of creating a new one.
@@ -928,7 +1118,7 @@ export default function WorkoutTracker() {
         name: draft.name || '',
         unit,
         durationMs: draft.durationMs ?? null,
-        exercises: draft.exercises,
+        exercises,
       }
       try {
         if (user) {
@@ -940,8 +1130,10 @@ export default function WorkoutTracker() {
         for (const ex of updated.exercises) {
           if (ex.kind !== 'cardio' && ex.repRange) saveExerciseTarget(ex.name, ex.repRange)
         }
+        setSplitSyncDone(banner)
         exitEditMode()
       } catch {
+        rollback()
         lastFinishedRef.current = null
         setSaveError('Could not save your changes. Check your connection and try again.')
       } finally {
@@ -950,7 +1142,7 @@ export default function WorkoutTracker() {
       return
     }
 
-    const session = makeSession(draft, unit)
+    const session = makeSession({ ...draft, exercises }, unit)
     try {
       if (user) {
         await insertRemoteSession(user.id, session)
@@ -985,14 +1177,7 @@ export default function WorkoutTracker() {
       for (const ex of session.exercises) {
         if (ex.kind !== 'cardio' && ex.repRange) saveExerciseTarget(ex.name, ex.repRange)
       }
-      // If this session was started from the program, advance the rotation.
-      // The advance stamp comes from the session's date, not the wall clock,
-      // so a backdated log consumes a past slot instead of marking today done.
-      if (draft.programId && program && draft.programId === program.id && draft.programDayId) {
-        const advanced = advanceProgram(program, draft.programDayId, { sessionDate: session.date || Date.now() })
-        setProgram(advanced)
-        persistProgram(advanced)
-      }
+      setSplitSyncDone(banner)
       // Restore any stashed in-progress draft (set aside when a planned session
       // was started over it), else start fresh. Harmless for plain saves.
       const stash = getStashedDraft()
@@ -1002,6 +1187,7 @@ export default function WorkoutTracker() {
       setEditingDate(false)
     } catch {
       // Allow retrying this same draft after a failed save.
+      rollback()
       lastFinishedRef.current = null
       setSaveError('Could not save your session. Check your connection and try again.')
     } finally {
@@ -1275,13 +1461,11 @@ export default function WorkoutTracker() {
                   <p className="mb-2">
                     Replace <span className="font-medium">{ex.name}</span> with <span className="font-medium">{pendingSub.name}</span>?
                   </p>
+                  {/* Keeping the swap is the common case — a busy rack, a sore
+                      joint — so it leads. "Just this session" is also an answer
+                      we remember: declining here means the end-of-session sync
+                      won't ask about this slot again. */}
                   <div className="flex flex-wrap gap-1.5">
-                    <button
-                      onClick={() => confirmSubstitute(false)}
-                      className="text-[11px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-2.5 py-1.5 cursor-pointer transition-colors"
-                    >
-                      Just this session
-                    </button>
                     <button
                       onClick={() => confirmSubstitute(true)}
                       className="text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1.5 border-none cursor-pointer hover:bg-accent-hover transition-colors"
@@ -1289,6 +1473,12 @@ export default function WorkoutTracker() {
                       {/* Names the day: when the split day was inferred rather
                           than recorded, a wrong guess has to be visible here. */}
                       Save to {pendingSub.dayName || 'split'}
+                    </button>
+                    <button
+                      onClick={() => confirmSubstitute(false)}
+                      className="text-[11px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-2.5 py-1.5 cursor-pointer transition-colors"
+                    >
+                      Just this session
                     </button>
                     <button
                       onClick={() => setPendingSub(null)}
@@ -1841,6 +2031,35 @@ export default function WorkoutTracker() {
             {/* This session has drifted from the split day it came from. Quiet
                 until there's something to say, and never automatic — tapping
                 opens a review where each difference is accepted or skipped. */}
+            {/* The split was just updated on finish. Said plainly and made
+                reversible: a write the user can't see and can't take back isn't
+                a feature. Sits in the same slot as the drift prompt below —
+                the draft is empty by now, so they can never both show. */}
+            {splitSyncDone && (
+              <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
+                <Check className="w-3.5 h-3.5 text-text-light shrink-0" />
+                <span className="text-[12px] text-text-secondary min-w-0">
+                  <span className="text-text-primary">{splitSyncDone.dayName}</span> updated —{' '}
+                  {splitSyncDone.count} {splitSyncDone.count === 1 ? 'change' : 'changes'}
+                </span>
+                <button
+                  type="button"
+                  onClick={undoSplitSync}
+                  className="ml-auto text-[11px] font-medium uppercase tracking-wider text-text-primary bg-transparent border-none cursor-pointer shrink-0"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitSyncDone(null)}
+                  aria-label="Dismiss"
+                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {splitChanges.length > 0 && (
               <button
                 type="button"
@@ -2288,6 +2507,20 @@ export default function WorkoutTracker() {
           changes={splitChanges}
           onApply={applyChangesToSplit}
           onClose={() => setSplitSyncOpen(false)}
+        />
+      )}
+
+      {/* Finishing, but the split day was only inferred — so the same answer
+          decides both what the split learns and that the session saves.
+          Dismissing means "back to the session": nothing has been written yet. */}
+      {pendingSync && (
+        <SplitSyncModal
+          mode="finish"
+          dayName={pendingSync.day.name}
+          changes={pendingSync.changes}
+          onApply={resolvePendingSync}
+          onSkip={() => resolvePendingSync([])}
+          onClose={() => setPendingSync(null)}
         />
       )}
     </div>
