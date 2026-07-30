@@ -166,6 +166,9 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false, d
       sets,
       repRange: ex.kind === 'cardio' ? null : ex.repRange || DEFAULT_REP_RANGE,
       unilateral: loggedLaterality(ex),
+      // The note follows the movement, so a row added here starts with whatever
+      // the session had — which is that movement's shared note already.
+      note: ex.note || '',
       afterPeId,
     })
   }
@@ -350,6 +353,7 @@ export function applySplitChanges(program, dayId, changes) {
         sets: c.sets,
         repRange: c.repRange || DEFAULT_REP_RANGE,
         unilateral: c.unilateral ?? null,
+        note: c.note || '',
       })
       links.set(c.draftExerciseId, pe.id)
       const at = c.afterPeId ? exercises.findIndex((x) => x.id === c.afterPeId) : -1

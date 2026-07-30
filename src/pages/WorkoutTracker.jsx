@@ -29,8 +29,12 @@ import {
   saveGuestShare,
   getExerciseTarget,
   saveExerciseTarget,
+  getExerciseNote,
+  saveExerciseNote,
+  migrateExerciseNotes,
   getBodyweightLog,
   getProgram,
+  getProgramsState,
   saveProgram,
   getDayAnnotations,
 } from '../lib/workoutStore'
@@ -383,6 +387,15 @@ export default function WorkoutTracker() {
     return () => { cancelled = true }
   }, [user])
 
+  // Lift any notes written before they were shared per movement into the shared
+  // map, so nothing already typed disappears. Runs at most once, and only after
+  // both sources are actually loaded.
+  useEffect(() => {
+    if (loadingHistory) return
+    const state = getProgramsState()
+    migrateExerciseNotes(program ? [program, ...state.programs.filter((p) => p.id !== program.id)] : state.programs, history)
+  }, [loadingHistory, program, history])
+
   // Arriving here via the dashboard calendar's "Edit" action: once history has
   // loaded, load that session into the editor, then clear the navigation state
   // so a refresh or navigating back doesn't re-trigger it.
@@ -468,9 +481,11 @@ export default function WorkoutTracker() {
     const laterality = isStrength ? (lib ? lib.laterality : lateralityFor(trimmed)) : undefined
     const bodyweight = isStrength ? (lib ? lib.bodyweight : usesBodyweight(trimmed)) : false
     const repRange = isStrength ? getExerciseTarget(trimmed) || undefined : undefined
+    // Whatever this movement's note says, wherever it was last written.
+    const note = getExerciseNote({ exerciseId, name: trimmed })
     setDraft((d) => {
       const bw = bodyweight ? (d.bodyweight != null && d.bodyweight !== '' ? d.bodyweight : prefillBodyweight()) : undefined
-      const ex = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw: Number(bw) || 0, exerciseId: exerciseId || null })
+      const ex = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw: Number(bw) || 0, exerciseId: exerciseId || null, note })
       // File it after the last exercise of its OWN kind rather than at the end
       // of the array: the logger renders resistance and cardio as two sections,
       // and the split learns its order from this array. Appending blindly would
@@ -490,8 +505,8 @@ export default function WorkoutTracker() {
   // Replace an exercise's identity (name/kind/DB link) mid-session, keeping
   // its slot (position, superset membership, planned-exercise link) but
   // resetting its sets to the new movement's shape — same number of sets as
-  // before, blank values, fresh rep-target lookup. Notes are cleared since
-  // they likely referred to the old movement.
+  // before, blank values, fresh rep-target lookup. The note comes from the
+  // movement you swapped TO: the old one's cue referred to a different lift.
   function substituteExercise(exId, name, kind, exerciseId) {
     const trimmed = name.trim().slice(0, 60)
     if (!trimmed) return
@@ -500,12 +515,13 @@ export default function WorkoutTracker() {
     const laterality = isStrength ? (lib ? lib.laterality : lateralityFor(trimmed)) : undefined
     const bodyweight = isStrength ? (lib ? lib.bodyweight : usesBodyweight(trimmed)) : false
     const repRange = isStrength ? getExerciseTarget(trimmed) || undefined : undefined
+    const note = getExerciseNote({ exerciseId, name: trimmed })
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) => {
         if (e.id !== exId) return e
         const bw = bodyweight ? (d.bodyweight != null && d.bodyweight !== '' ? Number(d.bodyweight) : Number(prefillBodyweight()) || 0) : 0
-        const fresh = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw, exerciseId: exerciseId || null })
+        const fresh = createExercise(trimmed, kind, { laterality, repRange, bodyweight, bw, exerciseId: exerciseId || null, note })
         const targetCount = Math.max(1, e.sets.length)
         while (fresh.sets.length < targetCount) {
           const setOpts = fresh.bodyweight ? { bodyweight: true, bw } : { unilateral: fresh.unilateral }
@@ -782,13 +798,17 @@ export default function WorkoutTracker() {
     }))
   }
 
-  // Free-text note on an exercise — session-only unless the user is editing
-  // the routine itself (that's a separate note, set in RoutineEditor).
+  // Free-text note on an exercise. The note belongs to the MOVEMENT, not to this
+  // session or this split day: write it on Lat Pulldown here and it's there on
+  // every other day that trains it, and in the builder. The copy on the exercise
+  // is the record of what the note said at the time, so old sessions keep
+  // reading the way they did.
   function setExerciseNote(exId, note) {
-    setDraft((d) => ({
-      ...d,
-      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, note: note.slice(0, 300) } : e)),
-    }))
+    setDraft((d) => {
+      const ex = d.exercises.find((e) => e.id === exId)
+      if (ex) saveExerciseNote(ex, note)
+      return { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, note: note.slice(0, 300) } : e)) }
+    })
   }
 
   function toggleNote(exId) {
@@ -1047,9 +1067,11 @@ export default function WorkoutTracker() {
       // Resolved by plan link rather than array index, so this survives
       // draftFromDay ever filtering or reordering what it returns.
       const byPeId = new Map((day.exercises || []).map((pe) => [pe.id, pe]))
-      const exercises = draftFromDay(day, { bodyweight }).map((ex) =>
-        prefillFromHistory(ex, Number(bodyweight) || 0, plannedLaterality(byPeId.get(ex.plannedExerciseId)))
-      )
+      const exercises = draftFromDay(day, { bodyweight })
+        .map((ex) => prefillFromHistory(ex, Number(bodyweight) || 0, plannedLaterality(byPeId.get(ex.plannedExerciseId))))
+        // The note follows the movement, so it comes from the shared store
+        // rather than from this day's copy of it (draftFromDay stays pure).
+        .map((ex) => ({ ...ex, note: getExerciseNote(ex) || ex.note || '' }))
       return {
         startedAt: Date.now(),
         date: Date.now(),

@@ -5,7 +5,7 @@
 // if we later add accounts + a backend (e.g. Supabase), we swap the bodies of
 // these functions for API calls and the tracker UI keeps working unchanged.
 
-import { convertWeight } from './workoutStats'
+import { convertWeight, canonicalExerciseId } from './workoutStats'
 
 const DRAFT_KEY = 'leon_workout_draft'
 const HISTORY_KEY = 'leon_workout_history'
@@ -601,4 +601,58 @@ export function saveExerciseTarget(name, repRange) {
   const map = read(EX_TARGETS_KEY, {})
   map[name.trim().toLowerCase()] = { low: repRange.low, high: repRange.high }
   write(EX_TARGETS_KEY, map)
+}
+
+// ---- Per-MOVEMENT notes -----------------------------------------------------
+//
+// A note belongs to the movement, not to the slot it happens to sit in: "pin 7,
+// elbows tucked" is the same cue whether Lat Pulldown shows up on Pull day, on
+// Upper day, or in a different split entirely. So notes live in one map keyed by
+// the movement rather than being copied per planned row and per session.
+//
+// Keyed by canonical exercise id (survives library renames), falling back to the
+// lowercased name for custom/typed movements — which is all a rep target does,
+// but a target that follows a rename matters less than a cue that does.
+const EX_NOTES_KEY = 'leon_exercise_notes'
+
+function noteKey(ex) {
+  const id = canonicalExerciseId(ex?.exerciseId)
+  return id || (ex?.name || '').trim().toLowerCase()
+}
+
+export function getExerciseNote(ex) {
+  const key = noteKey(ex)
+  if (!key) return ''
+  return read(EX_NOTES_KEY, {})[key] || ''
+}
+
+export function saveExerciseNote(ex, note) {
+  const key = noteKey(ex)
+  if (!key) return
+  const map = read(EX_NOTES_KEY, {})
+  const trimmed = (note || '').slice(0, 300)
+  if (trimmed) map[key] = trimmed
+  else delete map[key]
+  write(EX_NOTES_KEY, map)
+}
+
+// One-time lift of the notes that already exist, so nothing written before this
+// was shared disappears: planned rows first (deliberate, template-level cues),
+// then session notes, newest first. Never overwrites a key already present, and
+// runs at most once — after that the map is the source of truth and an empty
+// note is a real answer.
+const EX_NOTES_MIGRATED_KEY = 'leon_exercise_notes_migrated'
+
+export function migrateExerciseNotes(programs = [], sessions = []) {
+  if (read(EX_NOTES_MIGRATED_KEY, false)) return
+  const map = read(EX_NOTES_KEY, {})
+  const seed = (ex) => {
+    const key = noteKey(ex)
+    if (!key || !ex.note || map[key]) return
+    map[key] = ex.note.slice(0, 300)
+  }
+  for (const p of programs) for (const d of p.days || []) for (const pe of d.exercises || []) seed(pe)
+  for (const s of sessions) for (const ex of s.exercises || []) seed(ex)
+  write(EX_NOTES_KEY, map)
+  write(EX_NOTES_MIGRATED_KEY, true)
 }

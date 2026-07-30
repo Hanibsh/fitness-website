@@ -65,7 +65,9 @@ export default function SplitSyncModal({ dayName, changes, mode = 'review', onAp
           })}
         </ul>
 
-        <div className="flex gap-3">
+        {/* Stacked on a phone: in finish mode the two labels are long enough
+            that side by side the primary gets crushed to a few characters. */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => { onApply(accepted); if (mode !== 'finish') onClose() }}
             disabled={accepted.length === 0}
@@ -77,7 +79,7 @@ export default function SplitSyncModal({ dayName, changes, mode = 'review', onAp
           </button>
           <button
             onClick={mode === 'finish' ? onSkip : onClose}
-            className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
+            className="px-5 py-3 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
           >
             {mode === 'finish' ? 'Finish without updating' : 'Cancel'}
           </button>

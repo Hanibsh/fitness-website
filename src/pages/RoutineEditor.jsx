@@ -13,9 +13,10 @@ import {
   effectiveRotation,
   moveInArray,
   canChooseLaterality,
+  matchesPlanned,
 } from '../lib/program'
 import { supersetLabels, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from '../lib/workoutStats'
-import { getDayAnnotations } from '../lib/workoutStore'
+import { getDayAnnotations, getExerciseNote, saveExerciseNote } from '../lib/workoutStore'
 import ExercisePicker from '../components/ExercisePicker'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -87,7 +88,19 @@ export default function RoutineEditor() {
       ...p,
       days: p.days.map((d) =>
         d.id === dayId
-          ? { ...d, exercises: [...d.exercises, createPlannedExercise(name, { exerciseId, kind: category === 'Cardio' ? 'cardio' : 'strength' })] }
+          ? {
+              ...d,
+              exercises: [
+                ...d.exercises,
+                createPlannedExercise(name, {
+                  exerciseId,
+                  kind: category === 'Cardio' ? 'cardio' : 'strength',
+                  // Whatever this movement's note already says, wherever it was
+                  // written — notes belong to the movement, not to the slot.
+                  note: getExerciseNote({ exerciseId, name }),
+                }),
+              ],
+            }
           : d
       ),
     }))
@@ -158,11 +171,24 @@ export default function RoutineEditor() {
         d.id === dayId ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, unilateral: !e.unilateral } : e)) } : d
       ),
     }))
+  // A note belongs to the MOVEMENT, not to this slot: writing one here writes it
+  // everywhere that movement appears. The shared store is the source of truth
+  // (that's what other splits and the logger read); the copy on each planned row
+  // is kept in step so this split renders right away without a reload.
   const setExerciseNote = (dayId, exId, note) =>
-    update((p) => ({
-      ...p,
-      days: p.days.map((d) => (d.id === dayId ? { ...d, exercises: d.exercises.map((e) => (e.id === exId ? { ...e, note: note.slice(0, 300) } : e)) } : d)),
-    }))
+    update((p) => {
+      const target = p.days.find((d) => d.id === dayId)?.exercises.find((e) => e.id === exId)
+      if (!target) return p
+      saveExerciseNote(target, note)
+      const trimmed = note.slice(0, 300)
+      return {
+        ...p,
+        days: p.days.map((d) => ({
+          ...d,
+          exercises: d.exercises.map((e) => (matchesPlanned(target, e) ? { ...e, note: trimmed } : e)),
+        })),
+      }
+    })
   const toggleNote = (exId) =>
     setNoteOpenFor((prev) => {
       const next = new Set(prev)
@@ -340,7 +366,11 @@ export default function RoutineEditor() {
                             <span />
                           </div>
                           {day.exercises.map((ex) => {
-                            const noteOpen = noteOpenFor.has(ex.id) || !!ex.note
+                            // The shared store wins over this row's copy, so a
+                            // note written against this movement in another
+                            // split (or in the logger) shows up here too.
+                            const note = getExerciseNote(ex) || ex.note || ''
+                            const noteOpen = noteOpenFor.has(ex.id) || !!note
                             return (
                               <div key={ex.id}>
                                 <div className="grid grid-cols-[1fr_44px_92px_28px] gap-2 items-center">
@@ -356,12 +386,20 @@ export default function RoutineEditor() {
                                     {groups.get(ex.id) && (
                                       <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{groups.get(ex.id).label}</span>
                                     )}
-                                    <span className="text-[13px] text-text-primary truncate">{ex.name}</span>
+                                    {/* Name on its own line with the controls
+                                        beneath it: four icons and an exercise
+                                        name can't share one narrow column —
+                                        on a phone the name lost, and squeezed
+                                        to nothing you can't tell the rows
+                                        apart. */}
+                                    <div className="min-w-0 flex-1">
+                                      <span className="block text-[13px] text-text-primary truncate">{ex.name}</span>
+                                      <div className="flex items-center gap-1 mt-0.5">
                                     <button
                                       onClick={() => toggleNote(ex.id)}
-                                      aria-label={ex.note ? `Edit note for ${ex.name}` : `Add note for ${ex.name}`}
+                                      aria-label={note ? `Edit note for ${ex.name}` : `Add note for ${ex.name}`}
                                       title="Note"
-                                      className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${ex.note ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                                      className={`shrink-0 bg-transparent border-none cursor-pointer p-0.5 leading-none ${note ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
                                     >
                                       <StickyNote className="w-3 h-3" />
                                     </button>
@@ -396,6 +434,8 @@ export default function RoutineEditor() {
                                         <ArrowLeftRight className="w-3 h-3" />
                                       </button>
                                     )}
+                                      </div>
+                                    </div>
                                   </div>
                                   <input
                                     type="number" inputMode="numeric" min="1" max="20"
@@ -427,7 +467,7 @@ export default function RoutineEditor() {
                                 </div>
                                 {noteOpen && (
                                   <textarea
-                                    value={ex.note || ''}
+                                    value={note}
                                     onChange={(e) => setExerciseNote(day.id, ex.id, e.target.value)}
                                     placeholder="Note — form cue, machine setting, anything worth remembering…"
                                     aria-label={`Note for ${ex.name}`}
