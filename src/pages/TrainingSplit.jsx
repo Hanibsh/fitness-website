@@ -80,7 +80,7 @@ export default function TrainingSplit() {
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-medium text-text-primary truncate">{p.name}</span>
+                            <span className="text-[13px] font-medium text-text-primary break-words">{p.name}</span>
                             {isActive && (
                               <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Active</span>
                             )}

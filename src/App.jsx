@@ -20,7 +20,9 @@ const FFMICalculator = lazy(() => import('./pages/tools/FFMICalculator'))
 const MuscleGainPotential = lazy(() => import('./pages/tools/MuscleGainPotential'))
 const WorkoutTracker = lazy(() => import('./pages/WorkoutTracker'))
 const TrainingSplit = lazy(() => import('./pages/TrainingSplit'))
-const RoutineEditor = lazy(() => import('./pages/RoutineEditor'))
+const SplitLayout = lazy(() => import('./pages/SplitLayout'))
+const SplitOverview = lazy(() => import('./pages/SplitOverview'))
+const SplitDay = lazy(() => import('./pages/SplitDay'))
 
 // The routine builder became the "Training split" tab of the log (2026-07).
 // Old /routine URLs (bookmarks, synced devices mid-deploy) land on the new ones.
@@ -56,7 +58,13 @@ function App() {
         <Route path="/log" element={<WorkoutTracker />} />
         <Route path="/log/split" element={<TrainingSplit />} />
         <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/split/:id" element={<RoutineEditor />} />
+        {/* One split, three levels: the list at /log/split, this split's days as
+            cards, then one day's exercises. Nested so SplitLayout holds the
+            split's data across the transition instead of refetching per page. */}
+        <Route path="/split/:id" element={<SplitLayout />}>
+          <Route index element={<SplitOverview />} />
+          <Route path="day/:dayId" element={<SplitDay />} />
+        </Route>
         <Route path="/routine" element={<Navigate to="/log/split" replace />} />
         <Route path="/routine/:id" element={<LegacyRoutineRedirect />} />
         <Route path="/account" element={<Account />} />

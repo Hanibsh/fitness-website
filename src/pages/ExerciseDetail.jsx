@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../lib/exerciseBank'
 import MuscleMap from '../components/MuscleMap'
@@ -11,7 +11,15 @@ import ExercisePerformance from '../components/ExercisePerformance'
 export default function ExerciseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { state } = useLocation()
   const ex = getFullExercise(id)
+
+  // Callers that sent you here from somewhere other than the bank (a split's day
+  // page, say) pass where to go back to, so "back" returns to what you were
+  // reading about rather than dumping you in the index. Lost on a hard reload —
+  // hence the fallback.
+  const backTo = state?.backTo || '/exercises'
+  const backLabel = state?.backLabel || 'Exercise bank'
 
   if (!ex) {
     return (
@@ -41,10 +49,10 @@ export default function ExerciseDetail() {
     <div className="pt-24 pb-16 px-6">
       <div className="max-w-3xl mx-auto">
         <Link
-          to="/exercises"
+          to={backTo}
           className="inline-flex items-center gap-1.5 text-[12px] text-text-muted no-underline hover:text-text-primary mb-6"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Exercise bank
+          <ArrowLeft className="w-3.5 h-3.5" /> {backLabel}
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>

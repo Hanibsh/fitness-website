@@ -16,10 +16,10 @@
 // Each training day lists planned exercises with a target set count + rep
 // range that pre-fill the logger when you start the session.
 
-import { createExercise, createSet, convertSet } from './workoutStore'
+import { createExercise, createSet, convertSet, getExerciseNote, saveExerciseNote } from './workoutStore'
 import { getExercise } from './exerciseLibrary'
 import { lateralityFor, usesBodyweight } from './movements'
-import { canonicalExerciseId } from './workoutStats'
+import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -67,6 +67,144 @@ export function createDay(kind = 'train', name = '') {
 export function emptyProgram(name = 'My split') {
   const now = Date.now()
   return { id: newId(), name, days: [], pointer: 0, createdAt: now, updatedAt: now }
+}
+
+// ---- Editing --------------------------------------------------------------
+//
+// Every mutator below takes a program and returns a NEW one — nothing is
+// persisted here, the caller hands the result to saveProgram. They live in this
+// module rather than in a page because the split UI is split across two pages
+// (the overview edits days, the day page edits exercises) and both need them.
+
+// Keep the "up next" pointer within the (possibly changed) day list.
+function clampPointer(p) {
+  const pointer = p.days.length ? p.pointer % p.days.length : 0
+  return pointer === p.pointer ? p : { ...p, pointer }
+}
+
+// Apply a change to one day, leaving the rest of the program alone.
+function withDay(program, dayId, fn) {
+  return { ...program, days: program.days.map((d) => (d.id === dayId ? fn(d) : d)) }
+}
+
+// Apply a change to one exercise within one day.
+function withExercise(program, dayId, exId, fn) {
+  return withDay(program, dayId, (d) => ({ ...d, exercises: d.exercises.map((e) => (e.id === exId ? fn(e) : e)) }))
+}
+
+export function setProgramName(program, name) {
+  return { ...program, name: name.slice(0, 60) }
+}
+
+// Takes an already-created day (createDay) rather than a kind, so the caller
+// holds its id and can navigate straight into it.
+export function appendDay(program, day) {
+  return { ...program, days: [...program.days, day] }
+}
+
+export function removeDay(program, dayId) {
+  return clampPointer({ ...program, days: program.days.filter((d) => d.id !== dayId) })
+}
+
+export function moveDay(program, index, delta) {
+  return clampPointer({ ...program, days: moveInArray(program.days, index, delta) })
+}
+
+export function setDayName(program, dayId, name) {
+  return withDay(program, dayId, (d) => ({ ...d, name: name.slice(0, 40) }))
+}
+
+export function addExercise(program, dayId, { name, category, exerciseId }) {
+  const planned = createPlannedExercise(name, {
+    exerciseId,
+    kind: category === 'Cardio' ? 'cardio' : 'strength',
+    // Whatever this movement's note already says, wherever it was written —
+    // notes belong to the movement, not to the slot.
+    note: getExerciseNote({ exerciseId, name }),
+  })
+  return withDay(program, dayId, (d) => ({ ...d, exercises: [...d.exercises, planned] }))
+}
+
+export function removeExercise(program, dayId, exId) {
+  return withDay(program, dayId, (d) => ({ ...d, exercises: pruneSupersets(d.exercises.filter((e) => e.id !== exId)) }))
+}
+
+// Reorder by BLOCK: a contiguous superset group moves as one unit, exactly like
+// the logger — nudging any member moves the whole pair.
+export function moveExercise(program, dayId, exId, delta) {
+  return withDay(program, dayId, (d) => {
+    const blocks = exerciseBlocks(d.exercises)
+    const from = blocks.findIndex((b) => b.some((e) => e.id === exId))
+    if (from === -1 || from + delta < 0 || from + delta >= blocks.length) return d
+    return { ...d, exercises: moveInArray(blocks, from, delta).flat() }
+  })
+}
+
+export function setExerciseSets(program, dayId, exId, value) {
+  const sets = value === '' ? '' : Math.max(1, Math.min(20, parseInt(value, 10) || 1))
+  return withExercise(program, dayId, exId, (e) => ({ ...e, sets }))
+}
+
+export function setExerciseRep(program, dayId, exId, field, value) {
+  const n = value === '' ? '' : Math.max(1, Math.min(50, parseInt(value, 10) || 0))
+  return withExercise(program, dayId, exId, (e) => ({ ...e, repRange: { ...(e.repRange || { low: 6, high: 10 }), [field]: n } }))
+}
+
+// Whether this movement is logged one limb at a time. Two-state, not tri-: for a
+// movement the DB leaves open, "no opinion" and "bilateral" look the same in the
+// logger, so a third state would have nothing to say. Toggling just makes the
+// row explicit — which is what a session syncing back writes anyway.
+export function toggleExerciseUnilateral(program, dayId, exId) {
+  return withExercise(program, dayId, exId, (e) => ({ ...e, unilateral: !e.unilateral }))
+}
+
+// A note belongs to the MOVEMENT, not to this slot: writing one here writes it
+// everywhere that movement appears. The shared store is the source of truth
+// (that's what other splits and the logger read); the copy on each planned row
+// is kept in step so this split renders right away without a reload.
+export function setExerciseNote(program, dayId, exId, note) {
+  const target = program.days.find((d) => d.id === dayId)?.exercises.find((e) => e.id === exId)
+  if (!target) return program
+  saveExerciseNote(target, note)
+  const trimmed = note.slice(0, 300)
+  return {
+    ...program,
+    days: program.days.map((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => (matchesPlanned(target, e) ? { ...e, note: trimmed } : e)),
+    })),
+  }
+}
+
+// Swap a planned exercise's identity (name/DB link/kind) in place — sets, rep
+// target and note all stay as planned, only WHAT you're doing changes.
+export function substituteExercise(program, dayId, exId, { name, category, exerciseId }) {
+  return withExercise(program, dayId, exId, (e) => ({
+    ...e,
+    name: name.trim().slice(0, 60),
+    exerciseId,
+    kind: category === 'Cardio' ? 'cardio' : 'strength',
+  }))
+}
+
+// Same superset model as the logger: partners share a supersetId, groups are
+// pulled contiguous on pairing, lone leftovers are pruned back to standalone.
+export function pairSuperset(program, dayId, exId, targetId) {
+  return withDay(program, dayId, (d) => {
+    const a = d.exercises.find((e) => e.id === exId)
+    const b = d.exercises.find((e) => e.id === targetId)
+    if (!a || !b || a.kind === 'cardio' || b.kind === 'cardio') return d
+    const groupId = b.supersetId || a.supersetId || newSupersetId()
+    const exercises = d.exercises.map((e) => (e.id === exId || e.id === targetId ? { ...e, supersetId: groupId } : e))
+    return { ...d, exercises: regroupSupersets(pruneSupersets(exercises)) }
+  })
+}
+
+export function unpairSuperset(program, dayId, exId) {
+  return withDay(program, dayId, (d) => ({
+    ...d,
+    exercises: pruneSupersets(d.exercises.map((e) => (e.id === exId ? { ...e, supersetId: null } : e))),
+  }))
 }
 
 // ---- Scheduling ------------------------------------------------------------
