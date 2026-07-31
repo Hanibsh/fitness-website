@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { fetchProfile } from './profile'
+import { getExerciseNotesMap, saveExerciseNotesMap } from './workoutStore'
+import { fetchRemoteExerciseNotes, upsertRemoteExerciseNotes } from './workoutRemote'
 
 // Tracks the signed-in user across the app. If Supabase isn't configured
 // (no env vars), it stays "signed out" and everything runs anonymously.
@@ -53,6 +55,25 @@ export function AuthProvider({ children }) {
         if (cancelled) return
         setProfile(p || null)
         setNickname(p?.display_name || '')
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user])
+
+  // Reconcile exercise notes once per sign-in: bring in anything saved from
+  // another device, keep anything typed on this one since (this device wins on
+  // a same-movement conflict — it's the freshest), then push the merged result
+  // back so the account is caught up too. Best-effort; a failure just means
+  // notes stay local-only until the next successful login.
+  useEffect(() => {
+    if (!supabase || !user) return
+    let cancelled = false
+    fetchRemoteExerciseNotes(user.id)
+      .then((remote) => {
+        if (cancelled) return
+        const merged = { ...remote, ...getExerciseNotesMap() }
+        saveExerciseNotesMap(merged)
+        return upsertRemoteExerciseNotes(user.id, merged)
       })
       .catch(() => {})
     return () => { cancelled = true }

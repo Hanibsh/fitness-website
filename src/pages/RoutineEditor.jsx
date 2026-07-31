@@ -16,7 +16,9 @@ import {
   matchesPlanned,
 } from '../lib/program'
 import { supersetLabels, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from '../lib/workoutStats'
-import { getDayAnnotations, getExerciseNote, saveExerciseNote } from '../lib/workoutStore'
+import { getDayAnnotations, getExerciseNote, saveExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
+import { upsertRemoteExerciseNotes } from '../lib/workoutRemote'
+import { useAuth } from '../lib/auth'
 import ExercisePicker from '../components/ExercisePicker'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -29,6 +31,7 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function RoutineEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { programsState, loading, saveProgram, addRoutine, setActiveRoutine, deleteRoutine } = useProgramsState()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
@@ -189,6 +192,14 @@ export default function RoutineEditor() {
         })),
       }
     })
+
+  // Push the notes map up once typing stops (blur), not per keystroke — a
+  // network call per character would be wasteful and racy. Best-effort: a
+  // failed push just leaves the account slightly behind until the next one.
+  function syncNotesToRemote() {
+    if (!user) return
+    upsertRemoteExerciseNotes(user.id, getExerciseNotesMap()).catch(() => {})
+  }
   const toggleNote = (exId) =>
     setNoteOpenFor((prev) => {
       const next = new Set(prev)
@@ -469,6 +480,7 @@ export default function RoutineEditor() {
                                   <textarea
                                     value={note}
                                     onChange={(e) => setExerciseNote(day.id, ex.id, e.target.value)}
+                                    onBlur={syncNotesToRemote}
                                     placeholder="Note — form cue, machine setting, anything worth remembering…"
                                     aria-label={`Note for ${ex.name}`}
                                     rows={2}

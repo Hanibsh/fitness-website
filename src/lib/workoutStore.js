@@ -620,20 +620,30 @@ function noteKey(ex) {
   return id || (ex?.name || '').trim().toLowerCase()
 }
 
+// The whole map, for the caller that needs to sync it as a unit (login merge,
+// push-to-remote) rather than one movement at a time.
+export function getExerciseNotesMap() {
+  return read(EX_NOTES_KEY, {})
+}
+
+export function saveExerciseNotesMap(map) {
+  write(EX_NOTES_KEY, map || {})
+}
+
 export function getExerciseNote(ex) {
   const key = noteKey(ex)
   if (!key) return ''
-  return read(EX_NOTES_KEY, {})[key] || ''
+  return getExerciseNotesMap()[key] || ''
 }
 
 export function saveExerciseNote(ex, note) {
   const key = noteKey(ex)
   if (!key) return
-  const map = read(EX_NOTES_KEY, {})
+  const map = getExerciseNotesMap()
   const trimmed = (note || '').slice(0, 300)
   if (trimmed) map[key] = trimmed
   else delete map[key]
-  write(EX_NOTES_KEY, map)
+  saveExerciseNotesMap(map)
 }
 
 // One-time lift of the notes that already exist, so nothing written before this

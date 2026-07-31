@@ -186,6 +186,31 @@ export async function upsertRemoteBlocks(userId, blocks) {
   return blocks
 }
 
+// ---- Exercise notes ---------------------------------------------------------
+// One row per user, the whole {movementKey: note} map as a jsonb object — same
+// shape as the local `leon_exercise_notes` map, so syncing it is a straight
+// read/replace rather than a per-note diff. Degrades gracefully if the
+// `exercise_notes` table migration hasn't been run yet.
+function missingExerciseNotesTable(error) {
+  if (!error) return false
+  return error.code === '42P01' || (typeof error.message === 'string' && /relation .*exercise_notes.* does not exist/i.test(error.message))
+}
+
+export async function fetchRemoteExerciseNotes(userId) {
+  const { data, error } = await supabase.from('exercise_notes').select('data').eq('user_id', userId).maybeSingle()
+  if (error) {
+    if (error.code === 'PGRST116' || missingExerciseNotesTable(error)) return {}
+    throw error
+  }
+  return data?.data && typeof data.data === 'object' ? data.data : {}
+}
+
+export async function upsertRemoteExerciseNotes(userId, notes) {
+  const { error } = await supabase.from('exercise_notes').upsert({ user_id: userId, data: notes, updated_at: new Date().toISOString() })
+  if (error && !missingExerciseNotesTable(error)) throw error
+  return notes
+}
+
 // ---- Bodyweight log --------------------------------------------------------
 // Mirrors the localStorage bodyweight functions but talks to the
 // `bodyweight_log` table. RLS keeps each user to their own rows.

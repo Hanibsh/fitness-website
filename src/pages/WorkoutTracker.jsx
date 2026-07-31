@@ -31,6 +31,7 @@ import {
   saveExerciseTarget,
   getExerciseNote,
   saveExerciseNote,
+  getExerciseNotesMap,
   migrateExerciseNotes,
   getBodyweightLog,
   getProgram,
@@ -38,7 +39,7 @@ import {
   saveProgram,
   getDayAnnotations,
 } from '../lib/workoutStore'
-import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
@@ -811,6 +812,14 @@ export default function WorkoutTracker() {
     })
   }
 
+  // Push the notes map up once typing stops (blur), not per keystroke — a
+  // network call per character would be wasteful and racy. Best-effort: a
+  // failed push just leaves the account slightly behind until the next one.
+  function syncNotesToRemote() {
+    if (!user) return
+    upsertRemoteExerciseNotes(user.id, getExerciseNotesMap()).catch(() => {})
+  }
+
   function toggleNote(exId) {
     setNoteOpenFor((prev) => {
       const next = new Set(prev)
@@ -1514,6 +1523,7 @@ export default function WorkoutTracker() {
             <textarea
               value={ex.note || ''}
               onChange={(e) => setExerciseNote(ex.id, e.target.value)}
+              onBlur={syncNotesToRemote}
               placeholder="Note — form cue, machine setting, anything worth remembering…"
               aria-label={`Note for ${ex.name}`}
               rows={2}
