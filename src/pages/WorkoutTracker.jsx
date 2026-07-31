@@ -2295,6 +2295,8 @@ export default function WorkoutTracker() {
                 </div>
                 <WorkoutCalendar
                   sessions={sortedHistory}
+                  program={program}
+                  annotations={annotations}
                   selectedDate={selectedCalDay}
                   onSelectDay={selectCalendarDay}
                 />

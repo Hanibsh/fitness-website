@@ -238,10 +238,33 @@ function addDays(ts, n) {
   return d.getTime()
 }
 
+// Whole calendar days from a to b (both local midnights). Safe across DST,
+// unlike (b - a) / DAY_MS, because it rounds off the ±1h a transition adds.
+function daysBetween(a, b) {
+  return Math.round((b - a) / DAY_MS)
+}
+
 // Normalise a pointer into a valid day index.
 function safeIndex(program) {
   const n = program.days.length
   return n ? ((program.pointer % n) + n) % n : 0
+}
+
+// Walk the rotation forward over the days (from, to] — i.e. every calendar day
+// strictly after `from` and strictly before `to`, the ones that have fully
+// elapsed. THE rule, in one place: a training day waits for the user (the walk
+// stops dead), a rest day is consumed by one elapsed calendar day, and a day
+// you marked off consumes nothing. Both the "where does the rotation stand now"
+// read (effectiveRotation) and the "what fell on this past date" read
+// (rotationDayForPastDate) go through here so they can't drift apart.
+function walkRotation(program, index, from, to, pausedDays) {
+  const n = program.days.length
+  let i = index
+  for (let d = addDays(from, 1); d < to; d = addDays(d, 1)) {
+    if (program.days[i].kind !== 'rest') break // training day: waits for the user
+    if (!pausedDays.has(d)) i = (i + 1) % n // rest day consumed by elapsed day d
+  }
+  return i
 }
 
 // Where a ROTATING program actually stands as of `now` — the single source of
@@ -261,18 +284,13 @@ function safeIndex(program) {
 export function effectiveRotation(program, { now = Date.now(), annotations = [] } = {}) {
   const today = startOfDay(now)
   if (!program || !program.days?.length) return { index: 0, anchor: today }
-  const n = program.days.length
-  let index = safeIndex(program)
+  const index = safeIndex(program)
   // Clamp a future stamp (clock skew, another device ahead of us) to today.
   const stamp = program.lastAdvancedAt ? Math.min(startOfDay(program.lastAdvancedAt), today) : null
   if (stamp === today) return { index, anchor: addDays(today, 1) } // advanced today → pointer day is tomorrow's
   if (stamp == null) return { index, anchor: today } // never advanced / legacy blob: no reference point, no auto-pass
   const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
-  for (let d = addDays(stamp, 1); d < today; d = addDays(d, 1)) {
-    if (program.days[index].kind !== 'rest') break // training day: waits for the user
-    if (!pausedDays.has(d)) index = (index + 1) % n // rest day consumed by elapsed day d
-  }
-  return { index, anchor: today }
+  return { index: walkRotation(program, index, stamp, today, pausedDays), anchor: today }
 }
 
 // THE canonical answer to "what does the program say about today?" — every
@@ -319,7 +337,13 @@ export function advanceProgram(program, dayId, { sessionDate = Date.now(), now =
   const idx = program.days.findIndex((d) => d.id === dayId)
   const from = idx === -1 ? safeIndex(program) : idx
   const stamp = Math.min(startOfDay(sessionDate), startOfDay(now))
-  return { ...program, pointer: (from + 1) % program.days.length, lastAdvancedAt: stamp, updatedAt: Date.now() }
+  return {
+    ...program,
+    pointer: (from + 1) % program.days.length,
+    lastAdvancedAt: stamp,
+    advances: appendAdvance(program.advances, { date: stamp, dayId: program.days[from].id }),
+    updatedAt: Date.now(),
+  }
 }
 
 // Manual correction: point AT `dayId` directly (unlike advanceProgram, which
@@ -335,17 +359,71 @@ export function setPointerToDay(program, dayId, { now = Date.now() } = {}) {
   if (!program || !program.days.length) return program
   const idx = program.days.findIndex((d) => d.id === dayId)
   if (idx === -1) return program
-  return { ...program, pointer: idx, lastAdvancedAt: addDays(now, -1), updatedAt: Date.now() }
+  const stamp = addDays(now, -1)
+  return {
+    ...program,
+    pointer: idx,
+    lastAdvancedAt: stamp,
+    // The user is telling us the rotation drifted, so anything the history
+    // claims from the corrected point on was wrong — drop it. Entries before
+    // it still describe days that really happened, so they stay.
+    advances: (program.advances || []).filter((a) => startOfDay(a.date) < stamp),
+    updatedAt: Date.now(),
+  }
+}
+
+// ---- Rotation history ------------------------------------------------------
+//
+// A rotating split's pointer alone says where you stand TODAY and nothing about
+// how you got there, so the calendar couldn't say which slot fell on a date last
+// month. `advances` fixes that going forward: one { date, dayId } per completed
+// day, appended by advanceProgram. It lives on the program blob (jsonb — no
+// migration), and blobs written before this simply have none, which every reader
+// below treats as "no history", i.e. exactly the old behaviour.
+
+// Keep the log bounded — two years of daily training is well under this, and the
+// whole blob is synced on every write.
+const MAX_ADVANCES = 400
+
+function appendAdvance(advances, entry) {
+  // Same day twice (a re-log, an edit) replaces rather than stacks.
+  const kept = (advances || []).filter((a) => startOfDay(a.date) !== entry.date)
+  return [...kept, entry].sort((a, b) => a.date - b.date).slice(-MAX_ADVANCES)
+}
+
+// The day a ROTATING program had pending on a PAST date, or null when history
+// doesn't reach back that far. Finds the last day you completed at or before
+// the target, then walks the rotation forward from the slot after it under the
+// same rules as the live read (walkRotation).
+export function rotationDayForPastDate(program, target, { annotations = [] } = {}) {
+  const advances = program.advances || []
+  if (!advances.length) return null
+  let last = null
+  for (const a of advances) {
+    const d = startOfDay(a.date)
+    if (d > target) break
+    last = { date: d, dayId: a.dayId }
+  }
+  if (!last) return null // target predates the history
+  const idx = program.days.findIndex((d) => d.id === last.dayId)
+  if (idx === -1) return null // that day was since deleted from the split
+  // The day was completed ON the target date — that's the day it was.
+  if (last.date === target) return program.days[idx]
+  const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
+  const start = (idx + 1) % program.days.length
+  return program.days[walkRotation(program, start, last.date, target, pausedDays)]
 }
 
 // ---- Calendar projection -----------------------------------------------------
 
-// Rotating projections drift with reality (any missed day shifts everything),
-// so don't pretend to know the far future.
+// Rotating projections drift with reality (any missed day shifts everything), so
+// "what's next" refuses to reach further than this. The CALENDAR deliberately
+// isn't capped by it — a projected month is a best guess, but a blank month is
+// worse than a guess, and the grid is read as a plan rather than a promise.
 export const PROJECTION_HORIZON_DAYS = 28
 
-// The day this program plans for a calendar date, or null (past dates, empty
-// programs, beyond the horizon, or a date you've marked off). Weekly programs
+// The day this program plans for a calendar date, or null (empty program, a
+// date you've marked off, or a past date history can't reach). Weekly programs
 // are deterministic — the weekday decides, except an annotated date is
 // suppressed (you already know you're off; no need for a training-day
 // projection to say otherwise — the fixed weekly schedule itself doesn't
@@ -356,26 +434,85 @@ export const PROJECTION_HORIZON_DAYS = 28
 // consume a slot: it's skipped and everything after it shifts up by one, same
 // as if that day simply hadn't happened yet. `annotations` is optional so
 // callers that haven't been updated for this still work, just without the
-// skip.
+// skip. Past dates are answered from the recorded rotation history
+// (rotationDayForPastDate), which only reaches back as far as the log goes.
 export function plannedDayForDate(program, date, { now = Date.now(), annotations = [] } = {}) {
   if (!program || !program.days.length) return null
   const target = startOfDay(date)
-  const today = startOfDay(now)
-  if (target < today) return null
   const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
   if (pausedDays.has(target)) return null
   if (scheduleMode(program) === 'weekly') return program.days[mondayIndex(target)]
-  if (target > today + PROJECTION_HORIZON_DAYS * DAY_MS) return null
   const { index, anchor } = effectiveRotation(program, { now, annotations })
-  if (target < anchor) return null
-  let offset = 0
-  for (let d = anchor; d < target; d = addDays(d, 1)) if (!pausedDays.has(d)) offset++
-  return program.days[(index + offset) % program.days.length]
+  if (target < anchor) return rotationDayForPastDate(program, target, { annotations })
+  // Days from the anchor up to (not including) the target, less the ones marked
+  // off — those consume no slot. Counted arithmetically rather than walked: the
+  // grid asks this for every cell, and a month a year out would otherwise be
+  // ~365 iterations × 31 cells on every repaint.
+  let paused = 0
+  for (const d of pausedDays) if (d >= anchor && d < target) paused++
+  return program.days[(index + daysBetween(anchor, target) - paused) % program.days.length]
 }
 
-// Where one CALENDAR DATE stands: done, still ahead, or missed. The calendar's
-// day panel is the caller — it needs one answer for any square you tap, past or
-// future, which plannedDayForDate alone can't give (it only looks forward).
+// Everything the day classifier needs, derived ONCE so a whole month costs what
+// a single day used to. Also fixes the two callers (grid, summary) that used to
+// re-derive their own view of "trained that day" and could disagree with the
+// panel.
+function statusContext(program, { sessions = [], annotations = [], now = Date.now(), inferDay = true } = {}) {
+  const sessionsByDay = new Map()
+  // The earliest day we have any record of. Before it there was no program and
+  // no log, so a blank day there is genuinely nothing rather than a skip —
+  // without this floor the grid would call 2019 a skipped session.
+  let floor = program?.createdAt ? startOfDay(program.createdAt) : null
+  for (const s of sessions) {
+    const key = startOfDay(s.date)
+    if (!sessionsByDay.has(key)) sessionsByDay.set(key, [])
+    sessionsByDay.get(key).push(s)
+    if (floor == null || key < floor) floor = key
+  }
+  const annotationByDay = new Map(annotations.map((a) => [startOfDay(a.date), a]))
+  return { today: startOfDay(now), now, annotations, sessionsByDay, annotationByDay, floor, inferDay }
+}
+
+function statusAt(program, target, ctx) {
+  const onDate = ctx.sessionsByDay.get(target) || []
+  const annotation = ctx.annotationByDay.get(target) || null
+
+  if (onDate.length) {
+    // The plan day is only ever inferred from the session itself — dayForSession
+    // answers null unless the match is unambiguous, and a null day just means the
+    // card can't offer a link back to the split. Skipped for range callers, which
+    // never read `day` on a done date and would pay for it once per trained day.
+    const day = ctx.inferDay ? onDate.map((s) => dayForSession(program, s)).find(Boolean) || null : null
+    return { status: 'done', day, sessions: onDate, annotation }
+  }
+
+  if (!program || !program.days.length) return { status: 'none', day: null, sessions: [], annotation }
+
+  // Scheduled view of the date. plannedDayForDate suppresses annotated dates, so
+  // ask the weekday directly when we only need to know what WOULD have been on.
+  const weekly = scheduleMode(program) === 'weekly'
+  const scheduled = weekly
+    ? program.days[mondayIndex(target)]
+    : plannedDayForDate(program, target, { now: ctx.now, annotations: ctx.annotations })
+
+  if (annotation) return { status: 'off', day: scheduled || null, sessions: [], annotation }
+  if (scheduled) {
+    if (scheduled.kind === 'rest') return { status: 'rest', day: scheduled, sessions: [], annotation }
+    if (target < ctx.today) return { status: 'missed', day: scheduled, sessions: [], annotation }
+    return { status: target === ctx.today ? 'today' : 'upcoming', day: scheduled, sessions: [], annotation }
+  }
+  // Rotating, and history doesn't reach this date — but a past day you didn't
+  // train is an off day either way, so say that much rather than nothing. Which
+  // of the two it was is the only part we're missing.
+  if (target < ctx.today && ctx.floor != null && target >= ctx.floor) {
+    return { status: 'skipped', day: null, sessions: [], annotation }
+  }
+  return { status: 'none', day: null, sessions: [], annotation }
+}
+
+// Where one CALENDAR DATE stands. The calendar's day panel is the caller — it
+// needs one answer for any square you tap, past or future, which
+// plannedDayForDate alone can't give.
 //
 // Returns { status, day, sessions, annotation }:
 //
@@ -386,41 +523,30 @@ export function plannedDayForDate(program, date, { now = Date.now(), annotations
 //   'rest'     — a rest slot in the schedule.
 //   'today' / 'upcoming' — a training day still to come.
 //   'missed'   — a past training day with nothing logged and no mark-off.
-//   'none'     — no program, or a past date we can't speak about (see below).
+//   'skipped'  — a past day you didn't train, where the split can't say whether
+//                it was a rest slot or a session you skipped. Still an off day.
+//   'none'     — no program, or a date from before you had one.
 //
 // Precedence is logging first, then a mark-off, matching todayPlan — finishing a
 // workout outranks having marked the day off.
 //
-// A past date can only be resolved for a WEEKLY split, where the weekday decides
-// the day. A rotating split stores a pointer and one lastAdvancedAt, with no
-// history behind it, so which slot fell on some date last month is genuinely
-// unreconstructable — those come back 'none' rather than a guess.
+// Past dates resolve exactly for a WEEKLY split (the weekday decides) and, for a
+// rotating one, as far back as the recorded rotation history reaches
+// (rotationDayForPastDate). Older rotating dates fall back to 'skipped'.
 export function dayStatusForDate(program, date, { sessions = [], annotations = [], now = Date.now() } = {}) {
-  const target = startOfDay(date)
-  const today = startOfDay(now)
-  const onDate = sessions.filter((s) => startOfDay(s.date) === target)
-  const annotation = annotations.find((a) => startOfDay(a.date) === target) || null
+  return statusAt(program, startOfDay(date), statusContext(program, { sessions, annotations, now }))
+}
 
-  if (onDate.length) {
-    // The plan day is only ever inferred from the session itself — dayForSession
-    // answers null unless the match is unambiguous, and a null day just means the
-    // card can't offer a link back to the split.
-    const day = onDate.map((s) => dayForSession(program, s)).find(Boolean) || null
-    return { status: 'done', day, sessions: onDate, annotation }
-  }
-
-  if (!program || !program.days.length) return { status: 'none', day: null, sessions: [], annotation }
-
-  // Scheduled view of the date. plannedDayForDate suppresses annotated dates, so
-  // ask the weekday directly when we only need to know what WOULD have been on.
-  const weekly = scheduleMode(program) === 'weekly'
-  const scheduled = weekly ? program.days[mondayIndex(target)] : plannedDayForDate(program, target, { now, annotations })
-
-  if (annotation) return { status: 'off', day: scheduled || null, sessions: [], annotation }
-  if (!scheduled) return { status: 'none', day: null, sessions: [], annotation }
-  if (scheduled.kind === 'rest') return { status: 'rest', day: scheduled, sessions: [], annotation }
-  if (target < today) return { status: 'missed', day: scheduled, sessions: [], annotation }
-  return { status: target === today ? 'today' : 'upcoming', day: scheduled, sessions: [], annotation }
+// Every date in [start, end] classified, as a Map keyed by local midnight. Same
+// answers as dayStatusForDate, one shared derivation — this is what lets the
+// grid, the day panel and the summary card be structurally incapable of
+// disagreeing about what a day was.
+export function dayStatusesForRange(program, { start, end, sessions = [], annotations = [], now = Date.now(), inferDay = false } = {}) {
+  const ctx = statusContext(program, { sessions, annotations, now, inferDay })
+  const last = startOfDay(end)
+  const out = new Map()
+  for (let d = startOfDay(start); d <= last; d = addDays(d, 1)) out.set(d, statusAt(program, d, ctx))
+  return out
 }
 
 // The next upcoming TRAINING day strictly after `now`'s date — { date, day }
@@ -428,7 +554,7 @@ export function dayStatusForDate(program, date, { sessions = [], annotations = [
 export function nextTrainingDate(program, { now = Date.now(), annotations = [] } = {}) {
   if (!program || !program.days.length) return null
   for (let i = 1; i <= PROJECTION_HORIZON_DAYS; i++) {
-    const date = startOfDay(now) + i * DAY_MS
+    const date = addDays(now, i)
     const day = plannedDayForDate(program, date, { now, annotations })
     if (day && day.kind === 'train') return { date, day }
   }

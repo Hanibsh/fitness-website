@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { plannedDayForDate } from '../lib/program'
-import { annotationForDate } from '../lib/dayLog'
+import { dayStatusesForRange } from '../lib/program'
+import { REASON_COLOR, STATUS_MARKER } from '../lib/calendarMarkers'
 
 // Month grid that highlights workout days by split colour, marks today, lets
-// you page between months, and calls onSelectDay when a day is tapped. When
-// the active program is passed, upcoming planned training days get an EMPTY
-// (outlined) circle — done days keep their filled dots. When `annotations` is
-// passed, an off-day (sick/injury/travel/rest/other) gets its own square
-// marker, shown alongside the workout dots since a day can have both.
+// you page between months, and calls onSelectDay when a day is tapped.
+//
+// Every day the schedule can speak about gets a marker, so no month is ever
+// blank: a logged workout is a filled dot in its split colour, a planned
+// training day an outlined one, a rest day a quiet dot, and a day you skipped a
+// hollow square. When `annotations` is passed, a day you marked off
+// (sick/injury/travel/rest/other) gets its reason colour, shown alongside the
+// workout dots since a day can be both trained and annotated.
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 // Colour a day by the (first) workout's split, falling back to a neutral dot.
@@ -33,16 +36,6 @@ function splitBorderColor(name) {
   if (n.includes('lower')) return 'border-teal-500'
   if (n.includes('cardio')) return 'border-red-500'
   return 'border-text-muted'
-}
-
-// Square markers (not circles) so an off-day reads distinctly from a workout
-// dot even when both appear on the same day.
-const REASON_COLOR = {
-  sick: 'bg-amber-400',
-  injury: 'bg-rose-600',
-  travel: 'bg-sky-400',
-  rest: 'bg-slate-400',
-  other: 'bg-stone-400',
 }
 
 function sameDay(a, b) {
@@ -72,6 +65,20 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
 
   const firstDow = new Date(view.year, view.month, 1).getDay()
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate()
+
+  // What the schedule says about each day of the viewed month — resolved once
+  // for the whole month rather than per cell, and by the same function the day
+  // panel and the summary card use, so the three can't disagree.
+  const statusByDay = useMemo(() => {
+    if (!program) return null
+    return dayStatusesForRange(program, {
+      start: new Date(view.year, view.month, 1).getTime(),
+      end: new Date(view.year, view.month, daysInMonth).getTime(),
+      sessions,
+      annotations,
+    })
+  }, [program, sessions, annotations, view, daysInMonth])
+
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
   const monthLabel = new Date(view.year, view.month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
@@ -118,17 +125,17 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
           const isToday = sameDay(date, today)
           const isSelected = selectedDate && sameDay(date, selectedDate)
           const hasWorkout = daySessions.length > 0
-          const annotation = annotations.length ? annotationForDate(annotations, date.getTime()) : null
-          // Program projection: an upcoming planned training day gets an empty
-          // circle — unless the day already has a logged workout (filled wins)
-          // or the day itself is annotated off (plannedDayForDate suppresses it).
-          const planned = !hasWorkout && program ? plannedDayForDate(program, date.getTime(), { annotations }) : null
-          const plannedTrain = planned && planned.kind === 'train' ? planned : null
+          const state = statusByDay?.get(date.getTime()) || null
+          const annotation = state?.annotation || null
+          // One marker per schedule state, and only when the day isn't already
+          // showing workout dots — a logged session outranks whatever was planned.
+          const plannedTrain = !hasWorkout && (state?.status === 'upcoming' || state?.status === 'today') ? state.day : null
+          const quiet = !hasWorkout && !annotation && (state?.status === 'rest' ? 'rest' : state?.status === 'missed' || state?.status === 'skipped' ? 'skipped' : null)
           return (
             <button
               key={day}
               onClick={() => onSelectDay(date, daySessions)}
-              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}`}
+              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}${quiet === 'rest' ? ', rest day' : quiet === 'skipped' ? ', skipped' : ''}`}
               className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer border transition-colors ${lg ? 'min-h-16 text-[13px]' : 'aspect-square text-[12px]'} ${
                 isSelected
                   ? 'border-text-primary bg-cream-dark'
@@ -143,9 +150,10 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
                   daySessions.slice(0, lg ? 4 : 3).map((s, j) => (
                     <span key={j} className={`rounded-full ${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${splitColor(s.name)}`} />
                   ))}
-                {!hasWorkout && !annotation && plannedTrain && (
+                {!annotation && plannedTrain && (
                   <span className={`rounded-full border ${lg ? 'w-2 h-2' : 'w-1.5 h-1.5'} ${splitBorderColor(plannedTrain.name)}`} />
                 )}
+                {quiet && <span className={`${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${STATUS_MARKER[quiet]}`} />}
                 {annotation && <span className={`${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${REASON_COLOR[annotation.reason] || REASON_COLOR.other}`} />}
               </span>
             </button>

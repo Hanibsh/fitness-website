@@ -13,6 +13,7 @@ import {
 } from '../lib/workoutRemote'
 import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate } from '../lib/dayLog'
 import WorkoutCalendar from '../components/WorkoutCalendar'
+import { REASON_COLOR, STATUS_MARKER } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 
 const SUMMARY_RANGES = [
@@ -191,13 +192,13 @@ export default function CalendarPage() {
 
   const now = Date.now()
   const summary = useMemo(
-    () => daySummary(sessions, annotations, { start: now - rangeDays * 86400000, end: now, now }),
+    () => daySummary(sessions, annotations, { start: now - rangeDays * 86400000, end: now, now, program }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sessions, annotations, rangeDays]
+    [sessions, annotations, rangeDays, program]
   )
-  const breakInfo = useMemo(() => currentBreak(sessions, annotations, { now }),
+  const breakInfo = useMemo(() => currentBreak(sessions, annotations, { now, program }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sessions, annotations])
+    [sessions, annotations, program])
 
   const selectedAnnotation = selectedDay ? annotationForDate(annotations, selectedDay.date.getTime()) : null
 
@@ -218,11 +219,15 @@ export default function CalendarPage() {
           <ArrowLeft className="w-3.5 h-3.5" /> Back to dashboard
         </Link>
 
-        {breakInfo && (
+        {/* A break now counts skipped days too, not just marked-off ones, so hold
+            the banner back until it's actually a layoff — a day or two away from
+            a rotating split is ordinary. Reasons are only there if you wrote
+            them down. */}
+        {breakInfo && breakInfo.days >= 3 && (
           <div className="mb-6 bg-amber-50 border border-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30 px-4 py-3 flex items-center gap-2.5">
             <BatteryCharging className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
             <p className="text-[13px] text-amber-700 dark:text-amber-400">
-              {breakInfo.days} day{breakInfo.days !== 1 ? 's' : ''} off ({breakInfo.reasons.map(reasonLabel).join(', ').toLowerCase()}) — ease back in when you're ready.
+              {breakInfo.days} days off{breakInfo.reasons.length ? ` (${breakInfo.reasons.map(reasonLabel).join(', ').toLowerCase()})` : ''} — ease back in when you're ready.
             </p>
           </div>
         )}
@@ -239,15 +244,18 @@ export default function CalendarPage() {
               size="lg"
             />
 
-            {/* legend */}
+            {/* legend — swatches come from the grid's own maps so the two can't
+                drift apart. Schedule markers first, then the mark-off reasons. */}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-5 pt-4 border-t border-border">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className={`w-1.5 h-1.5 ${STATUS_MARKER.rest}`} /> Rest day
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className={`w-1.5 h-1.5 ${STATUS_MARKER.skipped}`} /> Skipped
+              </span>
               {DAY_REASONS.map((r) => (
                 <span key={r.id} className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
-                  <span
-                    className={`w-1.5 h-1.5 ${
-                      { sick: 'bg-amber-400', injury: 'bg-rose-600', travel: 'bg-sky-400', rest: 'bg-slate-400', other: 'bg-stone-400' }[r.id]
-                    }`}
-                  />
+                  <span className={`w-1.5 h-1.5 ${REASON_COLOR[r.id] || REASON_COLOR.other}`} />
                   {r.label}
                 </span>
               ))}
@@ -332,9 +340,13 @@ export default function CalendarPage() {
                 </button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2.5 mb-4">
+            {/* Off days split into the two things they actually are — planned
+                recovery vs sessions that didn't happen. One "off" number lumped
+                them together and said almost nothing. */}
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
               <MiniStat label="Trained" value={summary.trained} />
-              <MiniStat label="Off" value={summary.off} />
+              <MiniStat label="Rest" value={summary.rest} />
+              <MiniStat label="Skipped" value={summary.skipped} />
             </div>
             {summary.off > 0 && (
               <div className="space-y-1.5 mb-4">
@@ -347,7 +359,10 @@ export default function CalendarPage() {
               </div>
             )}
             <p className="text-[11px] text-text-light">
-              {summary.untouched} of {summary.totalDays} day{summary.totalDays !== 1 ? 's' : ''} untouched — no workout logged and no note.
+              {summary.off > 0 && `${summary.off} of these ${summary.off !== 1 ? 'days are' : 'day is'} noted. `}
+              {summary.untouched > 0
+                ? `${summary.untouched} of ${summary.totalDays} days fall outside your log — nothing to say about them.`
+                : `${summary.totalDays} days covered.`}
             </p>
           </Card>
         </motion.div>

@@ -3,6 +3,8 @@
 // for the Supabase mirror; this file is pure functions over the data, same
 // split as workoutStats.js is for sessions.
 
+import { dayStatusesForRange } from './program'
+
 export const DAY_REASONS = [
   { id: 'sick', label: 'Sick' },
   { id: 'injury', label: 'Injury' },
@@ -23,6 +25,15 @@ function startOfDay(ts) {
   return d.getTime()
 }
 
+// Step n calendar days, landing on local midnight — `ts + n * DAY_MS` skips or
+// repeats a day across a DST change. Twin of the helper in program.js.
+function addDays(ts, n) {
+  const d = new Date(ts)
+  d.setDate(d.getDate() + n)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
 // The annotation covering this calendar day, or null. `date` can be any
 // moment during that day.
 export function annotationForDate(annotations, date) {
@@ -30,49 +41,78 @@ export function annotationForDate(annotations, date) {
   return annotations.find((a) => startOfDay(a.date) === key) || null
 }
 
-// Trained / off (annotated) / untouched day counts over [start, end] plus a
-// reason breakdown, capped at today — an upcoming rest day isn't "untouched"
-// until it's actually passed. A day can be BOTH trained and annotated (you
-// trained through it), so "trained" and "off" aren't mutually exclusive and
-// don't have to sum to totalDays; "untouched" is neither.
-export function daySummary(sessions, annotations, { start, end, now = Date.now() } = {}) {
+// Day counts over [start, end], capped at today — a rest day still ahead hasn't
+// happened yet. Classification comes from the schedule (dayStatusesForRange), so
+// these numbers always agree with what the calendar grid drew:
+//
+//   trained  — a session was logged
+//   rest     — a rest slot in the split
+//   skipped  — a training day you didn't do, plus days the rotation can't place
+//              (either a rest slot or a skip — an off day either way)
+//   off      — days you marked off (sick/travel/…), the source of `byReason`.
+//              Overlaps the others: a mark-off explains a day, it isn't a
+//              fourth kind of day. A day you trained THROUGH still counts as
+//              trained, matching the status precedence.
+//   untouched— days from before you had a program or a log; nothing to say.
+export function daySummary(sessions, annotations, { start, end, now = Date.now(), program = null } = {}) {
   const rangeStart = startOfDay(start)
   const rangeEnd = Math.min(startOfDay(end), startOfDay(now))
-  if (rangeEnd < rangeStart) return { totalDays: 0, trained: 0, off: 0, untouched: 0, byReason: {} }
+  const empty = { totalDays: 0, trained: 0, rest: 0, skipped: 0, off: 0, untouched: 0, byReason: {} }
+  if (rangeEnd < rangeStart) return empty
 
-  const trainedDays = new Set(sessions.map((s) => startOfDay(s.date)))
-  const annotationByDay = new Map(annotations.map((a) => [startOfDay(a.date), a.reason]))
+  const statuses = dayStatusesForRange(program, { start: rangeStart, end: rangeEnd, sessions, annotations, now })
 
-  let trained = 0
-  let off = 0
-  let untouched = 0
+  const counts = { trained: 0, rest: 0, skipped: 0, off: 0, untouched: 0 }
   const byReason = {}
-  for (let d = rangeStart; d <= rangeEnd; d += DAY_MS) {
-    const isTrained = trainedDays.has(d)
-    const reason = annotationByDay.get(d)
-    if (isTrained) trained++
-    if (reason) {
-      off++
-      byReason[reason] = (byReason[reason] || 0) + 1
+  for (const state of statuses.values()) {
+    if (state.annotation) {
+      counts.off++
+      byReason[state.annotation.reason] = (byReason[state.annotation.reason] || 0) + 1
     }
-    if (!isTrained && !reason) untouched++
+    if (state.status === 'done') counts.trained++
+    else if (state.status === 'rest') counts.rest++
+    else if (state.status === 'missed' || state.status === 'skipped') counts.skipped++
+    // An 'off' day (marked off, nothing logged) is already counted above; what's
+    // left is 'none' — outside the era we have any record of.
+    else if (state.status === 'none') counts.untouched++
   }
-  return { totalDays: Math.round((rangeEnd - rangeStart) / DAY_MS) + 1, trained, off, untouched, byReason }
+  return { totalDays: statuses.size, ...counts, byReason }
 }
 
-// How many consecutive days, counting back from today, you've been marked
-// off without training — null if today isn't part of one. A day you trained
-// through breaks the streak even if it's annotated (you didn't actually stop).
-export function currentBreak(sessions, annotations, { now = Date.now() } = {}) {
+// How many consecutive days, counting back from today, you've been away from
+// training — null if today isn't part of one. Training breaks the streak. So
+// does a REST day: recovery inside your split isn't a layoff, it's the plan
+// working. What counts is a day you skipped or marked off; `reasons` collects
+// the mark-off reasons among them, and is empty when you just didn't go.
+//
+// `program` is optional so old callers still work — without it there's no way
+// to tell a rest slot from a skip, and only marked-off days count (the original
+// behaviour).
+export function currentBreak(sessions, annotations, { now = Date.now(), program = null } = {}) {
   const trainedDays = new Set(sessions.map((s) => startOfDay(s.date)))
   const annotationByDay = new Map(annotations.map((a) => [startOfDay(a.date), a.reason]))
+  // Bounded: 60 days is well past any break still worth a banner, and it keeps
+  // the walk terminating on an account with no history behind it.
+  const MAX_BREAK_DAYS = 60
+  const today = startOfDay(now)
+  const statuses = program
+    ? dayStatusesForRange(program, { start: addDays(today, -MAX_BREAK_DAYS), end: today, sessions, annotations, now })
+    : null
+
   let days = 0
   const reasons = new Set()
-  for (let d = startOfDay(now); ; d -= DAY_MS) {
+  for (let i = 0; i <= MAX_BREAK_DAYS; i++) {
+    const d = addDays(today, -i)
+    if (trainedDays.has(d)) break
     const reason = annotationByDay.get(d)
-    if (!reason || trainedDays.has(d)) break
+    if (statuses) {
+      const status = statuses.get(d)?.status
+      if (status === 'rest' || status === 'none') break // the plan working, or before the log
+    } else if (!reason) {
+      break // no schedule to prove a skip — only mark-offs count
+    }
     days++
-    reasons.add(reason)
+    if (reason) reasons.add(reason)
   }
   return days > 0 ? { days, reasons: [...reasons] } : null
 }
