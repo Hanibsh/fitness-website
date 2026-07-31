@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
-  ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair, Trash2,
+  ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
   BatteryCharging, Lightbulb, CalendarRange, HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -25,6 +25,8 @@ import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/eng
 import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
 import WorkoutCalendar from '../components/WorkoutCalendar'
+import CalendarDayPanel from '../components/CalendarDayPanel'
+import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
 import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
@@ -96,18 +98,6 @@ function SectionHeading({ children, icon: Icon, right }) {
       {right}
     </div>
   )
-}
-
-// Status chip for the recovery card — tones tuned per theme (raw palette
-// colors don't flip with the semantic tokens, hence the dark: variants).
-const CHIP_TONES = {
-  green: 'text-green-700 bg-green-50 border-green-300 dark:text-green-400 dark:bg-green-500/10 dark:border-green-500/30',
-  amber: 'text-amber-700 bg-amber-50 border-amber-300 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/30',
-  red: 'text-red-600 bg-red-50 border-red-300 dark:text-red-400 dark:bg-red-500/10 dark:border-red-500/30',
-}
-
-function StatusChip({ tone, children }) {
-  return <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 border ${CHIP_TONES[tone]}`}>{children}</span>
 }
 
 function MiniStat({ label, value, sub }) {
@@ -586,84 +576,14 @@ export default function Dashboard() {
                 selectedDate={selectedDay?.date}
                 onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
               />
-              {selectedDay && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-[12px] font-medium text-text-primary mb-2">
-                    {selectedDay.date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-                  </p>
-                  {selectedDay.sessions.length === 0 ? (
-                    (() => {
-                      // Nothing logged: for today/future dates show what the
-                      // program has planned there instead of a dead end.
-                      const planned = plannedDayForDate(program, selectedDay.date.getTime(), { annotations })
-                      if (planned && planned.kind === 'train') {
-                        return (
-                          <div>
-                            <p className="text-[12px] text-text-muted">
-                              Planned: <span className="font-medium text-text-primary">{planned.name}</span>
-                            </p>
-                            {planned.exercises.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mt-2">
-                                {planned.exercises.map((pe) => (
-                                  <span key={pe.id} className="text-[11px] text-text-muted bg-white border border-border px-2 py-0.5">
-                                    {pe.name} · {pe.sets}×
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      }
-                      if (planned && planned.kind === 'rest') {
-                        return <p className="text-[12px] text-text-muted">Rest day in your schedule.</p>
-                      }
-                      return <p className="text-[12px] text-text-muted">No workout logged this day.</p>
-                    })()
-                  ) : (
-                    <div className="space-y-2.5">
-                      {selectedDay.sessions.map((s) => (
-                        <div key={s.id} className="bg-cream border border-border p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-medium text-text-primary break-words">{s.name || 'Workout'}</p>
-                              <p className="text-[11px] text-text-muted mt-0.5">
-                                {s.exercises.length} exercise{s.exercises.length !== 1 ? 's' : ''}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={() => editDaySession(s)}
-                                aria-label={`Edit ${s.name || 'workout'}`}
-                                title="Edit this workout"
-                                className="inline-flex items-center gap-1 text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1 border-none cursor-pointer hover:bg-accent-hover transition-colors"
-                              >
-                                <Pencil className="w-3 h-3" /> Edit
-                              </button>
-                              <button
-                                onClick={() => deleteDaySession(s)}
-                                aria-label={`Delete ${s.name || 'workout'}`}
-                                title="Delete this workout"
-                                className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          {s.exercises.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {s.exercises.map((ex) => (
-                                <span key={ex.id} className="text-[11px] text-text-muted bg-white border border-border px-2 py-0.5">
-                                  {ex.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <CalendarDayPanel
+                selectedDay={selectedDay}
+                program={program}
+                annotations={annotations}
+                sessions={sessions}
+                onEditSession={editDaySession}
+                onDeleteSession={deleteDaySession}
+              />
             </>
           ) : (
             <>

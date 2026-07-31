@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, ChevronRight, Dumbbell, Moon, Trash2, Locate } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
-import MuscleShareBars from '../components/MuscleShareBars'
+import DayCard from '../components/DayCard'
 import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay } from '../lib/program'
 import { dayStats } from '../lib/planStats'
 
@@ -87,95 +87,68 @@ export default function SplitOverview() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`mb-3 border bg-white ${dayIndex === highlightIndex ? 'border-text-primary' : 'border-border'}`}
+                className="mb-3"
               >
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-cream">
-                  {/* The name is a link rather than the whole header being one:
-                      the reorder/remove buttons sit in this row, and a button
-                      inside an anchor is neither valid nor tappable. */}
-                  <Link to={dayHref} className="flex-1 min-w-0 flex items-center gap-2 no-underline group">
-                    {day.kind === 'rest' ? <Moon className="w-4 h-4 text-text-light shrink-0" /> : <Dumbbell className="w-4 h-4 text-text-primary shrink-0" />}
-                    {isWeekly && (
-                      <span className="shrink-0 text-[9px] font-medium uppercase tracking-wider text-text-muted border border-border bg-white px-1.5 py-0.5">
-                        {WEEKDAY_NAMES[dayIndex]}
-                      </span>
-                    )}
-                    <span className="min-w-0 text-[14px] font-medium text-text-primary break-words group-hover:text-accent-hover transition-colors">
-                      {day.name}
-                    </span>
-                  </Link>
-                  {isWeekly ? (
-                    dayIndex === todayWeekdayIndex && (
-                      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Today</span>
-                    )
-                  ) : dayIndex === pointerIndex ? (
-                    <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Up next</span>
-                  ) : (
-                    <button
-                      onClick={() => update((p) => setPointerToDay(p, day.id))}
-                      aria-label={`Set ${day.name || 'this day'} as today`}
-                      title="Not right? Set this as today's day."
-                      className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer px-1 py-0.5 transition-colors"
-                    >
-                      <Locate className="w-3 h-3" /> Set as today
-                    </button>
-                  )}
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button onClick={() => update((p) => moveDay(p, dayIndex, -1))} disabled={dayIndex === 0} aria-label="Move day up" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => update((p) => moveDay(p, dayIndex, 1))} disabled={dayIndex === program.days.length - 1} aria-label="Move day down" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => update((p) => removeDay(p, day.id))} aria-label="Remove day" className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {day.kind === 'rest' ? (
-                  <p className="px-4 py-3 text-[12px] text-text-light">{isWeekly ? 'A rest day — no exercises.' : 'A rest slot in the rotation — no exercises.'}</p>
-                ) : (
-                  // Named explicitly: left to its contents, this link would
-                  // announce itself as the whole stats blob.
-                  <Link to={dayHref} aria-label={`Open ${day.name || 'this day'}`} className="block px-4 py-3 no-underline">
-                    {stats.exercises === 0 ? (
-                      <p className="text-[12px] text-text-light">No exercises yet — tap to add some.</p>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-text-muted">
-                          <span className="tabular-nums">
-                            {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
+                <DayCard
+                  highlight={dayIndex === highlightIndex}
+                  to={day.kind === 'rest' ? undefined : dayHref}
+                  linkLabel={`Open ${day.name || 'this day'}`}
+                  stats={stats}
+                  chips={day.exercises.map((ex) => ({ key: ex.id, label: ex.name, suffix: `${ex.sets}×` }))}
+                  note={
+                    day.kind === 'rest'
+                      ? isWeekly
+                        ? 'A rest day — no exercises.'
+                        : 'A rest slot in the rotation — no exercises.'
+                      : stats.exercises === 0
+                        ? 'No exercises yet — tap to add some.'
+                        : null
+                  }
+                  header={
+                    <>
+                      {/* The name is a link rather than the whole header being
+                          one: the reorder/remove buttons sit in this row. */}
+                      <Link to={dayHref} className="flex-1 min-w-0 flex items-center gap-2 no-underline group">
+                        {day.kind === 'rest' ? <Moon className="w-4 h-4 text-text-light shrink-0" /> : <Dumbbell className="w-4 h-4 text-text-primary shrink-0" />}
+                        {isWeekly && (
+                          <span className="shrink-0 text-[9px] font-medium uppercase tracking-wider text-text-muted border border-border bg-white px-1.5 py-0.5">
+                            {WEEKDAY_NAMES[dayIndex]}
                           </span>
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
-                            {stats.load.label}
-                          </span>
-                        </div>
-
-                        {stats.groups.length > 0 && (
-                          <div className="mt-3">
-                            <MuscleShareBars rows={stats.groups.slice(0, 3).map((g) => ({ label: g.group, sets: g.sets, pct: g.pct }))} />
-                          </div>
                         )}
-
-                        {/* Full names, wrapping — the card never has to shorten a
-                            movement to fit. */}
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {day.exercises.map((ex) => (
-                            <span key={ex.id} className="text-[11px] text-text-muted bg-cream border border-border px-2 py-0.5">
-                              {ex.name}
-                              <span className="text-text-light"> · {ex.sets}×</span>
-                            </span>
-                          ))}
-                        </div>
-
-                        <span className="inline-flex items-center gap-1 text-[11px] text-text-light mt-3">
-                          Open day <ChevronRight className="w-3 h-3" />
+                        <span className="min-w-0 text-[14px] font-medium text-text-primary break-words group-hover:text-accent-hover transition-colors">
+                          {day.name}
                         </span>
-                      </>
-                    )}
-                  </Link>
-                )}
+                      </Link>
+                      {isWeekly ? (
+                        dayIndex === todayWeekdayIndex && (
+                          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Today</span>
+                        )
+                      ) : dayIndex === pointerIndex ? (
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Up next</span>
+                      ) : (
+                        <button
+                          onClick={() => update((p) => setPointerToDay(p, day.id))}
+                          aria-label={`Set ${day.name || 'this day'} as today`}
+                          title="Not right? Set this as today's day."
+                          className="shrink-0 inline-flex items-center gap-1 text-[10px] font-medium text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer px-1 py-0.5 transition-colors"
+                        >
+                          <Locate className="w-3 h-3" /> Set as today
+                        </button>
+                      )}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button onClick={() => update((p) => moveDay(p, dayIndex, -1))} disabled={dayIndex === 0} aria-label="Move day up" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => update((p) => moveDay(p, dayIndex, 1))} disabled={dayIndex === program.days.length - 1} aria-label="Move day down" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => update((p) => removeDay(p, day.id))} aria-label="Remove day" className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </>
+                  }
+                />
               </motion.div>
             )
           })}

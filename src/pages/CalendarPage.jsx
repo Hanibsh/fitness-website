@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CalendarDays, Pencil, Trash2, X, BatteryCharging } from 'lucide-react'
+import { ArrowLeft, CalendarDays, X, BatteryCharging } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import {
   getHistory, getProgram, deleteSession,
@@ -11,9 +11,9 @@ import {
   fetchRemoteHistory, fetchRemoteProgram, deleteRemoteSession,
   fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, deleteRemoteDayAnnotation,
 } from '../lib/workoutRemote'
-import { plannedDayForDate } from '../lib/program'
 import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate } from '../lib/dayLog'
 import WorkoutCalendar from '../components/WorkoutCalendar'
+import CalendarDayPanel from '../components/CalendarDayPanel'
 
 const SUMMARY_RANGES = [
   { days: 7, label: 'Week' },
@@ -200,7 +200,6 @@ export default function CalendarPage() {
     [sessions, annotations])
 
   const selectedAnnotation = selectedDay ? annotationForDate(annotations, selectedDay.date.getTime()) : null
-  const selectedPlanned = selectedDay && selectedDay.sessions.length === 0 ? plannedDayForDate(program, selectedDay.date.getTime(), { annotations }) : null
 
   if (loading) {
     return (
@@ -255,79 +254,19 @@ export default function CalendarPage() {
             </div>
 
             {selectedDay && (
-              <div className="mt-5 pt-5 border-t border-border">
-                <p className="text-[13px] font-medium text-text-primary mb-3">{fullDate(selectedDay.date)}</p>
-
-                {/* logged workout(s) */}
-                {selectedDay.sessions.length === 0 ? (
-                  <div className="mb-4">
-                    {selectedPlanned && selectedPlanned.kind === 'train' ? (
-                      <div>
-                        <p className="text-[12px] text-text-muted">
-                          Planned: <span className="font-medium text-text-primary">{selectedPlanned.name}</span>
-                        </p>
-                        {selectedPlanned.exercises.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {selectedPlanned.exercises.map((pe) => (
-                              <span key={pe.id} className="text-[11px] text-text-muted bg-cream border border-border px-2 py-0.5">
-                                {pe.name} · {pe.sets}×
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : selectedPlanned && selectedPlanned.kind === 'rest' ? (
-                      <p className="text-[12px] text-text-muted">Rest day in your schedule.</p>
-                    ) : (
-                      <p className="text-[12px] text-text-muted">No workout logged this day.</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2.5 mb-4">
-                    {selectedDay.sessions.map((s) => (
-                      <div key={s.id} className="bg-cream border border-border p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[12px] font-medium text-text-primary break-words">{s.name || 'Workout'}</p>
-                            <p className="text-[11px] text-text-muted mt-0.5">
-                              {s.exercises.length} exercise{s.exercises.length !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => editDaySession(s)}
-                              aria-label={`Edit ${s.name || 'workout'}`}
-                              title="Edit this workout"
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1 border-none cursor-pointer hover:bg-accent-hover transition-colors"
-                            >
-                              <Pencil className="w-3 h-3" /> Edit
-                            </button>
-                            <button
-                              onClick={() => deleteDaySession(s)}
-                              aria-label={`Delete ${s.name || 'workout'}`}
-                              title="Delete this workout"
-                              className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                        {s.exercises.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {s.exercises.map((ex) => (
-                              <span key={ex.id} className="text-[11px] text-text-muted bg-white border border-border px-2 py-0.5">
-                                {ex.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div>
+                <CalendarDayPanel
+                  selectedDay={selectedDay}
+                  program={program}
+                  annotations={annotations}
+                  sessions={sessions}
+                  dateFormat={fullDate}
+                  onEditSession={editDaySession}
+                  onDeleteSession={deleteDaySession}
+                />
 
                 {/* annotation editor — independent of the workout(s) above */}
-                <div>
+                <div className="mt-4">
                   <p className="text-[10px] uppercase tracking-wider text-text-light mb-2">Day note</p>
                   <div className="flex flex-wrap gap-1.5 mb-2.5">
                     {DAY_REASONS.map((r) => (

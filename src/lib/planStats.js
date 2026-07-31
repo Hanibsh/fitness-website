@@ -1,12 +1,16 @@
-// What a PLANNED day does — the numbers behind the split's day cards.
+// What one day of training does — the numbers behind every day card.
 //
-// This is the plan-side sibling of engine.js. The engine grades what you
-// actually did (it has RIR, real set counts, timestamps); a split day is only
-// an intention, so the maths here is deliberately simpler: target sets weighted
-// by the DB's muscle contributions, and nothing else. No RIR effectiveness, no
-// within-session diminishing returns, no decay. Those need a logged session to
-// mean anything, and folding them in here would make a day card disagree with
-// the dashboard about what the same work is worth.
+// Two entry points over one accumulator: `dayStats(day)` for a day as PLANNED in
+// a split, `sessionStats(session)` for a day as actually LOGGED. Same output
+// shape, same muscle maths; the only difference is whether a movement's set
+// count comes from the target or from the sets you finished. That's deliberate —
+// a done card and its plan card have to be comparable at a glance.
+//
+// This is the day-sized sibling of engine.js. The engine grades a training
+// history (it has RIR, decay, within-session diminishing returns); one day is
+// too small a window for any of that, so the maths here is just sets weighted by
+// the DB's muscle contributions. Folding the engine's terms in would make a day
+// card disagree with the dashboard about what the same work is worth.
 //
 // What IS shared with the engine: the muscle taxonomy (ATOM_TO_GROUP), the
 // max-not-sum rule for crediting a set to a muscle, and the systemic-load
@@ -62,73 +66,116 @@ function toRows(map, key) {
 
 const LOAD_LABELS = { fresh: 'Light day', moderate: 'Moderate day', high: 'Heavy day' }
 
-// Everything a day card and a day page need to say about one training day.
-// Rest days (and empty ones) come back as all-zero with empty breakdowns.
-export function dayStats(day) {
-  const rows = day?.exercises || []
-  const muscleSets = {} // engine muscle -> target sets, weighted by contribution
-  const coarseSets = {} // ...and the same, rolled up to the bank's 7 categories
-  let sets = 0
-  let cardio = 0
-  let load = 0
+function newAccumulator() {
+  return {
+    muscleSets: {}, // engine muscle -> sets, weighted by contribution
+    coarseSets: {}, // ...and the same, rolled up to the bank's 7 categories
+    sets: 0,
+    cardio: 0,
+    load: 0,
+  }
+}
 
-  for (const ex of rows) {
-    const n = Math.max(0, Number(ex.sets) || 0)
-    sets += n
-    if (ex.kind === 'cardio') {
-      cardio++
-      continue // no muscle split and no systemic load we can honestly claim
+// Credit `n` sets of one movement to the accumulator. `ex` is anything carrying
+// {exerciseId, name, kind} — a planned row or a logged one; the only difference
+// between a plan and a session at this level is where `n` came from.
+function creditExercise(acc, ex, n) {
+  acc.sets += n
+  if (ex.kind === 'cardio') {
+    acc.cardio++
+    return // no muscle split and no systemic load we can honestly claim
+  }
+  const db = getFullExercise(bankIdFor(ex))
+
+  if (db && db.muscles && Object.keys(db.muscles).length) {
+    // Bucket the atoms and credit the BEST-trained one per bucket, never their
+    // sum — incline bench listing Upper 1.0 / Middle 0.5 / Lower 0.25 says which
+    // region it biases toward, not that it's 1.75 chest sets. Same rule (and
+    // same reasoning) as effectiveWeeklyVolume in engine.js.
+    //
+    // The coarse bucket is filled from the atoms too, NOT by adding up the
+    // engine muscles afterwards — that would make the same mistake one level up,
+    // summing the three delt heads so a bench press reads as three quarters of a
+    // shoulder set on top of its chest set.
+    const byMuscle = {}
+    const byCoarse = {}
+    for (const [atom, w] of Object.entries(db.muscles)) {
+      const g = ATOM_TO_GROUP[atom]
+      if (!g) continue
+      byMuscle[g] = Math.max(byMuscle[g] || 0, w)
+      const c = ENGINE_MUSCLE_TO_COARSE[g]
+      if (c) byCoarse[c] = Math.max(byCoarse[c] || 0, w)
     }
-    const db = getFullExercise(bankIdFor(ex))
-
-    if (db && db.muscles && Object.keys(db.muscles).length) {
-      // Bucket the atoms and credit the BEST-trained one per bucket, never their
-      // sum — incline bench listing Upper 1.0 / Middle 0.5 / Lower 0.25 says
-      // which region it biases toward, not that it's 1.75 chest sets. Same rule
-      // (and same reasoning) as effectiveWeeklyVolume in engine.js.
-      //
-      // The coarse bucket is filled from the atoms too, NOT by adding up the
-      // engine muscles afterwards — that would make the same mistake one level
-      // up, summing the three delt heads so a bench press reads as three quarters
-      // of a shoulder set on top of its chest set.
-      const byMuscle = {}
-      const byCoarse = {}
-      for (const [atom, w] of Object.entries(db.muscles)) {
-        const g = ATOM_TO_GROUP[atom]
-        if (!g) continue
-        byMuscle[g] = Math.max(byMuscle[g] || 0, w)
-        const c = ENGINE_MUSCLE_TO_COARSE[g]
-        if (c) byCoarse[c] = Math.max(byCoarse[c] || 0, w)
-      }
-      for (const [g, w] of Object.entries(byMuscle)) muscleSets[g] = (muscleSets[g] || 0) + n * w
-      for (const [c, w] of Object.entries(byCoarse)) coarseSets[c] = (coarseSets[c] || 0) + n * w
-    } else {
-      // Custom movement: guess the muscle from the name, credit it in full.
-      const g = fallbackMuscle(ex.name)
-      if (g) {
-        muscleSets[g] = (muscleSets[g] || 0) + n
-        const c = ENGINE_MUSCLE_TO_COARSE[g]
-        if (c) coarseSets[c] = (coarseSets[c] || 0) + n
-      }
+    for (const [g, w] of Object.entries(byMuscle)) acc.muscleSets[g] = (acc.muscleSets[g] || 0) + n * w
+    for (const [c, w] of Object.entries(byCoarse)) acc.coarseSets[c] = (acc.coarseSets[c] || 0) + n * w
+  } else {
+    // Custom movement: guess the muscle from the name, credit it in full.
+    const g = fallbackMuscle(ex.name)
+    if (g) {
+      acc.muscleSets[g] = (acc.muscleSets[g] || 0) + n
+      const c = ENGINE_MUSCLE_TO_COARSE[g]
+      if (c) acc.coarseSets[c] = (acc.coarseSets[c] || 0) + n
     }
-
-    // Planned systemic load, mirroring the per-set deposit in engine.js with the
-    // RIR term left at 1 (a plan doesn't know how hard you'll take a set).
-    const coef = FATIGUE_SCORE_COEF[db?.fatigueScore ?? DEFAULT_FATIGUE_SCORE] || 1
-    load += n * coef * (db?.axialLoading ? AXIAL_MULT : 1) * (db?.equipment === 'free weight' ? FREE_WEIGHT_MULT : 1)
   }
 
+  // Systemic load, mirroring the per-set deposit in engine.js with the RIR term
+  // left at 1. A plan doesn't know how hard you'll take a set; a session does,
+  // but reading it here would make a done card and its plan card grade the same
+  // work differently for reasons the card has no room to explain.
+  const coef = FATIGUE_SCORE_COEF[db?.fatigueScore ?? DEFAULT_FATIGUE_SCORE] || 1
+  acc.load += n * coef * (db?.axialLoading ? AXIAL_MULT : 1) * (db?.equipment === 'free weight' ? FREE_WEIGHT_MULT : 1)
+}
+
+function summarise(acc, exercises) {
   // Graded against the same capacity the dashboard's strain meter uses, so
   // "Heavy day" here and a high strain reading there mean the same thing.
-  const pct = Math.round(100 * Math.min(1, load / SYSTEMIC_CAPACITY))
+  const pct = Math.round(100 * Math.min(1, acc.load / SYSTEMIC_CAPACITY))
   const level = systemicLevel(pct)
-
   return {
-    exercises: rows.length,
-    sets,
-    cardio,
-    muscles: toRows(muscleSets, 'muscle'),
-    groups: toRows(coarseSets, 'group'),
+    exercises,
+    sets: acc.sets,
+    cardio: acc.cardio,
+    muscles: toRows(acc.muscleSets, 'muscle'),
+    groups: toRows(acc.coarseSets, 'group'),
     load: { pct, level, label: LOAD_LABELS[level] },
   }
+}
+
+// Everything a day card and a day page need to say about one PLANNED day —
+// target sets, as written in the split. Rest days (and empty ones) come back as
+// all-zero with empty breakdowns.
+export function dayStats(day) {
+  const rows = day?.exercises || []
+  const acc = newAccumulator()
+  for (const ex of rows) creditExercise(acc, ex, Math.max(0, Number(ex.sets) || 0))
+  return summarise(acc, rows.length)
+}
+
+// Whether a logged set counts as work. Warm-ups are logged but never count, and
+// a unilateral set is ONE set of the movement (not two), so either limb having
+// reps is enough — the same rule sessionStats in workoutStore.js applies.
+function isWorkingSet(set, cardio) {
+  if (set.type === 'warmup') return false
+  if (cardio) return Number(set.duration) > 0
+  if (set.left) return Number(set.left.reps) > 0 || Number(set.right?.reps) > 0
+  return Number(set.reps) > 0
+}
+
+// The same summary for a day you actually TRAINED, built from the session rather
+// than the plan — real movements, real working sets. Identical shape to
+// dayStats, so a card can render either without knowing which it got.
+export function sessionStats(session) {
+  const rows = session?.exercises || []
+  const acc = newAccumulator()
+  for (const ex of rows) {
+    const cardio = ex.kind === 'cardio'
+    creditExercise(acc, ex, (ex.sets || []).filter((s) => isWorkingSet(s, cardio)).length)
+  }
+  return { ...summarise(acc, rows.length), durationMs: session?.durationMs || null }
+}
+
+// Working sets per logged exercise, for the chips on a done card ("Bench · 4×").
+export function workingSetCount(ex) {
+  const cardio = ex?.kind === 'cardio'
+  return (ex?.sets || []).filter((s) => isWorkingSet(s, cardio)).length
 }

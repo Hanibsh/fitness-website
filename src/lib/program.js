@@ -373,6 +373,56 @@ export function plannedDayForDate(program, date, { now = Date.now(), annotations
   return program.days[(index + offset) % program.days.length]
 }
 
+// Where one CALENDAR DATE stands: done, still ahead, or missed. The calendar's
+// day panel is the caller — it needs one answer for any square you tap, past or
+// future, which plannedDayForDate alone can't give (it only looks forward).
+//
+// Returns { status, day, sessions, annotation }:
+//
+//   'done'     — trained that day. `sessions` holds them; `day` is the split day
+//                they came from when that's provable, else null.
+//   'off'      — marked off (sick/travel/…), nothing logged. `day` is what the
+//                schedule would have said, when recoverable.
+//   'rest'     — a rest slot in the schedule.
+//   'today' / 'upcoming' — a training day still to come.
+//   'missed'   — a past training day with nothing logged and no mark-off.
+//   'none'     — no program, or a past date we can't speak about (see below).
+//
+// Precedence is logging first, then a mark-off, matching todayPlan — finishing a
+// workout outranks having marked the day off.
+//
+// A past date can only be resolved for a WEEKLY split, where the weekday decides
+// the day. A rotating split stores a pointer and one lastAdvancedAt, with no
+// history behind it, so which slot fell on some date last month is genuinely
+// unreconstructable — those come back 'none' rather than a guess.
+export function dayStatusForDate(program, date, { sessions = [], annotations = [], now = Date.now() } = {}) {
+  const target = startOfDay(date)
+  const today = startOfDay(now)
+  const onDate = sessions.filter((s) => startOfDay(s.date) === target)
+  const annotation = annotations.find((a) => startOfDay(a.date) === target) || null
+
+  if (onDate.length) {
+    // The plan day is only ever inferred from the session itself — dayForSession
+    // answers null unless the match is unambiguous, and a null day just means the
+    // card can't offer a link back to the split.
+    const day = onDate.map((s) => dayForSession(program, s)).find(Boolean) || null
+    return { status: 'done', day, sessions: onDate, annotation }
+  }
+
+  if (!program || !program.days.length) return { status: 'none', day: null, sessions: [], annotation }
+
+  // Scheduled view of the date. plannedDayForDate suppresses annotated dates, so
+  // ask the weekday directly when we only need to know what WOULD have been on.
+  const weekly = scheduleMode(program) === 'weekly'
+  const scheduled = weekly ? program.days[mondayIndex(target)] : plannedDayForDate(program, target, { now, annotations })
+
+  if (annotation) return { status: 'off', day: scheduled || null, sessions: [], annotation }
+  if (!scheduled) return { status: 'none', day: null, sessions: [], annotation }
+  if (scheduled.kind === 'rest') return { status: 'rest', day: scheduled, sessions: [], annotation }
+  if (target < today) return { status: 'missed', day: scheduled, sessions: [], annotation }
+  return { status: target === today ? 'today' : 'upcoming', day: scheduled, sessions: [], annotation }
+}
+
 // The next upcoming TRAINING day strictly after `now`'s date — { date, day }
 // or null. Powers "done for today — next: Upper A on Friday".
 export function nextTrainingDate(program, { now = Date.now(), annotations = [] } = {}) {
