@@ -47,8 +47,10 @@ export function annotationForDate(annotations, date) {
 //
 //   trained  — a session was logged
 //   rest     — a rest slot in the split
-//   skipped  — a training day you didn't do, plus days the rotation can't place
-//              (either a rest slot or a skip — an off day either way)
+//   skipped  — a training day you didn't do
+//   unlogged — a past day the rotation can't place: a rest slot or a skip, no
+//              way to tell. Counted apart rather than folded into `skipped`,
+//              which would be blaming you for days that may have been rest.
 //   off      — days you marked off (sick/travel/…), the source of `byReason`.
 //              Overlaps the others: a mark-off explains a day, it isn't a
 //              fourth kind of day. A day you trained THROUGH still counts as
@@ -57,12 +59,12 @@ export function annotationForDate(annotations, date) {
 export function daySummary(sessions, annotations, { start, end, now = Date.now(), program = null } = {}) {
   const rangeStart = startOfDay(start)
   const rangeEnd = Math.min(startOfDay(end), startOfDay(now))
-  const empty = { totalDays: 0, trained: 0, rest: 0, skipped: 0, off: 0, untouched: 0, byReason: {} }
+  const empty = { totalDays: 0, trained: 0, rest: 0, skipped: 0, unlogged: 0, off: 0, untouched: 0, byReason: {} }
   if (rangeEnd < rangeStart) return empty
 
   const statuses = dayStatusesForRange(program, { start: rangeStart, end: rangeEnd, sessions, annotations, now })
 
-  const counts = { trained: 0, rest: 0, skipped: 0, off: 0, untouched: 0 }
+  const counts = { trained: 0, rest: 0, skipped: 0, unlogged: 0, off: 0, untouched: 0 }
   const byReason = {}
   for (const state of statuses.values()) {
     if (state.annotation) {
@@ -71,7 +73,8 @@ export function daySummary(sessions, annotations, { start, end, now = Date.now()
     }
     if (state.status === 'done') counts.trained++
     else if (state.status === 'rest') counts.rest++
-    else if (state.status === 'missed' || state.status === 'skipped') counts.skipped++
+    else if (state.status === 'missed') counts.skipped++
+    else if (state.status === 'unlogged') counts.unlogged++
     // An 'off' day (marked off, nothing logged) is already counted above; what's
     // left is 'none' — outside the era we have any record of.
     else if (state.status === 'none') counts.untouched++
@@ -107,7 +110,10 @@ export function currentBreak(sessions, annotations, { now = Date.now(), program 
     const reason = annotationByDay.get(d)
     if (statuses) {
       const status = statuses.get(d)?.status
-      if (status === 'rest' || status === 'none') break // the plan working, or before the log
+      // A rest slot is the plan working, not a layoff. 'unlogged' might be one
+      // too — no evidence either way, so don't build an "ease back in" nudge on
+      // top of it.
+      if (status === 'rest' || status === 'unlogged' || status === 'none') break
     } else if (!reason) {
       break // no schedule to prove a skip — only mark-offs count
     }

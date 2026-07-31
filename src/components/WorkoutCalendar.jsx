@@ -130,12 +130,12 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
           // One marker per schedule state, and only when the day isn't already
           // showing workout dots — a logged session outranks whatever was planned.
           const plannedTrain = !hasWorkout && (state?.status === 'upcoming' || state?.status === 'today') ? state.day : null
-          const quiet = !hasWorkout && !annotation && (state?.status === 'rest' ? 'rest' : state?.status === 'missed' || state?.status === 'skipped' ? 'skipped' : null)
+          const quiet = !hasWorkout && !annotation && (state?.status === 'rest' ? 'rest' : state?.status === 'missed' ? 'skipped' : state?.status === 'unlogged' ? 'unlogged' : null)
           return (
             <button
               key={day}
               onClick={() => onSelectDay(date, daySessions)}
-              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}${quiet === 'rest' ? ', rest day' : quiet === 'skipped' ? ', skipped' : ''}`}
+              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}${quiet === 'rest' ? ', rest day' : quiet === 'skipped' ? ', skipped' : quiet === 'unlogged' ? ', no workout' : ''}`}
               className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer border transition-colors ${lg ? 'min-h-16 text-[13px]' : 'aspect-square text-[12px]'} ${
                 isSelected
                   ? 'border-text-primary bg-cream-dark'

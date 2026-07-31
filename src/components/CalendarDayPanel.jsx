@@ -21,10 +21,11 @@ const NOTES = {
   rest: 'Rest day in your schedule.',
   off: 'Marked off — nothing expected of you.',
   missed: 'This was due and never got logged.',
-  // The rotation only records history going forward, so an older date can be
-  // placed as "you didn't train" but not as which of the two it was. Say that
-  // rather than guess.
-  skipped: 'Nothing logged — either a rest day or a session you skipped.',
+  // The rotation can only be traced back as far as the log proves it, so an
+  // older date can be placed as "you didn't train" but not as which of the two
+  // it was. Say that rather than guess — a rest day called a skip is a worse
+  // answer than an honest shrug.
+  unlogged: 'No workout logged — either a rest day or one you skipped.',
 }
 
 export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onEditSession, onDeleteSession }) {
@@ -109,18 +110,20 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
           note={NOTES[state.status] ?? (state.day?.exercises?.length ? null : 'Nothing planned for this day yet.')}
           header={
             <>
-              {state.day?.kind === 'rest' || state.status === 'rest' || state.status === 'skipped' ? (
+              {state.day?.kind === 'rest' || state.status === 'rest' || state.status === 'unlogged' ? (
                 <Moon className="w-4 h-4 text-text-light shrink-0" />
               ) : (
                 <Dumbbell className="w-4 h-4 text-text-primary shrink-0" />
               )}
               <span className="flex-1 min-w-0 text-[14px] font-medium text-text-primary break-words">
-                {state.status === 'rest' ? state.day?.name || 'Rest' : state.status === 'skipped' ? 'Day off' : state.day?.name || 'Day off'}
+                {state.status === 'rest' ? state.day?.name || 'Rest' : state.status === 'unlogged' ? 'Day off' : state.day?.name || 'Day off'}
               </span>
               {state.status === 'off' ? (
                 <StatusChip tone="amber">{reasonLabel(state.annotation.reason)}</StatusChip>
-              ) : state.status === 'missed' || state.status === 'skipped' ? (
+              ) : state.status === 'missed' ? (
                 <StatusChip tone="amber">Skipped</StatusChip>
+              ) : state.status === 'unlogged' ? (
+                <StatusChip tone="muted">Off</StatusChip>
               ) : state.status === 'today' ? (
                 <StatusChip tone="dark">Today</StatusChip>
               ) : state.status === 'rest' ? (

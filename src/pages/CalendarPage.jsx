@@ -253,6 +253,9 @@ export default function CalendarPage() {
               <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
                 <span className={`w-1.5 h-1.5 ${STATUS_MARKER.skipped}`} /> Skipped
               </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className={`w-1.5 h-1.5 ${STATUS_MARKER.unlogged}`} /> Off
+              </span>
               {DAY_REASONS.map((r) => (
                 <span key={r.id} className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
                   <span className={`w-1.5 h-1.5 ${REASON_COLOR[r.id] || REASON_COLOR.other}`} />
@@ -359,9 +362,10 @@ export default function CalendarPage() {
               </div>
             )}
             <p className="text-[11px] text-text-light">
-              {summary.off > 0 && `${summary.off} of these ${summary.off !== 1 ? 'days are' : 'day is'} noted. `}
+              {summary.off > 0 && `${summary.off} of these days ${summary.off !== 1 ? 'are' : 'is'} noted. `}
+              {summary.unlogged > 0 && `${summary.unlogged} day${summary.unlogged !== 1 ? 's' : ''} off that your split can't place — rest or skipped, no way to tell. `}
               {summary.untouched > 0
-                ? `${summary.untouched} of ${summary.totalDays} days fall outside your log — nothing to say about them.`
+                ? `${summary.untouched} of ${summary.totalDays} days fall outside your log.`
                 : `${summary.totalDays} days covered.`}
             </p>
           </Card>

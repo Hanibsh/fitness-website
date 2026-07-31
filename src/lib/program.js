@@ -376,10 +376,16 @@ export function setPointerToDay(program, dayId, { now = Date.now() } = {}) {
 //
 // A rotating split's pointer alone says where you stand TODAY and nothing about
 // how you got there, so the calendar couldn't say which slot fell on a date last
-// month. `advances` fixes that going forward: one { date, dayId } per completed
-// day, appended by advanceProgram. It lives on the program blob (jsonb — no
-// migration), and blobs written before this simply have none, which every reader
-// below treats as "no history", i.e. exactly the old behaviour.
+// month. Two things answer that now:
+//
+//   - `advances`: one { date, dayId } per completed day, appended by
+//     advanceProgram. Lives on the program blob (jsonb — no migration), and
+//     records from here on.
+//   - the SESSION LOG, which has held the same fact all along: a logged workout
+//     that traces back to a split day says that day was completed on that date.
+//     That's what an advance entry is. Reading it means dates from before
+//     advance-recording existed still resolve, so an established log doesn't
+//     have to wait weeks for its own past to make sense.
 
 // Keep the log bounded — two years of daily training is well under this, and the
 // whole blob is synced on every write.
@@ -391,20 +397,38 @@ function appendAdvance(advances, entry) {
   return [...kept, entry].sort((a, b) => a.date - b.date).slice(-MAX_ADVANCES)
 }
 
-// The day a ROTATING program had pending on a PAST date, or null when history
-// doesn't reach back that far. Finds the last day you completed at or before
-// the target, then walks the rotation forward from the slot after it under the
-// same rules as the live read (walkRotation).
-export function rotationDayForPastDate(program, target, { annotations = [] } = {}) {
-  const advances = program.advances || []
-  if (!advances.length) return null
-  let last = null
-  for (const a of advances) {
-    const d = startOfDay(a.date)
-    if (d > target) break
-    last = { date: d, dayId: a.dayId }
+// Every "day X was completed on date D" we can establish, oldest first — the
+// recorded advances plus everything the session log proves. Sessions win where
+// both speak: they're the workout itself rather than a note about it.
+// dayForSession answers null unless the match is unambiguous, so a session that
+// can't be placed simply contributes nothing.
+//
+// Expensive enough (it scores sessions against the split) that callers derive it
+// ONCE for a whole range rather than per date — see statusContext.
+export function rotationReferences(program, sessions = []) {
+  if (!program?.days?.length) return []
+  const byDate = new Map()
+  for (const a of program.advances || []) byDate.set(startOfDay(a.date), a.dayId)
+  for (const s of sessions) {
+    const day = dayForSession(program, s)
+    if (day) byDate.set(startOfDay(s.date), day.id)
   }
-  if (!last) return null // target predates the history
+  return [...byDate]
+    .map(([date, dayId]) => ({ date, dayId }))
+    .sort((a, b) => a.date - b.date)
+}
+
+// The day a ROTATING program had pending on a PAST date, or null when nothing we
+// know reaches back that far. Finds the last day proven complete at or before the
+// target, then walks the rotation forward from the slot after it under the same
+// rules as the live read (walkRotation).
+export function rotationDayForPastDate(program, target, { annotations = [], references = [] } = {}) {
+  let last = null
+  for (const ref of references) {
+    if (ref.date > target) break
+    last = ref
+  }
+  if (!last) return null // target predates everything we know
   const idx = program.days.findIndex((d) => d.id === last.dayId)
   if (idx === -1) return null // that day was since deleted from the split
   // The day was completed ON the target date — that's the day it was.
@@ -434,16 +458,20 @@ export const PROJECTION_HORIZON_DAYS = 28
 // consume a slot: it's skipped and everything after it shifts up by one, same
 // as if that day simply hadn't happened yet. `annotations` is optional so
 // callers that haven't been updated for this still work, just without the
-// skip. Past dates are answered from the recorded rotation history
-// (rotationDayForPastDate), which only reaches back as far as the log goes.
-export function plannedDayForDate(program, date, { now = Date.now(), annotations = [] } = {}) {
+// skip. Past dates are answered from the rotation history
+// (rotationDayForPastDate), which reaches back as far as the log does — pass
+// `sessions` (or precomputed `references`) for that, or omit them to only look
+// forward.
+export function plannedDayForDate(program, date, { now = Date.now(), annotations = [], sessions = [], references = null } = {}) {
   if (!program || !program.days.length) return null
   const target = startOfDay(date)
   const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
   if (pausedDays.has(target)) return null
   if (scheduleMode(program) === 'weekly') return program.days[mondayIndex(target)]
   const { index, anchor } = effectiveRotation(program, { now, annotations })
-  if (target < anchor) return rotationDayForPastDate(program, target, { annotations })
+  if (target < anchor) {
+    return rotationDayForPastDate(program, target, { annotations, references: references || rotationReferences(program, sessions) })
+  }
   // Days from the anchor up to (not including) the target, less the ones marked
   // off — those consume no slot. Counted arithmetically rather than walked: the
   // grid asks this for every cell, and a month a year out would otherwise be
@@ -470,7 +498,10 @@ function statusContext(program, { sessions = [], annotations = [], now = Date.no
     if (floor == null || key < floor) floor = key
   }
   const annotationByDay = new Map(annotations.map((a) => [startOfDay(a.date), a]))
-  return { today: startOfDay(now), now, annotations, sessionsByDay, annotationByDay, floor, inferDay }
+  // Derived once here — it scores every session against the split, which would be
+  // ruinous per cell.
+  const references = rotationReferences(program, sessions)
+  return { today: startOfDay(now), now, annotations, sessionsByDay, annotationByDay, references, floor, inferDay }
 }
 
 function statusAt(program, target, ctx) {
@@ -493,7 +524,7 @@ function statusAt(program, target, ctx) {
   const weekly = scheduleMode(program) === 'weekly'
   const scheduled = weekly
     ? program.days[mondayIndex(target)]
-    : plannedDayForDate(program, target, { now: ctx.now, annotations: ctx.annotations })
+    : plannedDayForDate(program, target, { now: ctx.now, annotations: ctx.annotations, references: ctx.references })
 
   if (annotation) return { status: 'off', day: scheduled || null, sessions: [], annotation }
   if (scheduled) {
@@ -501,11 +532,12 @@ function statusAt(program, target, ctx) {
     if (target < ctx.today) return { status: 'missed', day: scheduled, sessions: [], annotation }
     return { status: target === ctx.today ? 'today' : 'upcoming', day: scheduled, sessions: [], annotation }
   }
-  // Rotating, and history doesn't reach this date — but a past day you didn't
-  // train is an off day either way, so say that much rather than nothing. Which
-  // of the two it was is the only part we're missing.
+  // Rotating, and nothing we know places this date. A past day you didn't train
+  // is still an off day, so say that much — but NOT "skipped", which would be
+  // calling a rest day a failure on no evidence. It's one or the other and we
+  // can't tell which.
   if (target < ctx.today && ctx.floor != null && target >= ctx.floor) {
-    return { status: 'skipped', day: null, sessions: [], annotation }
+    return { status: 'unlogged', day: null, sessions: [], annotation }
   }
   return { status: 'none', day: null, sessions: [], annotation }
 }
@@ -523,16 +555,18 @@ function statusAt(program, target, ctx) {
 //   'rest'     — a rest slot in the schedule.
 //   'today' / 'upcoming' — a training day still to come.
 //   'missed'   — a past training day with nothing logged and no mark-off.
-//   'skipped'  — a past day you didn't train, where the split can't say whether
-//                it was a rest slot or a session you skipped. Still an off day.
+//   'unlogged' — a past day you didn't train, where the split can't say whether
+//                it was a rest slot or a session you skipped. Still an off day,
+//                just an unattributed one.
 //   'none'     — no program, or a date from before you had one.
 //
 // Precedence is logging first, then a mark-off, matching todayPlan — finishing a
 // workout outranks having marked the day off.
 //
 // Past dates resolve exactly for a WEEKLY split (the weekday decides) and, for a
-// rotating one, as far back as the recorded rotation history reaches
-// (rotationDayForPastDate). Older rotating dates fall back to 'skipped'.
+// rotating one, as far back as the rotation history reaches — which is as far as
+// the session log goes, since a logged workout proves the day it completed
+// (rotationReferences). Anything older falls back to 'unlogged'.
 export function dayStatusForDate(program, date, { sessions = [], annotations = [], now = Date.now() } = {}) {
   return statusAt(program, startOfDay(date), statusContext(program, { sessions, annotations, now }))
 }

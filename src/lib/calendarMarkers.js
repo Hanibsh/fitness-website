@@ -14,14 +14,20 @@ export const REASON_COLOR = {
   other: 'bg-stone-400',
 }
 
-// The two schedule-derived markers, in themed tokens so they follow dark mode
+// The schedule-derived markers, in themed tokens so they follow dark mode
 // (never an /opacity modifier — iOS 15.8 is the support floor). Deliberately the
 // quietest things on the grid: with past months now fully marked, these should
 // recede behind the workout dots rather than compete with them.
 //
-// A rest day is round like the other schedule markers; a skipped day is a
-// hollow SQUARE, which reads as "something was due here" at a glance.
+// Three distinct shapes, because these say three different things and the
+// difference matters:
+//   rest     — a filled dot: recovery you planned, and it happened.
+//   skipped  — a hollow SQUARE: a session was due here and didn't happen.
+//   unlogged — a hollow dot: a day away from training that we can't attribute
+//              to either. Softer than `skipped` on purpose — calling a day a
+//              failure on no evidence is worse than admitting we don't know.
 export const STATUS_MARKER = {
   rest: 'rounded-full bg-border-hover',
   skipped: 'border border-text-light',
+  unlogged: 'rounded-full border border-border-hover',
 }
