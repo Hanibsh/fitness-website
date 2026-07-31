@@ -48,11 +48,14 @@ function SectionHeading({ children, icon: Icon, right }) {
   )
 }
 
-function MiniStat({ label, value }) {
+// `small` is the nested variant used for the two parts of Off — same shell, just
+// quieter, so they read as belonging to the tile above rather than competing
+// with it. No tracking on the small label: it has ~52px to fit "SKIPPED" in.
+function MiniStat({ label, value, small = false }) {
   return (
-    <div className="bg-cream border border-border px-3 py-3 text-center">
-      <p className="text-[10px] uppercase tracking-wider text-text-light mb-1">{label}</p>
-      <p className="text-[15px] font-medium text-text-primary break-words">{value}</p>
+    <div className={`bg-cream border border-border text-center ${small ? 'px-1.5 py-2' : 'px-3 py-3'}`}>
+      <p className={`uppercase text-text-light mb-1 ${small ? 'text-[9px]' : 'text-[10px] tracking-wider'}`}>{label}</p>
+      <p className={`font-medium text-text-primary break-words ${small ? 'text-[13px]' : 'text-[15px]'}`}>{value}</p>
     </div>
   )
 }
@@ -343,15 +346,18 @@ export default function CalendarPage() {
                 </button>
               ))}
             </div>
-            {/* Off days split into the two things they actually are — planned
-                recovery vs sessions that didn't happen. One "off" number lumped
-                them together and said almost nothing. */}
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
+            {/* Trained and Off are the two headline numbers; Rest and Skipped are
+                parts OF Off, not peers of Trained, so they sit nested beneath it.
+                col-start-2 does that without needing a spacer in the left cell. */}
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
               <MiniStat label="Trained" value={summary.trained} />
-              <MiniStat label="Rest" value={summary.rest} />
-              <MiniStat label="Skipped" value={summary.skipped} />
+              <MiniStat label="Off" value={summary.off} />
+              <div className="col-start-2 grid grid-cols-2 gap-1.5">
+                <MiniStat label="Rest" value={summary.rest} small />
+                <MiniStat label="Skipped" value={summary.skipped} small />
+              </div>
             </div>
-            {summary.off > 0 && (
+            {summary.annotated > 0 && (
               <div className="space-y-1.5 mb-4">
                 {Object.entries(summary.byReason).map(([reason, count]) => (
                   <div key={reason} className="flex justify-between text-[12px]">
@@ -361,9 +367,11 @@ export default function CalendarPage() {
                 ))}
               </div>
             )}
+            {/* Rest + Skipped only cover the off days the split can prove; these
+                two clauses are the rest of Off, so the numbers reconcile. */}
             <p className="text-[11px] text-text-light">
-              {summary.off > 0 && `${summary.off} of these days ${summary.off !== 1 ? 'are' : 'is'} noted. `}
-              {summary.unlogged > 0 && `${summary.unlogged} day${summary.unlogged !== 1 ? 's' : ''} off that your split can't place — rest or skipped, no way to tell. `}
+              {summary.noted > 0 && `${summary.noted} of those off days ${summary.noted !== 1 ? 'are' : 'is'} marked off. `}
+              {summary.unlogged > 0 && `${summary.unlogged} day${summary.unlogged !== 1 ? 's' : ''} your split can't place — rest or skipped, no way to tell. `}
               {summary.untouched > 0
                 ? `${summary.untouched} of ${summary.totalDays} days fall outside your log.`
                 : `${summary.totalDays} days covered.`}

@@ -46,40 +46,47 @@ export function annotationForDate(annotations, date) {
 // these numbers always agree with what the calendar grid drew:
 //
 //   trained  — a session was logged
+//   off      — every day you didn't train. The headline number, and exactly
+//              rest + skipped + unlogged + noted, so the four below account for
+//              it with nothing left over.
 //   rest     — a rest slot in the split
 //   skipped  — a training day you didn't do
 //   unlogged — a past day the rotation can't place: a rest slot or a skip, no
 //              way to tell. Counted apart rather than folded into `skipped`,
 //              which would be blaming you for days that may have been rest.
-//   off      — days you marked off (sick/travel/…), the source of `byReason`.
-//              Overlaps the others: a mark-off explains a day, it isn't a
-//              fourth kind of day. A day you trained THROUGH still counts as
-//              trained, matching the status precedence.
+//   noted    — marked off (sick/travel/…) with nothing logged. Also unplaceable
+//              — a mark-off suppresses the projection — but it comes with a
+//              reason, so it's worth counting apart from a plain `unlogged`.
 //   untouched— days from before you had a program or a log; nothing to say.
+//
+//   annotated— any day carrying a mark-off, the source of `byReason`. Overlaps
+//              everything above: a mark-off explains a day, it isn't another
+//              kind of day. A day you trained THROUGH counts as trained, per the
+//              status precedence — which is why this can't be the `off` total.
 export function daySummary(sessions, annotations, { start, end, now = Date.now(), program = null } = {}) {
   const rangeStart = startOfDay(start)
   const rangeEnd = Math.min(startOfDay(end), startOfDay(now))
-  const empty = { totalDays: 0, trained: 0, rest: 0, skipped: 0, unlogged: 0, off: 0, untouched: 0, byReason: {} }
+  const empty = { totalDays: 0, trained: 0, off: 0, rest: 0, skipped: 0, unlogged: 0, noted: 0, annotated: 0, untouched: 0, byReason: {} }
   if (rangeEnd < rangeStart) return empty
 
   const statuses = dayStatusesForRange(program, { start: rangeStart, end: rangeEnd, sessions, annotations, now })
 
-  const counts = { trained: 0, rest: 0, skipped: 0, unlogged: 0, off: 0, untouched: 0 }
+  const counts = { trained: 0, rest: 0, skipped: 0, unlogged: 0, noted: 0, annotated: 0, untouched: 0 }
   const byReason = {}
   for (const state of statuses.values()) {
     if (state.annotation) {
-      counts.off++
+      counts.annotated++
       byReason[state.annotation.reason] = (byReason[state.annotation.reason] || 0) + 1
     }
     if (state.status === 'done') counts.trained++
     else if (state.status === 'rest') counts.rest++
     else if (state.status === 'missed') counts.skipped++
     else if (state.status === 'unlogged') counts.unlogged++
-    // An 'off' day (marked off, nothing logged) is already counted above; what's
-    // left is 'none' — outside the era we have any record of.
+    else if (state.status === 'off') counts.noted++
     else if (state.status === 'none') counts.untouched++
   }
-  return { totalDays: statuses.size, ...counts, byReason }
+  const off = counts.rest + counts.skipped + counts.unlogged + counts.noted
+  return { totalDays: statuses.size, ...counts, off, byReason }
 }
 
 // How many consecutive days, counting back from today, you've been away from
