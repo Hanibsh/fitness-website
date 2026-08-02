@@ -60,6 +60,7 @@ import { getExercise, exerciseIdForName } from '../lib/exerciseLibrary'
 import { muscleRecovery, musclesForExercises } from '../lib/engine'
 import UnitHelp from '../components/UnitHelp'
 import LogTabs from '../components/LogTabs'
+import QuickCalculator from '../components/QuickCalculator'
 import SplitSyncModal from '../components/SplitSyncModal'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
@@ -2951,6 +2952,8 @@ export default function WorkoutTracker() {
           </div>
         </Modal>
       )}
+
+      <QuickCalculator />
     </div>
   )
 }
