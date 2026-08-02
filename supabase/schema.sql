@@ -1,6 +1,19 @@
 -- Leon fitness — database schema.
--- Run this ONCE in Supabase: Dashboard → SQL Editor → New query → paste all of
--- this → Run. Safe to re-run (uses "if not exists" / "or replace").
+-- Run this in Supabase: Dashboard → SQL Editor → New query → paste all of this
+-- → Run. Safe to re-run, and re-running it is the intended way to apply a
+-- change: paste the WHOLE file rather than hand-picking the new lines.
+--
+-- Every statement here is idempotent, which takes a bit of care:
+--   * tables/indexes  → "if not exists"
+--   * functions       → "or replace"
+--   * triggers        → "drop ... if exists" first
+--   * POLICIES        → "drop policy if exists" first. Postgres has no
+--     "create policy if not exists", so without the drop, a second run dies on
+--     the first policy with 42710 "policy already exists" — and because the
+--     policies sit ABOVE most of the "alter table add column" lines, everything
+--     below them silently never runs. That's not hypothetical: it's how
+--     sessions.duration_ms went missing from production for weeks while the
+--     app dutifully kept sending it (found 2026-08-03).
 
 -- ---------------------------------------------------------------------------
 -- 1) PROFILES — one row per user: bodyweight, sex, unit, and data-sharing consent.
@@ -47,10 +60,13 @@ alter table public.profiles add column if not exists equipment text;
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "Users can view their own profile" on public.profiles;
 create policy "Users can view their own profile"
   on public.profiles for select using (auth.uid() = id);
+drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile"
   on public.profiles for insert with check (auth.uid() = id);
+drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
   on public.profiles for update using (auth.uid() = id);
 
@@ -99,12 +115,16 @@ alter table public.sessions add column if not exists ended_at timestamptz;
 
 alter table public.sessions enable row level security;
 
+drop policy if exists "Users can view their own sessions" on public.sessions;
 create policy "Users can view their own sessions"
   on public.sessions for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own sessions" on public.sessions;
 create policy "Users can insert their own sessions"
   on public.sessions for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own sessions" on public.sessions;
 create policy "Users can update their own sessions"
   on public.sessions for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own sessions" on public.sessions;
 create policy "Users can delete their own sessions"
   on public.sessions for delete using (auth.uid() = user_id);
 
@@ -126,12 +146,16 @@ create table if not exists public.bodyweight_log (
 
 alter table public.bodyweight_log enable row level security;
 
+drop policy if exists "Users can view their own bodyweight" on public.bodyweight_log;
 create policy "Users can view their own bodyweight"
   on public.bodyweight_log for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own bodyweight" on public.bodyweight_log;
 create policy "Users can insert their own bodyweight"
   on public.bodyweight_log for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own bodyweight" on public.bodyweight_log;
 create policy "Users can update their own bodyweight"
   on public.bodyweight_log for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own bodyweight" on public.bodyweight_log;
 create policy "Users can delete their own bodyweight"
   on public.bodyweight_log for delete using (auth.uid() = user_id);
 
@@ -150,12 +174,16 @@ create table if not exists public.programs (
 
 alter table public.programs enable row level security;
 
+drop policy if exists "Users can view their own program" on public.programs;
 create policy "Users can view their own program"
   on public.programs for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own program" on public.programs;
 create policy "Users can insert their own program"
   on public.programs for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own program" on public.programs;
 create policy "Users can update their own program"
   on public.programs for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own program" on public.programs;
 create policy "Users can delete their own program"
   on public.programs for delete using (auth.uid() = user_id);
 
@@ -171,12 +199,16 @@ create table if not exists public.blocks (
 
 alter table public.blocks enable row level security;
 
+drop policy if exists "Users can view their own blocks" on public.blocks;
 create policy "Users can view their own blocks"
   on public.blocks for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own blocks" on public.blocks;
 create policy "Users can insert their own blocks"
   on public.blocks for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own blocks" on public.blocks;
 create policy "Users can update their own blocks"
   on public.blocks for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own blocks" on public.blocks;
 create policy "Users can delete their own blocks"
   on public.blocks for delete using (auth.uid() = user_id);
 
@@ -197,12 +229,16 @@ create table if not exists public.day_annotations (
 
 alter table public.day_annotations enable row level security;
 
+drop policy if exists "Users can view their own day annotations" on public.day_annotations;
 create policy "Users can view their own day annotations"
   on public.day_annotations for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own day annotations" on public.day_annotations;
 create policy "Users can insert their own day annotations"
   on public.day_annotations for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own day annotations" on public.day_annotations;
 create policy "Users can update their own day annotations"
   on public.day_annotations for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own day annotations" on public.day_annotations;
 create policy "Users can delete their own day annotations"
   on public.day_annotations for delete using (auth.uid() = user_id);
 
@@ -221,12 +257,16 @@ create table if not exists public.exercise_notes (
 
 alter table public.exercise_notes enable row level security;
 
+drop policy if exists "Users can view their own exercise notes" on public.exercise_notes;
 create policy "Users can view their own exercise notes"
   on public.exercise_notes for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own exercise notes" on public.exercise_notes;
 create policy "Users can insert their own exercise notes"
   on public.exercise_notes for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own exercise notes" on public.exercise_notes;
 create policy "Users can update their own exercise notes"
   on public.exercise_notes for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own exercise notes" on public.exercise_notes;
 create policy "Users can delete their own exercise notes"
   on public.exercise_notes for delete using (auth.uid() = user_id);
 
@@ -250,6 +290,7 @@ create table if not exists public.shared_lifts (
 
 alter table public.shared_lifts enable row level security;
 
+drop policy if exists "Authenticated users can contribute anonymized lifts" on public.shared_lifts;
 create policy "Authenticated users can contribute anonymized lifts"
   on public.shared_lifts for insert
   with check (auth.uid() is not null);
