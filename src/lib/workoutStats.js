@@ -128,6 +128,11 @@ export function exerciseBlocks(exercises) {
 // the end, backfilled sessions, or long interruptions resolve to "not measured".
 const REST_MIN_SEC = 5
 const REST_MAX_SEC = 20 * 60
+// Past this the live timer stops counting and hides itself — you're no longer
+// resting, you've wandered off. Deliberately looser than REST_MAX_SEC above:
+// that one decides what's plausible enough to average into your history, this
+// one only decides how long a number stays on screen.
+export const REST_STALE_SEC = 30 * 60
 
 // Does this set have actual work recorded — reps on either limb, or, for
 // cardio, a duration? Says nothing about WHEN it was logged or what type it
@@ -139,8 +144,15 @@ export function setHasWork(set, kind) {
 }
 
 // A set counts toward rest only if it was actually logged (stamped + real work,
-// warm-ups excluded).
-function isLoggedSet(set, kind) {
+// warm-ups excluded). Exported because the live rest timer has to agree with
+// the recorded average about what resets the clock — it used to take the most
+// recent stamp of ANY set, so a warm-up moved the number on screen while
+// contributing nothing to the history line underneath it.
+//
+// Note this is the RIGHT rule for rest and the WRONG one for session length:
+// warm-ups are time spent training, so the session clock counts them (see
+// sessionWindow in workoutStore.js).
+export function isLoggedSet(set, kind) {
   return !!set.completedAt && set.type !== 'warmup' && setHasWork(set, kind)
 }
 

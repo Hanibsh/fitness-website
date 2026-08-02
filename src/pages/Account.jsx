@@ -9,6 +9,7 @@ import {
   GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS,
 } from '../lib/profileFields'
 import UnitHelp from '../components/UnitHelp'
+import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 
 const NOW_YEAR = new Date().getFullYear()
 const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
@@ -37,6 +38,17 @@ export default function Account() {
   // Preferences
   const [shareData, setShareData] = useState(false)
   const [coachingStatus, setCoachingStatus] = useState('none')
+
+  // Device-local, and saved the instant it changes — unlike everything else on
+  // this page, which waits for Save. Whether you time your rests is a property
+  // of how you train rather than of your account, so it lives on the device
+  // next to the unit picker and the theme, and works logged out.
+  const [restTimerOn, setRestTimerOn] = useState(() => getRestTimer().enabled)
+
+  function toggleRestTimer(enabled) {
+    setRestTimerOn(enabled)
+    saveRestTimer({ ...getRestTimer(), enabled })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -132,6 +144,31 @@ export default function Account() {
   const cardCls = 'bg-white border border-border p-6 sm:p-9 space-y-7'
   const sectionHeadCls = 'font-heading text-xl font-medium text-text-primary mb-4'
 
+  // Rendered in both branches below — it's device settings, not account data,
+  // so it has to survive the logged-out short-circuit.
+  const loggingSection = (
+    <section>
+      <h2 className={sectionHeadCls}>Logging</h2>
+      <div className="bg-white border border-border p-6 sm:p-9">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={restTimerOn}
+            onChange={(e) => toggleRestTimer(e.target.checked)}
+            className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
+          />
+          <span className="text-[13px] text-text-secondary leading-relaxed">
+            <span className="font-medium text-text-primary">Show the rest timer while I log.</span>{' '}
+            A clock in the corner of the log counting the time since your last set. Turn it off if you don't
+            measure your rest periods — your sets are still timestamped either way, so your session length and
+            training history don't change.
+          </span>
+        </label>
+        <p className="text-[12px] text-text-light mt-4">Saved on this device, straight away.</p>
+      </div>
+    </section>
+  )
+
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
@@ -143,9 +180,12 @@ export default function Account() {
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Your profile</h1>
 
           {!user ? (
-            <p className="text-text-muted text-[15px] mt-6">
-              You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
-            </p>
+            <>
+              <p className="text-text-muted text-[15px] mt-6 mb-10">
+                You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
+              </p>
+              {loggingSection}
+            </>
           ) : loading ? (
             <p className="text-text-muted text-[13px] mt-6">Loading…</p>
           ) : (
@@ -273,6 +313,9 @@ export default function Account() {
                     </div>
                   </div>
                 </section>
+
+                {/* ---- Logging ----------------------------------------------------- */}
+                {loggingSection}
 
                 {/* ---- Privacy ----------------------------------------------------- */}
                 <section>

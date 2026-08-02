@@ -1,10 +1,11 @@
 // Data accessor for the public exercise bank (`/exercises`).
 //
-// The bank needs the FULL exercise rows — muscles, fatigue, recovery, rest,
-// SFR, resistance profile, etc. — which `exerciseLibrary.js`'s search entries
-// deliberately strip out (they only carry id/name/category/laterality/type).
-// So the bank reads `src/data/exercises.json` directly. Search itself is still
-// delegated to `searchExercises` in exerciseLibrary.js.
+// The bank needs the FULL exercise rows — muscles, fatigue, recovery, SFR,
+// resistance profile, etc. — which `exerciseLibrary.js`'s search entries
+// deliberately strip out (they carry id/name/category/laterality/type, plus
+// restSeconds for the logger's rest timer). So the bank reads
+// `src/data/exercises.json` directly. Search itself is still delegated to
+// `searchExercises` in exerciseLibrary.js.
 
 import exercisesDb from '../data/exercises.json'
 import { CATEGORIES, SUBCATEGORIES, categoryBySlug } from '../data/muscleInfo'

@@ -122,6 +122,10 @@ const LIBRARY = (exercisesDb.exercises || [])
       laterality: e.laterality || 'both',
       bodyweight: isBodyweight(e.equipment, e.name),
       type: e.type,
+      // [min, max] seconds. The one full-DB field the logger carries, so the
+      // rest timer can show what this movement actually asks for — everything
+      // else stays in the bank (see getFullExercise in exerciseBank.js).
+      restSeconds: e.restSeconds || null,
     }
     item._hay = buildHaystack([
       e.name,

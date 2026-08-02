@@ -5,12 +5,13 @@
 // if we later add accounts + a backend (e.g. Supabase), we swap the bodies of
 // these functions for API calls and the tracker UI keeps working unchanged.
 
-import { convertWeight, canonicalExerciseId } from './workoutStats'
+import { convertWeight, canonicalExerciseId, REST_STALE_SEC } from './workoutStats'
 
 const DRAFT_KEY = 'leon_workout_draft'
 const HISTORY_KEY = 'leon_workout_history'
 const UNIT_KEY = 'leon_workout_unit'
 const BODYWEIGHT_KEY = 'leon_bodyweight_log'
+const REST_TIMER_KEY = 'leon_rest_timer'
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -388,6 +389,33 @@ export function saveUnit(unit) {
   write(UNIT_KEY, unit)
 }
 
+// ---- Rest timer (preference + live anchor) ---------------------------------
+// Device-local, like the unit picker and the theme: whether you time your rests
+// is a property of how you train, not of your account, and plenty of people
+// never measure them at all.
+//
+// `anchor` is a manual "rest starts now" tap and `dismissedAt` a "hide it until
+// my next set" tap. Both live here rather than in React state so a reload
+// mid-rest doesn't silently discard them. An anchor older than the stale
+// window is ignored on read, so yesterday's never resurfaces.
+const REST_TIMER_DEFAULT = { enabled: true, anchor: null, dismissedAt: null }
+
+export function getRestTimer() {
+  const stored = read(REST_TIMER_KEY, null)
+  if (!stored || typeof stored !== 'object') return { ...REST_TIMER_DEFAULT }
+  const fresh = (ts) => (ts && Date.now() - ts <= REST_STALE_SEC * 1000 ? ts : null)
+  return {
+    enabled: stored.enabled !== false, // default on for anyone who's never touched it
+    anchor: fresh(stored.anchor),
+    dismissedAt: fresh(stored.dismissedAt),
+  }
+}
+
+export function saveRestTimer(state) {
+  write(REST_TIMER_KEY, state)
+  return state
+}
+
 // ---- Draft (the in-progress session) --------------------------------------
 
 export function getDraft() {
@@ -436,23 +464,68 @@ export function getHistory() {
 // Turn the in-progress draft into a finished session object (no persistence —
 // the caller decides whether it goes to localStorage or Supabase).
 export function makeSession(draft, unit = 'kg') {
+  // NOTE: `draft.startedAt` and `session.startedAt` are NOT the same thing.
+  // The draft's is wall-clock "when this session/edit was opened", and doubles
+  // as the double-submit key in WorkoutTracker. The session's is "when you
+  // actually started training", derived from the set stamps below. This object
+  // is built field by field and never spreads the draft, so the two can't mix.
+  const { startedAt, endedAt, durationMs } = sessionWindow(draft.exercises)
   return {
     id: newId(),
     date: draft.date || Date.now(),
     name: draft.name || '',
     unit,
-    // How long the session took, if it looks plausible (started today, under
-    // 6h). Used by the dashboard. Persisted locally; remote sync ignores it
-    // for now (no DB column), so synced sessions simply won't show a duration.
-    durationMs: plausibleDuration(draft.startedAt),
+    startedAt,
+    endedAt,
+    durationMs,
     exercises: stripHints(draft.exercises),
   }
 }
 
-function plausibleDuration(startedAt) {
-  if (!startedAt) return null
-  const ms = Date.now() - startedAt
-  return ms >= 60000 && ms <= 6 * 3600000 ? ms : null
+// When training actually started and ended, from the first stamped set to the
+// last. Warm-ups count — they're time spent in the gym (rest between sets
+// deliberately excludes them; see isLoggedSet in workoutStats.js).
+//
+// This used to be `Date.now() - draft.startedAt`, which measured how long the
+// LOGGER had been open rather than how long you trained: open the app in the
+// morning, train in the evening, and the 6h ceiling below threw the whole
+// thing away. Both ends now come from the sets themselves.
+//
+// (`durationMs` does sync — sessions.duration_ms has existed since the
+// duration column was added. workoutRemote.js degrades gracefully when a
+// database hasn't run the migration, which is a different thing.)
+const MIN_SESSION_MS = 60 * 1000
+const MAX_SESSION_MS = 6 * 60 * 60 * 1000
+
+// When the first set of a session was stamped, or null before anything's been
+// logged. Deliberately ungated: the live "session so far" clock in the logger
+// runs from the moment you log your first set, whereas sessionWindow below is
+// about what's worth SAVING and throws away anything implausible.
+export function firstSetAt(exercises) {
+  let first = Infinity
+  for (const ex of exercises || []) {
+    for (const s of ex.sets || []) {
+      if (s.completedAt && s.completedAt < first) first = s.completedAt
+    }
+  }
+  return first === Infinity ? null : first
+}
+
+export function sessionWindow(exercises) {
+  const none = { startedAt: null, endedAt: null, durationMs: null }
+  const first = firstSetAt(exercises)
+  if (!first) return none
+  let last = 0
+  for (const ex of exercises || []) {
+    for (const s of ex.sets || []) {
+      if (s.completedAt > last) last = s.completedAt
+    }
+  }
+  // A single stamp leaves nothing to measure between.
+  if (last <= first) return none
+  const ms = last - first
+  if (ms < MIN_SESSION_MS || ms > MAX_SESSION_MS) return none
+  return { startedAt: first, endedAt: last, durationMs: ms }
 }
 
 // Add a finished session to the local (anonymous) history, newest-first by date

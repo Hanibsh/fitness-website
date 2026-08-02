@@ -25,6 +25,9 @@ import {
   sessionStats,
   getUnit,
   saveUnit,
+  getRestTimer,
+  saveRestTimer,
+  firstSetAt,
   getGuestShare,
   saveGuestShare,
   getExerciseTarget,
@@ -41,9 +44,9 @@ import {
   makeDayAnnotation,
   saveDayAnnotation,
 } from '../lib/workoutStore'
-import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isLoggedSet, REST_STALE_SEC } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
@@ -61,7 +64,9 @@ import { muscleRecovery, musclesForExercises } from '../lib/engine'
 import UnitHelp from '../components/UnitHelp'
 import LogTabs from '../components/LogTabs'
 import QuickCalculator from '../components/QuickCalculator'
+import RestTimer from '../components/RestTimer'
 import SplitSyncModal from '../components/SplitSyncModal'
+import { formatDuration } from '../lib/dashboard'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
 // Same as SET_GRID plus a trailing column for the per-set laterality toggle —
@@ -87,6 +92,23 @@ function toInputDate(ts) {
 function fromInputDate(value) {
   const [y, m, d] = value.split('-').map(Number)
   return new Date(y, m - 1, d, 12, 0, 0).getTime()
+}
+
+// Clock time <-> the HH:MM a native time input expects. These are the one place
+// the app keeps a real time of day: `date` stays noon-pinned above so day
+// bucketing can't drift, and a session's start/end live in their own fields.
+function toInputTime(ts) {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Put HH:MM onto the calendar day `onDay` falls in.
+function withTimeOfDay(onDay, value) {
+  const [h, m] = value.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  const d = new Date(onDay)
+  d.setHours(h, m, 0, 0)
+  return d.getTime()
 }
 
 // Day annotations are noon-anchored (see makeDayAnnotation) so they can never
@@ -139,14 +161,26 @@ function setSummary(set, unit, kind, distUnit) {
   return tag + (hasRir ? `${base} · ${set.rir} RIR` : base)
 }
 
-// Passively timestamp a set the moment it's first logged (positive reps or, for
-// cardio, duration), so rest between sets can be derived automatically. Only
-// stamps once; the explicit "done" tap refreshes it. Returns a patch to merge,
-// or null when nothing changes.
+// Passively timestamp a set as it's logged (positive reps or, for cardio,
+// duration), so rest between sets and the session's length can both be derived
+// automatically. Returns a patch to merge, or null when nothing changes.
+//
+// The stamp tracks the LAST keystroke of a row, not the first. Stamping once on
+// first entry meant typing `12` recorded the moment you pressed `1`, so how
+// long a set appeared to take depended on your typing order — weight-first and
+// reps-first gave different answers for the same set.
+//
+// Only a keystroke that lands soon after the existing stamp moves it. Later
+// than that you're correcting a set you logged a while ago, and re-anchoring
+// rest to a typo fix would be worse than leaving it alone.
+const STAMP_REFINE_MS = 3 * 60 * 1000
+
 function restStamp(set, field, value) {
   if (field !== 'reps' && field !== 'duration') return null
-  if (value !== '' && Number(value) > 0 && !set.completedAt) return { completedAt: Date.now() }
-  return null
+  if (value === '' || !(Number(value) > 0)) return null
+  const now = Date.now()
+  if (!set.completedAt) return { completedAt: now }
+  return now - set.completedAt <= STAMP_REFINE_MS ? { completedAt: now } : null
 }
 
 // Drafts saved before laterality existed have no `laterality` on their
@@ -341,14 +375,18 @@ export default function WorkoutTracker() {
   const [splitSyncDone, setSplitSyncDone] = useState(null)
   const [selectedCalDay, setSelectedCalDay] = useState(null)
   const [editingSessionDate, setEditingSessionDate] = useState(null)
+  const [editingSessionTime, setEditingSessionTime] = useState(null)
   const [showRirHelp, setShowRirHelp] = useState(false)
   const [progressExercise, setProgressExercise] = useState(null)
   const [editingDate, setEditingDate] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [guestShare, setGuestShare] = useState(() => getGuestShare())
-  const [restAnchor, setRestAnchor] = useState(null) // manual "rest starts now" tap
-  const [nowTick, setNowTick] = useState(() => Date.now()) // drives the live rest timer
+  // Rest timer: the on/off preference plus the two taps that override the
+  // derived anchor — `anchor` ("rest starts now") and `dismissedAt` ("hide it
+  // until my next set"). All three live in localStorage rather than React
+  // state, so reloading mid-rest doesn't silently throw them away.
+  const [restTimer, setRestTimer] = useState(() => getRestTimer())
   const [hp, setHp] = useState('') // honeypot — real users leave this empty
   const [loadError, setLoadError] = useState('')
   const firstRender = useRef(true)
@@ -426,30 +464,49 @@ export default function WorkoutTracker() {
     return muscleRecovery(history).muscles.filter((m) => hit.has(m.muscle) && m.status === 'recovering')
   }, [plan, history])
 
-  // Live rest timer: time since the most recent logged set (or a manual "rest
-  // starts now" tap), whichever is later. Only while logging a live session.
-  const lastSetStamp = useMemo(() => {
-    let m = 0
-    for (const ex of draft.exercises) for (const s of ex.sets) if (s.completedAt > m) m = s.completedAt
-    return m || null
+  // What the rest clock counts from: the most recent set that actually counts
+  // as logged. `isLoggedSet` is the same predicate the recorded average uses,
+  // which is the point — before, the live number came from the newest stamp of
+  // ANY set, so a warm-up moved the clock on screen while contributing nothing
+  // to the "avg rest" line underneath it.
+  //
+  // The winning set's exercise comes back too: that's where the rest target
+  // shown in the widget comes from.
+  const lastLogged = useMemo(() => {
+    let at = 0
+    let name = ''
+    let exerciseId = null
+    for (const ex of draft.exercises) {
+      for (const s of ex.sets) {
+        if (!isLoggedSet(s, ex.kind) || s.completedAt <= at) continue
+        at = s.completedAt
+        name = ex.name
+        exerciseId = ex.exerciseId || exerciseIdForName(ex.name)
+      }
+    }
+    return at ? { at, name, exerciseId } : null
   }, [draft])
-  const restAnchorTs = Math.max(restAnchor || 0, lastSetStamp || 0) || null
-  const restElapsedSec = restAnchorTs ? Math.floor((nowTick - restAnchorTs) / 1000) : null
-  const showRest = !isEditing && isToday && restElapsedSec != null && restElapsedSec >= 0 && restElapsedSec <= 30 * 60
 
-  // Tick the rest timer once a second whenever a live session has an anchor
-  // (keeps `nowTick` fresh so `restElapsedSec`/`showRest` are correct). Stops
-  // after 30 min, when rest is no longer meaningful.
-  useEffect(() => {
-    if (!restAnchorTs || isEditing || !isToday) return
-    setNowTick(Date.now())
-    const id = setInterval(() => {
-      const t = Date.now()
-      setNowTick(t)
-      if ((t - restAnchorTs) / 1000 > 30 * 60) clearInterval(id)
-    }, 1000)
-    return () => clearInterval(id)
-  }, [restAnchorTs, isEditing, isToday])
+  // The whole session so far, from the first stamped set — warm-ups included,
+  // since they're time spent training (rest deliberately excludes them above).
+  const sessionStartTs = useMemo(() => firstSetAt(draft.exercises), [draft])
+
+  // A manual tap wins over the derived anchor when it's more recent; the next
+  // logged set takes it back. `dismissedAt` hides the number the same way,
+  // until a newer set revives it — the widget itself stays put, showing its
+  // idle face, so there's always something to tap to start a rest.
+  const anchorCandidate = Math.max(restTimer.anchor || 0, lastLogged?.at || 0) || null
+  const restAnchorTs = anchorCandidate > (restTimer.dismissedAt || 0) ? anchorCandidate : null
+  const showRestTimer = restTimer.enabled && !isEditing && isToday
+
+  const restTargetSec = useMemo(
+    () => (lastLogged?.exerciseId ? getExercise(lastLogged.exerciseId)?.restSeconds || null : null),
+    [lastLogged]
+  )
+
+  function updateRestTimer(patch) {
+    setRestTimer((prev) => saveRestTimer({ ...prev, ...patch }))
+  }
 
   // Auto-save the draft on every change (skip the very first render).
   useEffect(() => {
@@ -1155,6 +1212,12 @@ export default function WorkoutTracker() {
         exercises: migrateSupersets(session.exercises.map(migrateExercise)),
         bodyweight,
         editingId: session.id,
+        // Carried, not recomputed. `startedAt` above is this EDIT's wall clock
+        // (it doubles as the double-submit key); the three below are when the
+        // workout itself ran — deliberately named apart so the two can't be
+        // confused. A hand-corrected time has to survive re-opening a session.
+        sessionStartedAt: session.startedAt ?? null,
+        sessionEndedAt: session.endedAt ?? null,
         durationMs: session.durationMs ?? null,
       }
     })
@@ -1400,14 +1463,16 @@ export default function WorkoutTracker() {
       persistProgram(program)
     }
 
-    // Editing an existing session: overwrite it in place (keep its id and
-    // original duration) instead of creating a new one.
+    // Editing an existing session: overwrite it in place (keep its id and the
+    // times the workout originally ran) instead of creating a new one.
     if (draft.editingId) {
       const updated = {
         id: draft.editingId,
         date: draft.date || Date.now(),
         name: draft.name || '',
         unit,
+        startedAt: draft.sessionStartedAt ?? null,
+        endedAt: draft.sessionEndedAt ?? null,
         durationMs: draft.durationMs ?? null,
         exercises: stripHints(exercises),
       }
@@ -1552,6 +1617,40 @@ export default function WorkoutTracker() {
       setHistory(updateLocalSession(updated))
     }
     setEditingSessionDate(null)
+    setSaveError('')
+  }
+
+  // Correct when a saved session ran. The clock is derived from the set stamps
+  // at finish, which is right for a session you logged as you went and wrong
+  // for one you wrote up afterwards — so it's editable.
+  //
+  // Only the timing fields move. `date` stays exactly where it is (and stays
+  // noon-pinned), so correcting the time can never bump a workout onto another
+  // day. Note there's no isSameDay guard like changeSessionDate's — that's
+  // day-granularity and would swallow every same-day edit, which is all of them.
+  async function changeSessionTime(session, { start, end }) {
+    const day = session.date || Date.now()
+    const startTs = start ? withTimeOfDay(day, start) : null
+    let endTs = end ? withTimeOfDay(day, end) : null
+    if (!startTs || !endTs) return setEditingSessionTime(null)
+    // Finishing "before" you started means you trained past midnight.
+    if (endTs < startTs) endTs += 24 * 60 * 60 * 1000
+    const durationMs = endTs - startTs
+    if (durationMs === session.durationMs && startTs === session.startedAt) return setEditingSessionTime(null)
+
+    const updated = { ...session, startedAt: startTs, endedAt: endTs, durationMs }
+    if (user) {
+      try {
+        await updateRemoteSessionTimes(session.id, startTs, endTs, durationMs)
+      } catch {
+        setSaveError('Could not save that time. Check your connection and try again.')
+        return
+      }
+      setHistory((prev) => [updated, ...prev.filter((s) => s.id !== session.id)].sort((a, b) => b.date - a.date))
+    } else {
+      setHistory(updateLocalSession(updated))
+    }
+    setEditingSessionTime(null)
     setSaveError('')
   }
 
@@ -2438,18 +2537,9 @@ export default function WorkoutTracker() {
               </button>
             )}
 
-            {showRest && (
-              <button
-                type="button"
-                onClick={() => setRestAnchor(Date.now())}
-                title="Tap to restart the rest timer"
-                className="w-full flex items-center justify-center gap-2 bg-cream border border-border text-text-secondary py-2 mb-6 cursor-pointer hover:border-border-hover transition-colors"
-              >
-                <Timer className="w-3.5 h-3.5 text-text-light" />
-                <span className="text-[11px] uppercase tracking-wider text-text-light">Rest</span>
-                <span className="font-heading text-[15px] font-medium text-text-primary tabular-nums">{formatRest(restElapsedSec)}</span>
-              </button>
-            )}
+            {/* The rest clock used to live here, above the session name, where
+                it scrolled out of sight after the first exercise. It's a
+                corner bubble now — see <RestTimer /> at the end of the page. */}
 
             <div className="mb-6">
               <SessionNamePicker
@@ -2657,6 +2747,7 @@ export default function WorkoutTracker() {
                   const stats = sessionStats(session)
                   const isOpen = openSession === session.id
                   const avgRest = formatRest(sessionAvgRest(session))
+                  const duration = formatDuration(session.durationMs)
                   const sessionGroups = supersetLabels(session.exercises.filter((e) => e.kind !== 'cardio'))
                   return (
                     <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border scroll-mt-28">
@@ -2676,6 +2767,7 @@ export default function WorkoutTracker() {
                           <p className="text-[12px] text-text-muted mt-0.5">
                             {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
                             {stats.volume > 0 && ` · ${stats.volume.toLocaleString()} ${session.unit || 'kg'} volume`}
+                            {duration && ` · ${duration}`}
                             {avgRest && ` · ${avgRest} avg rest`}
                           </p>
                         </div>
@@ -2747,6 +2839,60 @@ export default function WorkoutTracker() {
                                     className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
                                   >
                                     <Calendar className="w-3.5 h-3.5" /> Move to another day
+                                  </button>
+                                ))}
+                                {/* One control for both jobs: it shows the window
+                                    the workout ran in, and opens for correction
+                                    when the derived one is wrong (a session
+                                    written up afterwards, say). */}
+                                {draft.editingId !== session.id && (editingSessionTime?.id === session.id ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <input
+                                      type="time"
+                                      autoFocus
+                                      aria-label="Session start time"
+                                      value={editingSessionTime.start}
+                                      onChange={(e) => setEditingSessionTime((p) => ({ ...p, start: e.target.value }))}
+                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                                    />
+                                    <span className="text-[12px] text-text-light">–</span>
+                                    <input
+                                      type="time"
+                                      aria-label="Session end time"
+                                      value={editingSessionTime.end}
+                                      onChange={(e) => setEditingSessionTime((p) => ({ ...p, end: e.target.value }))}
+                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                                    />
+                                    <button
+                                      onClick={() => changeSessionTime(session, editingSessionTime)}
+                                      aria-label="Save session time"
+                                      className="inline-flex items-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 transition-colors"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingSessionTime(null)}
+                                      aria-label="Cancel"
+                                      className="inline-flex items-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      setEditingSessionTime({
+                                        id: session.id,
+                                        start: toInputTime(session.startedAt || session.date),
+                                        end: toInputTime(session.endedAt || session.date),
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                                  >
+                                    <Timer className="w-3.5 h-3.5" />
+                                    {session.startedAt && session.endedAt
+                                      ? `${toInputTime(session.startedAt)} – ${toInputTime(session.endedAt)}`
+                                      : 'Set session time'}
                                   </button>
                                 ))}
                                 {draft.editingId !== session.id && (
@@ -2954,6 +3100,16 @@ export default function WorkoutTracker() {
       )}
 
       <QuickCalculator />
+      {showRestTimer && (
+        <RestTimer
+          anchorTs={restAnchorTs}
+          targetSec={restTargetSec}
+          exerciseName={lastLogged?.name || ''}
+          sessionStartTs={sessionStartTs}
+          onReset={() => updateRestTimer({ anchor: Date.now(), dismissedAt: null })}
+          onDismiss={() => updateRestTimer({ dismissedAt: Date.now() })}
+        />
+      )}
     </div>
   )
 }

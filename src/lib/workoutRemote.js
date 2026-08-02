@@ -12,6 +12,10 @@ function fromRow(row) {
     name: row.name || '',
     unit: row.unit || 'kg',
     exercises: Array.isArray(row.exercises) ? row.exercises : [],
+    // When training actually ran. Null on anything logged before these columns
+    // existed, or on a session whose window wasn't plausible.
+    startedAt: row.started_at ? new Date(row.started_at).getTime() : null,
+    endedAt: row.ended_at ? new Date(row.ended_at).getTime() : null,
     durationMs: row.duration_ms ?? null,
   }
 }
@@ -20,24 +24,34 @@ function toRow(userId, session) {
   return {
     id: session.id,
     user_id: userId,
+    // Noon-pinned calendar day — the app buckets by this and only this. The
+    // clock times below never feed day bucketing.
     date: new Date(session.date).toISOString(),
     name: session.name || null,
     unit: session.unit || 'kg',
     exercises: session.exercises || [],
+    started_at: session.startedAt ? new Date(session.startedAt).toISOString() : null,
+    ended_at: session.endedAt ? new Date(session.endedAt).toISOString() : null,
     duration_ms: session.durationMs ?? null,
   }
 }
 
-// True when an insert failed only because the `duration_ms` column isn't in
-// the schema yet (the migration hasn't been run). Lets us retry without it so
-// saving never breaks on older databases.
-function missingDurationColumn(error) {
+// True when a write failed only because one of the timing columns isn't in the
+// schema yet (schema.sql hasn't been re-run against this database). Lets us
+// retry without them so saving a workout never breaks on an older database —
+// you lose the timing, not the session.
+const TIMING_COLUMNS = ['duration_ms', 'started_at', 'ended_at']
+
+function missingTimingColumn(error) {
   if (!error) return false
-  return error.code === 'PGRST204' || (typeof error.message === 'string' && error.message.includes('duration_ms'))
+  return (
+    error.code === 'PGRST204' ||
+    (typeof error.message === 'string' && TIMING_COLUMNS.some((c) => error.message.includes(c)))
+  )
 }
 
-function stripDuration(row) {
-  const { duration_ms, ...rest } = row // eslint-disable-line no-unused-vars
+function stripTiming(row) {
+  const { duration_ms, started_at, ended_at, ...rest } = row // eslint-disable-line no-unused-vars
   return rest
 }
 
@@ -54,8 +68,8 @@ export async function fetchRemoteHistory(userId) {
 export async function insertRemoteSession(userId, session) {
   const row = toRow(userId, session)
   let { error } = await supabase.from('sessions').insert(row)
-  if (missingDurationColumn(error)) {
-    ;({ error } = await supabase.from('sessions').insert(stripDuration(row)))
+  if (missingTimingColumn(error)) {
+    ;({ error } = await supabase.from('sessions').insert(stripTiming(row)))
   }
   if (error) throw error
   return session
@@ -65,8 +79,8 @@ export async function insertRemoteSessions(userId, sessions) {
   if (!sessions.length) return
   const rows = sessions.map((s) => toRow(userId, s))
   let { error } = await supabase.from('sessions').insert(rows)
-  if (missingDurationColumn(error)) {
-    ;({ error } = await supabase.from('sessions').insert(rows.map(stripDuration)))
+  if (missingTimingColumn(error)) {
+    ;({ error } = await supabase.from('sessions').insert(rows.map(stripTiming)))
   }
   if (error) throw error
 }
@@ -86,13 +100,27 @@ export async function updateRemoteSessionDate(id, date) {
   if (error) throw error
 }
 
+// Correct when a saved session started and ended. Only the timing columns
+// change — `date` stays exactly where it is, so a time edit can never move a
+// workout to another day. Degrades to a no-op on a database that hasn't run
+// the migration, matching the insert/update paths above.
+export async function updateRemoteSessionTimes(id, startedAt, endedAt, durationMs) {
+  const patch = {
+    started_at: startedAt ? new Date(startedAt).toISOString() : null,
+    ended_at: endedAt ? new Date(endedAt).toISOString() : null,
+    duration_ms: durationMs ?? null,
+  }
+  const { error } = await supabase.from('sessions').update(patch).eq('id', id)
+  if (error && !missingTimingColumn(error)) throw error
+}
+
 // Overwrite a saved session in place (editing a past workout). Updates the
 // existing row rather than inserting; RLS scopes it to the user's own rows.
 export async function updateRemoteSession(userId, session) {
   const row = toRow(userId, session)
   let { error } = await supabase.from('sessions').update(row).eq('id', session.id)
-  if (missingDurationColumn(error)) {
-    ;({ error } = await supabase.from('sessions').update(stripDuration(row)).eq('id', session.id))
+  if (missingTimingColumn(error)) {
+    ;({ error } = await supabase.from('sessions').update(stripTiming(row)).eq('id', session.id))
   }
   if (error) throw error
   return session

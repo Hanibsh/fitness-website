@@ -83,11 +83,19 @@ create table if not exists public.sessions (
   -- sessions where it couldn't be measured are null). Powers the dashboard's
   -- training-time stats.
   duration_ms bigint,
+  -- When training actually ran, from the first logged set to the last. Unlike
+  -- `date` above (which is noon-pinned so day bucketing can't drift across
+  -- timezones) these carry a real time of day, and are editable by the user.
+  -- Nullable: older rows, and sessions whose window wasn't plausible.
+  started_at timestamptz,
+  ended_at timestamptz,
   created_at timestamptz not null default now()
 );
 
--- If the sessions table already exists from an earlier run, add the column:
+-- If the sessions table already exists from an earlier run, add the columns:
 alter table public.sessions add column if not exists duration_ms bigint;
+alter table public.sessions add column if not exists started_at timestamptz;
+alter table public.sessions add column if not exists ended_at timestamptz;
 
 alter table public.sessions enable row level security;
 
