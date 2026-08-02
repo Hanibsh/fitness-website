@@ -230,6 +230,18 @@ function setsForExercise(session, exercise) {
 // once every working set reaches the top of the rep range it's time to add
 // weight. For a unilateral set the weaker limb gates progress (uses min L/R);
 // checked per set so a "both" exercise can mix bilateral and unilateral sets.
+//
+// WARM-UPS ARE NOT PART OF THIS. They're done at a load you chose precisely
+// because it isn't the working weight, so their reps say nothing about whether
+// that weight is ready to go up — a light 15 would call for more load, and an
+// easy 5 would hold you back from it. Same exclusion setsForExercise makes, for
+// the same reason.
+//
+// The 'go' label deliberately names NO number. It sat next to the words "add
+// weight", where a bare rep count reads as the kilos to add — and the right
+// increment depends on the lift, the equipment's smallest plate and how the
+// last set actually felt, none of which this knows. So it says to go up a
+// little and leaves the amount to you.
 export function repRangeStatus(ex) {
   if (!ex || ex.kind === 'cardio' || !ex.repRange) return null
   const { low, high } = ex.repRange
@@ -238,11 +250,11 @@ export function repRangeStatus(ex) {
     s.left
       ? Math.min(Number(s.left?.reps) || 0, Number(s.right?.reps) || 0)
       : Number(s.reps) || 0
-  const working = ex.sets.map(repsOf).filter((r) => r > 0)
+  const working = ex.sets.filter((s) => s.type !== 'warmup').map(repsOf).filter((r) => r > 0)
   if (!working.length) return null
-  if (working.every((r) => r >= high)) return { tone: 'go', label: `Add weight next — hit ${high}+ on every set` }
-  if (working.every((r) => r >= low)) return { tone: 'in', label: `In target ${low}–${high} — push toward ${high}` }
-  return { tone: 'below', label: `Building toward ${low}–${high}` }
+  if (working.every((r) => r >= high)) return { tone: 'go', label: 'Time to increase the weight a little' }
+  if (working.every((r) => r >= low)) return { tone: 'in', label: `In target ${low}–${high} reps — push for more` }
+  return { tone: 'below', label: `Building toward ${low}–${high} reps` }
 }
 
 // Each metric turns one session's sets into a single number (or null if the
