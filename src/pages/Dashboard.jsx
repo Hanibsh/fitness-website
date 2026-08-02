@@ -7,6 +7,7 @@ import {
   BatteryCharging, Lightbulb, CalendarRange, HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { useLocalDay } from '../lib/useLocalDay'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
 import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
@@ -283,6 +284,10 @@ export default function Dashboard() {
     setSelectedDay((prev) => (prev ? { ...prev, sessions: prev.sessions.filter((s) => s.id !== session.id) } : prev))
   }
 
+  // Rolls over on its own at midnight. A phone PWA is resumed rather than
+  // reloaded, so without this the hero keeps yesterday's answer while the
+  // logger — mounted fresh on navigation — already has today's.
+  const today = useLocalDay()
   const now = new Date()
   const stats = useMemo(() => {
     if (!sessions.length) return null
@@ -396,12 +401,16 @@ export default function Dashboard() {
   // own 'off' state (it used to read as a false "Done for today"). No program
   // falls back to the name-based "Up next" heuristic.
   const weeklyProgram = !!program && scheduleMode(program) === 'weekly'
-  const todaySessions = sessions.filter((s) => new Date(s.date).toDateString() === new Date().toDateString())
+  const todayStr = new Date(today).toDateString()
+  const todaySessions = sessions.filter((s) => new Date(s.date).toDateString() === todayStr)
   const trainedToday = todaySessions.length > 0
-  const plan = todayPlan(program, { annotations, trainedToday })
-  const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const plan = todayPlan(program, { now: today, annotations, trainedToday })
+  // setDate rather than +24h: a DST shift makes the day 23 or 25 hours long,
+  // and the raw arithmetic then lands on the wrong calendar date.
+  const tomorrowDate = new Date(today)
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
   const tomorrowSessions = sessions.filter((s) => new Date(s.date).toDateString() === tomorrowDate.toDateString())
-  const tomorrowPlanned = plannedDayForDate(program, tomorrowDate.getTime(), { annotations })
+  const tomorrowPlanned = plannedDayForDate(program, tomorrowDate.getTime(), { now: today, annotations })
   const exerciseCount = (day) => `${day.exercises.length} exercise${day.exercises.length !== 1 ? 's' : ''}`
   const upToday =
     plan.status === 'none'

@@ -47,6 +47,7 @@ import { reasonLabel } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
+import { useLocalDay } from '../lib/useLocalDay'
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExercisePicker from '../components/ExercisePicker'
@@ -223,11 +224,11 @@ function isStaleProgramDraft(draft) {
 // Whether starting today's planned session would set the current draft aside
 // rather than replace it. One predicate for both the promise on the card and
 // the stash itself, so they can't drift apart. A program draft normally IS
-// today's session (nothing to set aside); a stale one is only worth keeping
+// today's session (nothing to set aside); a leftover one is only worth keeping
 // once it holds logged work.
-function willStashDraft(draft) {
+function willStashDraft(draft, leftover) {
   if (!draft.exercises.length || draft.editingId) return false
-  return !draft.programId || (isStaleProgramDraft(draft) && draftHasWork(draft))
+  return !draft.programId || (leftover && draftHasWork(draft))
 }
 
 // Restore the draft on mount. A stale program draft with nothing logged is pure
@@ -268,6 +269,9 @@ export default function WorkoutTracker() {
   const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  // Rolls over on its own at midnight, so a phone that was only resumed rather
+  // than reloaded stops answering with yesterday's plan.
+  const today = useLocalDay()
   const [draft, setDraft] = useState(restoreDraft)
   const [history, setHistory] = useState([])
   const [program, setProgram] = useState(null)
@@ -316,7 +320,7 @@ export default function WorkoutTracker() {
   }
 
   const draftDate = draft.date || Date.now()
-  const isToday = isSameDay(draftDate, Date.now())
+  const isToday = isSameDay(draftDate, today)
   const isEditing = !!draft.editingId
   // The program's answer for today — todayPlan is the same source the
   // dashboard hero and the calendar projection use, so the three surfaces
@@ -324,16 +328,27 @@ export default function WorkoutTracker() {
   // session logged today) and rotating (the pointer advanced today — in that
   // case plan.day is the NEXT day up, planned for tomorrow).
   const isWeeklyProgram = !!program && scheduleMode(program) === 'weekly'
-  const loggedToday = useMemo(() => history.some((s) => isSameDay(s.date, Date.now())), [history])
+  const loggedToday = useMemo(() => history.some((s) => isSameDay(s.date, today)), [history, today])
   const plan = useMemo(
-    () => todayPlan(program, { annotations, trainedToday: loggedToday }),
-    [program, annotations, loggedToday]
+    () => todayPlan(program, { now: today, annotations, trainedToday: loggedToday }),
+    [program, annotations, loggedToday, today]
   )
   const todayDay = plan.day
-  // A leftover program draft must never suppress today's card — that's what
-  // made the dashboard promise "Lower A" and the logger hand back last week's
-  // Upper A with no way to reach today's day short of discarding.
-  const staleDraft = isStaleProgramDraft(draft)
+  // Is this draft genuinely the session for today? Only while it's dated today
+  // AND still points at the day the program has up — the two ways a draft goes
+  // stale. It never expires on its own and it lives in THIS device's storage,
+  // so a "Start session" tap that was finished elsewhere (or never finished)
+  // sits here indefinitely. Left unchecked it suppressed today's card, which is
+  // how the dashboard came to promise Lower A while the logger served Upper A.
+  // Until the program loads there's nothing to compare against, so assume it's
+  // current rather than flash today's card over a live session.
+  const isLeftoverDraft = (d) => {
+    if (!d.programId || d.editingId) return false
+    if (!isSameDay(d.date || d.startedAt || today, today)) return true
+    if (!program) return false
+    return d.programId !== program.id || (!!plan.day && d.programDayId !== plan.day.id)
+  }
+  const staleDraft = isLeftoverDraft(draft)
   const showTodayCard = !!todayDay && !isEditing && (!draft.programId || staleDraft)
   const doneToday = plan.status === 'done'
   const nextUp = useMemo(
@@ -1114,7 +1129,7 @@ export default function WorkoutTracker() {
   // restored later.
   function startTodaysSession(day) {
     setDraft((cur) => {
-      if (willStashDraft(cur)) stashDraft(cur)
+      if (willStashDraft(cur, isLeftoverDraft(cur))) stashDraft(cur)
       const bodyweight = prefillBodyweight()
       // Resolved by plan link rather than array index, so this survives
       // draftFromDay ever filtering or reordering what it returns.
@@ -2098,7 +2113,7 @@ export default function WorkoutTracker() {
                     >
                       <Check className="w-4 h-4" /> Start session
                     </button>
-                    {willStashDraft(draft) && (
+                    {willStashDraft(draft, staleDraft) && (
                       <span className="text-[11px] text-cream-60">Your current entries will be set aside and restored after.</span>
                     )}
                   </div>
@@ -2112,7 +2127,9 @@ export default function WorkoutTracker() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">
-                  {isEditing ? 'Editing session' : isToday ? "Today's session" : 'Past session'}
+                  {/* Short words only — the sets counter and unit toggle leave
+                      this label ~60px at 320px, so it has to be able to wrap. */}
+                  {isEditing ? 'Editing session' : staleDraft ? "Not today's" : isToday ? "Today's session" : 'Past session'}
                 </p>
                 {editingDate ? (
                   <input
@@ -2167,8 +2184,9 @@ export default function WorkoutTracker() {
               <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
                 <Calendar className="w-3.5 h-3.5 text-text-light shrink-0" />
                 <span className="text-[12px] text-text-secondary min-w-0">
-                  Unfinished <span className="text-text-primary">{draft.name || 'session'}</span> from{' '}
-                  {formatDate(draftDate)} — finish it, or discard it to start today's session.
+                  Unfinished <span className="text-text-primary">{draft.name || 'session'}</span>
+                  {isToday ? ' — not the day your split has up now' : ` from ${formatDate(draftDate)}`}. Finish it,
+                  or discard it to start today's session.
                 </span>
               </div>
             )}
