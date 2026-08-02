@@ -231,11 +231,13 @@ function setsForExercise(session, exercise) {
 // weight. For a unilateral set the weaker limb gates progress (uses min L/R);
 // checked per set so a "both" exercise can mix bilateral and unilateral sets.
 //
-// WARM-UPS ARE NOT PART OF THIS. They're done at a load you chose precisely
-// because it isn't the working weight, so their reps say nothing about whether
-// that weight is ready to go up — a light 15 would call for more load, and an
-// easy 5 would hold you back from it. Same exclusion setsForExercise makes, for
-// the same reason.
+// ONLY STRAIGHT WORKING SETS COUNT. Double progression asks one question — has
+// the weight I'm working at earned a bump? — so only the sets actually AT that
+// weight can answer it. A warm-up and a back-off are both deliberately lighter,
+// and either one distorts it in both directions: a 5-rep warm-up before three
+// sets of 10 said "not yet" when the weight was ready, and a light high-rep set
+// vouched for sets that hadn't earned it. Volume still counts back-offs (see
+// setsForExercise) — they're real work, just not evidence about this load.
 //
 // The 'go' label deliberately names NO number. It sat next to the words "add
 // weight", where a bare rep count reads as the kilos to add — and the right
@@ -250,7 +252,7 @@ export function repRangeStatus(ex) {
     s.left
       ? Math.min(Number(s.left?.reps) || 0, Number(s.right?.reps) || 0)
       : Number(s.reps) || 0
-  const working = ex.sets.filter((s) => s.type !== 'warmup').map(repsOf).filter((r) => r > 0)
+  const working = ex.sets.filter((s) => !s.type).map(repsOf).filter((r) => r > 0)
   if (!working.length) return null
   if (working.every((r) => r >= high)) return { tone: 'go', label: 'Time to increase the weight a little' }
   if (working.every((r) => r >= low)) return { tone: 'in', label: `In target ${low}–${high} reps — push for more` }
