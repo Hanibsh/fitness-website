@@ -231,13 +231,41 @@ function willStashDraft(draft, leftover) {
   return !draft.programId || (leftover && draftHasWork(draft))
 }
 
-// Restore the draft on mount. A stale program draft with nothing logged is pure
-// debris — one tap that went nowhere — so it's dropped on sight. One with real
-// sets in it is always kept: it's the user's work, and the UI below labels it
-// as the past session it is instead of passing it off as today's.
+// An edit opened on an earlier day and never saved or cancelled. Editing is a
+// MODE, not a workout: it takes over the whole editor and hides today's card,
+// but it was only ever meant to last as long as the sitting. It's written to
+// the same per-device draft slot as everything else, so an edit abandoned on
+// the phone reopens as "Editing session" every visit from then on — the split's
+// real plan unreachable behind it. `startedAt` is when the edit began (`date`
+// belongs to the session being edited, which is naturally in the past).
+function isStaleEditDraft(draft) {
+  if (!draft?.editingId) return false
+  return !isSameDay(draft.startedAt || draft.date || Date.now(), Date.now())
+}
+
+// Restore the draft on mount, dropping what has plainly been abandoned.
+//
+// An edit from a previous day is closed the way Cancel closes it — the session
+// being edited is saved and untouched, so the most that goes is unsaved tweaks
+// to it from a day the user walked away from. Leaving it in place costs far
+// more: the logger stays stuck on it forever.
+//
+// A leftover program draft with nothing logged is pure debris — one tap that
+// went nowhere. One with real sets is always kept; the UI labels it honestly
+// instead of passing it off as today's.
 function restoreDraft() {
   const draft = migrateDraft(getDraft())
   if (!draft) return emptyDraft()
+  if (isStaleEditDraft(draft)) {
+    // Same restore Cancel does: bring back whatever was set aside when the edit
+    // was opened, unless that's stale too.
+    const stash = migrateDraft(getStashedDraft())
+    clearStashedDraft()
+    clearDraft()
+    if (!stash || isStaleEditDraft(stash) || (isStaleProgramDraft(stash) && !draftHasWork(stash))) return emptyDraft()
+    saveDraft(stash)
+    return stash
+  }
   if (isStaleProgramDraft(draft) && !draftHasWork(draft)) {
     clearDraft()
     return emptyDraft()
@@ -343,13 +371,18 @@ export default function WorkoutTracker() {
   // Until the program loads there's nothing to compare against, so assume it's
   // current rather than flash today's card over a live session.
   const isLeftoverDraft = (d) => {
-    if (!d.programId || d.editingId) return false
+    if (d.editingId) return isStaleEditDraft(d)
+    if (!d.programId) return false
     if (!isSameDay(d.date || d.startedAt || today, today)) return true
     if (!program) return false
     return d.programId !== program.id || (!!plan.day && d.programDayId !== plan.day.id)
   }
   const staleDraft = isLeftoverDraft(draft)
-  const showTodayCard = !!todayDay && !isEditing && (!draft.programId || staleDraft)
+  // Only a draft that's genuinely current — today's session in progress, or an
+  // edit opened just now — gets to stand in for today's card. Anything left
+  // over shows it instead of hiding behind it. (restoreDraft clears most of
+  // these on mount; this catches one that goes stale with the page still open.)
+  const showTodayCard = !!todayDay && !((isEditing || draft.programId) && !staleDraft)
   const doneToday = plan.status === 'done'
   const nextUp = useMemo(
     () => (doneToday || plan.status === 'rest' || plan.status === 'off' ? nextTrainingDate(program, { annotations }) : null),
@@ -2177,16 +2210,25 @@ export default function WorkoutTracker() {
               </div>
             </div>
 
-            {/* A planned session started on an earlier day and never finished
-                here. Say so, or it reads as today's workout on the wrong day —
-                today's own card is shown above it either way. */}
+            {/* Left over from an earlier sitting — an edit never closed, or a
+                planned session never finished. Say so, or it reads as today's
+                workout; today's own card is shown above it either way. */}
             {staleDraft && (
               <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
                 <Calendar className="w-3.5 h-3.5 text-text-light shrink-0" />
                 <span className="text-[12px] text-text-secondary min-w-0">
-                  Unfinished <span className="text-text-primary">{draft.name || 'session'}</span>
-                  {isToday ? ' — not the day your split has up now' : ` from ${formatDate(draftDate)}`}. Finish it,
-                  or discard it to start today's session.
+                  {isEditing ? (
+                    <>
+                      Still editing your session from <span className="text-text-primary">{formatDate(draftDate)}</span>.
+                      Save or cancel it to get back to today's.
+                    </>
+                  ) : (
+                    <>
+                      Unfinished <span className="text-text-primary">{draft.name || 'session'}</span>
+                      {isToday ? ' — not the day your split has up now' : ` from ${formatDate(draftDate)}`}. Finish it,
+                      or discard it to start today's session.
+                    </>
+                  )}
                 </span>
               </div>
             )}
