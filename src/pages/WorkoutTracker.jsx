@@ -206,6 +206,44 @@ function migrateDraft(draft) {
   return { ...draft, exercises: migrateSupersets(draft.exercises.map(migrateExercise)) }
 }
 
+function draftHasWork(draft) {
+  return (draft?.exercises || []).some((e) => e.sets.some((s) => setHasWork(s, e.kind)))
+}
+
+// A program-tagged draft dated before today is a LEFTOVER: "Start session" was
+// tapped and the workout was never finished on this device (usually because it
+// was logged on another one). It has to be called out, because a program draft
+// hides today's card — and the draft is per-device localStorage, so the phone
+// can sit on last Tuesday's Upper A while the dashboard correctly says Lower A.
+function isStaleProgramDraft(draft) {
+  if (!draft?.programId || draft.editingId) return false
+  return !isSameDay(draft.date || draft.startedAt || Date.now(), Date.now())
+}
+
+// Whether starting today's planned session would set the current draft aside
+// rather than replace it. One predicate for both the promise on the card and
+// the stash itself, so they can't drift apart. A program draft normally IS
+// today's session (nothing to set aside); a stale one is only worth keeping
+// once it holds logged work.
+function willStashDraft(draft) {
+  if (!draft.exercises.length || draft.editingId) return false
+  return !draft.programId || (isStaleProgramDraft(draft) && draftHasWork(draft))
+}
+
+// Restore the draft on mount. A stale program draft with nothing logged is pure
+// debris — one tap that went nowhere — so it's dropped on sight. One with real
+// sets in it is always kept: it's the user's work, and the UI below labels it
+// as the past session it is instead of passing it off as today's.
+function restoreDraft() {
+  const draft = migrateDraft(getDraft())
+  if (!draft) return emptyDraft()
+  if (isStaleProgramDraft(draft) && !draftHasWork(draft)) {
+    clearDraft()
+    return emptyDraft()
+  }
+  return draft
+}
+
 // The split day this session PROVABLY came from: the day it was started from,
 // or a day still reachable through one of its plan links — which is how a past
 // session finds its way home, since makeSession drops programId/programDayId.
@@ -230,7 +268,7 @@ export default function WorkoutTracker() {
   const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [draft, setDraft] = useState(() => migrateDraft(getDraft()) || emptyDraft())
+  const [draft, setDraft] = useState(restoreDraft)
   const [history, setHistory] = useState([])
   const [program, setProgram] = useState(null)
   const [annotations, setAnnotations] = useState([])
@@ -292,7 +330,11 @@ export default function WorkoutTracker() {
     [program, annotations, loggedToday]
   )
   const todayDay = plan.day
-  const showTodayCard = !!todayDay && !isEditing && !draft.programId
+  // A leftover program draft must never suppress today's card — that's what
+  // made the dashboard promise "Lower A" and the logger hand back last week's
+  // Upper A with no way to reach today's day short of discarding.
+  const staleDraft = isStaleProgramDraft(draft)
+  const showTodayCard = !!todayDay && !isEditing && (!draft.programId || staleDraft)
   const doneToday = plan.status === 'done'
   const nextUp = useMemo(
     () => (doneToday || plan.status === 'rest' || plan.status === 'off' ? nextTrainingDate(program, { annotations }) : null),
@@ -1067,11 +1109,12 @@ export default function WorkoutTracker() {
   }
 
   // Start today's planned session: fill the draft from the program day (name +
-  // exercises + targets) and tag it so finishing advances the rotation. Any
-  // in-progress non-program draft is stashed (like edit mode) and restored later.
+  // exercises + targets) and tag it so finishing advances the rotation. Whatever
+  // is worth keeping (see willStashDraft) is stashed first, like edit mode, and
+  // restored later.
   function startTodaysSession(day) {
     setDraft((cur) => {
-      if (cur.exercises.length > 0 && !cur.editingId && !cur.programId) stashDraft(cur)
+      if (willStashDraft(cur)) stashDraft(cur)
       const bodyweight = prefillBodyweight()
       // Resolved by plan link rather than array index, so this survives
       // draftFromDay ever filtering or reordering what it returns.
@@ -1353,7 +1396,7 @@ export default function WorkoutTracker() {
   }
 
   const distUnit = distanceUnit(unit)
-  const hasLoggedSets = draft.exercises.some((e) => e.sets.some((s) => setHasWork(s, e.kind)))
+  const hasLoggedSets = draftHasWork(draft)
   const liveStats = sessionStats(draft)
   const resistanceExercises = draft.exercises.filter((e) => e.kind !== 'cardio')
   const cardioExercises = draft.exercises.filter((e) => e.kind === 'cardio')
@@ -2055,7 +2098,7 @@ export default function WorkoutTracker() {
                     >
                       <Check className="w-4 h-4" /> Start session
                     </button>
-                    {draft.exercises.length > 0 && (
+                    {willStashDraft(draft) && (
                       <span className="text-[11px] text-cream-60">Your current entries will be set aside and restored after.</span>
                     )}
                   </div>
@@ -2069,7 +2112,7 @@ export default function WorkoutTracker() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">
-                  {isEditing ? 'Editing session' : draft.programId ? 'Today’s session' : isToday ? "Today's session" : 'Past session'}
+                  {isEditing ? 'Editing session' : isToday ? "Today's session" : 'Past session'}
                 </p>
                 {editingDate ? (
                   <input
@@ -2116,6 +2159,19 @@ export default function WorkoutTracker() {
                 </div>
               </div>
             </div>
+
+            {/* A planned session started on an earlier day and never finished
+                here. Say so, or it reads as today's workout on the wrong day —
+                today's own card is shown above it either way. */}
+            {staleDraft && (
+              <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
+                <Calendar className="w-3.5 h-3.5 text-text-light shrink-0" />
+                <span className="text-[12px] text-text-secondary min-w-0">
+                  Unfinished <span className="text-text-primary">{draft.name || 'session'}</span> from{' '}
+                  {formatDate(draftDate)} — finish it, or discard it to start today's session.
+                </span>
+              </div>
+            )}
 
             {/* This session has drifted from the split day it came from. Quiet
                 until there's something to say, and never automatic — tapping
