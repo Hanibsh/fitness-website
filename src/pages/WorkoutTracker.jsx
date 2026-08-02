@@ -1080,6 +1080,50 @@ export default function WorkoutTracker() {
     }))
   }
 
+  // Take up ONE set's suggestion. Only blanks are filled, same guarantee as the
+  // exercise-wide button, so a weight you already changed by hand survives —
+  // which is what makes it safe to fill the whole row rather than just the field
+  // you happened to be in. Stamped as logged just now when it lands on real
+  // work, so the rest timer starts exactly as if you'd typed the numbers.
+  function fillSetFromHint(exId, setId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? {
+              ...e,
+              sets: e.sets.map((s) => {
+                if (s.id !== setId) return s
+                const filled = promoteHint(s)
+                if (filled === s) return s
+                return !s.completedAt && setHasWork(filled, e.kind) ? { ...filled, completedAt: Date.now() } : filled
+              }),
+            }
+          : e
+      ),
+    }))
+  }
+
+  // Enter — which on a phone keyboard IS the ✓ / Done key your thumb is already
+  // on — takes this set's suggestion and closes the field. The most common set
+  // of all is "same as last time", and it should cost one key rather than
+  // retyping numbers already sitting there in grey. `enterKeyHint` is what makes
+  // that key actually draw as Done (a checkmark on Android) instead of a return
+  // arrow, so the thing you press looks like the thing it does.
+  //
+  // preventDefault so it can never submit anything, and blur explicitly: the IME
+  // closes itself on Android but not everywhere, and a caret still sitting in a
+  // field you've just finished reads as though nothing happened.
+  const hintKeyProps = (exId, setId) => ({
+    enterKeyHint: 'done',
+    onKeyDown: (e) => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      fillSetFromHint(exId, setId)
+      e.currentTarget.blur()
+    },
+  })
+
   function removeSet(exId, setId) {
     setDraft((d) => ({
       ...d,
@@ -1767,6 +1811,7 @@ export default function WorkoutTracker() {
                     type="number" inputMode="decimal" min="0"
                     value={set.duration ?? ''}
                     onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
+                    {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'duration')} aria-label={`Entry ${i + 1} duration in minutes`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
@@ -1774,6 +1819,7 @@ export default function WorkoutTracker() {
                     type="number" inputMode="decimal" min="0"
                     value={set.distance ?? ''}
                     onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
+                    {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'distance')} aria-label={`Entry ${i + 1} distance in ${distUnit}`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
@@ -1914,6 +1960,7 @@ export default function WorkoutTracker() {
                         type="number" inputMode="decimal"
                         value={set.added ?? ''}
                         onChange={(e) => updateAdded(ex.id, set.id, e.target.value)}
+                        {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'added', null, '0')}
                         aria-label={`Set ${i + 1} added weight in ${unit}`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -1922,6 +1969,7 @@ export default function WorkoutTracker() {
                         type="number" inputMode="numeric" min="0"
                         value={set.reps}
                         onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                        {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'reps')}
                         aria-label={`Set ${i + 1} reps`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -1933,6 +1981,7 @@ export default function WorkoutTracker() {
                           type="number" inputMode="numeric" min="0" max="10"
                           value={set.rir ?? ''}
                           onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                          {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'rir')}
                           aria-label={`Set ${i + 1} reps in reserve`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2019,6 +2068,7 @@ export default function WorkoutTracker() {
                               type="number" inputMode="decimal" min="0"
                               value={set[side]?.weight ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
+                              {...hintKeyProps(ex.id, set.id)}
                               placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
@@ -2026,6 +2076,7 @@ export default function WorkoutTracker() {
                               type="number" inputMode="numeric" min="0"
                               value={set[side]?.reps ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
+                              {...hintKeyProps(ex.id, set.id)}
                               placeholder={hintFor(set, 'reps', side)} aria-label={`Set ${i + 1} ${side} reps`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
@@ -2036,6 +2087,7 @@ export default function WorkoutTracker() {
                                 type="number" inputMode="numeric" min="0" max="10"
                                 value={set[side]?.rir ?? ''}
                                 onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
+                                {...hintKeyProps(ex.id, set.id)}
                                 placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                               />
@@ -2057,6 +2109,7 @@ export default function WorkoutTracker() {
                           type="number" inputMode="decimal" min="0"
                           value={set.weight}
                           onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
+                          {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'weight')} aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
@@ -2064,6 +2117,7 @@ export default function WorkoutTracker() {
                           type="number" inputMode="numeric" min="0"
                           value={set.reps}
                           onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                          {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'reps')} aria-label={`Set ${i + 1} reps`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
@@ -2074,6 +2128,7 @@ export default function WorkoutTracker() {
                             type="number" inputMode="numeric" min="0" max="10"
                             value={set.rir ?? ''}
                             onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                            {...hintKeyProps(ex.id, set.id)}
                             placeholder={hintFor(set, 'rir')} aria-label={`Set ${i + 1} reps in reserve`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
