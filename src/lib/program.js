@@ -11,7 +11,9 @@
 //     day up. Completing a day advances the pointer (mod the cycle length).
 //     Training days WAIT for you — a missed day shifts the plan forward, it
 //     never skips a workout — while rest days pass on their own, one per
-//     elapsed calendar day (see effectiveRotation).
+//     elapsed calendar day (see effectiveRotation). The exception is a day you
+//     marked off as an INJURY, which spends its slot rather than banking it:
+//     the workout you couldn't do isn't owed to you, so nothing after it moves.
 //
 // Each training day lists planned exercises with a target set count + rep
 // range that pre-fill the logger when you start the session.
@@ -250,19 +252,55 @@ function safeIndex(program) {
   return n ? ((program.pointer % n) + n) % n : 0
 }
 
+// Mark-off reasons that CONSUME the day's slot rather than pausing the
+// rotation. An injury isn't a workout you're owed: you couldn't train that day,
+// so the split carries on without it and the calendar keeps its shape — the day
+// after an injury is whatever it was always going to be. Every other reason
+// still waits for you (and can be moved past by hand, see advanceProgram).
+//
+// Ids match dayLog.js's DAY_REASONS, spelled out here rather than imported —
+// dayLog imports THIS module, so the arrow only points one way.
+const SLOT_CONSUMING_REASONS = new Set(['injury'])
+
+// Split the mark-offs into the two things they can do to the rotation, keyed by
+// local midnight. Every scheduling read derives its sets from here, so "which
+// reasons consume" is answered in exactly one place.
+function annotationDays(annotations) {
+  const paused = new Set()
+  const consumed = new Set()
+  for (const a of annotations || []) {
+    ;(SLOT_CONSUMING_REASONS.has(a.reason) ? consumed : paused).add(startOfDay(a.date))
+  }
+  return { paused, consumed }
+}
+
+// Does a mark-off with this reason move the rotation on by itself? The logger
+// card asks so it can drop the manual "skip ahead" offer for the reasons that
+// don't need it — offering to do something that already happened reads as a
+// second skip.
+export function reasonConsumesSlot(reason) {
+  return SLOT_CONSUMING_REASONS.has(reason)
+}
+
 // Walk the rotation forward over the days (from, to] — i.e. every calendar day
 // strictly after `from` and strictly before `to`, the ones that have fully
-// elapsed. THE rule, in one place: a training day waits for the user (the walk
-// stops dead), a rest day is consumed by one elapsed calendar day, and a day
-// you marked off consumes nothing. Both the "where does the rotation stand now"
-// read (effectiveRotation) and the "what fell on this past date" read
-// (rotationDayForPastDate) go through here so they can't drift apart.
-function walkRotation(program, index, from, to, pausedDays) {
+// elapsed. THE rule, in one place: a day marked off with a consuming reason
+// (injury) eats its slot whatever that slot was, a training day otherwise waits
+// for the user (the walk stops dead), a rest day is consumed by one elapsed
+// calendar day, and any other mark-off consumes nothing. Both the "where does
+// the rotation stand now" read (effectiveRotation) and the "what fell on this
+// past date" read (rotationDayForPastDate) go through here so they can't drift
+// apart.
+function walkRotation(program, index, from, to, { paused, consumed }) {
   const n = program.days.length
   let i = index
   for (let d = addDays(from, 1); d < to; d = addDays(d, 1)) {
+    if (consumed.has(d)) {
+      i = (i + 1) % n // injured: this slot is spent, training day or not
+      continue
+    }
     if (program.days[i].kind !== 'rest') break // training day: waits for the user
-    if (!pausedDays.has(d)) i = (i + 1) % n // rest day consumed by elapsed day d
+    if (!paused.has(d)) i = (i + 1) % n // rest day consumed by elapsed day d
   }
   return i
 }
@@ -278,9 +316,11 @@ function walkRotation(program, index, from, to, pausedDays) {
 // day never skips a workout. Rest days pass on their own: each fully-elapsed
 // calendar day since the last advance consumes one pending rest day, no tap
 // needed. Today itself is still ongoing, so a rest day SHOWS as rest today and
-// auto-passes at tomorrow's read. Annotated (marked-off) dates never consume a
-// slot, matching plannedDayForDate's skip rule. Pure read-time computation —
-// nothing is written, so viewing on two devices can't race the synced blob.
+// auto-passes at tomorrow's read — and so does an injured day, which is what
+// lets you still log it anyway before the split moves on. Marked-off dates
+// consume no slot unless the reason says otherwise (SLOT_CONSUMING_REASONS),
+// matching plannedDayForDate's skip rule. Pure read-time computation — nothing
+// is written, so viewing on two devices can't race the synced blob.
 export function effectiveRotation(program, { now = Date.now(), annotations = [] } = {}) {
   const today = startOfDay(now)
   if (!program || !program.days?.length) return { index: 0, anchor: today }
@@ -289,8 +329,7 @@ export function effectiveRotation(program, { now = Date.now(), annotations = [] 
   const stamp = program.lastAdvancedAt ? Math.min(startOfDay(program.lastAdvancedAt), today) : null
   if (stamp === today) return { index, anchor: addDays(today, 1) } // advanced today → pointer day is tomorrow's
   if (stamp == null) return { index, anchor: today } // never advanced / legacy blob: no reference point, no auto-pass
-  const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
-  return { index: walkRotation(program, index, stamp, today, pausedDays), anchor: today }
+  return { index: walkRotation(program, index, stamp, today, annotationDays(annotations)), anchor: today }
 }
 
 // THE canonical answer to "what does the program say about today?" — every
@@ -433,9 +472,8 @@ export function rotationDayForPastDate(program, target, { annotations = [], refe
   if (idx === -1) return null // that day was since deleted from the split
   // The day was completed ON the target date — that's the day it was.
   if (last.date === target) return program.days[idx]
-  const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
   const start = (idx + 1) % program.days.length
-  return program.days[walkRotation(program, start, last.date, target, pausedDays)]
+  return program.days[walkRotation(program, start, last.date, target, annotationDays(annotations))]
 }
 
 // ---- Calendar projection -----------------------------------------------------
@@ -454,28 +492,31 @@ export const PROJECTION_HORIZON_DAYS = 28
 // shift). Rotating programs project the cycle forward from where the rotation
 // actually stands (effectiveRotation — the same answer the logger and
 // dashboard use), one day per date, starting at its anchor: today, or
-// tomorrow if the rotation already advanced today. An annotated date doesn't
-// consume a slot: it's skipped and everything after it shifts up by one, same
-// as if that day simply hadn't happened yet. `annotations` is optional so
-// callers that haven't been updated for this still work, just without the
-// skip. Past dates are answered from the rotation history
+// tomorrow if the rotation already advanced today. A PAUSED annotated date
+// doesn't consume a slot: it's skipped and everything after it shifts up by
+// one, same as if that day simply hadn't happened yet. An injured one is the
+// opposite — it eats its slot like an ordinary day, so the projection after it
+// doesn't move, and the date itself still answers WITH the day it ate rather
+// than null (the calendar shows you what the injury cost). `annotations` is
+// optional so callers that haven't been updated for this still work, just
+// without the skip. Past dates are answered from the rotation history
 // (rotationDayForPastDate), which reaches back as far as the log does — pass
 // `sessions` (or precomputed `references`) for that, or omit them to only look
 // forward.
 export function plannedDayForDate(program, date, { now = Date.now(), annotations = [], sessions = [], references = null } = {}) {
   if (!program || !program.days.length) return null
   const target = startOfDay(date)
-  const pausedDays = new Set(annotations.map((a) => startOfDay(a.date)))
+  const { paused: pausedDays } = annotationDays(annotations)
   if (pausedDays.has(target)) return null
   if (scheduleMode(program) === 'weekly') return program.days[mondayIndex(target)]
   const { index, anchor } = effectiveRotation(program, { now, annotations })
   if (target < anchor) {
     return rotationDayForPastDate(program, target, { annotations, references: references || rotationReferences(program, sessions) })
   }
-  // Days from the anchor up to (not including) the target, less the ones marked
-  // off — those consume no slot. Counted arithmetically rather than walked: the
-  // grid asks this for every cell, and a month a year out would otherwise be
-  // ~365 iterations × 31 cells on every repaint.
+  // Days from the anchor up to (not including) the target, less the paused ones
+  // — those consume no slot. Counted arithmetically rather than walked: the grid
+  // asks this for every cell, and a month a year out would otherwise be ~365
+  // iterations × 31 cells on every repaint.
   let paused = 0
   for (const d of pausedDays) if (d >= anchor && d < target) paused++
   return program.days[(index + daysBetween(anchor, target) - paused) % program.days.length]

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -38,12 +38,14 @@ import {
   getProgramsState,
   saveProgram,
   getDayAnnotations,
+  makeDayAnnotation,
+  saveDayAnnotation,
 } from '../lib/workoutStore'
-import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality } from '../lib/program'
+import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
-import { reasonLabel } from '../lib/dayLog'
+import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
 import { useAuth } from '../lib/auth'
@@ -84,6 +86,14 @@ function toInputDate(ts) {
 function fromInputDate(value) {
   const [y, m, d] = value.split('-').map(Number)
   return new Date(y, m - 1, d, 12, 0, 0).getTime()
+}
+
+// Day annotations are noon-anchored (see makeDayAnnotation) so they can never
+// land on a day boundary and read as the day either side.
+function noonOf(ts) {
+  const d = new Date(ts)
+  d.setHours(12, 0, 0, 0)
+  return d.getTime()
 }
 
 function isSameDay(a, b) {
@@ -304,6 +314,14 @@ export default function WorkoutTracker() {
   const [history, setHistory] = useState([])
   const [program, setProgram] = useState(null)
   const [annotations, setAnnotations] = useState([])
+  // Whether the day_annotations table is reachable — same fallback the calendar
+  // page keeps. Starts true when signed in, flips to local the first time a
+  // remote call fails.
+  const [remoteAnnotationsOk, setRemoteAnnotationsOk] = useState(!!user)
+  // The injury prompt, or null. { mode: 'session' } ends the session in
+  // progress; { mode: 'day' } just marks today, with nothing to end.
+  const [injuryPrompt, setInjuryPrompt] = useState(null)
+  const [injuryNote, setInjuryNote] = useState('')
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [importable, setImportable] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -392,6 +410,10 @@ export default function WorkoutTracker() {
   // card below swaps to an acknowledgment + skip instead of "Start session".
   const todayAnnotation = plan.annotation
   const skipTodayCard = plan.status === 'off' && todayDay?.kind === 'train'
+  // A reason that spends the day's slot needs no "skip ahead" offer — the
+  // rotation has already moved on by tomorrow, and offering it again would read
+  // as a second skip.
+  const offTodayConsumes = !!todayAnnotation && reasonConsumesSlot(todayAnnotation.reason)
 
   // Engine v2 nudge: which of today's target muscles are still recovering.
   // Informational only — never a gate on training. Only meaningful when
@@ -455,6 +477,7 @@ export default function WorkoutTracker() {
           setProfile(prof)
           setProgram(prog || getProgram())
           setAnnotations(annos)
+          setRemoteAnnotationsOk(true)
           const local = getHistory()
           setImportable(local.length > 0 ? local : null)
         } catch {
@@ -462,6 +485,7 @@ export default function WorkoutTracker() {
             setHistory([])
             setProgram(getProgram())
             setAnnotations(getDayAnnotations())
+            setRemoteAnnotationsOk(false)
             setLoadError("Couldn't load your workouts — check your connection and refresh.")
           }
         }
@@ -1199,6 +1223,62 @@ export default function WorkoutTracker() {
     persistProgram(advanced)
   }
 
+  // ---- Injury ---------------------------------------------------------------
+  //
+  // Marking a day as an injury is what tells the rotation its slot is SPENT
+  // rather than owed (SLOT_CONSUMING_REASONS in program.js): the split carries
+  // on and every day after it keeps its place in the calendar. That's why it's
+  // one tap from here rather than a trip to /calendar — a rule you can only
+  // reach from another page is one you won't reach mid-session.
+
+  // Same remote-with-local-fallback shape the calendar page uses.
+  async function persistAnnotation(entry) {
+    if (user && remoteAnnotationsOk) {
+      try {
+        await upsertRemoteDayAnnotation(user.id, entry)
+        setAnnotations((prev) => [entry, ...prev.filter((a) => a.id !== entry.id)])
+        return
+      } catch {
+        setRemoteAnnotationsOk(false)
+      }
+    }
+    setAnnotations(saveDayAnnotation(entry))
+  }
+
+  // One annotation per calendar day, so reuse whatever the date already carries
+  // — a second mark-off edits it rather than stacking a duplicate underneath.
+  function markInjured(date, note) {
+    const existing = annotationForDate(annotations, date)
+    const entry = existing
+      ? { ...existing, reason: 'injury', note: (note || '').trim().slice(0, 300) }
+      : makeDayAnnotation('injury', note, noonOf(date))
+    return persistAnnotation(entry)
+  }
+
+  function openInjuryPrompt(mode, date) {
+    setInjuryPrompt({ mode, date })
+    setInjuryNote(annotationForDate(annotations, date)?.note || '')
+  }
+
+  // Confirmed. Whatever was already logged is worth keeping — you trained until
+  // you couldn't — so a session with work in it saves through the ordinary
+  // finish path, which advances the rotation and records the day exactly as a
+  // normal finish would. The split sync is deliberately skipped (`null`): a
+  // workout cut short is the last thing the plan should learn from, since every
+  // exercise you never got to would read as one you'd dropped.
+  //
+  // The mark-off is written FIRST so an injury is recorded even if the save then
+  // fails — the day is a fact, the session is a save that can be retried.
+  async function confirmInjury() {
+    if (!injuryPrompt || saving) return
+    const { mode, date } = injuryPrompt
+    setInjuryPrompt(null)
+    await markInjured(date, injuryNote)
+    if (mode !== 'session') return
+    if (hasLoggedSets) await commitSession(null)
+    else discard()
+  }
+
   // Finishing is two steps whenever the split day was only a guess: show the
   // list, then commit with the answer. The double-submit guard is READ but not
   // armed here — nothing has been written yet, so coming back through the sheet
@@ -1446,6 +1526,13 @@ export default function WorkoutTracker() {
   const distUnit = distanceUnit(unit)
   const hasLoggedSets = draftHasWork(draft)
   const liveStats = sessionStats(draft)
+  // Counted from the working sets, which is what the header shows — but a draft
+  // can hold work and still count zero (warm-ups only), so fall back to a plain
+  // phrase rather than promising to save "0 sets".
+  const injurySavesLabel =
+    liveStats.sets > 0
+      ? `Your ${liveStats.sets} logged set${liveStats.sets === 1 ? ' is' : 's are'} saved first`
+      : 'What you’ve logged is saved first'
   const resistanceExercises = draft.exercises.filter((e) => e.kind !== 'cardio')
   const cardioExercises = draft.exercises.filter((e) => e.kind === 'cardio')
   // Superset grouping is a resistance-only concept, derived from each exercise's
@@ -2099,7 +2186,10 @@ export default function WorkoutTracker() {
                   <p className="font-heading text-xl font-medium">{todayDay.name} — marked off</p>
                   <p className="text-[12px] text-cream-60 mt-0.5">
                     You marked today as {reasonLabel(todayAnnotation.reason).toLowerCase()}
-                    {todayAnnotation.note ? ` — "${todayAnnotation.note}"` : ''}. No pressure — log it anyway if you're up for it, or skip ahead.
+                    {todayAnnotation.note ? ` — "${todayAnnotation.note}"` : ''}.{' '}
+                    {offTodayConsumes
+                      ? `Nothing's owed — your split doesn't wait for this day.${nextUp ? ` Next up: ${nextUp.day.name} ${nextDayLabel(nextUp.date)}.` : ''} Log it anyway if you're up for it.`
+                      : 'No pressure — log it anyway if you’re up for it, or skip ahead.'}
                   </p>
                   <div className="flex items-center gap-3 flex-wrap mt-4">
                     <button
@@ -2108,7 +2198,7 @@ export default function WorkoutTracker() {
                     >
                       <Check className="w-4 h-4" /> Log anyway
                     </button>
-                    {!isWeeklyProgram && (
+                    {!isWeeklyProgram && !offTodayConsumes && (
                       <button
                         onClick={() => markRestDone(todayDay)}
                         className="shrink-0 inline-flex items-center justify-center gap-2 bg-transparent text-cream border border-cream-30 font-medium px-5 py-2.5 cursor-pointer text-[13px] hover:border-cream-60 transition-colors"
@@ -2145,6 +2235,16 @@ export default function WorkoutTracker() {
                       className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[14px] hover:bg-white transition-colors"
                     >
                       <Check className="w-4 h-4" /> Start session
+                    </button>
+                    {/* An injury you're not even starting the session for. Here
+                        rather than only on /calendar because this is the screen
+                        you're on when you find out. */}
+                    <button
+                      type="button"
+                      onClick={() => openInjuryPrompt('day', today)}
+                      className="inline-flex items-center justify-center gap-2 bg-transparent text-cream border border-cream-30 font-medium px-5 py-2.5 cursor-pointer text-[13px] hover:border-cream-60 transition-colors"
+                    >
+                      <Bandage className="w-4 h-4" /> Injured today
                     </button>
                     {willStashDraft(draft, staleDraft) && (
                       <span className="text-[11px] text-cream-60">Your current entries will be set aside and restored after.</span>
@@ -2354,6 +2454,20 @@ export default function WorkoutTracker() {
                     {isEditing ? 'Cancel' : 'Discard'}
                   </button>
                 </div>
+                {/* Something went wrong mid-session. Its own row rather than a
+                    third button up there: at 320px three side by side leaves
+                    each of them unreadable. Never while editing a past session
+                    — there's no session in progress to end. */}
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => openInjuryPrompt('session', draftDate)}
+                    disabled={saving}
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[12px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Bandage className="w-3.5 h-3.5" /> Injured — end session
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2729,6 +2843,58 @@ export default function WorkoutTracker() {
           onSkip={() => resolvePendingSync([])}
           onClose={() => setPendingSync(null)}
         />
+      )}
+
+      {/* Injury — what gets saved and what it means for the split, both said
+          before it happens rather than discovered afterwards. */}
+      {injuryPrompt && (
+        <Modal onClose={() => setInjuryPrompt(null)} maxWidth="max-w-md">
+          <div className="p-6 sm:p-7">
+            <div className="flex items-center gap-2 mb-2 pr-8">
+              <Bandage className="w-4 h-4 text-text-primary shrink-0" />
+              <h3 className="font-heading text-lg font-medium text-text-primary">
+                {injuryPrompt.mode === 'session' ? 'End this session — injured?' : 'Mark today as an injury?'}
+              </h3>
+            </div>
+            <p className="text-[13px] text-text-secondary mb-1">
+              {injuryPrompt.mode !== 'session'
+                ? `${formatDate(injuryPrompt.date)} gets marked off as an injury.`
+                : hasLoggedSets
+                  ? `${injurySavesLabel} — you trained until you couldn’t — then the session closes.`
+                  : 'Nothing’s been logged yet, so there’s nothing to save. The session just closes.'}
+            </p>
+            <p className="text-[13px] text-text-muted mb-4">
+              {!program
+                ? 'It’s recorded on your calendar.'
+                : isWeeklyProgram
+                  ? 'Your split is fixed to the week, so nothing shifts.'
+                  : 'Your split won’t wait for this day — tomorrow stays whatever it was already going to be.'}
+            </p>
+            <textarea
+              value={injuryNote}
+              onChange={(e) => setInjuryNote(e.target.value)}
+              placeholder="What happened, which area, how it feels — anything worth remembering (optional)"
+              rows={3}
+              className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-none mb-4"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmInjury}
+                disabled={saving}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Bandage className="w-4 h-4" /> {injuryPrompt.mode === 'session' ? 'End session' : 'Mark injured'}
+              </button>
+              <button
+                onClick={() => setInjuryPrompt(null)}
+                className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="text-[11px] text-text-light mt-3">You can change or clear this any time from the calendar.</p>
+          </div>
+        </Modal>
       )}
     </div>
   )
