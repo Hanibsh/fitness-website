@@ -13,7 +13,7 @@ import {
 } from '../lib/workoutRemote'
 import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate } from '../lib/dayLog'
 import WorkoutCalendar from '../components/WorkoutCalendar'
-import { REASON_COLOR, STATUS_MARKER } from '../lib/calendarMarkers'
+import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 
 const SUMMARY_RANGES = [
@@ -248,8 +248,15 @@ export default function CalendarPage() {
             />
 
             {/* legend — swatches come from the grid's own maps so the two can't
-                drift apart. Schedule markers first, then the mark-off reasons. */}
+                drift apart. Split colours first (they're the loudest thing on the
+                grid and the only ones with no other label), then the schedule
+                markers, then the mark-off reasons. */}
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-5 pt-4 border-t border-border">
+              {SPLIT_COLOR.map((s) => (
+                <span key={s.match} className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <span className={`w-1.5 h-1.5 rounded-full ${s.fill}`} /> {s.label}
+                </span>
+              ))}
               <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
                 <span className={`w-1.5 h-1.5 ${STATUS_MARKER.rest}`} /> Rest day
               </span>

@@ -32,22 +32,25 @@ const categoryTables = {
   ],
 }
 
+// Five steps of one hue for the five real zones, so climbing the spectrum reads
+// as climbing. The last band is the exception: "exceeds natural range" isn't a
+// higher tier, it's off the scale, so it keeps the reserved warning red.
 const spectrumZones = {
   male: [
-    { label: 'Below average', max: 18, color: 'bg-blue-400' },
-    { label: 'Average', max: 20, color: 'bg-teal-400' },
-    { label: 'Athletic', max: 22, color: 'bg-green-500' },
-    { label: 'Advanced', max: 23, color: 'bg-yellow-500' },
-    { label: 'Bodybuilder-tier', max: 25, color: 'bg-orange-500' },
-    { label: 'Exceeds natural range', max: 30, color: 'bg-red-600' },
+    { label: 'Below average', max: 18, color: 'bg-tier-1' },
+    { label: 'Average', max: 20, color: 'bg-tier-2' },
+    { label: 'Athletic', max: 22, color: 'bg-tier-3' },
+    { label: 'Advanced', max: 23, color: 'bg-tier-4' },
+    { label: 'Bodybuilder-tier', max: 25, color: 'bg-tier-5' },
+    { label: 'Exceeds natural range', max: 30, color: 'bg-tier-over' },
   ],
   female: [
-    { label: 'Below average', max: 14, color: 'bg-blue-400' },
-    { label: 'Average', max: 17, color: 'bg-teal-400' },
-    { label: 'Athletic', max: 18, color: 'bg-green-500' },
-    { label: 'Advanced', max: 19, color: 'bg-yellow-500' },
-    { label: 'Bodybuilder-tier', max: 21, color: 'bg-orange-500' },
-    { label: 'Exceeds natural range', max: 26, color: 'bg-red-600' },
+    { label: 'Below average', max: 14, color: 'bg-tier-1' },
+    { label: 'Average', max: 17, color: 'bg-tier-2' },
+    { label: 'Athletic', max: 18, color: 'bg-tier-3' },
+    { label: 'Advanced', max: 19, color: 'bg-tier-4' },
+    { label: 'Bodybuilder-tier', max: 21, color: 'bg-tier-5' },
+    { label: 'Exceeds natural range', max: 26, color: 'bg-tier-over' },
   ],
 }
 
@@ -229,7 +232,7 @@ export default function FFMICalculator() {
                     })}
                   </div>
                   <div
-                    className="absolute top-[-4px] w-0.5 h-5 bg-text-primary"
+                    className="absolute top-[-4px] w-0.5 h-5 bg-text-primary shadow-[0_0_0_2px_var(--color-white)]"
                     style={{ left: `${Math.min(100, Math.max(0, ((result.adjustedFfmi - domain.min) / (domain.max - domain.min)) * 100))}%` }}
                   />
                 </div>

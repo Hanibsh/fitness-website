@@ -4,6 +4,38 @@
 // them, CalendarPage's legend labels them) and the legend used to keep a
 // hand-copied duplicate that could drift out of step with the grid.
 
+// Split colours, in series-slot order. The order isn't cosmetic: it's what keeps
+// the splits that actually land next to each other — push/pull/legs, upper/lower —
+// on the widest separations, including under colour blindness. `match` is the
+// substring we look for in the workout name.
+//
+// These live here rather than in the grid because they now need a legend too:
+// the dot is small and the name isn't on the cell, so hue was carrying the whole
+// meaning by itself.
+export const SPLIT_COLOR = [
+  { match: 'push', label: 'Push', fill: 'bg-series-1', border: 'border-series-1' },
+  { match: 'pull', label: 'Pull', fill: 'bg-series-2', border: 'border-series-2' },
+  { match: 'leg', label: 'Legs', fill: 'bg-series-3', border: 'border-series-3' },
+  { match: 'upper', label: 'Upper', fill: 'bg-series-4', border: 'border-series-4' },
+  { match: 'lower', label: 'Lower', fill: 'bg-series-5', border: 'border-series-5' },
+  { match: 'cardio', label: 'Cardio', fill: 'bg-series-6', border: 'border-series-6' },
+]
+
+// Anything we can't name gets a neutral rather than a sixth-and-a-bit hue.
+export const SPLIT_FALLBACK = { fill: 'bg-text-primary', border: 'border-text-muted' }
+
+// Colour a day by the (first) workout's split.
+export function splitColor(name) {
+  const n = (name || '').toLowerCase()
+  return (SPLIT_COLOR.find(s => n.includes(s.match)) || SPLIT_FALLBACK).fill
+}
+
+// Border twin of splitColor, for the planned (not-yet-done) outline circles.
+export function splitBorderColor(name) {
+  const n = (name || '').toLowerCase()
+  return (SPLIT_COLOR.find(s => n.includes(s.match)) || SPLIT_FALLBACK).border
+}
+
 // Square markers (not circles) so a day you marked off reads distinctly from a
 // workout dot even when both appear on the same day.
 export const REASON_COLOR = {

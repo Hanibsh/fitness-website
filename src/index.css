@@ -24,6 +24,30 @@
   --color-muscle-glutes: #be185d;
   --color-muscle-calves: #06b6d4;
   --color-muscle-abs: #4338ca;
+  /* Chart series — categorical (identity: which thing, never how much). Slots
+     are assigned in fixed order and never cycled; the order is what keeps
+     neighbours apart under colour blindness. Both themes validated against the
+     card surface for lightness band, chroma, adjacent separation and contrast.
+     Aqua, yellow and magenta sit below 3:1 on the light card, so anything using
+     them has to carry visible labels — a legend, not colour alone. */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
+  --color-series-6: #008300;
+  /* Tier ramp — ordinal (position in an ordered scale, not identity). One hue
+     with monotone lightness so the order is legible in the colour itself; the
+     dark block flips the anchor so "further along" stays the brighter end.
+     Five steps is the ceiling — six in one hue can't hold visible gaps. */
+  --color-tier-1: #86b6ef;
+  --color-tier-2: #5598e7;
+  --color-tier-3: #2a78d6;
+  --color-tier-4: #1c5cab;
+  --color-tier-5: #104281;
+  /* Reserved cap for "off the scale" — never a series colour, and theme-invariant
+     like the rest of the status scale. */
+  --color-tier-over: #d03b3b;
   --color-border: #E8E6E1;
   --color-border-hover: #D5D2CC;
   --color-text-primary: #1a1a1a;
@@ -75,6 +99,19 @@
   --color-muscle-glutes: #ec4899;
   --color-muscle-calves: #0891b2;
   --color-muscle-abs: #6366f1;
+  /* Series 6 (green) and the tier-over cap are absent on purpose: both already
+     clear the dark card, so re-stepping them would only shift them off a
+     validated pair. */
+  --color-series-1: #3987e5;
+  --color-series-2: #d95926;
+  --color-series-3: #199e70;
+  --color-series-4: #c98500;
+  --color-series-5: #d55181;
+  --color-tier-1: #184f95;
+  --color-tier-2: #256abf;
+  --color-tier-3: #3987e5;
+  --color-tier-4: #6da7ec;
+  --color-tier-5: #9ec5f4;
   --color-border: #2e3038;
   --color-border-hover: #40434d;
   --color-text-primary: #f0efeb;

@@ -134,11 +134,14 @@ export default function TDEECalculator() {
     <button onClick={onClick} className={`flex-1 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{label}</button>
   )
 
+  // Series slots in order — the four components are different things, not
+  // degrees of one thing, so each gets its own hue rather than a step of a grey
+  // ramp (which buried TEF against the card and made BMR and NEAT twins).
   const breakdown = result ? [
-    { label: 'BMR (resting)', value: result.bmr, color: 'bg-text-primary', typicalRange: '50-70%' },
-    { label: 'NEAT (steps)', value: result.neat, color: 'bg-accent-hover', typicalRange: '5-20%' },
-    { label: 'Exercise', value: result.exercise, color: 'bg-text-muted', typicalRange: '5-15%' },
-    { label: 'TEF (digestion)', value: result.tef, color: 'bg-border-hover', typicalRange: '10-15%' },
+    { label: 'BMR (resting)', value: result.bmr, color: 'bg-series-1', typicalRange: '50-70%' },
+    { label: 'NEAT (steps)', value: result.neat, color: 'bg-series-2', typicalRange: '5-20%' },
+    { label: 'Exercise', value: result.exercise, color: 'bg-series-3', typicalRange: '5-15%' },
+    { label: 'TEF (digestion)', value: result.tef, color: 'bg-series-4', typicalRange: '10-15%' },
   ] : []
 
   const weightUnitLabel = unit === 'imperial' ? 'lbs' : 'kg'
@@ -293,9 +296,13 @@ export default function TDEECalculator() {
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Where your calories go</h2>
                 <p className="text-text-muted text-[13px] mb-6">Your {result.tdee} cal/day TDEE breaks down into:</p>
-                <div className="flex w-full h-3 overflow-hidden mb-5">
+                {/* Segments grow rather than take a percentage width, so the 2px
+                    card-colour gaps between them come out of the track instead of
+                    overflowing it. They already sum to tdee, so the proportions
+                    are the same either way. */}
+                <div className="flex w-full h-3 gap-[2px] mb-5">
                   {breakdown.map(b => (
-                    <div key={b.label} className={b.color} style={{ width: `${(b.value / result.tdee) * 100}%` }} />
+                    <div key={b.label} className={b.color} style={{ flex: `${b.value} 1 0%` }} />
                   ))}
                 </div>
                 <div className="space-y-3">
@@ -324,7 +331,7 @@ export default function TDEECalculator() {
                           <span className="text-text-muted">+{extra} cal/day</span>
                         </div>
                         <div className="w-full h-2 bg-cream border border-border overflow-hidden">
-                          <div className="h-full bg-accent-hover" style={{ width: `${(extra / maxExtra) * 100}%` }} />
+                          <div className="h-full bg-series-1" style={{ width: `${(extra / maxExtra) * 100}%` }} />
                         </div>
                       </div>
                     )

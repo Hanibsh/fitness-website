@@ -204,8 +204,13 @@ export const lifts = {
 
 export const CATEGORY_ORDER = ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms']
 
-export const zoneColors6 = ['bg-border-hover', 'bg-blue-400', 'bg-teal-400', 'bg-green-500', 'bg-yellow-500', 'bg-red-600']
-export const zoneColors5 = ['bg-blue-400', 'bg-teal-400', 'bg-green-500', 'bg-yellow-500', 'bg-red-600']
+// Tiers are an ordered scale, so they take one hue getting darker (lighter, in
+// dark mode) as you climb it — the old rainbow made red mean "best" here and
+// "too far" on the FFMI spectrum. "Below beginner" isn't a tier at all, so it
+// sits outside the ramp on a neutral; it used to be a near-white that vanished
+// against the card.
+export const zoneColors6 = ['bg-text-muted', 'bg-tier-1', 'bg-tier-2', 'bg-tier-3', 'bg-tier-4', 'bg-tier-5']
+export const zoneColors5 = ['bg-tier-1', 'bg-tier-2', 'bg-tier-3', 'bg-tier-4', 'bg-tier-5']
 
 export function matchTier(tierList, ratio) {
   let result = tierList[0].label

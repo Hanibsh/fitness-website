@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { dayStatusesForRange } from '../lib/program'
-import { REASON_COLOR, STATUS_MARKER } from '../lib/calendarMarkers'
+import { REASON_COLOR, STATUS_MARKER, splitColor, splitBorderColor } from '../lib/calendarMarkers'
 
 // Month grid that highlights workout days by split colour, marks today, lets
 // you page between months, and calls onSelectDay when a day is tapped.
@@ -13,30 +13,6 @@ import { REASON_COLOR, STATUS_MARKER } from '../lib/calendarMarkers'
 // (sick/injury/travel/rest/other) gets its reason colour, shown alongside the
 // workout dots since a day can be both trained and annotated.
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-
-// Colour a day by the (first) workout's split, falling back to a neutral dot.
-function splitColor(name) {
-  const n = (name || '').toLowerCase()
-  if (n.includes('push')) return 'bg-blue-500'
-  if (n.includes('pull')) return 'bg-green-500'
-  if (n.includes('leg')) return 'bg-orange-500'
-  if (n.includes('upper')) return 'bg-purple-500'
-  if (n.includes('lower')) return 'bg-teal-500'
-  if (n.includes('cardio')) return 'bg-red-500'
-  return 'bg-text-primary'
-}
-
-// Border twin of splitColor, for the planned (not-yet-done) outline circles.
-function splitBorderColor(name) {
-  const n = (name || '').toLowerCase()
-  if (n.includes('push')) return 'border-blue-500'
-  if (n.includes('pull')) return 'border-green-500'
-  if (n.includes('leg')) return 'border-orange-500'
-  if (n.includes('upper')) return 'border-purple-500'
-  if (n.includes('lower')) return 'border-teal-500'
-  if (n.includes('cardio')) return 'border-red-500'
-  return 'border-text-muted'
-}
 
 function sameDay(a, b) {
   const da = new Date(a)
@@ -148,7 +124,7 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
               <span className={`flex items-center gap-0.5 ${lg ? 'h-2' : 'h-1.5'}`}>
                 {hasWorkout &&
                   daySessions.slice(0, lg ? 4 : 3).map((s, j) => (
-                    <span key={j} className={`rounded-full ${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${splitColor(s.name)}`} />
+                    <span key={j} className={`rounded-full ${lg ? 'w-2 h-2' : 'w-1.5 h-1.5'} ${splitColor(s.name)}`} />
                   ))}
                 {!annotation && plannedTrain && (
                   <span className={`rounded-full border ${lg ? 'w-2 h-2' : 'w-1.5 h-1.5'} ${splitBorderColor(plannedTrain.name)}`} />

@@ -198,7 +198,7 @@ export default function StrengthStandards() {
                     })}
                   </div>
                   <div
-                    className="absolute top-[-4px] w-0.5 h-5 bg-text-primary"
+                    className="absolute top-[-4px] w-0.5 h-5 bg-text-primary shadow-[0_0_0_2px_var(--color-white)]"
                     style={{ left: `${Math.min(100, Math.max(0, (result.ratio / domainMax) * 100))}%` }}
                   />
                 </div>
