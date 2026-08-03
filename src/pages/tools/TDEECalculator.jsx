@@ -138,10 +138,10 @@ export default function TDEECalculator() {
   // degrees of one thing, so each gets its own hue rather than a step of a grey
   // ramp (which buried TEF against the card and made BMR and NEAT twins).
   const breakdown = result ? [
-    { label: 'BMR (resting)', value: result.bmr, color: 'bg-series-1', typicalRange: '50-70%' },
-    { label: 'NEAT (steps)', value: result.neat, color: 'bg-series-2', typicalRange: '5-20%' },
+    { label: 'BMR', value: result.bmr, color: 'bg-series-1', typicalRange: '50-70%' },
+    { label: 'NEAT', value: result.neat, color: 'bg-series-2', typicalRange: '5-20%' },
     { label: 'Exercise', value: result.exercise, color: 'bg-series-3', typicalRange: '5-15%' },
-    { label: 'TEF (digestion)', value: result.tef, color: 'bg-series-4', typicalRange: '10-15%' },
+    { label: 'TEF', value: result.tef, color: 'bg-series-4', typicalRange: '10-15%' },
   ] : []
 
   const weightUnitLabel = unit === 'imperial' ? 'lbs' : 'kg'
