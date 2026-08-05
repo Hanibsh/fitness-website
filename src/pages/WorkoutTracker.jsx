@@ -65,6 +65,7 @@ import UnitHelp from '../components/UnitHelp'
 import LogTabs from '../components/LogTabs'
 import QuickCalculator from '../components/QuickCalculator'
 import RestTimer from '../components/RestTimer'
+import HintBar from '../components/HintBar'
 import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
 
@@ -237,14 +238,23 @@ function hintFor(set, field, side, fallback = '—') {
   return v === '' || v == null ? fallback : String(v)
 }
 
-// Does this exercise have a suggestion still waiting to be taken up?
+// Touch device? Decides whether the hint bar is needed at all — on anything with
+// a real keyboard, Enter already takes the suggestion.
+function isTouch() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+}
+
+// Does this SET have a suggestion still waiting to be taken up?
+function setHasUntakenHint(s) {
+  if (!s.hint) return false
+  if (s.left) return ['left', 'right'].some((k) => ['weight', 'reps', 'rir'].some((f) => s[k]?.[f] === '' && s.hint[k]?.[f] !== '' && s.hint[k]?.[f] != null))
+  const fields = s.bw != null ? ['added', 'reps', 'rir'] : ['weight', 'reps', 'rir', 'duration', 'distance']
+  return fields.some((f) => (s[f] === '' || s[f] == null) && s.hint[f] !== '' && s.hint[f] != null)
+}
+
+// …and does this exercise have one anywhere?
 function hasUntakenHint(ex) {
-  return ex.sets.some((s) => {
-    if (!s.hint) return false
-    if (s.left) return ['left', 'right'].some((k) => ['weight', 'reps', 'rir'].some((f) => s[k]?.[f] === '' && s.hint[k]?.[f] !== '' && s.hint[k]?.[f] != null))
-    const fields = s.bw != null ? ['added', 'reps', 'rir'] : ['weight', 'reps', 'rir', 'duration', 'distance']
-    return fields.some((f) => (s[f] === '' || s[f] == null) && s.hint[f] !== '' && s.hint[f] != null)
-  })
+  return ex.sets.some(setHasUntakenHint)
 }
 
 function migrateDraft(draft) {
@@ -387,6 +397,8 @@ export default function WorkoutTracker() {
   // until my next set"). All three live in localStorage rather than React
   // state, so reloading mid-rest doesn't silently throw them away.
   const [restTimer, setRestTimer] = useState(() => getRestTimer())
+  // Which set the caret is in, so the hint bar knows whose suggestion to offer.
+  const [focusedSet, setFocusedSet] = useState(null) // { exId, setId }
   const [hp, setHp] = useState('') // honeypot — real users leave this empty
   const [loadError, setLoadError] = useState('')
   const firstRender = useRef(true)
@@ -497,7 +509,14 @@ export default function WorkoutTracker() {
   // idle face, so there's always something to tap to start a rest.
   const anchorCandidate = Math.max(restTimer.anchor || 0, lastLogged?.at || 0) || null
   const restAnchorTs = anchorCandidate > (restTimer.dismissedAt || 0) ? anchorCandidate : null
-  const showRestTimer = restTimer.enabled && !isEditing && isToday
+  // Only once a session is genuinely underway — the draft holds at least one
+  // exercise and isn't a leftover from another day. Without that last clause the
+  // bubble sat on the log screen permanently, next to the "Start session" card,
+  // and one stray tap started a rest that then ticked for half an hour against
+  // a workout that hadn't begun. It still appears before your first SET, which
+  // is the point of it; just not before your first exercise.
+  const sessionUnderway = draft.exercises.length > 0 && !staleDraft
+  const showRestTimer = restTimer.enabled && !isEditing && isToday && sessionUnderway
 
   const restTargetSec = useMemo(
     () => (lastLogged?.exerciseId ? getExercise(lastLogged.exerciseId)?.restSeconds || null : null),
@@ -507,6 +526,27 @@ export default function WorkoutTracker() {
   function updateRestTimer(patch) {
     setRestTimer((prev) => saveRestTimer({ ...prev, ...patch }))
   }
+
+  // The manual taps are per-session, so they die with the draft. Called
+  // wherever the draft is cleared — finishing, discarding, leaving edit mode —
+  // otherwise a rest you started in the last set of a workout carries on
+  // counting after you've saved it.
+  function clearRestAnchor() {
+    updateRestTimer({ anchor: null, dismissedAt: null })
+  }
+
+  // What the hint bar offers, or null to hide it. Only on touch devices: a
+  // physical keyboard already has Enter, and a strip across the bottom of a
+  // desktop window while you type would be clutter solving nothing.
+  const hintBar = useMemo(() => {
+    if (!focusedSet || !isTouch()) return null
+    const ex = draft.exercises.find((e) => e.id === focusedSet.exId)
+    const set = ex?.sets.find((s) => s.id === focusedSet.setId)
+    if (!set || !setHasUntakenHint(set)) return null
+    // Written by the same formatter as a logged set, so what the bar promises
+    // reads exactly like what lands in the row.
+    return setSummary(promoteHint(set), unit, ex.kind, distanceUnit(unit))
+  }, [focusedSet, draft, unit])
 
   // Auto-save the draft on every change (skip the very first render).
   useEffect(() => {
@@ -1162,18 +1202,26 @@ export default function WorkoutTracker() {
     }))
   }
 
-  // Enter — which on a phone keyboard IS the ✓ / Done key your thumb is already
-  // on — takes this set's suggestion and closes the field. The most common set
+  // Enter takes this set's suggestion and closes the field. The most common set
   // of all is "same as last time", and it should cost one key rather than
   // retyping numbers already sitting there in grey. `enterKeyHint` is what makes
-  // that key actually draw as Done (a checkmark on Android) instead of a return
-  // arrow, so the thing you press looks like the thing it does.
+  // that key draw as Done (a checkmark on Android) instead of a return arrow,
+  // so the thing you press looks like the thing it does.
+  //
+  // This is a keyboard-and-Android path ONLY. iOS numeric keypads have no Return
+  // key whatsoever — the ✓ Safari shows above them is OS chrome that just
+  // dismisses the keyboard, firing no key event — so `enterKeyHint` is inert
+  // there and this handler can never run. <HintBar> is what makes the same
+  // action reachable by thumb; the onFocus/onBlur below are how it knows which
+  // set you're in.
   //
   // preventDefault so it can never submit anything, and blur explicitly: the IME
   // closes itself on Android but not everywhere, and a caret still sitting in a
   // field you've just finished reads as though nothing happened.
   const hintKeyProps = (exId, setId) => ({
     enterKeyHint: 'done',
+    onFocus: () => setFocusedSet({ exId, setId }),
+    onBlur: () => setFocusedSet((cur) => (cur && cur.setId === setId ? null : cur)),
     onKeyDown: (e) => {
       if (e.key !== 'Enter') return
       e.preventDefault()
@@ -1237,6 +1285,7 @@ export default function WorkoutTracker() {
     clearDraft()
     setDraft(stash || emptyDraft())
     setEditingDate(false)
+    clearRestAnchor()
   }
 
   // Persist the program: locally always, remotely (best-effort) when logged in.
@@ -1541,6 +1590,7 @@ export default function WorkoutTracker() {
       clearDraft()
       setDraft(stash || emptyDraft())
       setEditingDate(false)
+      clearRestAnchor()
     } catch {
       // Allow retrying this same draft after a failed save.
       rollback()
@@ -1557,6 +1607,7 @@ export default function WorkoutTracker() {
     clearDraft()
     setDraft(emptyDraft())
     setEditingDate(false)
+    clearRestAnchor()
   }
 
   async function removeSession(id) {
@@ -3099,6 +3150,14 @@ export default function WorkoutTracker() {
         </Modal>
       )}
 
+      <HintBar
+        label={hintBar}
+        onTake={() => {
+          if (focusedSet) fillSetFromHint(focusedSet.exId, focusedSet.setId)
+          document.activeElement?.blur?.()
+          setFocusedSet(null)
+        }}
+      />
       <QuickCalculator />
       {showRestTimer && (
         <RestTimer
