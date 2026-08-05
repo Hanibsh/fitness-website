@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -66,8 +66,10 @@ import LogTabs from '../components/LogTabs'
 import QuickCalculator from '../components/QuickCalculator'
 import RestTimer from '../components/RestTimer'
 import HintBar from '../components/HintBar'
+import SessionSummary from '../components/SessionSummary'
 import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
+import { adviseTraining } from '../lib/advisor'
 
 const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
 // Same as SET_GRID plus a trailing column for the per-set laterality toggle —
@@ -138,28 +140,6 @@ function isFutureDay(ts) {
   const d = new Date(ts); d.setHours(0, 0, 0, 0)
   const t = new Date(); t.setHours(0, 0, 0, 0)
   return d.getTime() > t.getTime()
-}
-
-function sideSummary(s, unit) {
-  const base = s.weight ? `${s.weight}${unit} × ${s.reps}` : `${s.reps}`
-  const hasRir = s.rir !== '' && s.rir != null
-  return hasRir ? `${base} @${s.rir}` : base
-}
-
-function setSummary(set, unit, kind, distUnit) {
-  if (kind === 'cardio') {
-    const parts = []
-    if (set.duration) parts.push(`${set.duration} min`)
-    if (set.distance) parts.push(`${set.distance} ${distUnit}`)
-    return parts.join(' · ') || '—'
-  }
-  const tag = set.type === 'warmup' ? 'W · ' : set.type === 'backoff' ? 'B · ' : ''
-  if (set.left) {
-    return `${tag}L ${sideSummary(set.left, unit)} · R ${sideSummary(set.right || {}, unit)}`
-  }
-  const hasRir = set.rir !== '' && set.rir != null
-  const base = set.weight ? `${set.weight}${unit} × ${set.reps}` : `${set.reps} reps`
-  return tag + (hasRir ? `${base} · ${set.rir} RIR` : base)
 }
 
 // Passively timestamp a set as it's logged (positive reps or, for cardio,
@@ -499,9 +479,14 @@ export default function WorkoutTracker() {
     return at ? { at, name, exerciseId } : null
   }, [draft])
 
-  // The whole session so far, from the first stamped set — warm-ups included,
-  // since they're time spent training (rest deliberately excludes them above).
-  const sessionStartTs = useMemo(() => firstSetAt(draft.exercises), [draft])
+  // The whole session so far. Runs from the moment the workout started — the
+  // "Start session" tap, or adding the first exercise — so the live number in
+  // the rest widget and the duration saved at finish are the same clock. Falls
+  // back to the first stamped set for drafts begun before that was recorded.
+  const sessionStartTs = useMemo(
+    () => draft.sessionStartedAt || firstSetAt(draft.exercises),
+    [draft]
+  )
 
   // A manual tap wins over the derived anchor when it's more recent; the next
   // logged set takes it back. `dismissedAt` hides the number the same way,
@@ -646,6 +631,28 @@ export default function WorkoutTracker() {
 
   const sortedHistory = useMemo(() => [...history].sort((a, b) => b.date - a.date), [history])
 
+  // The workout whose summary card is open. Looked up rather than held in state
+  // so an edit (a moved date, a corrected time) shows through immediately
+  // instead of the card holding a stale copy.
+  const openSessionData = useMemo(
+    () => (openSession ? sortedHistory.find((s) => s.id === openSession) || null : null),
+    [openSession, sortedHistory]
+  )
+
+  // Only computed while a card is open, and only its worst item is shown — the
+  // summary is a place for one thought, not the whole advisor.
+  //
+  // No specialization blocks passed: the logger doesn't load them (the dashboard
+  // does), and fetching them for one line of text isn't worth a round trip. The
+  // consequence is bounded and worth stating — the block-focus recommendation
+  // can't appear here, so if it would have been the worst item, the summary
+  // shows the next one down instead.
+  const topAdvice = useMemo(() => {
+    if (!openSessionData) return null
+    const recs = adviseTraining(sortedHistory, { annotations })
+    return recs.find((r) => r.severity === 'red') || recs.find((r) => r.severity === 'amber') || null
+  }, [openSessionData, sortedHistory, annotations])
+
   // Workouts on the calendar-selected day (kept fresh as history changes), for
   // the day-detail panel under the calendar.
   const daySessions = useMemo(
@@ -711,6 +718,11 @@ export default function WorkoutTracker() {
       const insertAt = at !== -1 ? at + 1 : isCardio ? d.exercises.length : 0
       const next = { ...d, exercises: [...d.exercises.slice(0, insertAt), ex, ...d.exercises.slice(insertAt)] }
       if (bodyweight && (d.bodyweight == null || d.bodyweight === '')) next.bodyweight = bw
+      // The session clock starts here when you went straight into the log
+      // instead of tapping "Start session" (which stamps it itself). Not
+      // `d.startedAt` — that's set when the page finds no draft to restore,
+      // which can be hours before you pick up a dumbbell.
+      if (!d.sessionStartedAt && !d.exercises.length) next.sessionStartedAt = Date.now()
       return next
     })
   }
@@ -1355,6 +1367,10 @@ export default function WorkoutTracker() {
         .map((ex) => ({ ...ex, note: getExerciseNote(ex) || ex.note || '' }))
       return {
         startedAt: Date.now(),
+        // This tap is the start of the workout, and what its duration counts
+        // from. Distinct from `startedAt` above, which is bookkeeping for the
+        // draft itself (and the double-submit guard).
+        sessionStartedAt: Date.now(),
         date: Date.now(),
         name: day.name || '',
         exercises,
@@ -2796,14 +2812,12 @@ export default function WorkoutTracker() {
               <div className="space-y-3">
                 {sortedHistory.map((session) => {
                   const stats = sessionStats(session)
-                  const isOpen = openSession === session.id
                   const avgRest = formatRest(sessionAvgRest(session))
                   const duration = formatDuration(session.durationMs)
-                  const sessionGroups = supersetLabels(session.exercises.filter((e) => e.kind !== 'cardio'))
                   return (
                     <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border scroll-mt-28">
                       <button
-                        onClick={() => setOpenSession(isOpen ? null : session.id)}
+                        onClick={() => setOpenSession(session.id)}
                         className="w-full flex items-center justify-between px-6 py-4 bg-transparent border-none cursor-pointer text-left"
                       >
                         <div>
@@ -2822,51 +2836,36 @@ export default function WorkoutTracker() {
                             {avgRest && ` · ${avgRest} avg rest`}
                           </p>
                         </div>
-                        <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
                       </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
-                      <AnimatePresence>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="px-6 pb-5 border-t border-border pt-4">
-                              {session.exercises.map((ex) => {
-                                const du = distanceUnit(session.unit || 'kg')
-                                const shown = ex.sets.filter((s) => setHasWork(s, ex.kind))
-                                const g = sessionGroups.get(ex.id)
-                                const badge = g && g.size > 1 ? g.label : null
-                                return (
-                                  <div key={ex.id} className="mb-4 last:mb-0">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      {badge && (
-                                        <span className="shrink-0 inline-flex items-center justify-center text-[9px] font-semibold text-cream bg-text-primary px-1.5 py-0.5 tracking-wide">
-                                          {badge}
-                                        </span>
-                                      )}
-                                      <p className="text-[13px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
-                                      <button
-                                        onClick={() => setProgressExercise({ name: ex.name, kind: ex.kind })}
-                                        aria-label={`View ${ex.name} progress`}
-                                        className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0.5"
-                                      >
-                                        <LineChart className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      {shown.map((s) => (
-                                        <span key={s.id} className="text-[12px] text-text-muted bg-cream border border-border px-2.5 py-1">
-                                          {setSummary(s, session.unit || 'kg', ex.kind, du)}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                              <div className="flex flex-wrap items-center gap-4 mt-3">
+          {/* The summary card for whichever workout was tapped. It used to be an
+              accordion inside the row above, which meant the thing you most want
+              to look back at got the least room on a phone. */}
+          {openSessionData && (
+            <SessionSummary
+              session={openSessionData}
+              history={sortedHistory}
+              unit={unit}
+              annotation={annotationForDate(annotations, openSessionData.date)}
+              // Whole-history advice: it's about how you're training NOW, so it
+              // belongs only on the session you just did. On a workout from
+              // March it would read present-tense advice onto old work.
+              advice={openSessionData.id === sortedHistory[0]?.id ? topAdvice : null}
+              onClose={() => { setOpenSession(null); setEditingSessionDate(null); setEditingSessionTime(null) }}
+              // Swaps the summary for the progress chart rather than stacking a
+              // second dialog on top of the first.
+              onExerciseProgress={(ex) => { setOpenSession(null); setProgressExercise(ex) }}
+              actions={(() => {
+                const session = openSessionData
+                return (
+                  <div className="flex flex-wrap items-center gap-4">
                                 <button
                                   onClick={() => editSession(session)}
                                   disabled={draft.editingId === session.id}
@@ -2941,9 +2940,9 @@ export default function WorkoutTracker() {
                                     className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
                                   >
                                     <Timer className="w-3.5 h-3.5" />
-                                    {session.startedAt && session.endedAt
-                                      ? `${toInputTime(session.startedAt)} – ${toInputTime(session.endedAt)}`
-                                      : 'Set session time'}
+                                    {/* Same wording as the card above it, so the
+                                        control and the thing it edits agree. */}
+                                    {session.startedAt && session.endedAt ? 'Change session time' : 'Set session time'}
                                   </button>
                                 ))}
                                 {draft.editingId !== session.id && (
@@ -2954,16 +2953,10 @@ export default function WorkoutTracker() {
                                     <Trash2 className="w-3.5 h-3.5" /> Delete session
                                   </button>
                                 )}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+                  </div>
+                )
+              })()}
+            />
           )}
 
           {/* Guest data-sharing opt-in */}

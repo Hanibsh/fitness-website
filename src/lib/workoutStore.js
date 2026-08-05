@@ -465,11 +465,12 @@ export function getHistory() {
 // the caller decides whether it goes to localStorage or Supabase).
 export function makeSession(draft, unit = 'kg') {
   // NOTE: `draft.startedAt` and `session.startedAt` are NOT the same thing.
-  // The draft's is wall-clock "when this session/edit was opened", and doubles
-  // as the double-submit key in WorkoutTracker. The session's is "when you
-  // actually started training", derived from the set stamps below. This object
-  // is built field by field and never spreads the draft, so the two can't mix.
-  const { startedAt, endedAt, durationMs } = sessionWindow(draft.exercises)
+  // The draft's is wall-clock "when this draft/edit was opened" — it exists the
+  // moment the log page has no draft to restore, and doubles as the
+  // double-submit key in WorkoutTracker. The session's is "when you started
+  // training", which is `draft.sessionStartedAt`. This object is built field by
+  // field and never spreads the draft, so the two can't mix.
+  const { startedAt, endedAt, durationMs } = sessionTimes(draft)
   return {
     id: newId(),
     date: draft.date || Date.now(),
@@ -482,20 +483,36 @@ export function makeSession(draft, unit = 'kg') {
   }
 }
 
-// When training actually started and ended, from the first stamped set to the
-// last. Warm-ups count — they're time spent in the gym (rest between sets
-// deliberately excludes them; see isLoggedSet in workoutStats.js).
+// How long the workout took: from the moment you START it — the "Start session"
+// tap, or adding your first exercise if you went straight in — to the moment you
+// finish it. That's the wall clock a person means by "how long was I training",
+// and it's what the summary card reports.
 //
-// This used to be `Date.now() - draft.startedAt`, which measured how long the
-// LOGGER had been open rather than how long you trained: open the app in the
-// morning, train in the evening, and the 6h ceiling below threw the whole
-// thing away. Both ends now come from the sets themselves.
+// It deliberately counts the time either side of the sets: your setup, the walk
+// between machines, the queue for the rack. The cost is that a session you
+// started and then wandered away from reads long — which is why the window is
+// editable on the saved session, and why the ceiling below is generous rather
+// than tight. Recording something correctable beats recording nothing.
 //
-// (`durationMs` does sync — sessions.duration_ms has existed since the
-// duration column was added. workoutRemote.js degrades gracefully when a
-// database hasn't run the migration, which is a different thing.)
+// `sessionWindow` (first stamped set → last) stays as the fallback for drafts
+// that were already in flight when this shipped, and for anything backfilled.
+//
+// (`durationMs` does sync — sessions.duration_ms has existed since the duration
+// column was added. workoutRemote.js degrades gracefully when a database hasn't
+// run the migration, which is a different thing.)
 const MIN_SESSION_MS = 60 * 1000
-const MAX_SESSION_MS = 6 * 60 * 60 * 1000
+const MAX_SESSION_MS = 12 * 60 * 60 * 1000
+
+export function sessionTimes(draft, now = Date.now()) {
+  const started = draft?.sessionStartedAt
+  if (started) {
+    const ms = now - started
+    if (ms >= MIN_SESSION_MS && ms <= MAX_SESSION_MS) {
+      return { startedAt: started, endedAt: now, durationMs: ms }
+    }
+  }
+  return sessionWindow(draft?.exercises)
+}
 
 // When the first set of a session was stamped, or null before anything's been
 // logged. Deliberately ungated: the live "session so far" clock in the logger

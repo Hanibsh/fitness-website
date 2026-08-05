@@ -179,6 +179,32 @@ export function sessionAvgRest(session) {
   return all.length ? Math.round(all.reduce((a, b) => a + b, 0) / all.length) : null
 }
 
+// One logged set as a line of text — "60kg × 10 · 2 RIR", or L/R for a
+// unilateral one. Lives here rather than in the logger because the summary card
+// and the hint bar both read from it too, and a set has to describe itself the
+// same way wherever it's shown.
+function sideSummary(s, unit) {
+  const base = s.weight ? `${s.weight}${unit} × ${s.reps}` : `${s.reps}`
+  const hasRir = s.rir !== '' && s.rir != null
+  return hasRir ? `${base} @${s.rir}` : base
+}
+
+export function setSummary(set, unit, kind, distUnit) {
+  if (kind === 'cardio') {
+    const parts = []
+    if (set.duration) parts.push(`${set.duration} min`)
+    if (set.distance) parts.push(`${set.distance} ${distUnit}`)
+    return parts.join(' · ') || '—'
+  }
+  const tag = set.type === 'warmup' ? 'W · ' : set.type === 'backoff' ? 'B · ' : ''
+  if (set.left) {
+    return `${tag}L ${sideSummary(set.left, unit)} · R ${sideSummary(set.right || {}, unit)}`
+  }
+  const hasRir = set.rir !== '' && set.rir != null
+  const base = set.weight ? `${set.weight}${unit} × ${set.reps}` : `${set.reps} reps`
+  return tag + (hasRir ? `${base} · ${set.rir} RIR` : base)
+}
+
 // mm:ss for a rest duration in seconds (null-safe).
 export function formatRest(sec) {
   if (sec == null) return null
@@ -477,6 +503,59 @@ export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
   }
   if (!timesPerformed) return null
   return { timesPerformed, firstDate, lastDate, bestWeight, bestReps, bestE1rm, lifetimeVolume }
+}
+
+// Which lifts in this session beat everything that came before it.
+//
+// "Before" means strictly earlier by date, not merely earlier in the array —
+// a session can be backdated into the middle of your history, and a lift only
+// counts as a record against what genuinely preceded it.
+//
+// Three kinds, because they answer different questions and a session can hit
+// one without the others: the heaviest you've handled, the most reps you've
+// managed, and the best estimated 1RM (which is what catches "same weight, two
+// more reps"). An exercise with no prior history at all is NOT a record —
+// everything would be a PR on day one, which tells you nothing.
+export const PR_KINDS = { weight: 'Heaviest', reps: 'Most reps', e1rm: 'Best est. 1RM' }
+
+export function sessionPRs(session, allSessions, displayUnit = 'kg') {
+  if (!session?.exercises?.length) return []
+  const prior = (allSessions || []).filter((s) => s.id !== session.id && s.date < session.date)
+  if (!prior.length) return []
+
+  const out = []
+  const seen = new Set()
+  for (const ex of session.exercises) {
+    if (ex.kind === 'cardio') continue
+    const key = (canonicalExerciseId(ex.exerciseId) || ex.name.trim().toLowerCase())
+    if (seen.has(key)) continue // a movement logged twice in one session
+    seen.add(key)
+
+    const target = { id: ex.exerciseId, name: ex.name }
+    const before = exerciseSummary(prior, target, displayUnit)
+    if (!before) continue // never done it before — not a record, just a first
+
+    const sessionUnit = session.unit || 'kg'
+    let weight = null
+    let reps = null
+    let e1rm = null
+    for (const s of setsForExercise(session, target)) {
+      const r = Number(s.reps)
+      const w = convertWeight(Number(s.weight), sessionUnit, displayUnit)
+      if (w > 0 && (weight === null || w > weight)) weight = w
+      if (r > 0 && (reps === null || r > reps)) reps = r
+      const e = estimatedOneRepMax(w, r)
+      if (e !== null && (e1rm === null || e > e1rm)) e1rm = e
+    }
+
+    const beat = (now, prev) => now !== null && prev !== null && now > prev
+    if (beat(weight, before.bestWeight)) out.push({ kind: 'weight', name: ex.name, value: weight, previous: before.bestWeight })
+    if (beat(reps, before.bestReps)) out.push({ kind: 'reps', name: ex.name, value: reps, previous: before.bestReps })
+    if (beat(e1rm, before.bestE1rm)) {
+      out.push({ kind: 'e1rm', name: ex.name, value: Math.round(e1rm), previous: Math.round(before.bestE1rm) })
+    }
+  }
+  return out
 }
 
 // The last few sessions containing this exercise, newest-first (the order
