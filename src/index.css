@@ -175,6 +175,29 @@ body {
   color: var(--color-text-primary);
 }
 
+/* iOS Safari zooms the page whenever you focus a field whose text is under
+   16px. It isn't configurable and there's no way to opt out of it — the only
+   lever is the font size itself. Every field in this app sits at 11-15px for
+   density, so tapping any of them zoomed, and once the page is zoomed the
+   visual viewport is smaller than the layout viewport: everything position:
+   fixed (the rest timer, the calculator, the hint bar) ends up outside what
+   you can see. It looked like the widgets were vanishing on touch.
+
+   16px on touch devices only, so the desktop layout keeps its density. The
+   alternative — maximum-scale=1 on the viewport meta — would fix this with no
+   visual change at all, but Android Chrome honours it literally and takes
+   pinch-to-zoom away from anyone who needs to magnify the page. Not worth it.
+
+   `!important` because these sizes come from Tailwind utilities on the
+   elements themselves, which this would otherwise lose to. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Anatomy map zones (components/InteractiveAnatomy.jsx). Zones sit on the muscle
    labels drawn into the art. The panel is deliberately dark in both themes, so
    these colors are hardcoded gold rather than theme tokens.
