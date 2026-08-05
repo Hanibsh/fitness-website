@@ -2761,46 +2761,31 @@ export default function WorkoutTracker() {
                       </div>
                     ) : (
                       <div className="space-y-2.5">
+                        {/* Same shape as the calendar page's day panel: what the
+                            workout was, and one way into the card. Edit and
+                            delete live on the card. */}
                         {daySessions.map((s) => {
                           const st = sessionStats(s)
+                          const dur = formatDuration(s.durationMs)
                           return (
-                            <div key={s.id} className="bg-cream border border-border p-3">
-                              <div className="flex items-start justify-between gap-3">
+                            <button
+                              key={s.id}
+                              onClick={() => setOpenSession(s.id)}
+                              aria-label={`Open the summary for ${s.name || 'this workout'}`}
+                              className="w-full text-left bg-cream border border-border p-3 cursor-pointer hover:border-border-hover transition-colors"
+                            >
+                              <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-[13px] font-medium text-text-primary break-words">{s.name || 'Workout'}</p>
                                   <p className="text-[11px] text-text-muted mt-0.5">
                                     {st.exercises} exercise{st.exercises !== 1 ? 's' : ''} · {st.sets} set{st.sets !== 1 ? 's' : ''}
                                     {st.volume > 0 && ` · ${st.volume.toLocaleString()} ${s.unit || 'kg'}`}
+                                    {dur && ` · ${dur}`}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    onClick={() => editSession(s)}
-                                    disabled={draft.editingId === s.id}
-                                    className="inline-flex items-center gap-1 text-[12px] font-medium text-cream bg-text-primary px-2.5 py-1 border-none cursor-pointer hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-default"
-                                  >
-                                    <Pencil className="w-3 h-3" /> {draft.editingId === s.id ? 'Editing…' : 'Edit'}
-                                  </button>
-                                  <button
-                                    onClick={() => removeSession(s.id)}
-                                    aria-label={`Delete ${s.name || 'workout'}`}
-                                    title="Delete workout"
-                                    className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                                <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
                               </div>
-                              {s.exercises.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {s.exercises.map((ex) => (
-                                    <span key={ex.id} className="text-[11px] text-text-muted bg-white border border-border px-2 py-0.5">
-                                      {ex.name}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            </button>
                           )
                         })}
                       </div>

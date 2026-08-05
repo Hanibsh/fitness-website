@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CalendarDays, X, BatteryCharging } from 'lucide-react'
+import { ArrowLeft, CalendarDays, X, BatteryCharging, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import {
   getHistory, getProgram, deleteSession,
@@ -15,6 +15,7 @@ import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate }
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
+import SessionSummary from '../components/SessionSummary'
 
 const SUMMARY_RANGES = [
   { days: 7, label: 'Week' },
@@ -73,6 +74,7 @@ export default function CalendarPage() {
   const [annotations, setAnnotations] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
+  const [summarySession, setSummarySession] = useState(null) // the open summary card
   // Whether the day_annotations table is reachable. Starts true when logged
   // in; flips off (→ local) the first time a remote call fails, e.g. the
   // migration hasn't been run yet.
@@ -282,8 +284,7 @@ export default function CalendarPage() {
                   annotations={annotations}
                   sessions={sessions}
                   dateFormat={fullDate}
-                  onEditSession={editDaySession}
-                  onDeleteSession={deleteDaySession}
+                  onOpenSummary={setSummarySession}
                 />
 
                 {/* annotation editor — independent of the workout(s) above */}
@@ -385,6 +386,34 @@ export default function CalendarPage() {
             </p>
           </Card>
         </motion.div>
+
+        {/* Opened from the day panel. Editing lives in the log, so Edit
+            navigates there — the card is the way in, not a second editor. */}
+        {summarySession && (
+          <SessionSummary
+            session={summarySession}
+            history={sessions}
+            unit={summarySession.unit || 'kg'}
+            annotation={annotationForDate(annotations, summarySession.date)}
+            onClose={() => setSummarySession(null)}
+            actions={
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  onClick={() => editDaySession(summarySession)}
+                  className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit in the log
+                </button>
+                <button
+                  onClick={() => { deleteDaySession(summarySession); setSummarySession(null) }}
+                  className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete session
+                </button>
+              </div>
+            }
+          />
+        )}
       </div>
     </div>
   )

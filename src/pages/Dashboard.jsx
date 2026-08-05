@@ -4,14 +4,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
-  BatteryCharging, Lightbulb, CalendarRange, HelpCircle,
+  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
 import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
-import { reasonLabel } from '../lib/dayLog'
+import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { activeBlock, sortedBlocks, blockWeek } from '../lib/blocks'
 import BlockModal from '../components/BlockModal'
 import { saveProfile } from '../lib/profile'
@@ -27,6 +27,7 @@ import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import CalendarDayPanel from '../components/CalendarDayPanel'
+import SessionSummary from '../components/SessionSummary'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
 import BodyweightTracker from '../components/BodyweightTracker'
@@ -195,6 +196,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [unit, setUnit] = useState(() => getUnit())
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
+  const [summarySession, setSummarySession] = useState(null) // the open summary card
   const [monthPage, setMonthPage] = useState('calendar') // calendar/summary card: which page is showing
   const calendarSectionRef = useRef(null)
   const [goals, setGoals] = useState(() => getGoals())
@@ -590,8 +592,7 @@ export default function Dashboard() {
                 program={program}
                 annotations={annotations}
                 sessions={sessions}
-                onEditSession={editDaySession}
-                onDeleteSession={deleteDaySession}
+                onOpenSummary={setSummarySession}
               />
             </>
           ) : (
@@ -1113,6 +1114,34 @@ export default function Dashboard() {
           onSave={saveBlock}
           onDelete={blockModal.block ? deleteBlock : undefined}
           onClose={() => setBlockModal(null)}
+        />
+      )}
+
+      {/* Opened from the calendar's day panel. Editing lives in the log, so
+          Edit navigates there — the card is the way in, not a second editor. */}
+      {summarySession && (
+        <SessionSummary
+          session={summarySession}
+          history={sessions}
+          unit={unit}
+          annotation={annotationForDate(annotations, summarySession.date)}
+          onClose={() => setSummarySession(null)}
+          actions={
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                onClick={() => editDaySession(summarySession)}
+                className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit in the log
+              </button>
+              <button
+                onClick={() => { deleteDaySession(summarySession); setSummarySession(null) }}
+                className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete session
+              </button>
+            </div>
+          }
         />
       )}
     </div>

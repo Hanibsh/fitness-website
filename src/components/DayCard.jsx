@@ -14,7 +14,16 @@ import MuscleShareBars from './MuscleShareBars'
 //
 // Names are never truncated anywhere in here. Long movement names are the whole
 // reason this card exists; they wrap.
-export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, note, cta = 'Open day', highlight = false, footer }) {
+// `compact` strips the muscle bars and the exercise chips, leaving the one-line
+// count. A day you've ALREADY trained uses it: the calendar panel is a place to
+// recognise the workout and get into it, not to study it — the full breakdown
+// lives one tap away in the summary card, and repeating it here just made the
+// panel long enough to scroll past.
+//
+// `onOpen` is the button-shaped twin of `to`, for when opening means a dialog
+// rather than a route.
+export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, onOpen, note, cta = 'Open day', highlight = false, compact = false, footer }) {
+  const openable = !!to || !!onOpen
   const body = (
     <>
       {note && <p className="text-[12px] text-text-light">{note}</p>}
@@ -30,13 +39,13 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
             </span>
           </div>
 
-          {stats.groups.length > 0 && (
+          {!compact && stats.groups.length > 0 && (
             <div className="mt-3">
               <MuscleShareBars rows={stats.groups.slice(0, 3).map((g) => ({ label: g.group, sets: g.sets, pct: g.pct }))} />
             </div>
           )}
 
-          {chips.length > 0 && (
+          {!compact && chips.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {chips.map((c) => (
                 <span key={c.key} className="text-[11px] text-text-muted bg-cream border border-border px-2 py-0.5">
@@ -47,7 +56,7 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
             </div>
           )}
 
-          {to && (
+          {openable && (
             <span className="inline-flex items-center gap-1 text-[11px] text-text-light mt-3">
               {cta} <ChevronRight className="w-3 h-3" />
             </span>
@@ -57,12 +66,20 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
     </>
   )
 
+  // Named explicitly on both: left to their contents, either would announce
+  // itself as the whole stats blob.
   return (
     <div className={`border bg-white ${highlight ? 'border-text-primary' : 'border-border'}`}>
       {header && <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-cream">{header}</div>}
-      {to ? (
-        // Named explicitly: left to its contents, this link would announce itself
-        // as the whole stats blob.
+      {onOpen ? (
+        <button
+          onClick={onOpen}
+          aria-label={linkLabel || cta}
+          className="block w-full text-left px-4 py-3 bg-transparent border-none cursor-pointer hover:bg-cream transition-colors"
+        >
+          {body}
+        </button>
+      ) : to ? (
         <Link to={to} state={linkState} aria-label={linkLabel || cta} className="block px-4 py-3 no-underline">
           {body}
         </Link>

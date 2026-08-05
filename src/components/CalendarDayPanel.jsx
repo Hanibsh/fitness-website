@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Pencil, Trash2, Dumbbell, Moon, Check } from 'lucide-react'
+import { Dumbbell, Moon, Check } from 'lucide-react'
 import DayCard from './DayCard'
 import StatusChip from './StatusChip'
 import { dayStatusForDate } from '../lib/program'
-import { dayStats, sessionStats, workingSetCount } from '../lib/planStats'
+import { dayStats, sessionStats } from '../lib/planStats'
 import { formatDuration } from '../lib/dashboard'
 import { reasonLabel } from '../lib/dayLog'
 
@@ -28,7 +28,11 @@ const NOTES = {
   unlogged: 'No workout logged — either a rest day or one you skipped.',
 }
 
-export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onEditSession, onDeleteSession }) {
+// A day you've already trained gets the short version — name, counts, how long —
+// and one way in. Editing and deleting used to sit here as icon buttons next to
+// a card body that ALSO went to the editor; both now live on the summary card,
+// so this panel says what the day was and the card is where you act on it.
+export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onOpenSummary }) {
   if (!selectedDay) return null
 
   const { date } = selectedDay
@@ -49,12 +53,11 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
             return (
               <DayCard
                 key={s.id}
+                compact
                 stats={stats}
-                cta="Open this workout"
-                to="/log"
-                linkState={{ editSessionId: s.id }}
-                linkLabel={`Open ${s.name || 'this workout'} in the log`}
-                chips={s.exercises.map((ex) => ({ key: ex.id, label: ex.name, suffix: `${workingSetCount(ex)}×` }))}
+                cta="Open summary"
+                onOpen={onOpenSummary ? () => onOpenSummary(s) : undefined}
+                linkLabel={`Open the summary for ${s.name || 'this workout'}`}
                 note={stats.exercises === 0 ? 'Nothing was logged in this workout.' : null}
                 header={
                   <>
@@ -63,24 +66,6 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
                       {s.name || state.day?.name || 'Workout'}
                     </span>
                     <StatusChip tone="green">Done</StatusChip>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => onEditSession(s)}
-                        aria-label={`Edit ${s.name || 'workout'}`}
-                        title="Edit this workout"
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-cream bg-text-primary px-2.5 py-1 border-none cursor-pointer hover:bg-accent-hover transition-colors"
-                      >
-                        <Pencil className="w-3 h-3" /> Edit
-                      </button>
-                      <button
-                        onClick={() => onDeleteSession(s)}
-                        aria-label={`Delete ${s.name || 'workout'}`}
-                        title="Delete this workout"
-                        className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   </>
                 }
                 footer={
