@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import './index.css'
 import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { AuthProvider } from './lib/auth.jsx'
 import { applyTheme, effectiveTheme } from './lib/theme'
 
@@ -16,15 +17,20 @@ applyTheme(effectiveTheme())
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        {/* Respect the user's OS-level reduced-motion setting for all
-            framer-motion animations. */}
-        <MotionConfig reducedMotion="user">
-          <App />
-        </MotionConfig>
-      </BrowserRouter>
-    </AuthProvider>
+    {/* Outermost, so a throw anywhere below it — providers included — lands on
+        a readable card rather than unmounting the tree and leaving a bare
+        (in dark mode, black) body behind. */}
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          {/* Respect the user's OS-level reduced-motion setting for all
+              framer-motion animations. */}
+          <MotionConfig reducedMotion="user">
+            <App />
+          </MotionConfig>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
 
