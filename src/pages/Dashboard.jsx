@@ -593,6 +593,8 @@ export default function Dashboard() {
                 annotations={annotations}
                 sessions={sessions}
                 onOpenSummary={setSummarySession}
+                backTo="/"
+                backLabel="Dashboard"
               />
             </>
           ) : (

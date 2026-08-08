@@ -285,6 +285,8 @@ export default function CalendarPage() {
                   sessions={sessions}
                   dateFormat={fullDate}
                   onOpenSummary={setSummarySession}
+                  backTo="/calendar"
+                  backLabel="Calendar"
                 />
 
                 {/* annotation editor — independent of the workout(s) above */}

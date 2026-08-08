@@ -20,6 +20,9 @@ export default function ExerciseDetail() {
   // hence the fallback.
   const backTo = state?.backTo || '/exercises'
   const backLabel = state?.backLabel || 'Exercise bank'
+  // Whatever the sender needs handed back to it when you return — a split day
+  // reached from the dashboard passes its own back target through here, so one
+  // detour into the bank doesn't cost it.
 
   if (!ex) {
     return (
@@ -50,6 +53,7 @@ export default function ExerciseDetail() {
       <div className="max-w-3xl mx-auto">
         <Link
           to={backTo}
+          state={state?.backState}
           className="inline-flex items-center gap-1.5 text-[12px] text-text-muted no-underline hover:text-text-primary mb-6"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> {backLabel}

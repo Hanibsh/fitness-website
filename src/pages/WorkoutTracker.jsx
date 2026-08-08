@@ -251,8 +251,13 @@ function draftHasWork(draft) {
 // was logged on another one). It has to be called out, because a program draft
 // hides today's card — and the draft is per-device localStorage, so the phone
 // can sit on last Tuesday's Upper A while the dashboard correctly says Lower A.
+// `backdated` is the difference between a draft that ended up in the past and
+// one that was OPENED there: the calendar's "Log this workout" on a day you
+// missed. Same shape, opposite meaning — this one is exactly what was asked
+// for, so it isn't debris, mustn't be swept up on the next mount, and doesn't
+// get told it's not today's session.
 function isStaleProgramDraft(draft) {
-  if (!draft?.programId || draft.editingId) return false
+  if (!draft?.programId || draft.editingId || draft.backdated) return false
   return !isSameDay(draft.date || draft.startedAt || Date.now(), Date.now())
 }
 
@@ -263,7 +268,10 @@ function isStaleProgramDraft(draft) {
 // once it holds logged work.
 function willStashDraft(draft, leftover) {
   if (!draft.exercises.length || draft.editingId) return false
-  return !draft.programId || (leftover && draftHasWork(draft))
+  if (!draft.programId) return true
+  // A backdated one isn't today's session either, however deliberate it was, so
+  // starting today's has to set it aside rather than write over it.
+  return (leftover || draft.backdated) && draftHasWork(draft)
 }
 
 // An edit opened on an earlier day and never saved or cancelled. Editing is a
@@ -348,6 +356,10 @@ export default function WorkoutTracker() {
   const [injuryPrompt, setInjuryPrompt] = useState(null)
   const [injuryNote, setInjuryNote] = useState('')
   const [loadingHistory, setLoadingHistory] = useState(true)
+  // The day name a calendar "start" link asked for and couldn't have, because a
+  // session with work in it was already open. Cleared the moment that session
+  // is out of the way.
+  const [blockedStart, setBlockedStart] = useState(null)
   const [importable, setImportable] = useState(null)
   const [profile, setProfile] = useState(null)
   const [unit, setUnit] = useState(() => getUnit())
@@ -421,7 +433,7 @@ export default function WorkoutTracker() {
   // current rather than flash today's card over a live session.
   const isLeftoverDraft = (d) => {
     if (d.editingId) return isStaleEditDraft(d)
-    if (!d.programId) return false
+    if (!d.programId || d.backdated) return false
     if (!isSameDay(d.date || d.startedAt || today, today)) return true
     if (!program) return false
     return d.programId !== program.id || (!!plan.day && d.programDayId !== plan.day.id)
@@ -616,6 +628,38 @@ export default function WorkoutTracker() {
     navigate(location.pathname, { replace: true, state: {} })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loadingHistory])
+
+  // Arriving via the calendar's "Start today's session" / "Log this workout":
+  // open the draft for that split day straight away, so the tap that says start
+  // actually starts it instead of landing you on a card with another button.
+  // `sessionDate` is what makes the second one work — a missed day is logged
+  // against the date it was missed on, not today.
+  //
+  // Refuses when there's already work in the draft that starting would discard
+  // (a session in progress that isn't today's planned one, so willStashDraft
+  // wouldn't set it aside). A live workout outranks a link you tapped — but
+  // refusing in silence reads as a broken button, so it says so and leaves the
+  // session alone. Waits for the load, which is what settles `program` — until
+  // then the day can't be looked up and a miss would be a false "not found".
+  useEffect(() => {
+    const dayId = location.state?.startPlannedDay
+    if (!dayId || loadingHistory) return
+    const day = program?.days.find((d) => d.id === dayId)
+    const safe = !draftHasWork(draft) || willStashDraft(draft, staleDraft)
+    if (day && day.kind !== 'rest') {
+      if (safe) startPlannedSession(day, { date: location.state.sessionDate || Date.now() })
+      else setBlockedStart(day.name || 'that day')
+    }
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, loadingHistory, program])
+
+  // The notice above is only true while the session that caused it is in the
+  // way. Finished, discarded, or emptied out, it stops being an explanation and
+  // starts being clutter.
+  useEffect(() => {
+    if (blockedStart && !draftHasWork(draft)) setBlockedStart(null)
+  }, [draft, blockedStart])
 
   // History plus the in-progress session as a provisional "today" point, so
   // graphs stay live while you're logging.
@@ -1091,7 +1135,10 @@ export default function WorkoutTracker() {
     // comes through, so clamp it to today.
     const ts = Math.min(fromInputDate(value), Date.now())
     if (Number.isNaN(ts)) return
-    setDraft((d) => ({ ...d, date: ts }))
+    // Moving a backdated write-up onto today makes it today's session, and the
+    // flag has to go with the date it was about — left set, it would keep the
+    // leftover checks looking the other way.
+    setDraft((d) => ({ ...d, date: ts, backdated: d.backdated && !isSameDay(ts, Date.now()) }))
   }
 
   function removeExercise(exId) {
@@ -1349,11 +1396,16 @@ export default function WorkoutTracker() {
     return { ...ex, sets, unilateral }
   }
 
-  // Start today's planned session: fill the draft from the program day (name +
+  // Start a planned session: fill the draft from the program day (name +
   // exercises + targets) and tag it so finishing advances the rotation. Whatever
   // is worth keeping (see willStashDraft) is stashed first, like edit mode, and
   // restored later.
-  function startTodaysSession(day) {
+  //
+  // `date` is the day the session BELONGS to, which is today for every button on
+  // this page but a past date when the calendar sends you here to log a workout
+  // you missed.
+  function startPlannedSession(day, { date = Date.now() } = {}) {
+    const backdated = !isSameDay(date, Date.now())
     setDraft((cur) => {
       if (willStashDraft(cur, isLeftoverDraft(cur))) stashDraft(cur)
       const bodyweight = prefillBodyweight()
@@ -1370,8 +1422,18 @@ export default function WorkoutTracker() {
         // This tap is the start of the workout, and what its duration counts
         // from. Distinct from `startedAt` above, which is bookkeeping for the
         // draft itself (and the double-submit guard).
-        sessionStartedAt: Date.now(),
-        date: Date.now(),
+        //
+        // Not stamped for a workout you're writing up after the fact: the clock
+        // would run from now, and report the minutes you spent TYPING as the
+        // length of a session you trained days ago. Left unset, sessionTimes
+        // falls back to the span of the sets themselves, and the window stays
+        // editable on the saved session.
+        sessionStartedAt: backdated ? null : Date.now(),
+        // Today keeps the real timestamp (it's what orders two sessions logged
+        // on the same day); a past date is noon-pinned, the way the date picker
+        // and every stored annotation pin theirs.
+        date: backdated ? noonOf(date) : date,
+        backdated,
         name: day.name || '',
         exercises,
         bodyweight,
@@ -2415,7 +2477,7 @@ export default function WorkoutTracker() {
                   </p>
                   <div className="flex items-center gap-3 flex-wrap mt-4">
                     <button
-                      onClick={() => startTodaysSession(todayDay)}
+                      onClick={() => startPlannedSession(todayDay)}
                       className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[14px] hover:bg-white transition-colors"
                     >
                       <Check className="w-4 h-4" /> Log anyway
@@ -2453,7 +2515,7 @@ export default function WorkoutTracker() {
                   )}
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
-                      onClick={() => startTodaysSession(todayDay)}
+                      onClick={() => startPlannedSession(todayDay)}
                       className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[14px] hover:bg-white transition-colors"
                     >
                       <Check className="w-4 h-4" /> Start session
@@ -2531,6 +2593,18 @@ export default function WorkoutTracker() {
                 </div>
               </div>
             </div>
+
+            {/* You asked the calendar to open a different day while this one
+                was underway. Nothing was touched — here's why. */}
+            {blockedStart && (
+              <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
+                <Calendar className="w-3.5 h-3.5 text-text-light shrink-0" />
+                <span className="text-[12px] text-text-secondary min-w-0">
+                  <span className="text-text-primary">{blockedStart}</span> wasn’t opened — this session already has
+                  sets in it. Finish or discard it first.
+                </span>
+              </div>
+            )}
 
             {/* Left over from an earlier sitting — an edit never closed, or a
                 planned session never finished. Say so, or it reads as today's

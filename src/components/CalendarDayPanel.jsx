@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Dumbbell, Moon, Check } from 'lucide-react'
+import { Dumbbell, Moon, Check, Play } from 'lucide-react'
 import DayCard from './DayCard'
 import StatusChip from './StatusChip'
 import { dayStatusForDate } from '../lib/program'
@@ -32,12 +32,28 @@ const NOTES = {
 // and one way in. Editing and deleting used to sit here as icon buttons next to
 // a card body that ALSO went to the editor; both now live on the summary card,
 // so this panel says what the day was and the card is where you act on it.
-export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onOpenSummary }) {
+//
+// `backTo`/`backLabel` are where the split's day page should send you when you
+// open one from here. Without them it offers its own parent — the split
+// overview — which on the dashboard means one tap in and four taps back out.
+// The day page falls back to that parent, so a hard reload still has an exit.
+export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onOpenSummary, backTo, backLabel }) {
   if (!selectedDay) return null
 
   const { date } = selectedDay
   const state = dayStatusForDate(program, date.getTime(), { sessions, annotations })
   const dayHref = program && state.day ? `/split/${program.id}/day/${state.day.id}` : null
+  const backState = backTo ? { backTo, backLabel } : undefined
+
+  // Straight into the logger with this day's plan already loaded. Today starts
+  // now; a day you missed is logged against the date it was missed on, so the
+  // split's rotation consumes that slot rather than today's. Deliberately not
+  // offered on days still ahead — there's nothing to log yet — nor on a day
+  // that's done, off, or a rest day.
+  const startable = state.day && state.day.kind !== 'rest' && (state.status === 'today' || state.status === 'missed')
+  const startState = startable
+    ? { startPlannedDay: state.day.id, ...(state.status === 'missed' ? { sessionDate: date.getTime() } : {}) }
+    : null
 
   return (
     <div className="mt-5 pt-5 border-t border-border">
@@ -74,7 +90,7 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
                     {/* Only when the session could be traced back to a split day
                         — dayForSession answers null rather than guessing. */}
                     {dayHref && (
-                      <Link to={dayHref} className="text-text-muted hover:text-text-primary no-underline">
+                      <Link to={dayHref} state={backState} className="text-text-muted hover:text-text-primary no-underline">
                         View this day in your split →
                       </Link>
                     )}
@@ -90,7 +106,20 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
         <DayCard
           stats={state.day && state.day.kind !== 'rest' ? dayStats(state.day) : null}
           to={state.status === 'rest' ? undefined : dayHref || undefined}
+          linkState={backState}
           linkLabel={`Open ${state.day?.name || 'this day'} in your split`}
+          footer={
+            startState ? (
+              <Link
+                to="/log"
+                state={startState}
+                className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 text-[13px] no-underline hover:bg-accent-hover transition-colors"
+              >
+                <Play className="w-3.5 h-3.5" />
+                {state.status === 'today' ? 'Start today’s session' : 'Log this workout'}
+              </Link>
+            ) : null
+          }
           chips={(state.day?.exercises || []).map((pe) => ({ key: pe.id, label: pe.name, suffix: `${pe.sets}×` }))}
           note={NOTES[state.status] ?? (state.day?.exercises?.length ? null : 'Nothing planned for this day yet.')}
           header={

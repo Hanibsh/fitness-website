@@ -37,7 +37,7 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 // with it for horizontal space.
 export default function SplitDay() {
   const { dayId } = useParams()
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
   const { user, program, update, isWeekly, todayWeekdayIndex, pointerIndex } = useOutletContext()
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [swapOpenFor, setSwapOpenFor] = useState(null)
@@ -46,9 +46,16 @@ export default function SplitDay() {
   const dayIndex = program.days.findIndex((d) => d.id === dayId)
   const day = dayIndex === -1 ? null : program.days[dayIndex]
 
+  // Back goes wherever you actually came FROM. Arriving through the split you
+  // came from its overview, and that's the fallback; arriving from the dashboard
+  // or the calendar, that page hands over its own address, because otherwise the
+  // one tap in cost four taps back out through Splits → Log → Tools. A URL
+  // opened cold carries no state — hence the fallback.
+  const backTo = state?.backTo || `/split/${program.id}`
+  const backLabel = state?.backLabel || program.name
   const backLink = (
-    <Link to={`/split/${program.id}`} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-8 transition-colors">
-      <ArrowLeft className="w-3.5 h-3.5" /> {program.name}
+    <Link to={backTo} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-8 transition-colors">
+      <ArrowLeft className="w-3.5 h-3.5" /> {backLabel}
     </Link>
   )
 
@@ -266,12 +273,14 @@ export default function SplitDay() {
                       )}
                       {/* Straight into the bank entry for this movement. `state`
                           tells that page to come back HERE rather than to the
-                          bank's index. Omitted for custom movements and cardio,
-                          which have no entry to open. */}
+                          bank's index — and carries THIS page's own back target
+                          along for the return trip, so a detour through the bank
+                          doesn't strand you in the split. Omitted for custom
+                          movements and cardio, which have no entry to open. */}
                       {bankId && (
                         <Link
                           to={`/exercises/${bankId}`}
-                          state={{ backTo: pathname, backLabel: day.name || 'this day' }}
+                          state={{ backTo: pathname, backLabel: day.name || 'this day', backState: state }}
                           className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary no-underline px-1 py-1 transition-colors"
                         >
                           <BookOpen className="w-3.5 h-3.5" /> Learn more
