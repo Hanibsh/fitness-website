@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen } from 'lucide-react'
+import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Play } from 'lucide-react'
 import ExercisePicker from '../components/ExercisePicker'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
@@ -38,7 +38,7 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function SplitDay() {
   const { dayId } = useParams()
   const { pathname, state } = useLocation()
-  const { user, program, update, isWeekly, todayWeekdayIndex, pointerIndex } = useOutletContext()
+  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex } = useOutletContext()
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [swapOpenFor, setSwapOpenFor] = useState(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
@@ -92,6 +92,11 @@ export default function SplitDay() {
   const strengthCount = day.exercises.filter((e) => e.kind !== 'cardio').length
   const stats = dayStats(day)
   const isToday = isWeekly ? dayIndex === todayWeekdayIndex : dayIndex === pointerIndex
+  // The day the badge above calls Today (or Up next) is the one you can start
+  // from here, and the logger resolves it against your ACTIVE split — so a day
+  // belonging to a split you aren't running gets no button rather than a dead
+  // one. Rest days have nothing to log.
+  const canStart = isToday && isActive && day.kind !== 'rest'
 
   return (
     <>
@@ -151,6 +156,20 @@ export default function SplitDay() {
                 </div>
               )}
             </>
+          )}
+
+          {/* Straight into the logger with this day already loaded. The badge
+              above says this is the day that's up — without this the only way
+              to act on that was to leave and find the Start button elsewhere. */}
+          {canStart && (
+            <Link
+              to="/log"
+              state={{ startPlannedDay: day.id }}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2.5 mt-4 text-[13px] no-underline hover:bg-accent-hover transition-colors"
+            >
+              <Play className="w-3.5 h-3.5" />
+              {isWeekly ? 'Start today’s session' : 'Start this session'}
+            </Link>
           )}
         </div>
 
