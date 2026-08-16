@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-21",
-  "count": 277,
+  "generatedAt": "2026-08-16",
+  "count": 279,
   "exercises": [
     {
       "id": "assisted-chest-dip",
@@ -6225,6 +6225,7 @@
       "laterality": "both",
       "muscles": {
         "Brachioradialis": 1,
+        "Brachialis": 1,
         "Biceps": 0.5
       },
       "fatigueScore": 1,
@@ -6322,6 +6323,7 @@
       "laterality": "bilateral",
       "muscles": {
         "Brachioradialis": 1,
+        "Brachialis": 1,
         "Biceps": 0.5
       },
       "fatigueScore": 1,
@@ -9523,6 +9525,78 @@
       "axialLoading": false,
       "skill": "low",
       "notes": "Time-based hold; progress with longer holds or a plate on the back",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "cable-reverse-curl",
+      "name": "Cable Reverse Curl",
+      "category": "Arms",
+      "subCategory": "Forearms",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Brachioradialis": 1,
+        "Brachialis": 1,
+        "Biceps": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
+      "resistanceProfile": "balanced",
+      "equipment": "cable",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": null,
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "barbell-zercher-squat",
+      "name": "Barbell Zercher Squat",
+      "category": "Legs",
+      "subCategory": "Quads",
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Quadriceps": 1,
+        "Glute Max": 0.5,
+        "Adductors": 0.5,
+        "Spinal Erectors": 0.25,
+        "Rectus Abdominis": 0.25,
+        "Upper Traps": 0.125,
+        "Biceps": 0.125
+      },
+      "fatigueScore": 5,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        240,
+        420
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "free weight",
+      "axialLoading": true,
+      "skill": "high",
+      "notes": "Elbow-crook loading; upper back and arms often limit the load before the legs do.",
       "video": null,
       "thumbnail": null
     }
