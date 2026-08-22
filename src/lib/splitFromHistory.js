@@ -75,7 +75,15 @@ export function sessionsInWindow(sessions, { now = Date.now(), windowDays = WIND
     .sort((a, b) => a.date - b.date)
 }
 
-// Offer the build only to someone who has no split at all. Once a split exists
+// Is there enough logged history to shape a split out of? Independent of
+// whether any split already exists: building one from your workouts adds a new
+// split alongside whatever you have, so the split page can always offer it.
+export function canBuildFromHistory(sessions, opts = {}) {
+  return sessionsInWindow(sessions, opts).length >= MIN_SESSIONS
+}
+
+// PROMPTING for it is a stricter question than allowing it. Only someone with
+// no split at all. Once a split exists
 // the finish-time sync is the right mechanism for keeping it honest, and a
 // second "build from history" nudge on top of it would just be noise.
 export function shouldSuggestSplit(sessions, programsState, opts = {}) {
@@ -338,6 +346,17 @@ function restGap(inWindow) {
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+// Name the proposal after the workouts in it — "Push / Pull" says more than
+// "My split", and matters more than it sounds: building from history is now
+// offered even when splits already exist, so two of them called "My split"
+// would be indistinguishable in the list.
+function suggestName(days) {
+  const names = [...new Set(days.map((d) => d.name).filter(Boolean))]
+  if (!names.length || names.length > 3) return 'My split'
+  const joined = names.join(' / ')
+  return joined.length <= 32 ? joined : 'My split'
+}
+
 // ---- The proposal -----------------------------------------------------------
 
 // Build a split from history. Returns { program, summary } — or null when
@@ -354,7 +373,7 @@ export function programFromHistory(sessions, opts = {}) {
   const usable = days.filter((d) => d.exercises.length)
   if (!usable.length) return null
 
-  const program = emptyProgram(opts.name || 'My split')
+  const program = emptyProgram(opts.name || suggestName(usable))
   const weekly = weeklyShape(clusters, inWindow)
   const summaryDays = []
 

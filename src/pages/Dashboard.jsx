@@ -195,42 +195,79 @@ function CoachingCTA() {
 // half-logged workout waited one tap away. Anyone who trains with the phone in
 // their pocket lands here between exercises, so this is the screen that has to
 // answer "where was I?".
-function InProgressStrip({ live, onStartNew }) {
-  const bits = [
-    `${live.exerciseCount} exercise${live.exerciseCount !== 1 ? 's' : ''}`,
-    live.setCount ? `${live.setCount} set${live.setCount !== 1 ? 's' : ''}` : null,
-  ].filter(Boolean)
+function SessionActions({ live, plannedDay, firstTime, onStartNew }) {
+  // Mid-session: pick up where you left off, or deliberately set it aside and
+  // begin a fresh one.
+  if (live) {
+    const bits = [
+      `${live.exerciseCount} exercise${live.exerciseCount !== 1 ? 's' : ''}`,
+      live.setCount ? `${live.setCount} set${live.setCount !== 1 ? 's' : ''}` : null,
+    ].filter(Boolean)
+    return (
+      <div className="bg-white border border-border p-4 sm:p-5">
+        <div className="flex items-start gap-3 flex-wrap">
+          <PlayCircle className="w-4 h-4 text-text-light shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-text-primary break-words">
+              {live.isEdit ? 'Editing a past workout' : 'Workout in progress'}
+              {live.name ? <span className="text-text-secondary font-normal"> · {live.name}</span> : null}
+            </p>
+            <p className="text-[11px] text-text-light mt-0.5 break-words">
+              {bits.join(' · ')}
+              {live.stale ? ' · started on an earlier day' : ''}
+            </p>
+          </div>
+          {/* Wraps to its own line on a narrow phone rather than squeezing the
+              two buttons into unreadable slivers. */}
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            <Link
+              to="/log"
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
+            >
+              Continue
+            </Link>
+            {!live.isEdit && (
+              <button
+                onClick={onStartNew}
+                className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+              >
+                Start new
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Nothing in progress. There still has to be one obvious way to begin —
+  // before this, the only one on the whole screen was a small underlined link
+  // inside the hero, which is easy to miss and reads as a caption rather than
+  // an action. Starting the planned day goes through the same deep link the
+  // calendar's day panel uses, so it opens pre-filled rather than empty.
+  const label = plannedDay ? `Start ${plannedDay.name}` : firstTime ? 'Log your first workout' : 'Start a workout'
   return (
     <div className="bg-white border border-border p-4 sm:p-5">
-      <div className="flex items-start gap-3 flex-wrap">
-        <PlayCircle className="w-4 h-4 text-text-light shrink-0 mt-0.5" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <PlayCircle className="w-4 h-4 text-text-light shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-text-primary break-words">
-            {live.isEdit ? 'Editing a past workout' : 'Workout in progress'}
-            {live.name ? <span className="text-text-secondary font-normal"> · {live.name}</span> : null}
+            {plannedDay ? 'Today’s session' : 'No session in progress'}
           </p>
           <p className="text-[11px] text-text-light mt-0.5 break-words">
-            {bits.join(' · ')}
-            {live.stale ? ' · started on an earlier day' : ''}
+            {plannedDay
+              ? `${plannedDay.exercises.length} exercise${plannedDay.exercises.length !== 1 ? 's' : ''} planned`
+              : 'Start whenever you like — a split isn’t needed.'}
           </p>
         </div>
-        {/* Wraps to its own line on a narrow phone rather than squeezing the
-            two buttons into unreadable slivers. */}
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+        <div className="w-full sm:w-auto">
           <Link
             to="/log"
+            state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
             className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
           >
-            Continue
+            <Plus className="w-3.5 h-3.5" /> {label}
           </Link>
-          {!live.isEdit && (
-            <button
-              onClick={onStartNew}
-              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
-            >
-              Start new
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -503,7 +540,7 @@ export default function Dashboard() {
       <div className="pt-24 pb-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <CoachingBanner />
-          {live && <InProgressStrip live={live} onStartNew={() => setConfirmStartNew(true)} />}
+          <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} />
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
             <div className="flex items-center gap-2 mb-3">
@@ -522,14 +559,7 @@ export default function Dashboard() {
               Your dashboard comes to life once you start logging. Track your first session and you'll see your streak,
               volume, records, and trends here.
             </p>
-            {!live && (
-              <Link
-                to="/log"
-                className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-6 py-3 no-underline cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Log your first workout
-              </Link>
-            )}
+
           </motion.div>
           <BodyweightTracker user={user} unit={unit} />
           <CoachingCTA />
@@ -597,7 +627,11 @@ export default function Dashboard() {
 
         {/* Anything unfinished comes before the stats: "where was I?" is the
             question someone opening this mid-workout is actually asking. */}
-        {live && <InProgressStrip live={live} onStartNew={() => setConfirmStartNew(true)} />}
+        <SessionActions
+          live={live}
+          plannedDay={plan.status === 'train' ? plan.day : null}
+          onStartNew={() => setConfirmStartNew(true)}
+        />
         {suggestSplit && <BuildSplitNudge count={sessions.length} onDismiss={dismissNudge} />}
 
         {/* SECTION 1 — HERO */}
@@ -658,16 +692,16 @@ export default function Dashboard() {
                     <p className="text-[11px] text-cream-70">Enjoy your day off — relax and recover.</p>
                   ) : null}
                 </button>
-                {/* A session already underway outranks the plan: offering
-                    "start today's session" while one is in progress is how you
-                    end up with two half-logged workouts. */}
-                {(live || (!upToday.done && !upToday.rest && !upToday.off)) && (
+                {/* The action row above owns starting and continuing; this
+                    stays a plain shortcut for the day it's describing, and
+                    steps aside entirely while a session is underway. */}
+                {!live && !upToday.done && !upToday.rest && !upToday.off && (
                   <Link
                     to="/log"
                     onClick={(e) => e.stopPropagation()}
                     className="text-[11px] text-cream-70 underline hover:text-cream no-underline"
                   >
-                    {live ? 'Continue your session →' : program ? 'Start today’s session →' : 'Start logging →'}
+                    {program ? 'Start today’s session →' : 'Start logging →'}
                   </Link>
                 )}
                 {upTomorrow && (

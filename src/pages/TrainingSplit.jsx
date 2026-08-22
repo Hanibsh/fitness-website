@@ -5,7 +5,7 @@ import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2 } from
 import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
-import { shouldSuggestSplit } from '../lib/splitFromHistory'
+import { canBuildFromHistory } from '../lib/splitFromHistory'
 import ConfirmModal from '../components/ConfirmModal'
 import BuildSplitModal from '../components/BuildSplitModal'
 import LogTabs from '../components/LogTabs'
@@ -52,7 +52,7 @@ export default function TrainingSplit() {
     }
   }, [location.state, location.pathname, navigate])
 
-  const canBuild = shouldSuggestSplit(history, programsState)
+  const canBuild = canBuildFromHistory(history)
 
   // Create the proposed split, make it the one the log follows, and drop the
   // user straight into the editor — it's a starting point to adjust, not a
