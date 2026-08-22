@@ -373,6 +373,20 @@ export function deleteProgramById(id) {
   return saveProgramsState({ programs, activeId })
 }
 
+// ---- "Build a split from your workouts" nudge ------------------------------
+// Device-local, like the unit picker: a dismissal is "not now, on this screen",
+// not an account-level preference. Stores the timestamp rather than a flag so
+// the offer could be brought back later without a migration.
+const SPLIT_NUDGE_KEY = 'leon_split_nudge_dismissed'
+
+export function getSplitNudgeDismissed() {
+  return read(SPLIT_NUDGE_KEY, 0)
+}
+
+export function dismissSplitNudge() {
+  write(SPLIT_NUDGE_KEY, Date.now())
+}
+
 // ---- Specialization blocks -------------------------------------------------
 // A list of muscle-group specialization phases, stored as one JSON array (the
 // block logic lives in blocks.js; the per-muscle summary in dashboard.js).

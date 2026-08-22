@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
-import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2 } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
+import { getHistory } from '../lib/workoutStore'
+import { fetchRemoteHistory } from '../lib/workoutRemote'
+import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import ConfirmModal from '../components/ConfirmModal'
+import BuildSplitModal from '../components/BuildSplitModal'
 import LogTabs from '../components/LogTabs'
 
 // The training-split list: every saved split, reorderable, with Set active /
@@ -12,8 +16,51 @@ import LogTabs from '../components/LogTabs'
 // stays a clean, scannable list. Lives as the second tab of the log.
 export default function TrainingSplit() {
   const navigate = useNavigate()
-  const { user, programsState, loading, duplicateRoutine, setActiveRoutine, moveRoutine, deleteRoutine } = useProgramsState()
+  const location = useLocation()
+  const { user, programsState, loading, addRoutine, duplicateRoutine, setActiveRoutine, moveRoutine, deleteRoutine } = useProgramsState()
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, name } | null
+  // Finished sessions, for the "build one from what I've logged" offer. Loaded
+  // the same way every other surface loads history: remote when signed in,
+  // falling back to this device's copy.
+  const [history, setHistory] = useState([])
+  const [building, setBuilding] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (user) {
+        try {
+          const remote = await fetchRemoteHistory(user.id)
+          if (!cancelled) return setHistory(remote)
+        } catch {
+          // fall through to local
+        }
+      }
+      if (!cancelled) setHistory(getHistory())
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user])
+
+  // The dashboard's nudge links here with this flag rather than creating
+  // anything itself — one place owns creating a split, so the preview and the
+  // write can't drift apart.
+  useEffect(() => {
+    if (location.state?.buildFromHistory) {
+      setBuilding(true)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.state, location.pathname, navigate])
+
+  const canBuild = shouldSuggestSplit(history, programsState)
+
+  // Create the proposed split, make it the one the log follows, and drop the
+  // user straight into the editor — it's a starting point to adjust, not a
+  // finished plan handed down.
+  function createBuilt(program) {
+    addRoutine(program)
+    navigate(`/split/${program.id}`)
+  }
 
   function openEditor(program) {
     navigate(`/split/${program.id}`)
@@ -64,6 +111,16 @@ export default function TrainingSplit() {
               >
                 <Plus className="w-4 h-4" /> Start your first split
               </button>
+              {canBuild && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setBuilding(true)}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                  >
+                    <Wand2 className="w-3.5 h-3.5" /> Build one from my recent workouts
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -135,12 +192,22 @@ export default function TrainingSplit() {
                     )
                   })}
                 </div>
-                <button
-                  onClick={createSplit}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-3 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" /> New split
-                </button>
+                <div className="flex items-center gap-x-4 gap-y-2 flex-wrap mt-3">
+                  <button
+                    onClick={createSplit}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> New split
+                  </button>
+                  {canBuild && (
+                    <button
+                      onClick={() => setBuilding(true)}
+                      className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                    >
+                      <Wand2 className="w-3.5 h-3.5" /> Build from my workouts
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="mt-10 flex items-center gap-2 text-[12px] text-text-light">
@@ -151,6 +218,10 @@ export default function TrainingSplit() {
           )}
         </motion.div>
       </div>
+
+      {building && (
+        <BuildSplitModal sessions={history} onCreate={createBuilt} onClose={() => setBuilding(false)} />
+      )}
 
       {confirmDelete && (
         <ConfirmModal

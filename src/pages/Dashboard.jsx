@@ -4,13 +4,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
-  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2,
+  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2, PlayCircle, Wand2, X, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
-import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations } from '../lib/workoutStore'
+import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
 import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
+import { liveDraft } from '../lib/draftState'
+import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { activeBlock, sortedBlocks, blockWeek } from '../lib/blocks'
 import BlockModal from '../components/BlockModal'
@@ -33,6 +35,7 @@ import ExerciseProgress from '../components/ExerciseProgress'
 import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
 import NicknameModal from '../components/NicknameModal'
+import ConfirmModal from '../components/ConfirmModal'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -185,6 +188,113 @@ function CoachingCTA() {
   )
 }
 
+// The session sitting unfinished in the logger.
+//
+// The dashboard used to be blind to it: `getDraft` was the logger's private
+// business, so the hero could cheerfully say "Start today's session" while a
+// half-logged workout waited one tap away. Anyone who trains with the phone in
+// their pocket lands here between exercises, so this is the screen that has to
+// answer "where was I?".
+function InProgressStrip({ live, onStartNew }) {
+  const bits = [
+    `${live.exerciseCount} exercise${live.exerciseCount !== 1 ? 's' : ''}`,
+    live.setCount ? `${live.setCount} set${live.setCount !== 1 ? 's' : ''}` : null,
+  ].filter(Boolean)
+  return (
+    <div className="bg-white border border-border p-4 sm:p-5">
+      <div className="flex items-start gap-3 flex-wrap">
+        <PlayCircle className="w-4 h-4 text-text-light shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text-primary break-words">
+            {live.isEdit ? 'Editing a past workout' : 'Workout in progress'}
+            {live.name ? <span className="text-text-secondary font-normal"> · {live.name}</span> : null}
+          </p>
+          <p className="text-[11px] text-text-light mt-0.5 break-words">
+            {bits.join(' · ')}
+            {live.stale ? ' · started on an earlier day' : ''}
+          </p>
+        </div>
+        {/* Wraps to its own line on a narrow phone rather than squeezing the
+            two buttons into unreadable slivers. */}
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <Link
+            to="/log"
+            className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
+          >
+            Continue
+          </Link>
+          {!live.isEdit && (
+            <button
+              onClick={onStartNew}
+              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+            >
+              Start new
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// After a week or so of logging with no split saved, offer to build one out of
+// what's already there. Dismissible, and it never creates anything itself — it
+// hands off to the split tab, which owns the preview and the write.
+function BuildSplitNudge({ count, onDismiss }) {
+  return (
+    <div className="bg-white border border-border p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <Sparkles className="w-4 h-4 text-text-light shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text-primary break-words">
+            You've trained {count} times in the last few weeks
+          </p>
+          <p className="text-[11px] text-text-light mt-0.5 mb-3 leading-relaxed break-words">
+            Turn what you've been doing into a split — the log will then pre-fill your sets and know which day is up.
+          </p>
+          <Link
+            to="/log/split"
+            state={{ buildFromHistory: true }}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-3 py-1.5 no-underline cursor-pointer transition-colors"
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Build my split
+          </Link>
+        </div>
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 shrink-0"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// "Start new" names what it's about to move out of the way, and promises only
+// what it can deliver: the draft is set aside and offered back in the logger,
+// unless the stash is already spoken for — then it really is gone, and says so.
+function StartNewConfirm({ live, stashOccupied, onConfirm, onClose }) {
+  const what = live.name ? `"${live.name}"` : 'your session in progress'
+  const detail = `${live.exerciseCount} exercise${live.exerciseCount !== 1 ? 's' : ''}${
+    live.setCount ? `, ${live.setCount} set${live.setCount !== 1 ? 's' : ''} logged` : ''
+  }`
+  return (
+    <ConfirmModal
+      title="Start a new workout?"
+      message={
+        stashOccupied
+          ? `${what} (${detail}) will be discarded — there's already a session set aside, and this would overwrite it.`
+          : `${what} (${detail}) will be set aside. You can bring it back from the log screen.`
+      }
+      confirmLabel={stashOccupied ? 'Discard and start' : 'Set aside and start'}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
+  )
+}
+
 export default function Dashboard() {
   // Nickname lives in the auth context so the navbar reflects edits instantly.
   const { user, nickname, setNickname } = useAuth()
@@ -206,6 +316,11 @@ export default function Dashboard() {
   const [expandedRecovery, setExpandedRecovery] = useState(null) // recovery drill-down
   const [volumeRangeDays, setVolumeRangeDays] = useState(7) // weekly-volume window: 7/30/90
   const [editingNick, setEditingNick] = useState(false)
+  // The unfinished session, read straight from this device's draft slot (it's
+  // local-only, exactly as in the logger — there's nothing to sync).
+  const [draft, setDraft] = useState(() => getDraft())
+  const [confirmStartNew, setConfirmStartNew] = useState(false)
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => !!getSplitNudgeDismissed())
 
   useEffect(() => {
     let cancelled = false
@@ -270,6 +385,27 @@ export default function Dashboard() {
     calendarSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // Start a fresh session with one already in progress.
+  //
+  // The unfinished one is SET ASIDE rather than deleted — it goes to the same
+  // stash slot the logger uses when a planned session is started over a draft,
+  // and the logger offers it back. The one case where that promise can't be
+  // kept is when the stash is already holding something (an edit left open, or
+  // a planned session started over a draft); overwriting it would lose work
+  // silently, so there the modal says discard and means it.
+  const stashOccupied = !!getStashedDraft()
+  function startNewSession() {
+    if (draft && !stashOccupied) stashDraft(draft)
+    clearDraft()
+    setDraft(null)
+    navigate('/log')
+  }
+
+  function dismissNudge() {
+    dismissSplitNudge()
+    setNudgeDismissed(true)
+  }
+
   // Delete a session straight from the calendar day panel — no need to
   // navigate away first.
   async function deleteDaySession(session) {
@@ -291,6 +427,16 @@ export default function Dashboard() {
   // logger — mounted fresh on navigation — already has today's.
   const today = useLocalDay()
   const now = new Date()
+  // One shared verdict on the draft (draftState), so the logger and this page
+  // can never disagree about whether there's a session to continue.
+  const live = useMemo(() => liveDraft(draft), [draft])
+  // Offer to build a split only when there's real history and no split at all —
+  // shouldSuggestSplit reads the routines list rather than the active routine,
+  // so someone with a saved-but-inactive split isn't nudged either.
+  const suggestSplit = useMemo(
+    () => !nudgeDismissed && !loading && shouldSuggestSplit(sessions, program ? { programs: [program] } : getProgramsState()),
+    [nudgeDismissed, loading, sessions, program]
+  )
   const stats = useMemo(() => {
     if (!sessions.length) return null
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -357,6 +503,7 @@ export default function Dashboard() {
       <div className="pt-24 pb-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <CoachingBanner />
+          {live && <InProgressStrip live={live} onStartNew={() => setConfirmStartNew(true)} />}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
             <div className="flex items-center gap-2 mb-3">
@@ -375,18 +522,23 @@ export default function Dashboard() {
               Your dashboard comes to life once you start logging. Track your first session and you'll see your streak,
               volume, records, and trends here.
             </p>
-            <Link
-              to="/log"
-              className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-6 py-3 no-underline cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Log your first workout
-            </Link>
+            {!live && (
+              <Link
+                to="/log"
+                className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-6 py-3 no-underline cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Log your first workout
+              </Link>
+            )}
           </motion.div>
           <BodyweightTracker user={user} unit={unit} />
           <CoachingCTA />
         </div>
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
+        )}
+        {confirmStartNew && live && (
+          <StartNewConfirm live={live} stashOccupied={stashOccupied} onConfirm={startNewSession} onClose={() => setConfirmStartNew(false)} />
         )}
       </div>
     )
@@ -442,6 +594,11 @@ export default function Dashboard() {
       <div className="max-w-5xl mx-auto space-y-6">
         {/* SECTION 0 — COACHING BANNER (coaching-first: the point of the brand) */}
         <CoachingBanner />
+
+        {/* Anything unfinished comes before the stats: "where was I?" is the
+            question someone opening this mid-workout is actually asking. */}
+        {live && <InProgressStrip live={live} onStartNew={() => setConfirmStartNew(true)} />}
+        {suggestSplit && <BuildSplitNudge count={sessions.length} onDismiss={dismissNudge} />}
 
         {/* SECTION 1 — HERO */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
@@ -501,13 +658,16 @@ export default function Dashboard() {
                     <p className="text-[11px] text-cream-70">Enjoy your day off — relax and recover.</p>
                   ) : null}
                 </button>
-                {!upToday.done && !upToday.rest && !upToday.off && (
+                {/* A session already underway outranks the plan: offering
+                    "start today's session" while one is in progress is how you
+                    end up with two half-logged workouts. */}
+                {(live || (!upToday.done && !upToday.rest && !upToday.off)) && (
                   <Link
                     to="/log"
                     onClick={(e) => e.stopPropagation()}
                     className="text-[11px] text-cream-70 underline hover:text-cream no-underline"
                   >
-                    {program ? 'Start today’s session →' : 'Start logging →'}
+                    {live ? 'Continue your session →' : program ? 'Start today’s session →' : 'Start logging →'}
                   </Link>
                 )}
                 {upTomorrow && (
@@ -1108,6 +1268,12 @@ export default function Dashboard() {
 
       {editingNick && user && (
         <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
+      )}
+
+      {confirmStartNew && live && (
+
+        <StartNewConfirm live={live} stashOccupied={stashOccupied} onConfirm={startNewSession} onClose={() => setConfirmStartNew(false)} />
+
       )}
 
       {blockModal && (

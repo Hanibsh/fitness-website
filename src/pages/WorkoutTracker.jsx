@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -48,6 +48,7 @@ import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRe
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isLoggedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
+import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
 import { getTurnstileToken, turnstileConfigured } from '../lib/turnstile'
@@ -260,25 +261,6 @@ function migrateDraft(draft) {
   return { ...draft, exercises: migrateSupersets(draft.exercises.map(migrateExercise)) }
 }
 
-function draftHasWork(draft) {
-  return (draft?.exercises || []).some((e) => e.sets.some((s) => setHasWork(s, e.kind)))
-}
-
-// A program-tagged draft dated before today is a LEFTOVER: "Start session" was
-// tapped and the workout was never finished on this device (usually because it
-// was logged on another one). It has to be called out, because a program draft
-// hides today's card — and the draft is per-device localStorage, so the phone
-// can sit on last Tuesday's Upper A while the dashboard correctly says Lower A.
-// `backdated` is the difference between a draft that ended up in the past and
-// one that was OPENED there: the calendar's "Log this workout" on a day you
-// missed. Same shape, opposite meaning — this one is exactly what was asked
-// for, so it isn't debris, mustn't be swept up on the next mount, and doesn't
-// get told it's not today's session.
-function isStaleProgramDraft(draft) {
-  if (!draft?.programId || draft.editingId || draft.backdated) return false
-  return !isSameDay(draft.date || draft.startedAt || Date.now(), Date.now())
-}
-
 // Whether starting today's planned session would set the current draft aside
 // rather than replace it. One predicate for both the promise on the card and
 // the stash itself, so they can't drift apart. A program draft normally IS
@@ -290,18 +272,6 @@ function willStashDraft(draft, leftover) {
   // A backdated one isn't today's session either, however deliberate it was, so
   // starting today's has to set it aside rather than write over it.
   return (leftover || draft.backdated) && draftHasWork(draft)
-}
-
-// An edit opened on an earlier day and never saved or cancelled. Editing is a
-// MODE, not a workout: it takes over the whole editor and hides today's card,
-// but it was only ever meant to last as long as the sitting. It's written to
-// the same per-device draft slot as everything else, so an edit abandoned on
-// the phone reopens as "Editing session" every visit from then on — the split's
-// real plan unreachable behind it. `startedAt` is when the edit began (`date`
-// belongs to the session being edited, which is naturally in the past).
-function isStaleEditDraft(draft) {
-  if (!draft?.editingId) return false
-  return !isSameDay(draft.startedAt || draft.date || Date.now(), Date.now())
 }
 
 // Restore the draft on mount, dropping what has plainly been abandoned.
@@ -362,6 +332,11 @@ export default function WorkoutTracker() {
   // than reloaded stops answering with yesterday's plan.
   const today = useLocalDay()
   const [draft, setDraft] = useState(restoreDraft)
+  // A session the dashboard set aside to start a fresh one. The stash slot has
+  // always existed for edit mode and for starting a planned session over a
+  // draft, but both of those consume it themselves; this is the first writer
+  // that hands it to the user to bring back, so the logger has to offer it.
+  const [setAside, setSetAside] = useState(() => migrateDraft(getStashedDraft()))
   const [history, setHistory] = useState([])
   const [program, setProgram] = useState(null)
   const [annotations, setAnnotations] = useState([])
@@ -531,6 +506,7 @@ export default function WorkoutTracker() {
   // a workout that hadn't begun. It still appears before your first SET, which
   // is the point of it; just not before your first exercise.
   const sessionUnderway = draft.exercises.length > 0 && !staleDraft
+  const setAsideSummary = useMemo(() => liveDraft(setAside), [setAside])
   const showRestTimer = restTimer.enabled && !isEditing && isToday && sessionUnderway
 
   const restTargetSec = useMemo(
@@ -541,6 +517,16 @@ export default function WorkoutTracker() {
   function updateRestTimer(patch) {
     setRestTimer((prev) => saveRestTimer({ ...prev, ...patch }))
   }
+
+  // Re-read the stash whenever this session goes empty — that's the only
+  // moment the offer can appear, and it's also when the other stash consumers
+  // (finishing, cancelling an edit) have just emptied the slot. Gated on
+  // emptiness rather than on the draft itself so it isn't parsing localStorage
+  // on every keystroke.
+  const draftEmpty = draft.exercises.length === 0
+  useEffect(() => {
+    setSetAside(draftEmpty ? migrateDraft(getStashedDraft()) : null)
+  }, [draftEmpty])
 
   // The manual taps are per-session, so they die with the draft. Called
   // wherever the draft is cleared — finishing, discarding, leaving edit mode —
@@ -1716,6 +1702,25 @@ export default function WorkoutTracker() {
     }
   }
 
+  // Bring back the session the dashboard set aside. Only offered while the
+  // current draft is empty, so this can never write over work in progress.
+  function restoreSetAside() {
+    const stash = migrateDraft(getStashedDraft())
+    clearStashedDraft()
+    setSetAside(null)
+    if (!stash) return
+    saveDraft(stash)
+    setDraft(stash)
+    setEditingDate(false)
+  }
+
+  // ...or let it go. Without this the slot could sit occupied indefinitely, and
+  // a stash nobody claims is what a later "cancel edit" would resurrect.
+  function dropSetAside() {
+    clearStashedDraft()
+    setSetAside(null)
+  }
+
   function discard() {
     // Editing or a started program session: restore any stashed draft.
     if (draft.editingId || draft.programId) return exitEditMode()
@@ -2631,6 +2636,16 @@ export default function WorkoutTracker() {
               </div>
             </div>
 
+            {/* Logging has never needed a split — but nothing said so, and an
+                empty log screen under a "Training split" tab reads like a step
+                was skipped. Only while there's genuinely nothing to say
+                otherwise: no split, and an empty session. */}
+            {!program && !draft.exercises.length && !isEditing && (
+              <p className="text-[12px] text-text-light leading-relaxed mb-6">
+                No split needed — add exercises as you go. After a week or so of logging you can turn them into one.
+              </p>
+            )}
+
             {/* You asked the calendar to open a different day while this one
                 was underway. Nothing was touched — here's why. */}
             {blockedStart && (
@@ -2663,6 +2678,36 @@ export default function WorkoutTracker() {
                     </>
                   )}
                 </span>
+              </div>
+            )}
+
+            {/* Set aside from the dashboard to start a fresh one — offered back
+                here, because a "you can bring it back" promise made on another
+                screen has to be keepable on this one. Only while this session
+                is still empty: restoring can then never cost anything. */}
+            {setAsideSummary && !isEditing && !draft.exercises.length && (
+              <div className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6">
+                <History className="w-3.5 h-3.5 text-text-light shrink-0" />
+                <span className="text-[12px] text-text-secondary min-w-0">
+                  <span className="text-text-primary">{setAsideSummary.name || 'A session'}</span> was set aside —{' '}
+                  {setAsideSummary.exerciseCount} exercise{setAsideSummary.exerciseCount !== 1 ? 's' : ''}
+                  {setAsideSummary.setCount ? `, ${setAsideSummary.setCount} set${setAsideSummary.setCount !== 1 ? 's' : ''}` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={restoreSetAside}
+                  className="ml-auto text-[11px] font-medium uppercase tracking-wider text-text-primary bg-transparent border-none cursor-pointer shrink-0"
+                >
+                  Restore
+                </button>
+                <button
+                  type="button"
+                  onClick={dropSetAside}
+                  aria-label="Discard the session that was set aside"
+                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 
