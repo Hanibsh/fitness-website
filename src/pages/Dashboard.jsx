@@ -256,11 +256,15 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew }) {
           </p>
           <p className="text-[11px] text-text-light mt-0.5 break-words">
             {plannedDay
-              ? `${plannedDay.exercises.length} exercise${plannedDay.exercises.length !== 1 ? 's' : ''} planned`
+              ? `${plannedDay.exercises.length} exercise${plannedDay.exercises.length !== 1 ? 's' : ''} planned · or log something else`
               : 'Start whenever you like — a split isn’t needed.'}
           </p>
         </div>
-        <div className="w-full sm:w-auto">
+        {/* Following the plan and training something else are both ordinary
+            days, so both are one tap. The blank one carries no nav state at
+            all, which is what makes it blank — the logger pre-fills only from
+            a startPlannedDay link. */}
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <Link
             to="/log"
             state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
@@ -268,6 +272,14 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew }) {
           >
             <Plus className="w-3.5 h-3.5" /> {label}
           </Link>
+          {plannedDay && (
+            <Link
+              to="/log"
+              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 no-underline cursor-pointer transition-colors"
+            >
+              New workout
+            </Link>
+          )}
         </div>
       </div>
     </div>
