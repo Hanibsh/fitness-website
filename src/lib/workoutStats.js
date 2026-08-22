@@ -189,6 +189,14 @@ function sideSummary(s, unit) {
   return hasRir ? `${base} @${s.rir}` : base
 }
 
+// One limb of a unilateral set. The hint bar offers a limb at a time now, so it
+// needs to be able to name just the side you're standing in rather than the
+// whole row.
+export function sideSetSummary(set, side, unit) {
+  const tag = set.type === 'warmup' ? 'W · ' : set.type === 'backoff' ? 'B · ' : ''
+  return `${tag}${side === 'left' ? 'L' : 'R'} ${sideSummary(set[side] || {}, unit)}`
+}
+
 export function setSummary(set, unit, kind, distUnit) {
   if (kind === 'cardio') {
     const parts = []

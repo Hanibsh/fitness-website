@@ -46,7 +46,7 @@ import {
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isLoggedSet } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isLoggedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
@@ -224,10 +224,16 @@ function isTouch() {
   return typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
 }
 
-// Does this SET have a suggestion still waiting to be taken up?
-function setHasUntakenHint(s) {
+// Does this SET have a suggestion still waiting to be taken up? `side` asks the
+// same question of ONE limb, which is what the per-set offer is scoped to now:
+// a left arm you've already written down leaves nothing to take up, even while
+// the right is still blank.
+function setHasUntakenHint(s, side = null) {
   if (!s.hint) return false
-  if (s.left) return ['left', 'right'].some((k) => ['weight', 'reps', 'rir'].some((f) => s[k]?.[f] === '' && s.hint[k]?.[f] !== '' && s.hint[k]?.[f] != null))
+  if (s.left) {
+    const sides = side === 'left' || side === 'right' ? [side] : ['left', 'right']
+    return sides.some((k) => ['weight', 'reps', 'rir'].some((f) => s[k]?.[f] === '' && s.hint[k]?.[f] !== '' && s.hint[k]?.[f] != null))
+  }
   const fields = s.bw != null ? ['added', 'reps', 'rir'] : ['weight', 'reps', 'rir', 'duration', 'distance']
   return fields.some((f) => (s[f] === '' || s[f] == null) && s.hint[f] !== '' && s.hint[f] != null)
 }
@@ -390,7 +396,7 @@ export default function WorkoutTracker() {
   // state, so reloading mid-rest doesn't silently throw them away.
   const [restTimer, setRestTimer] = useState(() => getRestTimer())
   // Which set the caret is in, so the hint bar knows whose suggestion to offer.
-  const [focusedSet, setFocusedSet] = useState(null) // { exId, setId }
+  const [focusedSet, setFocusedSet] = useState(null) // { exId, setId, side }
   const [hp, setHp] = useState('') // honeypot — real users leave this empty
   const [loadError, setLoadError] = useState('')
   const firstRender = useRef(true)
@@ -539,10 +545,14 @@ export default function WorkoutTracker() {
     if (!focusedSet || !isTouch()) return null
     const ex = draft.exercises.find((e) => e.id === focusedSet.exId)
     const set = ex?.sets.find((s) => s.id === focusedSet.setId)
-    if (!set || !setHasUntakenHint(set)) return null
+    const side = focusedSet.side
+    if (!set || !setHasUntakenHint(set, side)) return null
     // Written by the same formatter as a logged set, so what the bar promises
-    // reads exactly like what lands in the row.
-    return setSummary(promoteHint(set), unit, ex.kind, distanceUnit(unit))
+    // reads exactly like what lands in the row — one limb's worth when that's
+    // all the tap is going to fill.
+    const filled = promoteHint(set, side)
+    if (set.left && (side === 'left' || side === 'right')) return sideSetSummary(filled, side, unit)
+    return setSummary(filled, unit, ex.kind, distanceUnit(unit))
   }, [focusedSet, draft, unit])
 
   // Auto-save the draft on every change (skip the very first render).
@@ -885,7 +895,10 @@ export default function WorkoutTracker() {
         // Only "both" exercises can switch; bilateral/unilateral are fixed.
         if ((e.laterality || 'both') !== 'both') return e
         const unilateral = !e.unilateral
-        return { ...e, unilateral, sets: e.sets.map((s) => convertSet(s, unilateral)) }
+        const next = { ...e, unilateral, sets: e.sets.map((s) => convertSet(s, unilateral)) }
+        // The note is keyed by laterality as well as by movement, so switching
+        // form switches which note this exercise is showing.
+        return { ...next, note: getExerciseNote(next) || '' }
       }),
     }))
   }
@@ -1242,7 +1255,10 @@ export default function WorkoutTracker() {
   // which is what makes it safe to fill the whole row rather than just the field
   // you happened to be in. Stamped as logged just now when it lands on real
   // work, so the rest timer starts exactly as if you'd typed the numbers.
-  function fillSetFromHint(exId, setId) {
+  //
+  // On a unilateral set the row stops at the limb you're in: `side` is the field
+  // that asked, and the other arm stays blank until you've actually done it.
+  function fillSetFromHint(exId, setId, side = null) {
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
@@ -1251,7 +1267,7 @@ export default function WorkoutTracker() {
               ...e,
               sets: e.sets.map((s) => {
                 if (s.id !== setId) return s
-                const filled = promoteHint(s)
+                const filled = promoteHint(s, side)
                 if (filled === s) return s
                 return !s.completedAt && setHasWork(filled, e.kind) ? { ...filled, completedAt: Date.now() } : filled
               }),
@@ -1277,14 +1293,14 @@ export default function WorkoutTracker() {
   // preventDefault so it can never submit anything, and blur explicitly: the IME
   // closes itself on Android but not everywhere, and a caret still sitting in a
   // field you've just finished reads as though nothing happened.
-  const hintKeyProps = (exId, setId) => ({
+  const hintKeyProps = (exId, setId, side = null) => ({
     enterKeyHint: 'done',
-    onFocus: () => setFocusedSet({ exId, setId }),
-    onBlur: () => setFocusedSet((cur) => (cur && cur.setId === setId ? null : cur)),
+    onFocus: () => setFocusedSet({ exId, setId, side }),
+    onBlur: () => setFocusedSet((cur) => (cur && cur.setId === setId && cur.side === side ? null : cur)),
     onKeyDown: (e) => {
       if (e.key !== 'Enter') return
       e.preventDefault()
-      fillSetFromHint(exId, setId)
+      fillSetFromHint(exId, setId, side)
       e.currentTarget.blur()
     },
   })
@@ -2297,7 +2313,7 @@ export default function WorkoutTracker() {
                               type="number" inputMode="decimal" min="0"
                               value={set[side]?.weight ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
-                              {...hintKeyProps(ex.id, set.id)}
+                              {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
@@ -2305,7 +2321,7 @@ export default function WorkoutTracker() {
                               type="number" inputMode="numeric" min="0"
                               value={set[side]?.reps ?? ''}
                               onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
-                              {...hintKeyProps(ex.id, set.id)}
+                              {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'reps', side)} aria-label={`Set ${i + 1} ${side} reps`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
@@ -2316,7 +2332,7 @@ export default function WorkoutTracker() {
                                 type="number" inputMode="numeric" min="0" max="10"
                                 value={set[side]?.rir ?? ''}
                                 onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
-                                {...hintKeyProps(ex.id, set.id)}
+                                {...hintKeyProps(ex.id, set.id, side)}
                                 placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                               />
@@ -3205,7 +3221,7 @@ export default function WorkoutTracker() {
       <HintBar
         label={hintBar}
         onTake={() => {
-          if (focusedSet) fillSetFromHint(focusedSet.exId, focusedSet.setId)
+          if (focusedSet) fillSetFromHint(focusedSet.exId, focusedSet.setId, focusedSet.side)
           document.activeElement?.blur?.()
           setFocusedSet(null)
         }}

@@ -18,7 +18,7 @@
 // Each training day lists planned exercises with a target set count + rep
 // range that pre-fill the logger when you start the session.
 
-import { createExercise, createSet, convertSet, getExerciseNote, saveExerciseNote } from './workoutStore'
+import { createExercise, createSet, convertSet, getExerciseNote, saveExerciseNote, exerciseNoteKey } from './workoutStore'
 import { getExercise } from './exerciseLibrary'
 import { lateralityFor, usesBodyweight } from './movements'
 import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
@@ -157,7 +157,14 @@ export function setExerciseRep(program, dayId, exId, field, value) {
 // logger, so a third state would have nothing to say. Toggling just makes the
 // row explicit — which is what a session syncing back writes anyway.
 export function toggleExerciseUnilateral(program, dayId, exId) {
-  return withExercise(program, dayId, exId, (e) => ({ ...e, unilateral: !e.unilateral }))
+  return withExercise(program, dayId, exId, (e) => {
+    const next = { ...e, unilateral: !e.unilateral }
+    // Notes are keyed by laterality too, so flipping the form flips which note
+    // this row is showing. Read the new one rather than carrying the old text
+    // across — carrying it would copy a one-arm cue onto the bilateral form
+    // (or the reverse) the moment the field next blurs.
+    return { ...next, note: getExerciseNote(next) }
+  })
 }
 
 // A note belongs to the MOVEMENT, not to this slot: writing one here writes it
@@ -173,7 +180,12 @@ export function setExerciseNote(program, dayId, exId, note) {
     ...program,
     days: program.days.map((d) => ({
       ...d,
-      exercises: d.exercises.map((e) => (matchesPlanned(target, e) ? { ...e, note: trimmed } : e)),
+      // Same movement AND same form: the one-arm row and the bilateral row of a
+      // movement that can be logged either way hold two different notes, so
+      // writing one must not overwrite the other's copy.
+      exercises: d.exercises.map((e) =>
+        matchesPlanned(target, e) && exerciseNoteKey(e) === exerciseNoteKey(target) ? { ...e, note: trimmed } : e
+      ),
     })),
   }
 }

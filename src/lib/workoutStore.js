@@ -6,6 +6,8 @@
 // these functions for API calls and the tracker UI keeps working unchanged.
 
 import { convertWeight, canonicalExerciseId, REST_STALE_SEC } from './workoutStats'
+import { getExercise } from './exerciseLibrary'
+import { lateralityFor, usesBodyweight } from './movements'
 
 const DRAFT_KEY = 'leon_workout_draft'
 const HISTORY_KEY = 'leon_workout_history'
@@ -114,7 +116,13 @@ function asHintSet(s, bw = 0) {
 
 // Copy a set's suggestion into its real fields — the "fill from last time" tap.
 // Only fills what's still empty, so it can't overwrite something you typed.
-export function promoteHint(s) {
+//
+// `side` narrows a unilateral set to ONE limb: you train left, write left down,
+// then train right — so the tap that follows the left arm must not also fill in
+// an arm you haven't done yet, which would leave last week's numbers sitting
+// there looking logged. Without a side (the exercise-wide "same as last time",
+// where the whole thing is already behind you) both limbs are taken up at once.
+export function promoteHint(s, onlySide = null) {
   if (!s.hint) return s
   const take = (cur, sug) => (cur === '' || cur == null ? sug ?? '' : cur)
   if (s.left) {
@@ -123,7 +131,8 @@ export function promoteHint(s) {
       reps: take(s[k]?.reps, s.hint[k]?.reps),
       rir: take(s[k]?.rir, s.hint[k]?.rir),
     })
-    return { ...s, left: side('left'), right: side('right') }
+    const sides = onlySide === 'left' || onlySide === 'right' ? [onlySide] : ['left', 'right']
+    return { ...s, ...Object.fromEntries(sides.map((k) => [k, side(k)])) }
   }
   if (s.bw != null) {
     const added = take(s.added, s.hint.added)
@@ -705,9 +714,29 @@ export function saveExerciseTarget(name, repRange) {
 // but a target that follows a rename matters less than a cue that does.
 const EX_NOTES_KEY = 'leon_exercise_notes'
 
-function noteKey(ex) {
+// Can this movement be logged either way? Only one the DB leaves open ("both"),
+// which is exactly the set of movements that get the L/R toggle in the builder
+// and the logger. Read from the DB rather than from the row, so a planned row
+// and the session it becomes always agree about which movements have two forms.
+function lateralityIsOpen(ex) {
+  if (!ex || ex.kind === 'cardio') return false
+  const name = ex.name || ''
+  const lib = ex.exerciseId ? getExercise(ex.exerciseId) : null
+  if (lib ? lib.bodyweight : usesBodyweight(name)) return false
+  return (lib ? lib.laterality : lateralityFor(name)) === 'both'
+}
+
+// Laterality is part of the key. A curl done one arm at a time is a different
+// setup from the same curl done with both — different bench, different bracing,
+// different cue — so "elbow into the pad" written against one has no business
+// showing up on the other. Only a movement that can appear in two forms gets
+// two notes; a fixed one keeps the bare key, which is also the key whatever it
+// already says was written under.
+export function exerciseNoteKey(ex) {
   const id = canonicalExerciseId(ex?.exerciseId)
-  return id || (ex?.name || '').trim().toLowerCase()
+  const base = id || (ex?.name || '').trim().toLowerCase()
+  if (!base) return ''
+  return ex?.unilateral && lateralityIsOpen(ex) ? `${base}::unilateral` : base
 }
 
 // The whole map, for the caller that needs to sync it as a unit (login merge,
@@ -721,13 +750,13 @@ export function saveExerciseNotesMap(map) {
 }
 
 export function getExerciseNote(ex) {
-  const key = noteKey(ex)
+  const key = exerciseNoteKey(ex)
   if (!key) return ''
   return getExerciseNotesMap()[key] || ''
 }
 
 export function saveExerciseNote(ex, note) {
-  const key = noteKey(ex)
+  const key = exerciseNoteKey(ex)
   if (!key) return
   const map = getExerciseNotesMap()
   const trimmed = (note || '').slice(0, 300)
@@ -747,7 +776,7 @@ export function migrateExerciseNotes(programs = [], sessions = []) {
   if (read(EX_NOTES_MIGRATED_KEY, false)) return
   const map = read(EX_NOTES_KEY, {})
   const seed = (ex) => {
-    const key = noteKey(ex)
+    const key = exerciseNoteKey(ex)
     if (!key || !ex.note || map[key]) return
     map[key] = ex.note.slice(0, 300)
   }
