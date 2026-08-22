@@ -142,26 +142,38 @@ function isFutureDay(ts) {
   return d.getTime() > t.getTime()
 }
 
-// Passively timestamp a set as it's logged (positive reps or, for cardio,
-// duration), so rest between sets and the session's length can both be derived
-// automatically. Returns a patch to merge, or null when nothing changes.
+// Passively timestamp a set as it's logged, so rest between sets and the
+// session's length can both be derived automatically. Takes the set AS EDITED
+// and returns a patch to merge, or null when nothing changes.
 //
-// The stamp tracks the LAST keystroke of a row, not the first. Stamping once on
+// Asked of the SET rather than of one privileged field. The clock should start
+// the moment a row holds a set you actually did, and it makes no difference
+// whether the numbers were typed or taken up from last week's in one tap — the
+// set is behind you either way, and that's when rest begins. Gating on the reps
+// field meant the "same as last time" paths filled a whole exercise in and the
+// timer sat there at zero, never having seen a keystroke.
+//
+// The stamp tracks the LAST edit of a row, not the first. Stamping once on
 // first entry meant typing `12` recorded the moment you pressed `1`, so how
 // long a set appeared to take depended on your typing order — weight-first and
-// reps-first gave different answers for the same set.
+// reps-first gave different answers for the same set. That only actually holds
+// now that every field refines it, rather than reps alone.
 //
-// Only a keystroke that lands soon after the existing stamp moves it. Later
-// than that you're correcting a set you logged a while ago, and re-anchoring
-// rest to a typo fix would be worse than leaving it alone.
+// Only an edit that lands soon after the existing stamp moves it. Later than
+// that you're correcting a set you logged a while ago, and re-anchoring rest to
+// a typo fix would be worse than leaving it alone.
 const STAMP_REFINE_MS = 3 * 60 * 1000
 
-function restStamp(set, field, value) {
-  if (field !== 'reps' && field !== 'duration') return null
-  if (value === '' || !(Number(value) > 0)) return null
+function restStamp(set, kind) {
+  if (!setHasWork(set, kind)) return null
   const now = Date.now()
   if (!set.completedAt) return { completedAt: now }
   return now - set.completedAt <= STAMP_REFINE_MS ? { completedAt: now } : null
+}
+
+// A set with an edit applied, stamped if that edit finished it off.
+function withRestStamp(next, kind) {
+  return { ...next, ...restStamp(next, kind) }
 }
 
 // Drafts saved before laterality existed have no `laterality` on their
@@ -1043,7 +1055,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, [side]: { ...s[side], [field]: value }, ...restStamp(s, field, value) } : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, [side]: { ...s[side], [field]: value } }, e.kind) : s)) }
           : e
       ),
     }))
@@ -1215,7 +1227,7 @@ export default function WorkoutTracker() {
         ...d,
         exercises: d.exercises.map((e) =>
           e.id === exId
-            ? { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, added: value, weight: Math.max(0, bw + (Number(value) || 0)) } : s)) }
+            ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, added: value, weight: Math.max(0, bw + (Number(value) || 0)) }, e.kind) : s)) }
             : e
         ),
       }
@@ -1234,7 +1246,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, [field]: value, ...restStamp(s, field, value) } : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, [field]: value }, e.kind) : s)) }
           : e
       ),
     }))
@@ -1243,10 +1255,20 @@ export default function WorkoutTracker() {
   // Take up every suggestion still showing on this exercise, in one tap — the
   // "same as last time" path, back after suggestions stopped being pre-typed.
   // Only fills blanks, so it can't overwrite anything already entered.
+  //
+  // Stamped like any other way of logging a set: taking last week's numbers is
+  // still saying you did the work, and rest starts from the tap. Sets filled in
+  // the same instant are gaps of zero, which restBetweenSets already discards as
+  // implausible — logging in a batch means your rest simply wasn't measured, not
+  // that it was nothing.
   function fillFromHint(exId) {
     setDraft((d) => ({
       ...d,
-      exercises: d.exercises.map((e) => (e.id === exId ? { ...e, sets: e.sets.map(promoteHint) } : e)),
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? { ...e, sets: e.sets.map((s) => { const filled = promoteHint(s); return filled === s ? s : withRestStamp(filled, e.kind) }) }
+          : e
+      ),
     }))
   }
 
@@ -1268,8 +1290,7 @@ export default function WorkoutTracker() {
               sets: e.sets.map((s) => {
                 if (s.id !== setId) return s
                 const filled = promoteHint(s, side)
-                if (filled === s) return s
-                return !s.completedAt && setHasWork(filled, e.kind) ? { ...filled, completedAt: Date.now() } : filled
+                return filled === s ? s : withRestStamp(filled, e.kind)
               }),
             }
           : e

@@ -55,9 +55,19 @@ export default function RestTimer({
   // this is its own component: the old version's interval sat on WorkoutTracker,
   // so every second re-rendered the entire log — every exercise, every set row.
   // Idle and closed, there's nothing to count and the interval doesn't run.
+  //
+  // The resync happens BEFORE that bail-out, and this is the whole ballgame.
+  // Idle, no interval runs, so `now` stays frozen at whatever it was when the
+  // widget mounted — which on a fresh log is before you touched a single set.
+  // The first set you log then anchors in the FUTURE relative to that stale
+  // `now`, elapsed comes out negative, negative reads as stale, and stale means
+  // no interval: the clock could never start itself. It only ever came alive if
+  // you happened to background the tab and come back, which is what the resync
+  // listeners below do. Pulling `now` to the present first makes the staleness
+  // it's about to be judged on honest.
   useEffect(() => {
-    if (stale && !open) return
     setNow(Date.now())
+    if (stale && !open) return
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [stale, open, anchorTs])
