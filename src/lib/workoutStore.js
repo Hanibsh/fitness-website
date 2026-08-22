@@ -6,7 +6,7 @@
 // these functions for API calls and the tracker UI keeps working unchanged.
 
 import { convertWeight, canonicalExerciseId, REST_STALE_SEC } from './workoutStats'
-import { getExercise } from './exerciseLibrary'
+import { getExercise, exerciseIdForName } from './exerciseLibrary'
 import { lateralityFor, usesBodyweight } from './movements'
 
 const DRAFT_KEY = 'leon_workout_draft'
@@ -710,21 +710,28 @@ export function saveExerciseTarget(name, repRange) {
 // the movement rather than being copied per planned row and per session.
 //
 // Keyed by canonical exercise id (survives library renames), falling back to the
-// lowercased name for custom/typed movements — which is all a rep target does,
-// but a target that follows a rename matters less than a cue that does.
+// lowercased name only for movements the library has never heard of. A row with
+// no id but a name the DB knows is resolved back to that id first: older logs
+// and hand-typed rows predate the id link, and without that step "Dumbbell
+// Curl" typed by hand would keep a note of its own, separate from the one the
+// same movement carries everywhere it was picked from the bank.
 const EX_NOTES_KEY = 'leon_exercise_notes'
 
 // Can this movement be logged either way? Only one the DB leaves open ("both"),
 // which is exactly the set of movements that get the L/R toggle in the builder
 // and the logger. Read from the DB rather than from the row, so a planned row
 // and the session it becomes always agree about which movements have two forms.
-function lateralityIsOpen(ex) {
+function lateralityIsOpen(ex, id) {
   if (!ex || ex.kind === 'cardio') return false
   const name = ex.name || ''
-  const lib = ex.exerciseId ? getExercise(ex.exerciseId) : null
+  const lib = id ? getExercise(id) : null
   if (lib ? lib.bodyweight : usesBodyweight(name)) return false
   return (lib ? lib.laterality : lateralityFor(name)) === 'both'
 }
+
+// The `::unilateral` half of a key, split out so the migration below can take a
+// key apart and put it back together around a rewritten base.
+const UNI_SUFFIX = '::unilateral'
 
 // Laterality is part of the key. A curl done one arm at a time is a different
 // setup from the same curl done with both — different bench, different bracing,
@@ -733,10 +740,10 @@ function lateralityIsOpen(ex) {
 // two notes; a fixed one keeps the bare key, which is also the key whatever it
 // already says was written under.
 export function exerciseNoteKey(ex) {
-  const id = canonicalExerciseId(ex?.exerciseId)
+  const id = canonicalExerciseId(ex?.exerciseId || exerciseIdForName(ex?.name))
   const base = id || (ex?.name || '').trim().toLowerCase()
   if (!base) return ''
-  return ex?.unilateral && lateralityIsOpen(ex) ? `${base}::unilateral` : base
+  return ex?.unilateral && lateralityIsOpen(ex, id) ? `${base}${UNI_SUFFIX}` : base
 }
 
 // The whole map, for the caller that needs to sync it as a unit (login merge,
@@ -772,7 +779,39 @@ export function saveExerciseNote(ex, note) {
 // note is a real answer.
 const EX_NOTES_MIGRATED_KEY = 'leon_exercise_notes_migrated'
 
+// Notes written under a bare NAME by a row that had no id, for a movement the
+// library does know — fold them onto that movement's id key, which is where
+// every reader now looks. Left alone they'd simply go quiet, and the note would
+// read as never written. An id key that already says something wins: it was
+// written against the movement itself rather than against one row's spelling.
+//
+// Separately flagged from the seed below, because it has to run for everyone —
+// including the accounts that passed the seed long ago.
+const EX_NOTES_FOLDED_KEY = 'leon_exercise_notes_folded'
+
+function foldNameKeyedNotes() {
+  if (read(EX_NOTES_FOLDED_KEY, false)) return
+  const map = read(EX_NOTES_KEY, {})
+  let changed = false
+  for (const [key, note] of Object.entries(map)) {
+    const uni = key.endsWith(UNI_SUFFIX)
+    const base = uni ? key.slice(0, -UNI_SUFFIX.length) : key
+    const id = canonicalExerciseId(exerciseIdForName(base))
+    if (!id || id === base) continue
+    // Re-derived rather than reassembled, so a name that turns out to belong to
+    // a FIXED-laterality movement loses a `::unilateral` it should never have
+    // carried — the DB is only consultable now that the name has an id.
+    const target = exerciseNoteKey({ exerciseId: id, name: base, unilateral: uni })
+    if (!map[target]) map[target] = note
+    delete map[key]
+    changed = true
+  }
+  if (changed) write(EX_NOTES_KEY, map)
+  write(EX_NOTES_FOLDED_KEY, true)
+}
+
 export function migrateExerciseNotes(programs = [], sessions = []) {
+  foldNameKeyedNotes()
   if (read(EX_NOTES_MIGRATED_KEY, false)) return
   const map = read(EX_NOTES_KEY, {})
   const seed = (ex) => {
