@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2 } from 'lucide-react'
+import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2, Sparkles } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
@@ -66,9 +66,10 @@ export default function TrainingSplit() {
     navigate(`/split/${program.id}`)
   }
 
-  // No starter templates — ready-made programs are the upcoming Programs
-  // feature's job. "New split" opens the editor at /split/new, which creates a
-  // blank split there (so the just-created split is in the editor's own state —
+  // Three ways in, in order of how much they do for you: generate one from the
+  // exercise database, read one out of what you've already logged, or start
+  // blank. "New split" opens the editor at /split/new, which creates the blank
+  // split there (so the just-created split is in the editor's own state —
   // creating here and navigating raced a fresh editor against unsaved storage).
   function createSplit() {
     navigate('/split/new')
@@ -104,23 +105,31 @@ export default function TrainingSplit() {
           ) : programsState.programs.length === 0 ? (
             <div className="bg-white border border-border p-7 text-center">
               <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Start a split</h2>
-              <p className="text-[13px] text-text-muted mb-6">Name it, add your days and exercises — the log will follow it.</p>
+              <p className="text-[13px] text-text-muted mb-6">
+                Answer a few questions and we&apos;ll build one around your week — or lay it out yourself.
+              </p>
               <button
-                onClick={createSplit}
+                onClick={() => navigate('/split/generate')}
                 className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-6 py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
               >
-                <Plus className="w-4 h-4" /> Start your first split
+                <Sparkles className="w-4 h-4" /> Generate a split for me
               </button>
-              {canBuild && (
-                <div className="mt-4">
+              <div className="mt-4 flex items-center justify-center gap-x-4 gap-y-2 flex-wrap">
+                <button
+                  onClick={createSplit}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Start one from scratch
+                </button>
+                {canBuild && (
                   <button
                     onClick={() => setBuilding(true)}
                     className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
                   >
                     <Wand2 className="w-3.5 h-3.5" /> Build one from my recent workouts
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : (
             <>
@@ -193,6 +202,12 @@ export default function TrainingSplit() {
                   })}
                 </div>
                 <div className="flex items-center gap-x-4 gap-y-2 flex-wrap mt-3">
+                  <button
+                    onClick={() => navigate('/split/generate')}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Generate a split
+                  </button>
                   <button
                     onClick={createSplit}
                     className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"

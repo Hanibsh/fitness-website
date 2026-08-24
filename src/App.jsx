@@ -23,6 +23,7 @@ const TrainingSplit = lazy(() => import('./pages/TrainingSplit'))
 const SplitLayout = lazy(() => import('./pages/SplitLayout'))
 const SplitOverview = lazy(() => import('./pages/SplitOverview'))
 const SplitDay = lazy(() => import('./pages/SplitDay'))
+const GenerateSplit = lazy(() => import('./pages/GenerateSplit'))
 
 // The routine builder became the "Training split" tab of the log (2026-07).
 // Old /routine URLs (bookmarks, synced devices mid-deploy) land on the new ones.
@@ -61,6 +62,10 @@ function App() {
         {/* One split, three levels: the list at /log/split, this split's days as
             cards, then one day's exercises. Nested so SplitLayout holds the
             split's data across the transition instead of refetching per page. */}
+        {/* Ahead of /split/:id on purpose — a static segment out-ranks the
+            dynamic one, so "generate" never reaches SplitLayout the way "new"
+            deliberately does. */}
+        <Route path="/split/generate" element={<GenerateSplit />} />
         <Route path="/split/:id" element={<SplitLayout />}>
           <Route index element={<SplitOverview />} />
           <Route path="day/:dayId" element={<SplitDay />} />

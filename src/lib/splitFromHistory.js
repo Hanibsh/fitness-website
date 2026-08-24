@@ -187,7 +187,9 @@ const DEFAULT_RANGE = { low: 6, high: 10 }
 // A double-progression target that matches how the exercise has actually been
 // trained. Built from the middle of the logged reps rather than the extremes —
 // one heavy triple inside a set of tens shouldn't drag the range down to 3.
-function repRangeFor(repsPerSession) {
+// Exported because the generator gives a returning user their own rep ranges
+// for movements they already train, and one rule for that is enough.
+export function repRangeFor(repsPerSession) {
   const all = repsPerSession.flat()
   if (all.length < 2) return { ...DEFAULT_RANGE }
   const sorted = [...all].sort((a, b) => a - b)
