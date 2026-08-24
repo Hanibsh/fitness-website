@@ -505,10 +505,21 @@ export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
   let bestReps = null
   let bestE1rm = null
   let lifetimeVolume = 0
+  // Rest is gathered from the RAW entries, not from `sets` — `setsForExercise`
+  // flattens a unilateral set into one entry per limb, and two limbs share a
+  // single `completedAt`, so restBetweenSets would read the pair as a zero gap
+  // and throw the whole set away. Pooled across every recorded gap rather than
+  // averaged per session, matching sessionAvgRest: four measured gaps in one
+  // session say more than a single gap in another, and should weigh more.
+  const target = normalizeExerciseTarget(exercise)
+  const restGaps = []
   for (const session of sessions) {
     const sets = setsForExercise(session, exercise)
     if (!sets.length) continue
     const sessionUnit = session.unit || 'kg'
+    for (const ex of session.exercises) {
+      if (exerciseEntryMatches(ex, target)) restGaps.push(...restBetweenSets(ex))
+    }
     timesPerformed++
     if (firstDate === null || session.date < firstDate) firstDate = session.date
     if (lastDate === null || session.date > lastDate) lastDate = session.date
@@ -523,7 +534,8 @@ export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
     }
   }
   if (!timesPerformed) return null
-  return { timesPerformed, firstDate, lastDate, bestWeight, bestReps, bestE1rm, lifetimeVolume }
+  const avgRest = restGaps.length ? Math.round(restGaps.reduce((a, b) => a + b, 0) / restGaps.length) : null
+  return { timesPerformed, firstDate, lastDate, bestWeight, bestReps, bestE1rm, lifetimeVolume, avgRest }
 }
 
 // Which lifts in this session beat everything that came before it.

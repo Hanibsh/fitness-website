@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
-import { exerciseSummary, recentExerciseSessions, convertWeight } from '../lib/workoutStats'
+import { exerciseSummary, recentExerciseSessions, convertWeight, avgRestForExercise, formatRest } from '../lib/workoutStats'
 import ExerciseProgress from './ExerciseProgress'
 
 // "Your performance" section for the exercise detail page: the user's own
@@ -108,12 +108,18 @@ export default function ExercisePerformance({ exercise }) {
     )
   }
 
+  // [label, value, title?]. Only rest carries a title, and only when it has
+  // nothing to show: a dash here is far likelier than under Best weight, since
+  // rest exists only for sessions logged set by set as you train. Unexplained,
+  // it reads as a bug rather than as an absence.
+  const restLabel = formatRest(summary.avgRest)
   const tiles = [
     ['Best weight', summary.bestWeight != null ? `${fmtW(summary.bestWeight)} ${unit}` : '—'],
     ['Est. 1RM', summary.bestE1rm != null ? `${Math.round(summary.bestE1rm)} ${unit}` : '—'],
     ['Best reps', summary.bestReps ?? '—'],
     ['Lifetime volume', `${Math.round(summary.lifetimeVolume).toLocaleString()} ${unit}`],
     ['Times performed', summary.timesPerformed],
+    ['Avg rest', restLabel ?? '—', restLabel ? null : 'Only measured when you log your sets as you go.'],
     ['Last done', fmtDate(summary.lastDate)],
   ]
 
@@ -122,8 +128,8 @@ export default function ExercisePerformance({ exercise }) {
       {heading}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {tiles.map(([label, val]) => (
-          <div key={label} className="bg-white border border-border rounded-lg p-3">
+        {tiles.map(([label, val, title]) => (
+          <div key={label} title={title || undefined} className="bg-white border border-border rounded-lg p-3">
             <p className="text-[10px] uppercase tracking-wide text-text-light">{label}</p>
             <p className="text-[15px] font-medium text-text-primary mt-0.5">{val}</p>
           </div>
@@ -145,17 +151,22 @@ export default function ExercisePerformance({ exercise }) {
           <p className="text-text-secondary text-[13px] font-medium mt-6 mb-2">Recent sessions</p>
           <div className="space-y-2">
             {recent.map((s) => {
+              // The raw entry travels with its line: `avgRestForExercise` needs
+              // the exercise as logged, sets and stamps intact, not the string.
               const lines = s.entries
-                .map((entry) => entryLine(entry, s.unit, unit))
-                .filter(Boolean)
+                .map((entry) => ({ line: entryLine(entry, s.unit, unit), rest: formatRest(avgRestForExercise(entry)) }))
+                .filter((l) => l.line)
               return (
                 <div key={s.id} className="bg-white border border-border rounded-lg px-4 py-3">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-[12px] text-text-muted">{fmtDate(s.date)}</span>
                     {s.name && <span className="text-[12px] text-text-light truncate">{s.name}</span>}
                   </div>
-                  {lines.map((line) => (
-                    <p key={line} className="text-[13px] text-text-primary mt-1 break-words">{line}</p>
+                  {lines.map(({ line, rest }) => (
+                    <p key={line} className="text-[13px] text-text-primary mt-1 break-words">
+                      {line}
+                      {rest && <span className="text-text-light"> · {rest} rest</span>}
+                    </p>
                   ))}
                 </div>
               )

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Trophy, Timer, Dumbbell, Lightbulb, LineChart } from 'lucide-react'
 import Modal from './Modal'
 import {
-  sessionAvgRest, formatRest, setSummary, distanceUnit, setHasWork,
+  sessionAvgRest, avgRestForExercise, formatRest, setSummary, distanceUnit, setHasWork,
   sessionPRs, PR_KINDS, supersetLabels,
 } from '../lib/workoutStats'
 import { sessionStats } from '../lib/workoutStore'
@@ -172,6 +172,12 @@ export default function SessionSummary({
               const shown = ex.sets.filter((s) => setHasWork(s, ex.kind))
               const g = groups.get(ex.id)
               const badge = g && g.size > 1 ? g.label : null
+              // This movement's own rest, beside its name. The blended figure
+              // up top averages a four-minute bench rest with a one-minute
+              // lateral raise and lands on a number describing no set you did;
+              // it's the right summary of the session and the wrong answer to
+              // "how long do I rest on this". Warm-ups stay out of both.
+              const exRest = formatRest(avgRestForExercise(ex))
               return (
                 <div key={ex.id}>
                   <div className="flex items-center gap-2">
@@ -189,6 +195,9 @@ export default function SessionSummary({
                       >
                         <LineChart className="w-3.5 h-3.5" />
                       </button>
+                    )}
+                    {exRest && (
+                      <span className="ml-auto shrink-0 text-[12px] text-text-light tabular-nums">{exRest} rest</span>
                     )}
                   </div>
                   {shown.length ? (
