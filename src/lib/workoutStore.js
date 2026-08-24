@@ -148,15 +148,17 @@ export function promoteHint(s, onlySide = null) {
   }
 }
 
-// Drop suggestions before a session is stored. They're scaffolding for logging,
-// not part of the record — and leaving them in would make the NEXT session's
-// suggestions come from the last one's suggestions.
+// Drop the logging scaffolding before a session is stored. Suggestions aren't
+// part of the record — and leaving them in would make the NEXT session's
+// suggestions come from the last one's suggestions. `stampAuto` is scaffolding
+// too: it only marks a timestamp the app guessed on your behalf as still open
+// to correction, which is a question that dies with the draft.
 export function stripHints(exercises) {
   return exercises.map((ex) => ({
     ...ex,
     sets: ex.sets.map((s) => {
-      if (!s.hint) return s
-      const { hint: _hint, ...rest } = s
+      if (!s.hint && !s.stampAuto) return s
+      const { hint: _hint, stampAuto: _stampAuto, ...rest } = s
       return rest
     }),
   }))
@@ -166,8 +168,14 @@ export function stripHints(exercises) {
 // shapes, preserving whatever was already typed.
 export function convertSet(s, unilateral) {
   // Carry the set's type (warm-up/back-off), rest timestamp and suggestion
-  // across a shape change so nothing is lost when toggling laterality.
-  const keep = { ...(s.type ? { type: s.type } : {}), ...(s.completedAt ? { completedAt: s.completedAt } : {}) }
+  // across a shape change so nothing is lost when toggling laterality. The
+  // stamp's provisional flag travels with it, or splitting a row into L/R would
+  // quietly promote a guessed timestamp into one you'd earned.
+  const keep = {
+    ...(s.type ? { type: s.type } : {}),
+    ...(s.completedAt ? { completedAt: s.completedAt } : {}),
+    ...(s.stampAuto ? { stampAuto: true } : {}),
+  }
   if (unilateral) {
     if (s.left) return s
     const side = { weight: s.weight ?? '', reps: s.reps ?? '', rir: s.rir ?? '' }

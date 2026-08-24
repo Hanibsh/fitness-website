@@ -46,7 +46,7 @@ import {
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isLoggedSet } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isStampedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -72,11 +72,12 @@ import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
 import { adviseTraining } from '../lib/advisor'
 
-const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_50px_18px] gap-2 items-center'
+// Columns: set no. · weight · reps · RIR · done tick · remove.
+const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px] gap-1.5 items-center'
 // Same as SET_GRID plus a trailing column for the per-set laterality toggle —
 // only used on "both" exercises, where a flat row can be split into L/R.
-const SET_GRID_TOGGLE = 'grid grid-cols-[18px_1fr_1fr_50px_18px_18px] gap-2 items-center'
-const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px] gap-2 items-center'
+const SET_GRID_TOGGLE = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px_18px] gap-1.5 items-center'
+const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px_18px] gap-1.5 items-center'
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -163,18 +164,45 @@ function isFutureDay(ts) {
 // Only an edit that lands soon after the existing stamp moves it. Later than
 // that you're correcting a set you logged a while ago, and re-anchoring rest to
 // a typo fix would be worse than leaving it alone.
+//
+// That window is right for a stamp you earned by filling the row in, and wrong
+// for one the app guessed on your behalf. "Same as last time" fills EVERY set of
+// an exercise at once, including three you haven't done yet, and stamping them
+// used to lock all three: by the time you'd actually finished set two, the guess
+// was older than the window, so the real edit was dismissed as a typo fix and
+// the clock stayed pinned to the tap for the whole exercise. Those stamps are
+// marked `stampAuto` and stay open to correction however long they've sat there.
 const STAMP_REFINE_MS = 3 * 60 * 1000
 
 function restStamp(set, kind) {
   if (!setHasWork(set, kind)) return null
   const now = Date.now()
-  if (!set.completedAt) return { completedAt: now }
+  if (!set.completedAt || set.stampAuto) return { completedAt: now, stampAuto: undefined }
   return now - set.completedAt <= STAMP_REFINE_MS ? { completedAt: now } : null
 }
 
 // A set with an edit applied, stamped if that edit finished it off.
 function withRestStamp(next, kind) {
   return { ...next, ...restStamp(next, kind) }
+}
+
+// The same, for a fill that covers sets you may not have done yet. The stamp
+// still lands — filling an exercise in after the fact is a real way to log it,
+// and the session would otherwise have no timestamps at all — it's just held
+// provisionally, so the first thing you do to that row afterwards wins.
+function withAutoStamp(next, kind) {
+  const stamp = restStamp(next, kind)
+  return stamp ? { ...next, ...stamp, stampAuto: true } : { ...next }
+}
+
+// "I've just finished this set" said outright, by the tick on the row. The one
+// path that re-stamps unconditionally: after a fill there's nothing left to type
+// and no implicit signal to read, so this is what restarts the clock when you
+// repeat last week's numbers exactly. Refuses an empty row — there's no set
+// there to have finished.
+function withDoneStamp(next, kind) {
+  if (!setHasWork(next, kind)) return next
+  return { ...next, completedAt: Date.now(), stampAuto: undefined }
 }
 
 // Drafts saved before laterality existed have no `laterality` on their
@@ -461,27 +489,32 @@ export default function WorkoutTracker() {
     return muscleRecovery(history).muscles.filter((m) => hit.has(m.muscle) && m.status === 'recovering')
   }, [plan, history])
 
-  // What the rest clock counts from: the most recent set that actually counts
-  // as logged. `isLoggedSet` is the same predicate the recorded average uses,
-  // which is the point — before, the live number came from the newest stamp of
-  // ANY set, so a warm-up moved the clock on screen while contributing nothing
-  // to the "avg rest" line underneath it.
+  // What the rest clock counts from: the most recent set holding real work,
+  // warm-ups included. `isStampedSet` rather than `isLoggedSet` — the two part
+  // company exactly here. You rest after a warm-up like you rest after anything
+  // else, and a clock that ignored them sat there counting from the previous
+  // exercise while you worked up to your first heavy set. The recorded "avg
+  // rest" still uses `isLoggedSet` and still ignores warm-ups; what's on screen
+  // and what's in your history are answering different questions.
   //
-  // The winning set's exercise comes back too: that's where the rest target
-  // shown in the widget comes from.
+  // The winning set's exercise comes back too — that's where the rest target
+  // shown in the widget comes from — and whether it was a warm-up, because the
+  // target doesn't apply to one.
   const lastLogged = useMemo(() => {
     let at = 0
     let name = ''
     let exerciseId = null
+    let warmup = false
     for (const ex of draft.exercises) {
       for (const s of ex.sets) {
-        if (!isLoggedSet(s, ex.kind) || s.completedAt <= at) continue
+        if (!isStampedSet(s, ex.kind) || s.completedAt <= at) continue
         at = s.completedAt
         name = ex.name
         exerciseId = ex.exerciseId || exerciseIdForName(ex.name)
+        warmup = s.type === 'warmup'
       }
     }
-    return at ? { at, name, exerciseId } : null
+    return at ? { at, name, exerciseId, warmup } : null
   }, [draft])
 
   // The whole session so far. Runs from the moment the workout started — the
@@ -509,8 +542,11 @@ export default function WorkoutTracker() {
   const setAsideSummary = useMemo(() => liveDraft(setAside), [setAside])
   const showRestTimer = restTimer.enabled && !isEditing && isToday && sessionUnderway
 
+  // No target after a warm-up. The DB's rest figure is what to take between
+  // working sets, and offering three minutes after a set of the empty bar would
+  // be worse than offering nothing — the widget says what it's counting instead.
   const restTargetSec = useMemo(
-    () => (lastLogged?.exerciseId ? getExercise(lastLogged.exerciseId)?.restSeconds || null : null),
+    () => (lastLogged?.exerciseId && !lastLogged.warmup ? getExercise(lastLogged.exerciseId)?.restSeconds || null : null),
     [lastLogged]
   )
 
@@ -1247,12 +1283,33 @@ export default function WorkoutTracker() {
   // the same instant are gaps of zero, which restBetweenSets already discards as
   // implausible — logging in a batch means your rest simply wasn't measured, not
   // that it was nothing.
+  //
+  // PROVISIONALLY stamped, though, unlike every other path. This one tap covers
+  // sets you may not have done yet, and the app can't tell which way round it is
+  // — filling the exercise in afterwards and setting it up before you start look
+  // identical from here. So the stamps stay open to correction: whatever you do
+  // to one of these rows next, however much later, takes it back. See restStamp.
   function fillFromHint(exId) {
     setDraft((d) => ({
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => { const filled = promoteHint(s); return filled === s ? s : withRestStamp(filled, e.kind) }) }
+          ? { ...e, sets: e.sets.map((s) => { const filled = promoteHint(s); return filled === s ? s : withAutoStamp(filled, e.kind) }) }
+          : e
+      ),
+    }))
+  }
+
+  // The done tick on a set row. Says outright what typing into a field says by
+  // implication — that set is behind you — and it's the only way to say it once
+  // "Same as last time" has filled every row and left nothing to type. Works on
+  // a warm-up too: the clock counts rest after those the same as after anything.
+  function markSetDone(exId, setId) {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) =>
+        e.id === exId
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withDoneStamp(s, e.kind) : s)) }
           : e
       ),
     }))
@@ -1869,6 +1926,36 @@ export default function WorkoutTracker() {
     let workNo = 0
     const setLabels = ex.sets.map((s) => (s.type === 'warmup' ? 'W' : s.type === 'backoff' ? 'B' : String(++workNo)))
     const typeClass = (s) => (s.type === 'warmup' ? 'text-amber-500 font-semibold' : s.type === 'backoff' ? 'text-sky-500 font-semibold' : 'text-text-muted')
+    // The done tick, in whichever of the three row shapes is being drawn. Filled
+    // in means done, which is why the mark is already set for you the moment you
+    // type — it's there for the sets you DIDN'T type, taken up in one tap from
+    // last week, where tapping it is the only thing that tells the rest clock
+    // you've finished one. Tapping a set already marked re-marks it now.
+    const doneTick = (set, i) => {
+      const done = !!set.completedAt
+      const filled = setHasWork(set, ex.kind)
+      return (
+        <button
+          type="button"
+          onClick={() => markSetDone(ex.id, set.id)}
+          disabled={!filled}
+          aria-label={done ? `Set ${i + 1} done — mark again to restart rest` : `Mark set ${i + 1} done`}
+          title={!filled ? 'Fill the set in first' : done ? 'Done — tap to restart the rest clock' : 'Mark done and start resting'}
+          // Taller than it looks. The mark is 14px like the icons beside it, but
+          // this is the one you reach for between every set, with a thumb, and
+          // the padding is pulled straight back out so the row doesn't grow.
+          //
+          // No `transition-colors`, deliberately, and the remove X beside it
+          // doesn't have one either. A colour transition on a themed token
+          // survives the theme toggle: switch to light mid-session and the mark
+          // stays on the dark palette's grey while every icon around it changes.
+          // Same trap the rest widget's progress bar hit.
+          className={`flex justify-center bg-transparent border-none cursor-pointer px-0 py-1.5 -my-1.5 disabled:opacity-30 disabled:cursor-not-allowed ${done ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+      )
+    }
     // "Both" exercises can mix bilateral/unilateral set by set, so each row
     // gets its own toggle; fixed-laterality exercises can't mix, so no toggle.
     const showsSetToggle = ex.kind !== 'cardio' && !ex.bodyweight && (ex.laterality || 'both') === 'both'
@@ -2074,6 +2161,7 @@ export default function WorkoutTracker() {
                 <span>Min</span>
                 <span>{distUnit}</span>
                 <span />
+                <span />
               </div>
               {ex.sets.map((set, i) => (
                 <div key={set.id} className={`${CARDIO_SET_GRID} mb-2`}>
@@ -2094,6 +2182,7 @@ export default function WorkoutTracker() {
                     placeholder={hintFor(set, 'distance')} aria-label={`Entry ${i + 1} distance in ${distUnit}`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
+                  {doneTick(set, i)}
                   <button
                     onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove entry ${i + 1}`} disabled={ex.sets.length === 1}
                     className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -2216,6 +2305,7 @@ export default function WorkoutTracker() {
                       </button>
                     </span>
                     <span />
+                    <span />
                   </div>
                   {ex.sets.map((set, i) => (
                     <div key={set.id} className={`${SET_GRID} mb-2`}>
@@ -2258,6 +2348,7 @@ export default function WorkoutTracker() {
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                       )}
+                      {doneTick(set, i)}
                       <button
                         onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
                         className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -2286,6 +2377,7 @@ export default function WorkoutTracker() {
                       </button>
                     </span>
                     <span />
+                    <span />
                     {showsSetToggle && <span />}
                   </div>
                   {/* Each set renders by its OWN shape (set.left), not the
@@ -2304,6 +2396,7 @@ export default function WorkoutTracker() {
                             {set.type === 'warmup' ? 'Warm-up' : set.type === 'backoff' ? 'Back-off' : `Set ${setLabels[i]}`}
                           </button>
                           <div className="flex items-center gap-1">
+                            {doneTick(set, i)}
                             {showsSetToggle && (
                               <button
                                 type="button"
@@ -2404,6 +2497,7 @@ export default function WorkoutTracker() {
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
                         )}
+                        {doneTick(set, i)}
                         <button
                           onClick={() => removeSet(ex.id, set.id)} aria-label={`Remove set ${i + 1}`} disabled={ex.sets.length === 1}
                           className="flex justify-center text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -2453,7 +2547,7 @@ export default function WorkoutTracker() {
   }
 
   return (
-    <div className="pt-28 pb-24 px-6">
+    <div className="pt-28 pb-24 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto">
         <LogTabs active="/log" />
 
@@ -2582,7 +2676,12 @@ export default function WorkoutTracker() {
           )}
 
           {/* Current session */}
-          <div className="bg-white border border-border p-7 md:p-9">
+          {/* Padding steps down on a narrow phone. A set row is seven columns
+              wide once the done tick is in it, and at 320px this panel's inset
+              plus the page's plus the exercise card's left 181px for all of
+              them — weight and reps came out 17px each, too narrow to read the
+              number you'd just typed. The chrome yields before the numbers do. */}
+          <div className="bg-white border border-border p-4 sm:p-7 md:p-9">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">
@@ -3298,6 +3397,7 @@ export default function WorkoutTracker() {
           anchorTs={restAnchorTs}
           targetSec={restTargetSec}
           exerciseName={lastLogged?.name || ''}
+          afterWarmup={!!lastLogged?.warmup}
           sessionStartTs={sessionStartTs}
           onReset={() => updateRestTimer({ anchor: Date.now(), dismissedAt: null })}
           onDismiss={() => updateRestTimer({ dismissedAt: Date.now() })}

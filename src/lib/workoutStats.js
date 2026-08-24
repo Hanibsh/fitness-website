@@ -136,24 +136,37 @@ export const REST_STALE_SEC = 30 * 60
 
 // Does this set have actual work recorded — reps on either limb, or, for
 // cardio, a duration? Says nothing about WHEN it was logged or what type it
-// is; callers layer those on (see isLoggedSet below, splitSync's set counting).
+// is; callers layer those on (see the two predicates below, splitSync's set
+// counting).
 export function setHasWork(set, kind) {
   if (kind === 'cardio') return Number(set.duration) > 0
   if (set.left) return Number(set.left?.reps) > 0 || Number(set.right?.reps) > 0
   return Number(set.reps) > 0
 }
 
-// A set counts toward rest only if it was actually logged (stamped + real work,
-// warm-ups excluded). Exported because the live rest timer has to agree with
-// the recorded average about what resets the clock — it used to take the most
-// recent stamp of ANY set, so a warm-up moved the number on screen while
-// contributing nothing to the history line underneath it.
+// Two questions that used to be one, and the difference is warm-ups.
 //
-// Note this is the RIGHT rule for rest and the WRONG one for session length:
-// warm-ups are time spent training, so the session clock counts them (see
-// sessionWindow in workoutStore.js).
+// A set is STAMPED once it holds real work and carries the moment that work
+// landed. That's what the clock on screen counts from: a warm-up is a set you
+// just finished and then rested after, so the bubble should restart on it like
+// any other. (The rest TARGET drawn beside the number is a working-set figure
+// and doesn't apply — the log suppresses it rather than offering three minutes
+// after a warm-up.)
+//
+// A set is LOGGED if it's stamped AND it's work you're accounting for, which
+// excludes warm-ups. That's the recorded side — `restBetweenSets` and the
+// `avg rest` written into history — where a warm-up's short rest would drag
+// the average down while saying nothing about how you trained.
+//
+// Note neither is the right rule for session LENGTH: warm-ups are time spent
+// training, so the session clock counts them (see sessionWindow in
+// workoutStore.js).
+export function isStampedSet(set, kind) {
+  return !!set.completedAt && setHasWork(set, kind)
+}
+
 export function isLoggedSet(set, kind) {
-  return !!set.completedAt && set.type !== 'warmup' && setHasWork(set, kind)
+  return isStampedSet(set, kind) && set.type !== 'warmup'
 }
 
 // Rests (seconds) between consecutive logged working sets of one exercise.

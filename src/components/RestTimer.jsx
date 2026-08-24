@@ -31,6 +31,7 @@ export default function RestTimer({
   anchorTs = null,
   targetSec = null,
   exerciseName = '',
+  afterWarmup = false,
   sessionStartTs = null,
   onReset,
   onDismiss,
@@ -182,6 +183,13 @@ export default function RestTimer({
                     {exerciseName ? <span className="text-text-light"> · {exerciseName}</span> : null}
                   </p>
                 </>
+              ) : afterWarmup ? (
+                // The exercise HAS a target; it just isn't this set's. Saying
+                // "no rest target" after a warm-up would read as a gap in the
+                // database rather than as the deliberate silence it is.
+                <p className="text-[11px] text-text-light">
+                  {exerciseName ? `After a warm-up · ${exerciseName}` : 'After a warm-up'}
+                </p>
               ) : (
                 <p className="text-[11px] text-text-light">
                   {exerciseName ? `No rest target for ${exerciseName}` : 'No rest target for this exercise'}
