@@ -7,6 +7,7 @@ import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { fetchProfile } from '../lib/profile'
 import { generateProgram } from '../lib/generator'
+import { useInjuries } from '../lib/useInjuries'
 import { setProgramName } from '../lib/program'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
@@ -63,6 +64,9 @@ export default function SplitWizard() {
   const [experience, setExperience] = useState('')
   const [equipment, setEquipment] = useState('')
   const [name, setName] = useState('')
+  // Open injuries steer the picks — a bad shoulder pushes overhead pressing down
+  // the ranking without removing it (PENALTIES.injury in generatorConfig).
+  const { injuries } = useInjuries()
 
   // History and profile, loaded the way every other surface loads them: remote
   // when signed in, this device's copy otherwise.
@@ -130,8 +134,9 @@ export default function SplitWizard() {
       },
       profile,
       sessions: history,
+      injuries,
     })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, profile, history])
+  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, profile, history, injuries])
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 

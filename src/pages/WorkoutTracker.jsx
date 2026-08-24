@@ -61,6 +61,9 @@ import WorkoutCalendar from '../components/WorkoutCalendar'
 import SessionNamePicker from '../components/SessionNamePicker'
 import { lateralityFor, usesBodyweight } from '../lib/movements'
 import { getExercise, exerciseIdForName } from '../lib/exerciseLibrary'
+import { useInjuries, useInjuryRisk } from '../lib/useInjuries'
+import { openInjuries, injuryTitle } from '../lib/injuries'
+import InjuryBadge from '../components/InjuryBadge'
 import { muscleRecovery, musclesForExercises } from '../lib/engine'
 import UnitHelp from '../components/UnitHelp'
 import LogTabs from '../components/LogTabs'
@@ -376,6 +379,12 @@ export default function WorkoutTracker() {
   // progress; { mode: 'day' } just marks today, with nothing to end.
   const [injuryPrompt, setInjuryPrompt] = useState(null)
   const [injuryNote, setInjuryNote] = useState('')
+  // Which tracked injury the mark-off belongs to: an existing one's id, 'new' to
+  // start tracking one, or null to just mark the day off the old way.
+  const [injuryLink, setInjuryLink] = useState(null)
+  const { injuries } = useInjuries()
+  const injuryRisk = useInjuryRisk()
+  const openInjuryList = useMemo(() => openInjuries(injuries), [injuries])
   const [loadingHistory, setLoadingHistory] = useState(true)
   // The day name a calendar "start" link asked for and couldn't have, because a
   // session with work in it was already open. Cleared the moment that session
@@ -737,7 +746,7 @@ export default function WorkoutTracker() {
   // shows the next one down instead.
   const topAdvice = useMemo(() => {
     if (!openSessionData) return null
-    const recs = adviseTraining(sortedHistory, { annotations })
+    const recs = adviseTraining(sortedHistory, { annotations, injuries })
     return recs.find((r) => r.severity === 'red') || recs.find((r) => r.severity === 'amber') || null
   }, [openSessionData, sortedHistory, annotations])
 
@@ -1562,17 +1571,27 @@ export default function WorkoutTracker() {
 
   // One annotation per calendar day, so reuse whatever the date already carries
   // — a second mark-off edits it rather than stacking a duplicate underneath.
-  function markInjured(date, note) {
+  //
+  // `injuryId` links the day to a tracked injury. The annotation still carries
+  // the whole meaning on its own (and still spends the day's split slot), so the
+  // link is optional in both directions: you can mark a day off without tracking
+  // anything, and a tracked injury doesn't write a mark-off for every day it
+  // lasts. See the note on SLOT_CONSUMING_REASONS in program.js.
+  function markInjured(date, note, injuryId = null) {
     const existing = annotationForDate(annotations, date)
     const entry = existing
-      ? { ...existing, reason: 'injury', note: (note || '').trim().slice(0, 300) }
-      : makeDayAnnotation('injury', note, noonOf(date))
+      ? { ...existing, reason: 'injury', note: (note || '').trim().slice(0, 300), injuryId: injuryId || existing.injuryId || null }
+      : { ...makeDayAnnotation('injury', note, noonOf(date)), injuryId }
     return persistAnnotation(entry)
   }
 
   function openInjuryPrompt(mode, date) {
+    const existing = annotationForDate(annotations, date)
     setInjuryPrompt({ mode, date })
-    setInjuryNote(annotationForDate(annotations, date)?.note || '')
+    setInjuryNote(existing?.note || '')
+    // Default to the injury this day is already attached to; failing that, to
+    // the only open one, since with exactly one candidate the question is noise.
+    setInjuryLink(existing?.injuryId || (openInjuryList.length === 1 ? openInjuryList[0].id : null))
   }
 
   // Confirmed. Whatever was already logged is worth keeping — you trained until
@@ -1588,10 +1607,32 @@ export default function WorkoutTracker() {
     if (!injuryPrompt || saving) return
     const { mode, date } = injuryPrompt
     setInjuryPrompt(null)
-    await markInjured(date, injuryNote)
+    // Links the day to the injury and nothing more. It's tempting to also write
+    // a check-in here — a day you had to stop is obviously a bad day — but any
+    // number we picked would be one the user never chose, sitting on the pain
+    // chart that exists to tell them honestly whether this is healing. The link
+    // is a fact; the severity would be a guess. Rating stays a deliberate act,
+    // one tap away on the calendar day panel or the injury page.
+    const linked = openInjuryList.find((i) => i.id === injuryLink) || null
+    await markInjured(date, injuryNote, linked?.id || null)
     if (mode !== 'session') return
     if (hasLoggedSets) await commitSession(null)
     else discard()
+  }
+
+  // "Something new" from the prompt: get out of the way and let /injuries ask
+  // the questions properly (which area, which side, when it started) rather than
+  // growing a second injury form inside a modal about ending a session.
+  async function markInjuredAndTrack() {
+    if (!injuryPrompt || saving) return
+    const { mode, date } = injuryPrompt
+    setInjuryPrompt(null)
+    await markInjured(date, injuryNote, null)
+    if (mode === 'session') {
+      if (hasLoggedSets) await commitSession(null)
+      else discard()
+    }
+    navigate('/injuries', { state: { newInjury: true } })
   }
 
   // Finishing is two steps whenever the split day was only a guess: show the
@@ -2007,6 +2048,11 @@ export default function WorkoutTracker() {
               </span>
             )}
             <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
+            {/* An open injury this movement loads. Here, on the row you're about
+                to put weight on, because that's the moment the warning is worth
+                anything — and it's also where you find out we were wrong, so it
+                links straight to where you can say so. */}
+            <InjuryBadge hit={injuryRisk.get(ex.exerciseId)} compact />
           </div>
           <div className="relative flex items-center gap-1">
             {ex.kind !== 'cardio' && supersetTargets.length > 0 && (
@@ -3356,13 +3402,53 @@ export default function WorkoutTracker() {
                   ? 'Your split is fixed to the week, so nothing shifts.'
                   : 'Your split won’t wait for this day — tomorrow stays whatever it was already going to be.'}
             </p>
+            {/* Which injury this is. A day marked off is an event; the thing
+                that caused it usually isn't a one-day event, and tying the two
+                together is what turns a scatter of red squares into a story
+                about one shoulder. Only offered when something's already
+                tracked — with nothing open, "is this the same one?" is a
+                question about nothing. */}
+            {openInjuryList.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[10px] uppercase tracking-wider text-text-light mb-2">Is this one you’re tracking?</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {openInjuryList.map((i) => (
+                    <button
+                      key={i.id}
+                      type="button"
+                      onClick={() => setInjuryLink(injuryLink === i.id ? null : i.id)}
+                      aria-pressed={injuryLink === i.id}
+                      className={`px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
+                        injuryLink === i.id
+                          ? 'bg-text-primary text-cream border-text-primary'
+                          : 'bg-white text-text-muted border-border hover:border-border-hover'
+                      }`}
+                    >
+                      {injuryTitle(i)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <textarea
               value={injuryNote}
               onChange={(e) => setInjuryNote(e.target.value)}
               placeholder="What happened, which area, how it feels — anything worth remembering (optional)"
               rows={3}
-              className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-none mb-4"
+              className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-none mb-3"
             />
+
+            <button
+              type="button"
+              onClick={markInjuredAndTrack}
+              disabled={saving}
+              className="w-full mb-4 inline-flex items-center justify-center gap-1.5 bg-transparent border border-border hover:border-text-primary text-text-muted hover:text-text-primary cursor-pointer py-2 text-[12px] transition-colors disabled:opacity-40"
+            >
+              <Bandage className="w-3.5 h-3.5" />
+              {openInjuryList.length ? 'Something new — track it properly' : 'Track this injury properly'}
+            </button>
+
             <div className="flex gap-2">
               <button
                 onClick={confirmInjury}

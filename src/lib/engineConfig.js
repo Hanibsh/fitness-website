@@ -304,4 +304,12 @@ export const ADVISOR_REGRESSION_STREAK = 3 // consecutive below-trend sessions
 export const ADVISOR_REGRESSION_EPS = -0.005 // "below trend" = residual under this
 export const ADVISOR_LAYOFF_MIN_DAYS = 7 // a gap this long (or an ongoing one) is worth flagging
 export const ADVISOR_LAYOFF_RETURN_WINDOW_DAYS = 10 // "just back" stays relevant for this long after
+// Injury rules (R5). One high-risk movement in a week is training around it;
+// two or more is training through it, which is the thing worth saying.
+export const ADVISOR_INJURY_MIN_EXERCISES = 2
+// An injury nobody has rated in this long is either healed and still steering
+// the exercise picks, or being ignored. Two weeks — long enough that it isn't
+// nagging, short enough that a stale injury doesn't quietly shape a whole block.
+export const ADVISOR_INJURY_STALE_DAYS = 14
+
 export const ADVISOR_MAX_RECS = 3

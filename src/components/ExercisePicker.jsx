@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, SearchX } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
+import { useInjuryRisk } from '../lib/useInjuries'
+import InjuryBadge from './InjuryBadge'
 
 // Searchable exercise picker: filters the exercise library (plus the user's
 // own previously-logged exercises, surfaced first) as you type. Picking is
@@ -11,6 +13,7 @@ export default function ExercisePicker({ onSelect, recentNames = [], onlyCategor
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const boxRef = useRef(null)
+  const injuryRisk = useInjuryRisk()
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -59,7 +62,12 @@ export default function ExercisePicker({ onSelect, recentNames = [], onlyCategor
               className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left bg-transparent border-none border-b border-border cursor-pointer hover:bg-cream transition-colors"
             >
               <span className="text-[13px] text-text-primary">{m.name}</span>
-              <span className="text-[10px] uppercase tracking-wider text-text-light shrink-0">{m.category}</span>
+              {/* Warn at the point of choosing, not after it's in the session.
+                  Not a link here — the row is already a button, and nesting one
+                  inside it would swallow the pick. */}
+              {injuryRisk.get(m.id)
+                ? <InjuryBadge hit={injuryRisk.get(m.id)} compact asLink={false} />
+                : <span className="text-[10px] uppercase tracking-wider text-text-light shrink-0">{m.category}</span>}
             </button>
           ))}
 

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Sparkles } from 'lucide-react'
 import { suggestAlternatives } from '../lib/generator'
+import { useInjuries } from '../lib/useInjuries'
 
 // "Give me something else for this slot."
 //
@@ -17,9 +18,13 @@ import { suggestAlternatives } from '../lib/generator'
 // a fresh day and a fried one. Each option states the one thing that most
 // distinguishes it from what's there now.
 export default function SwapSuggestions({ planned, program, dayId, sessions, onPick }) {
+  // Same injury steer the generator gets. Without this the two would disagree —
+  // the generator would route around a bad shoulder and then this panel would
+  // suggest the movement it just avoided.
+  const { injuries } = useInjuries()
   const options = useMemo(
-    () => suggestAlternatives(planned, { program, dayId, sessions }),
-    [planned, program, dayId, sessions]
+    () => suggestAlternatives(planned, { program, dayId, sessions, injuries }),
+    [planned, program, dayId, sessions, injuries]
   )
 
   if (!options.length) return null

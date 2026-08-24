@@ -38,6 +38,7 @@ const Exercises = lazy(() => import('./pages/Exercises'))
 const ExerciseCategory = lazy(() => import('./pages/ExerciseCategory'))
 const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
 const CalendarPage = lazy(() => import('./pages/CalendarPage'))
+const Injuries = lazy(() => import('./pages/Injuries'))
 
 function App() {
   const { user, loading } = useAuth()
@@ -59,6 +60,8 @@ function App() {
         <Route path="/log" element={<WorkoutTracker />} />
         <Route path="/log/split" element={<TrainingSplit />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/injuries" element={<Injuries />} />
+        <Route path="/injuries/:id" element={<Injuries />} />
         {/* One split, three levels: the list at /log/split, this split's days as
             cards, then one day's exercises. Nested so SplitLayout holds the
             split's data across the transition instead of refetching per page. */}

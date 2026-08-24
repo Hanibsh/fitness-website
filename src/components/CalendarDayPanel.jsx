@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, Moon, Check, Play } from 'lucide-react'
+import { Dumbbell, Moon, Check, Play, Bandage } from 'lucide-react'
 import DayCard from './DayCard'
 import StatusChip from './StatusChip'
 import { dayStatusForDate } from '../lib/program'
 import { dayStats, sessionStats } from '../lib/planStats'
 import { formatDuration } from '../lib/dashboard'
 import { reasonLabel } from '../lib/dayLog'
+import { injuriesOnDay, injuryTitle, injuryDuration, latestPain } from '../lib/injuries'
 
 // The panel under the calendar, shared by the dashboard and /calendar (which
 // used to carry near-identical copies of it).
@@ -28,6 +30,77 @@ const NOTES = {
   unlogged: 'No workout logged — either a rest day or one you skipped.',
 }
 
+// One open injury on the selected day, with the check-in folded in behind a tap.
+//
+// The check-in lives HERE, on the calendar, rather than only on the injury page,
+// because a pain trend is only worth drawing if rating it is close to free — and
+// the calendar is where you already are when you think "how's that shoulder
+// been?". Eleven buttons is a lot for a 320px screen, so the scale stays
+// collapsed until asked for and wraps when it opens.
+function InjuryRow({ injury, date, onCheckin }) {
+  const [open, setOpen] = useState(false)
+  const days = injuryDuration(injury, date.getTime())
+  // THIS day's rating, not the newest one. On a panel headed by a date, showing
+  // Saturday's number under Thursday is just wrong — and it made the scale
+  // highlight a value you hadn't picked for the day you were looking at.
+  const sameDay = (a) => new Date(a).toDateString() === date.toDateString()
+  const dayCheckin = (injury.checkins || []).find((c) => sameDay(c.date)) || null
+  const pain = dayCheckin ? dayCheckin.pain : null
+  const latest = latestPain(injury)
+
+  return (
+    <div className="border border-border bg-white px-3 py-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Bandage className="w-3.5 h-3.5 text-text-muted shrink-0" />
+        <Link
+          to={`/injuries/${injury.id}`}
+          className="text-[13px] font-medium text-text-primary no-underline hover:underline break-words"
+        >
+          {injuryTitle(injury)}
+        </Link>
+        <StatusChip tone={injury.status === 'managing' ? 'muted' : 'amber'}>
+          {injury.status === 'managing' ? 'Managing' : 'Active'}
+        </StatusChip>
+        <span className="text-[11px] text-text-light tabular-nums ml-auto">
+          day {days}
+          {pain != null ? ` · pain ${pain}` : latest != null ? ` · pain ${latest} latest` : ''}
+        </span>
+      </div>
+      {onCheckin && (
+        open ? (
+          <div className="mt-2">
+            <p className="text-[11px] text-text-muted mb-1.5">How bad was it today? 0 is nothing, 10 is the worst it’s been.</p>
+            <div className="flex flex-wrap gap-1">
+              {Array.from({ length: 11 }, (_, n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => { onCheckin(injury, n); setOpen(false) }}
+                  className={`w-7 h-7 border cursor-pointer text-[12px] tabular-nums transition-colors ${
+                    pain === n
+                      ? 'border-text-primary bg-text-primary text-cream'
+                      : 'border-border bg-cream text-text-muted hover:border-text-primary hover:text-text-primary'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="mt-1.5 bg-transparent border-none p-0 text-[11px] text-text-muted hover:text-text-primary cursor-pointer underline"
+          >
+            {pain == null ? 'Log how it felt this day' : 'Change this day’s rating'}
+          </button>
+        )
+      )}
+    </div>
+  )
+}
+
 // A day you've already trained gets the short version — name, counts, how long —
 // and one way in. Editing and deleting used to sit here as icon buttons next to
 // a card body that ALSO went to the editor; both now live on the summary card,
@@ -37,10 +110,14 @@ const NOTES = {
 // open one from here. Without them it offers its own parent — the split
 // overview — which on the dashboard means one tap in and four taps back out.
 // The day page falls back to that parent, so a hard reload still has an exit.
-export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], dateFormat, onOpenSummary, backTo, backLabel }) {
+export default function CalendarDayPanel({ selectedDay, program, annotations = [], sessions = [], injuries = [], onCheckin, dateFormat, onOpenSummary, backTo, backLabel }) {
   if (!selectedDay) return null
 
   const { date } = selectedDay
+  // Only the injuries actually open on THIS day. An injury that resolved last
+  // week has nothing to say about it, and one that starts tomorrow hasn't
+  // happened — injurySpansDay caps open injuries at today for the same reason.
+  const dayInjuries = injuriesOnDay(injuries, date.getTime())
   const state = dayStatusForDate(program, date.getTime(), { sessions, annotations })
   const dayHref = program && state.day ? `/split/${program.id}/day/${state.day.id}` : null
   const backState = backTo ? { backTo, backLabel } : undefined
@@ -148,6 +225,17 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
             </>
           }
         />
+      )}
+
+      {/* Injuries open on this day. Below the day card rather than inside it:
+          the card answers "what was this day?", and an injury is the thing that
+          was true THROUGH it — including on days you trained straight past. */}
+      {dayInjuries.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {dayInjuries.map((injury) => (
+            <InjuryRow key={injury.id} injury={injury} date={date} onCheckin={onCheckin} />
+          ))}
+        </div>
       )}
     </div>
   )

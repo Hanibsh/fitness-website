@@ -46,6 +46,25 @@ export const REASON_COLOR = {
   other: 'bg-stone-400',
 }
 
+// Injuries are BANDS, not markers, and that's the whole point of them. A dot
+// says "something happened here"; an injury didn't happen on a day, it ran
+// through one. Drawing it as a bar that carries across cells is the only shape
+// that says so — and it's why an injury needed to stop being a day annotation.
+//
+// Three colours so concurrent injuries stay apart, assigned by onset order and
+// held stable for the whole month (see bandColors in WorkoutCalendar). Raw
+// palette colours rather than themed tokens, matching REASON_COLOR above: these
+// have to stay legible against both the cream and the dark surface, and a token
+// that flips with the theme would lose the hue that identifies the injury.
+export const INJURY_BAND = ['bg-rose-500', 'bg-violet-500', 'bg-amber-500']
+
+// Past the third concurrent injury we stop drawing and start counting.
+export const INJURY_BAND_MAX = 2
+
+// A managed injury is still open but no longer the emergency, so it recedes to
+// a neutral rather than keeping a hot colour for weeks on end.
+export const INJURY_BAND_MANAGING = 'bg-slate-400'
+
 // The schedule-derived markers, in themed tokens so they follow dark mode
 // (never an /opacity modifier — iOS 15.8 is the support floor). Deliberately the
 // quietest things on the grid: with past months now fully marked, these should

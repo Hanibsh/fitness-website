@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { dayStatusesForRange } from '../lib/program'
-import { REASON_COLOR, STATUS_MARKER, splitColor, splitBorderColor } from '../lib/calendarMarkers'
+import {
+  REASON_COLOR, STATUS_MARKER, splitColor, splitBorderColor,
+  INJURY_BAND, INJURY_BAND_MAX, INJURY_BAND_MANAGING,
+} from '../lib/calendarMarkers'
+import { injuriesOnDay, injuryTitle, injurySpansDay } from '../lib/injuries'
 
 // Month grid that highlights workout days by split colour, marks today, lets
 // you page between months, and calls onSelectDay when a day is tapped.
@@ -12,6 +16,14 @@ import { REASON_COLOR, STATUS_MARKER, splitColor, splitBorderColor } from '../li
 // hollow square. When `annotations` is passed, a day you marked off
 // (sick/injury/travel/rest/other) gets its reason colour, shown alongside the
 // workout dots since a day can be both trained and annotated.
+//
+// `injuries` draw differently from everything else here: as a BAND along the
+// bottom of every cell they cover, joined across the grid gaps so a three-week
+// injury reads as one continuous run rather than twenty-one unrelated dots. The
+// grid is a single flat `grid-cols-7` with no per-week wrappers, so rather than
+// overlay a spanning element (which would need week rows to span), each cell
+// draws its own segment and bleeds sideways into the gap. Week and month
+// wrapping then works for free.
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 function sameDay(a, b) {
@@ -20,7 +32,7 @@ function sameDay(a, b) {
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
 }
 
-export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, program = null, annotations = [], size = 'sm' }) {
+export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, program = null, annotations = [], injuries = [], size = 'sm' }) {
   const today = new Date()
   const [view, setView] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const lg = size === 'lg'
@@ -54,6 +66,20 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
       annotations,
     })
   }, [program, sessions, annotations, view, daysInMonth])
+
+  // Injury → band colour, fixed for the whole month by onset order so a band
+  // doesn't change hue halfway through when another injury opens beside it.
+  // Only injuries that actually touch this month get a slot, so a month with one
+  // injury always draws it in the first colour.
+  const bandColors = useMemo(() => {
+    const monthStart = new Date(view.year, view.month, 1).getTime()
+    const monthEnd = new Date(view.year, view.month, daysInMonth).getTime()
+    const present = injuries
+      .filter((i) => injurySpansDay(i, monthStart) || injurySpansDay(i, monthEnd) ||
+        (i.startedAt >= monthStart && i.startedAt <= monthEnd))
+      .sort((a, b) => a.startedAt - b.startedAt)
+    return new Map(present.map((i, idx) => [i.id, INJURY_BAND[idx % INJURY_BAND.length]]))
+  }, [injuries, view, daysInMonth])
 
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
   const monthLabel = new Date(view.year, view.month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -107,12 +133,15 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
           // showing workout dots — a logged session outranks whatever was planned.
           const plannedTrain = !hasWorkout && (state?.status === 'upcoming' || state?.status === 'today') ? state.day : null
           const quiet = !hasWorkout && !annotation && (state?.status === 'rest' ? 'rest' : state?.status === 'missed' ? 'skipped' : state?.status === 'unlogged' ? 'unlogged' : null)
+          const dayInjuries = injuries.length ? injuriesOnDay(injuries, date.getTime()) : []
+          const bands = dayInjuries.slice(0, INJURY_BAND_MAX)
+          const extraInjuries = dayInjuries.length - bands.length
           return (
             <button
               key={day}
               onClick={() => onSelectDay(date, daySessions)}
-              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}${quiet === 'rest' ? ', rest day' : quiet === 'skipped' ? ', skipped' : quiet === 'unlogged' ? ', no workout' : ''}`}
-              className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer border transition-colors ${lg ? 'min-h-16 text-[13px]' : 'aspect-square text-[12px]'} ${
+              aria-label={`${date.toLocaleDateString()}${hasWorkout ? `, ${daySessions.length} workout${daySessions.length > 1 ? 's' : ''}` : ''}${annotation ? `, ${annotation.reason}` : ''}${plannedTrain ? `, planned: ${plannedTrain.name}` : ''}${quiet === 'rest' ? ', rest day' : quiet === 'skipped' ? ', skipped' : quiet === 'unlogged' ? ', no workout' : ''}${dayInjuries.length ? `, injury: ${dayInjuries.map(injuryTitle).join(', ')}` : ''}`}
+              className={`relative flex flex-col items-center justify-center gap-0.5 cursor-pointer border transition-colors ${lg ? 'min-h-16 text-[13px]' : 'aspect-square text-[12px]'} ${
                 isSelected
                   ? 'border-text-primary bg-cream-dark'
                   : isToday
@@ -132,6 +161,34 @@ export default function WorkoutCalendar({ sessions, onSelectDay, selectedDate, p
                 {quiet && <span className={`${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${STATUS_MARKER[quiet]}`} />}
                 {annotation && <span className={`${lg ? 'w-1.5 h-1.5' : 'w-1 h-1'} ${REASON_COLOR[annotation.reason] || REASON_COLOR.other}`} />}
               </span>
+
+              {/* Injury bands. Each segment bleeds into the grid gap on the sides
+                  where the injury continues, so adjacent cells read as one bar;
+                  the first and last day keep their edge and get a rounded cap
+                  instead. Purely decorative — the cell's aria-label already names
+                  every injury covering the day. */}
+              {bands.length > 0 && (
+                <span aria-hidden="true" className="absolute inset-x-0 bottom-0 flex flex-col gap-px">
+                  {bands.map((injury) => {
+                    const isStart = sameDay(date, injury.startedAt)
+                    const isEnd = injury.resolvedAt ? sameDay(date, injury.resolvedAt) : sameDay(date, today)
+                    const fill = injury.status === 'managing'
+                      ? INJURY_BAND_MANAGING
+                      : bandColors.get(injury.id) || INJURY_BAND[0]
+                    return (
+                      <span
+                        key={injury.id}
+                        className={`${lg ? 'h-[3px]' : 'h-[2px]'} ${fill} ${
+                          isStart ? 'rounded-l-full' : lg ? '-ml-1.5' : '-ml-1'
+                        } ${isEnd ? 'rounded-r-full' : lg ? '-mr-1.5' : '-mr-1'}`}
+                      />
+                    )
+                  })}
+                  {extraInjuries > 0 && (
+                    <span className={`${lg ? 'h-[3px]' : 'h-[2px]'} bg-text-light rounded-full`} />
+                  )}
+                </span>
+              )}
             </button>
           )
         })}

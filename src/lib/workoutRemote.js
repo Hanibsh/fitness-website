@@ -287,8 +287,22 @@ function missingDayAnnotationsTable(error) {
   return error.code === '42P01' || (typeof error.message === 'string' && /relation .*day_annotations.* does not exist/i.test(error.message))
 }
 
+// `injury_id` arrived after the table did, so a database that hasn't had the
+// latest schema.sql run against it won't have the column. Same deal as the
+// timing columns on sessions: retry without it rather than lose the mark-off.
+function missingInjuryIdColumn(error) {
+  if (!error) return false
+  return error.code === 'PGRST204' || (typeof error.message === 'string' && error.message.includes('injury_id'))
+}
+
 function dayLogFromRow(row) {
-  return { id: row.id, date: new Date(row.date).getTime(), reason: row.reason, note: row.note || '' }
+  return {
+    id: row.id,
+    date: new Date(row.date).getTime(),
+    reason: row.reason,
+    note: row.note || '',
+    injuryId: row.injury_id || null,
+  }
 }
 
 function dayLogToRow(userId, entry) {
@@ -298,6 +312,7 @@ function dayLogToRow(userId, entry) {
     date: new Date(entry.date).toISOString(),
     reason: entry.reason,
     note: entry.note || null,
+    injury_id: entry.injuryId || null,
   }
 }
 
@@ -315,13 +330,91 @@ export async function fetchRemoteDayAnnotations(userId) {
 }
 
 export async function upsertRemoteDayAnnotation(userId, entry) {
-  const { error } = await supabase.from('day_annotations').upsert(dayLogToRow(userId, entry))
+  const row = dayLogToRow(userId, entry)
+  let { error } = await supabase.from('day_annotations').upsert(row)
+  if (missingInjuryIdColumn(error)) {
+    const { injury_id, ...rest } = row // eslint-disable-line no-unused-vars
+    ;({ error } = await supabase.from('day_annotations').upsert(rest))
+  }
   if (error) throw error
   return entry
 }
 
 export async function deleteRemoteDayAnnotation(id) {
   const { error } = await supabase.from('day_annotations').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---- Injuries ----------------------------------------------------------------
+// Mirrors the localStorage injury functions but talks to the `injuries` table.
+// Same graceful degradation as day annotations: reads empty and writes throw if
+// the migration hasn't been run, so the caller falls back to local-only.
+//
+// `checkins` and `verdicts` ride along as jsonb rather than tables of their own —
+// they're only ever read with their injury, and one row keeps a check-in and the
+// status change that followed it atomic.
+function missingInjuriesTable(error) {
+  if (!error) return false
+  return error.code === '42P01' || (typeof error.message === 'string' && /relation .*injuries.* does not exist/i.test(error.message))
+}
+
+function injuryFromRow(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    area: row.area,
+    side: row.side || null,
+    label: row.label || '',
+    status: row.status || 'active',
+    startedAt: new Date(row.started_at).getTime(),
+    resolvedAt: row.resolved_at ? new Date(row.resolved_at).getTime() : null,
+    note: row.note || '',
+    checkins: (row.checkins || []).map((c) => ({ ...c, date: new Date(c.date).getTime() })),
+    verdicts: row.verdicts || {},
+  }
+}
+
+function injuryToRow(userId, injury) {
+  return {
+    id: injury.id,
+    user_id: userId,
+    kind: injury.kind,
+    area: injury.area,
+    side: injury.side || null,
+    label: injury.label || null,
+    status: injury.status || 'active',
+    started_at: new Date(injury.startedAt).toISOString(),
+    resolved_at: injury.resolvedAt ? new Date(injury.resolvedAt).toISOString() : null,
+    note: injury.note || null,
+    // Dates inside the jsonb go over as ISO too, so the column reads the same
+    // way from psql as every timestamptz beside it.
+    checkins: (injury.checkins || []).map((c) => ({ ...c, date: new Date(c.date).toISOString() })),
+    verdicts: injury.verdicts || {},
+    updated_at: new Date().toISOString(),
+  }
+}
+
+export async function fetchRemoteInjuries(userId) {
+  const { data, error } = await supabase
+    .from('injuries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+  if (error) {
+    if (missingInjuriesTable(error)) return []
+    throw error
+  }
+  return (data || []).map(injuryFromRow)
+}
+
+export async function upsertRemoteInjury(userId, injury) {
+  const { error } = await supabase.from('injuries').upsert(injuryToRow(userId, injury))
+  if (error) throw error
+  return injury
+}
+
+export async function deleteRemoteInjury(id) {
+  const { error } = await supabase.from('injuries').delete().eq('id', id)
   if (error) throw error
 }
 

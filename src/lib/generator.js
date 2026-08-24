@@ -27,6 +27,7 @@ import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
 import { createDay, createPlannedExercise, emptyProgram } from './program'
 import { dayStats, ENGINE_MUSCLE_TO_COARSE } from './planStats'
+import { injuryRiskMap } from './injuries'
 import { effectiveWeeklyVolume } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
 import { repRangeFor } from './splitFromHistory'
@@ -177,7 +178,7 @@ function familiarity(db, history) {
 // Normalise whatever the wizard collected into the shape the rest of the module
 // works in, filling gaps from the profile and falling back to safe defaults.
 // Every field is validated here so no downstream step has to re-check it.
-export function resolveInputs({ answers = {}, profile = null, sessions = [], now = Date.now() } = {}) {
+export function resolveInputs({ answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
   const daysPerWeek = DAYS_PER_WEEK_OPTIONS.includes(Number(answers.daysPerWeek))
     ? Number(answers.daysPerWeek)
     : DEFAULT_DAYS_PER_WEEK
@@ -216,6 +217,10 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], now
     schedule,
     weekdays,
     history: historyContext(sessions, { now }),
+    // Built once here rather than per scored exercise: fillDay ranks the whole
+    // pool for every muscle slot of every day, so this would otherwise be
+    // recomputed thousands of times per generated split.
+    injuryRisk: injuryRiskMap(injuries, POOL),
     now,
   }
 }
@@ -427,6 +432,16 @@ export function scoreExercise(db, ctx) {
   const over = (SKILL_RANK[db.skill] ?? 1) - ctx.maxSkillRank
   if (over > 0) score -= PENALTIES.skillOverreach * over
 
+  // An open injury. Soft on purpose, and soft is the whole design: a hard filter
+  // in candidates() would strip most of a push day over a cranky shoulder and
+  // leave the generator unable to fill it. Here it just loses ties — and the
+  // multiplier is the WEIGHTED risk (injuries.js), so an injury you've marked
+  // resolved, or one you've cleared this specific movement for, costs nothing.
+  if (ctx.injuryRisk) {
+    const hit = ctx.injuryRisk.get(db.id)
+    if (hit) score -= PENALTIES.injury * hit.weighted
+  }
+
   if (db.laterality === 'unilateral') score -= PENALTIES.unilateral
   score -= PENALTIES.perNameChar * db.name.length
 
@@ -520,6 +535,7 @@ export function fillDay(template, alloc, gaps, ctx) {
       weekIds: ctx.weekIds,
       weekFamilies: ctx.weekFamilies,
       weekSignatures: ctx.weekSignatures,
+      injuryRisk: ctx.injuryRisk,
       budgetUsed: budgetUsed(),
       hoursToNext: gaps[muscle],
       isFocus: ctx.focus.includes(muscle),
@@ -877,7 +893,7 @@ function swapReason(db, current, ctx) {
 // Returns [{ id, name, db, reason, score }]. Nothing is mutated; the caller
 // applies a choice through substituteExercise, which keeps the sets, the rep
 // target and the note exactly as planned.
-export function suggestAlternatives(planned, { program, dayId, sessions = [], now = Date.now(), limit = 4 } = {}) {
+export function suggestAlternatives(planned, { program, dayId, sessions = [], injuries = [], now = Date.now(), limit = 4 } = {}) {
   if (!planned || planned.kind === 'cardio' || !program) return []
   const currentDb = DB_BY_ID.get(planned.exerciseId || exerciseIdForName(planned.name) || '')
   if (!currentDb) return [] // custom movement: nothing to compare it against
@@ -946,6 +962,10 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], no
     remaining: Object.fromEntries(Object.entries(muscleWeights(currentDb)).map(([m, w]) => [m, w * sets])),
     minContribution: (muscleWeights(currentDb)[muscle] || 0) * SWAP_MIN_CONTRIBUTION_RATIO,
     wantCompound: currentDb.type === 'compound',
+    // suggestAlternatives builds its own ctx rather than going through
+    // resolveInputs, so the injury map has to be threaded in separately — miss
+    // this and the generator would avoid a movement the swap panel then offers.
+    injuryRisk: injuryRiskMap(injuries, POOL),
   }
 
   const scored = []
@@ -975,8 +995,8 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], no
 // Build a split. `answers` is what the wizard collected; `profile` and
 // `sessions` fill in what it didn't ask. Returns { program, summary, inputs } —
 // nothing is persisted, the caller decides whether to keep it.
-export function generateProgram({ answers = {}, profile = null, sessions = [], now = Date.now() } = {}) {
-  const inputs = resolveInputs({ answers, profile, sessions, now })
+export function generateProgram({ answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
+  const inputs = resolveInputs({ answers, profile, sessions, injuries, now })
   const targets = weeklyTargets(inputs)
   const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus)
   const cycle = cycleShape(inputs)
@@ -992,6 +1012,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], n
     maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
     focus: inputs.focus,
     history: inputs.history,
+    injuryRisk: inputs.injuryRisk,
     // Week-wide variety state, shared across days on purpose: the second Push
     // day should know what the first one already used.
     weekIds: new Set(),

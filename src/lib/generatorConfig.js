@@ -238,6 +238,20 @@ export const PENALTIES = {
   sameSignature: 1.0, // a near-identical movement is already in the week
   repeatExercise: 2.2, // this exact movement is already in the week
   skillOverreach: 1.0, // one tier above the user's cap (two tiers is a hard filter)
+  // Scaled by the WEIGHTED injury risk (injuries.js): raw risk × how much the
+  // injury currently counts, which folds in its status and your last pain
+  // rating. So this full price is only paid by a movement that loads an active,
+  // painful injury hard; a mild one you're managing costs about a quarter of it.
+  //
+  // 4.0 came out of a sweep over 2/3/4/6 against a 4-day gym split. The response
+  // is smooth — no cliff — and the exercise count never moves off 33-34 at any
+  // of them, so coverage is not what constrains this. Below 3 an elbow injury
+  // changed nothing at all (every arm movement is equally implicated, so only
+  // the equipment and stretch modifiers separate them); above 5 the split starts
+  // churning over injuries that barely hurt. This is deliberately larger than
+  // repeatExercise (2.2): at full weight you are in real pain, and that should
+  // outrank not repeating yourself.
+  injury: 4.0,
   // A single-limb movement is one logged set but two sets' worth of session
   // time. It has to earn that on its own merits, not win a tie.
   unilateral: 0.7,

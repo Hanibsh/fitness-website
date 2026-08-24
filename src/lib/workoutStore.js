@@ -675,6 +675,103 @@ export function deleteDayAnnotation(id) {
   return log
 }
 
+// ---- Injuries --------------------------------------------------------------
+//
+// A condition with a lifespan, not a day: it opens, it gets better or worse over
+// weeks, and it changes what the app recommends the whole time. Deliberately NOT
+// modelled as a run of day annotations — marking a day 'injury' spends that day's
+// split slot, so a three-week injury would burn twenty-one of them. An annotation
+// can POINT at an injury via `injuryId`; that's the only link between the two.
+//
+// Check-ins and per-exercise verdicts live inside the row rather than in tables
+// of their own: they're small, they're never queried apart from their injury, and
+// one row keeps the whole thing atomic to save. Model + risk math are in
+// injuries.js (pure, no storage), same split dayLog.js has.
+const INJURY_KEY = 'leon_injuries'
+
+export function getInjuries() {
+  return read(INJURY_KEY, [])
+}
+
+// `kind` is 'joint' (an area id from injuryConfig's JOINT_AREAS) or 'muscle' (an
+// engine muscle name). Noon-anchored like the other logs so the start date never
+// lands on a day boundary and shifts under a timezone.
+export function makeInjury({ kind, area, side = null, label = '', note = '', startedAt } = {}) {
+  let when = startedAt
+  if (when == null) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    when = d.getTime()
+  }
+  return {
+    id: newId(),
+    kind,
+    area,
+    side,
+    label: (label || '').trim().slice(0, 80),
+    status: 'active',
+    startedAt: when,
+    resolvedAt: null,
+    note: (note || '').trim().slice(0, 600),
+    checkins: [],
+    verdicts: {},
+  }
+}
+
+// One pain rating. Noon-anchored so a day has one check-in; appending twice on
+// the same day replaces rather than stacks (see addCheckin).
+export function makeCheckin(pain, note, date) {
+  let when = date
+  if (when == null) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    when = d.getTime()
+  }
+  return { id: newId(), date: when, pain: Math.max(0, Math.min(10, Number(pain))), note: (note || '').trim().slice(0, 300) }
+}
+
+// Upsert by id, newest-first by onset.
+export function saveInjury(injury) {
+  const list = [injury, ...getInjuries().filter((i) => i.id !== injury.id)].sort((a, b) => b.startedAt - a.startedAt)
+  write(INJURY_KEY, list)
+  return list
+}
+
+export function deleteInjury(id) {
+  const list = getInjuries().filter((i) => i.id !== id)
+  write(INJURY_KEY, list)
+  return list
+}
+
+// Pure helpers that return a NEW injury — the caller still has to saveInjury it.
+// Kept here beside the factories rather than in injuries.js because they build
+// storage shapes (ids, noon anchors) rather than reason about them.
+export function addCheckin(injury, checkin) {
+  const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString()
+  const checkins = [checkin, ...(injury.checkins || []).filter((c) => !sameDay(c.date, checkin.date))]
+    .sort((a, b) => b.date - a.date)
+  return { ...injury, checkins }
+}
+
+// 'hurts' | 'ok' | null (null clears it back to the estimated risk).
+export function setVerdict(injury, exerciseId, verdict) {
+  const verdicts = { ...(injury.verdicts || {}) }
+  if (verdict) verdicts[exerciseId] = verdict
+  else delete verdicts[exerciseId]
+  return { ...injury, verdicts }
+}
+
+// Resolving stamps the end date; reopening clears it, so the calendar band and
+// every penalty follow from `status` and `resolvedAt` staying in step.
+export function setInjuryStatus(injury, status, when = Date.now()) {
+  if (status === 'resolved') {
+    const d = new Date(when)
+    d.setHours(12, 0, 0, 0)
+    return { ...injury, status, resolvedAt: injury.resolvedAt || d.getTime() }
+  }
+  return { ...injury, status, resolvedAt: null }
+}
+
 // ---- Stats -----------------------------------------------------------------
 
 export function sessionStats(session) {

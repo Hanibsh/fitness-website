@@ -245,7 +245,68 @@ create policy "Users can delete their own day annotations"
 create index if not exists day_annotations_user_date_idx on public.day_annotations (user_id, date desc);
 
 -- ---------------------------------------------------------------------------
--- 2f) EXERCISE_NOTES — each user's per-movement notes (form cues, machine
+-- 2f) INJURIES — a hurt body part tracked over its whole life, not a day.
+--     An injury opens, gets better or worse across weeks, changes what the app
+--     recommends the whole time, and then resolves. Deliberately NOT a run of
+--     day_annotations rows: marking a day 'injury' SPENDS that day's split slot
+--     (see SLOT_CONSUMING_REASONS in src/lib/program.js), so a three-week injury
+--     stored that way would silently burn twenty-one slots. A day annotation may
+--     point at an injury via day_annotations.injury_id (added below); that link
+--     is the only thing joining the two.
+--
+--     `kind` is 'joint' (area is an id from JOINT_AREAS in src/lib/injuryConfig.js)
+--     or 'muscle' (area is an engine muscle name). `status` is active | managing
+--     | resolved.
+--
+--     checkins  — [{ id, date, pain 0-10, note }], the pain trend
+--     verdicts  — { exerciseId: 'hurts' | 'ok' }, the user overriding our guess
+--                 about which movements aggravate it
+--     Both are jsonb rather than tables of their own: small, never queried apart
+--     from their injury, and atomic to save alongside a status change.
+-- ---------------------------------------------------------------------------
+create table if not exists public.injuries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null,
+  area text not null,
+  side text,
+  label text,
+  status text not null default 'active',
+  started_at timestamptz not null,
+  resolved_at timestamptz,
+  note text,
+  checkins jsonb not null default '[]'::jsonb,
+  verdicts jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.injuries enable row level security;
+
+drop policy if exists "Users can view their own injuries" on public.injuries;
+create policy "Users can view their own injuries"
+  on public.injuries for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own injuries" on public.injuries;
+create policy "Users can insert their own injuries"
+  on public.injuries for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own injuries" on public.injuries;
+create policy "Users can update their own injuries"
+  on public.injuries for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own injuries" on public.injuries;
+create policy "Users can delete their own injuries"
+  on public.injuries for delete using (auth.uid() = user_id);
+
+create index if not exists injuries_user_started_idx on public.injuries (user_id, started_at desc);
+
+-- The optional link from "I couldn't train on the 14th" to the injury that
+-- explains it. Added after day_annotations shipped, so it's an ALTER rather than
+-- a column in the create above — and the client retries without it when the
+-- column is missing (missingInjuryIdColumn in src/lib/workoutRemote.js), so an
+-- un-migrated database loses the link and nothing else.
+alter table public.day_annotations
+  add column if not exists injury_id uuid references public.injuries(id) on delete set null;
+
+-- ---------------------------------------------------------------------------
+-- 2g) EXERCISE_NOTES — each user's per-movement notes (form cues, machine
 --     settings), keyed by exercise id/name. One row per user; the whole map is
 --     a single JSON object, same pattern as PROGRAMS/BLOCKS. Upsert by user_id.
 -- ---------------------------------------------------------------------------

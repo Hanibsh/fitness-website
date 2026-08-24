@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CalendarDays, X, BatteryCharging, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, CalendarDays, X, BatteryCharging, Pencil, Trash2, Bandage } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import {
   getHistory, getProgram, deleteSession,
@@ -12,8 +12,10 @@ import {
   fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, deleteRemoteDayAnnotation,
 } from '../lib/workoutRemote'
 import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate } from '../lib/dayLog'
+import { useInjuries } from '../lib/useInjuries'
+import { openInjuries } from '../lib/injuries'
 import WorkoutCalendar from '../components/WorkoutCalendar'
-import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR } from '../lib/calendarMarkers'
+import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR, INJURY_BAND } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 import SessionSummary from '../components/SessionSummary'
 
@@ -83,6 +85,8 @@ export default function CalendarPage() {
   const [reasonDraft, setReasonDraft] = useState(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const { injuries, checkin } = useInjuries()
+  const openCount = useMemo(() => openInjuries(injuries).length, [injuries])
 
   useEffect(() => {
     let cancelled = false
@@ -239,11 +243,22 @@ export default function CalendarPage() {
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_280px]">
           <Card>
-            <SectionHeading icon={CalendarDays}>Calendar</SectionHeading>
+            <SectionHeading
+              icon={CalendarDays}
+              right={
+                <Link to="/injuries" className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary no-underline">
+                  <Bandage className="w-3.5 h-3.5" />
+                  {openCount ? `${openCount} open ${openCount === 1 ? 'injury' : 'injuries'}` : 'Injuries'}
+                </Link>
+              }
+            >
+              Calendar
+            </SectionHeading>
             <WorkoutCalendar
               sessions={sessions}
               program={program}
               annotations={annotations}
+              injuries={injuries}
               selectedDate={selectedDay?.date}
               onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
               size="lg"
@@ -274,6 +289,17 @@ export default function CalendarPage() {
                   {r.label}
                 </span>
               ))}
+              {/* Drawn as a bar, not a dot, because that's what it is on the grid
+                  — and the shape is the thing that distinguishes "ran through
+                  these days" from "happened on this one".
+                  Labelled "tracked" rather than "Injury": the reason swatch above
+                  is ALSO called Injury (a day you marked off because of one), and
+                  two legend entries with the same word explain nothing. */}
+              {openCount > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <span className={`w-4 h-[3px] rounded-full ${INJURY_BAND[0]}`} /> Tracked injury
+                </span>
+              )}
             </div>
 
             {selectedDay && (
@@ -283,6 +309,8 @@ export default function CalendarPage() {
                   program={program}
                   annotations={annotations}
                   sessions={sessions}
+                  injuries={injuries}
+                  onCheckin={(injury, pain) => checkin(injury, pain, { date: noonOf(selectedDay.date.getTime()) })}
                   dateFormat={fullDate}
                   onOpenSummary={setSummarySession}
                   backTo="/calendar"

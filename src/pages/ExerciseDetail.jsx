@@ -4,6 +4,8 @@ import { ArrowLeft, Plus } from 'lucide-react'
 import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../lib/exerciseBank'
 import MuscleMap from '../components/MuscleMap'
 import ExercisePerformance from '../components/ExercisePerformance'
+import InjuryBadge from '../components/InjuryBadge'
+import { useInjuryRisk } from '../lib/useInjuries'
 
 // Detail page for one exercise. Commit 1: header + coach stats + muscle list.
 // Commit 3 polishes the layout + adds the "Log this" CTA; commit 4 slots in the
@@ -13,6 +15,10 @@ export default function ExerciseDetail() {
   const navigate = useNavigate()
   const { state } = useLocation()
   const ex = getFullExercise(id)
+  // Before the early return below, so the hook order never changes between the
+  // found and not-found renders.
+  const injuryRisk = useInjuryRisk()
+  const injuryHit = ex ? injuryRisk.get(ex.id) : null
 
   // Callers that sent you here from somewhere other than the bank (a split's day
   // page, say) pass where to go back to, so "back" returns to what you were
@@ -67,6 +73,18 @@ export default function ExerciseDetail() {
           <p className="text-text-muted text-[13px]">
             {titleCase(ex.equipment)} · {titleCase(ex.type)} · {titleCase(ex.laterality)}
           </p>
+
+          {/* An open injury this movement loads. Full (not compact) here: the
+              page has the room, and this is the one screen where someone is
+              deciding whether to do the exercise at all rather than mid-set. */}
+          {injuryHit && (
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              <InjuryBadge hit={injuryHit} />
+              <span className="text-[12px] text-text-muted">
+                Open it to mark this movement fine or painful.
+              </span>
+            </div>
+          )}
 
           <button
             onClick={() => navigate('/log', { state: { addExerciseId: ex.id, addExerciseName: ex.name } })}

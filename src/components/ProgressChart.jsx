@@ -12,22 +12,28 @@ function axisDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
 }
 
-export default function ProgressChart({ points, hoveredIndex, onHover }) {
+// `domain` fixes the y-axis instead of fitting it to the data. Weights want the
+// auto fit — the interesting part of a bodyweight series is its shape, and 78-82
+// tells you more than 0-82. A bounded rating does not: pain is a 0-10 scale, and
+// auto-fitting it would draw a 4-then-5 week as a dramatic climb.
+export default function ProgressChart({ points, hoveredIndex, onHover, domain = null }) {
   const values = points.map((p) => p.value)
-  let min = Math.min(...values)
-  let max = Math.max(...values)
+  let min = domain ? domain[0] : Math.min(...values)
+  let max = domain ? domain[1] : Math.max(...values)
 
-  if (min === max) {
-    // Flat line — pad so it sits in the middle instead of on an edge.
-    const pad = Math.max(1, Math.abs(min) * 0.1)
-    min -= pad
-    max += pad
-  } else {
-    const range = max - min
-    min -= range * 0.1
-    max += range * 0.1
+  if (!domain) {
+    if (min === max) {
+      // Flat line — pad so it sits in the middle instead of on an edge.
+      const pad = Math.max(1, Math.abs(min) * 0.1)
+      min -= pad
+      max += pad
+    } else {
+      const range = max - min
+      min -= range * 0.1
+      max += range * 0.1
+    }
+    min = Math.max(0, min)
   }
-  min = Math.max(0, min)
 
   const minDate = points[0].date
   const maxDate = points[points.length - 1].date

@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
-  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2, PlayCircle, Wand2, X, Sparkles,
+  BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2, PlayCircle, Wand2, X, Sparkles, Bandage,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
@@ -29,6 +29,8 @@ import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import CalendarDayPanel from '../components/CalendarDayPanel'
+import { useInjuries } from '../lib/useInjuries'
+import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
@@ -510,8 +512,12 @@ export default function Dashboard() {
   // Engine v2: per-muscle fatigue/recovery snapshot (recomputed per visit; a
   // few minutes of staleness while the page sits open doesn't matter).
   const recovery = useMemo(() => muscleRecovery(sessions), [sessions])
+  // Open injuries steer the advisor's warnings, shade the calendar, and get a
+  // chip of their own below the greeting.
+  const { injuries, checkin: checkinInjury } = useInjuries()
+  const openInjuryList = useMemo(() => openInjuries(injuries), [injuries])
   // Engine v3: the advisor's targeted volume-trimming recommendations.
-  const advice = useMemo(() => adviseTraining(sessions, { blocks, annotations }), [sessions, blocks, annotations])
+  const advice = useMemo(() => adviseTraining(sessions, { blocks, annotations, injuries }), [sessions, blocks, annotations, injuries])
 
   const exerciseNames = useMemo(() => loggedExerciseNames(sessions), [sessions])
   // Best working-set weight per exercise (display unit) — the "current" value
@@ -664,6 +670,29 @@ export default function Dashboard() {
             </div>
             <p className="text-[12px] text-cream-50 mb-6">{fullDate(now)}</p>
 
+            {/* What's currently hurting, in the header rather than buried below,
+                because it changes what today should look like. Cream-on-dark
+                here, not the InjuryBadge palette — that one is built for the
+                light surfaces. */}
+            {openInjuryList.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 -mt-3 mb-6">
+                {openInjuryList.map((i) => {
+                  const pain = latestPain(i)
+                  return (
+                    <Link
+                      key={i.id}
+                      to={`/injuries/${i.id}`}
+                      className="inline-flex items-center gap-1.5 text-[11px] text-cream border border-cream-30 hover:border-cream-60 px-2 py-1 no-underline transition-colors"
+                    >
+                      <Bandage className="w-3 h-3 shrink-0" />
+                      {injuryTitle(i)}
+                      {pain != null && <span className="text-cream-60 tabular-nums">{pain}/10</span>}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               <div className="col-span-2 sm:col-span-1">
                 <p className="text-[10px] uppercase tracking-wider text-cream-50 mb-1">Weekly streak</p>
@@ -790,6 +819,7 @@ export default function Dashboard() {
                 sessions={sessions}
                 program={program}
                 annotations={annotations}
+                injuries={injuries}
                 selectedDate={selectedDay?.date}
                 onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
               />
@@ -798,6 +828,8 @@ export default function Dashboard() {
                 program={program}
                 annotations={annotations}
                 sessions={sessions}
+                injuries={injuries}
+                onCheckin={(injury, pain) => checkinInjury(injury, pain, { date: selectedDay.date.getTime() })}
                 onOpenSummary={setSummarySession}
                 backTo="/"
                 backLabel="Dashboard"

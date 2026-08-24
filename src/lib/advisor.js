@@ -14,11 +14,13 @@ import { activeBlock } from './blocks'
 import { muscleForExercise } from './dashboard'
 import { exerciseIdForName } from './exerciseLibrary'
 import { layoffContext, reasonLabel } from './dayLog'
+import { openInjuries, injuryRisk, injuryWeight, riskTier, injuryTitle, daysSinceCheckin } from './injuries'
 import {
   SFR_RANK, ADVISOR_MIN_SESSIONS, ADVISOR_BLOCK_SLACK,
   ADVISOR_UNDERRECOVERED_MIN, ADVISOR_UNDERRECOVERED_WINDOW,
   ADVISOR_REGRESSION_STREAK, ADVISOR_REGRESSION_EPS,
   ADVISOR_LAYOFF_MIN_DAYS, ADVISOR_LAYOFF_RETURN_WINDOW_DAYS, ADVISOR_MAX_RECS,
+  ADVISOR_INJURY_MIN_EXERCISES, ADVISOR_INJURY_STALE_DAYS,
 } from './engineConfig'
 
 const DAY = 86400000
@@ -47,7 +49,7 @@ function recentExercises(sessions, days, now) {
 // Up to ADVISOR_MAX_RECS recommendations, worst first:
 //   { id, severity: 'red'|'amber'|'green', title, detail }
 // Empty array when there isn't enough history yet.
-export function adviseTraining(sessions, { blocks = [], annotations = [], now = Date.now() } = {}) {
+export function adviseTraining(sessions, { blocks = [], annotations = [], injuries = [], now = Date.now() } = {}) {
   if (!sessions || sessions.length < ADVISOR_MIN_SESSIONS) return []
   const model = personalizedModel(sessions)
   const volume = effectiveWeeklyVolume(sessions, { days: 7, now })
@@ -179,6 +181,53 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], now = 
           (costly.length
             ? `Shave one set off ${costly.join(' and ')} this week — the most systemically costly work — and keep the rest as planned.`
             : 'Shave a set off your heaviest compound lifts this week and keep the rest as planned.'),
+      })
+    }
+  }
+
+  // R5 — an open injury you keep training straight through. Not a fatigue case,
+  // and the app deliberately doesn't stop you: the generator only down-ranks
+  // what loads an injury, so anything already in your split stays loggable. That
+  // makes saying it out loud the only check that exists.
+  //
+  // Names the specific movements rather than the area, because "careful with
+  // your shoulder" is advice nobody can act on and "these three are the ones" is.
+  for (const injury of openInjuries(injuries)) {
+    const weight = injuryWeight(injury)
+    if (weight <= 0) continue
+    const loading = week
+      .filter((e) => e.db)
+      .map((e) => ({ name: e.name, risk: injuryRisk(e.db, injury) }))
+      .filter((e) => riskTier(e.risk) === 'high')
+      .sort((a, b) => b.risk - a.risk)
+    const title = injuryTitle(injury)
+
+    if (loading.length >= ADVISOR_INJURY_MIN_EXERCISES) {
+      recs.push({
+        id: `injury-loading-${injury.id}`,
+        severity: 'red',
+        title: `You’re still training into your ${title.toLowerCase()}`,
+        detail:
+          `${loading.slice(0, 3).map((e) => e.name).join(', ')} all load it hard, and you logged ${loading.length === 1 ? 'it' : 'them'} this week. ` +
+          `Swap the worst one for something that doesn’t, or mark it as fine on the injury if it genuinely doesn’t bother you.`,
+      })
+      continue
+    }
+
+    // Gone quiet. An injury nobody has rated in weeks is either healed and
+    // still penalising your programming, or being ignored — both worth a nudge,
+    // and both fixed by the same 10-second action.
+    const since = daysSinceCheckin(injury)
+    if (since == null || since >= ADVISOR_INJURY_STALE_DAYS) {
+      recs.push({
+        id: `injury-stale-${injury.id}`,
+        severity: 'amber',
+        title: `How’s the ${title.toLowerCase()}?`,
+        detail:
+          (since == null
+            ? 'You haven’t rated it since you started tracking it. '
+            : `Nothing logged for ${since} days. `) +
+          'It’s still steering your exercise picks — rate it, or mark it resolved if it’s done.',
       })
     }
   }
