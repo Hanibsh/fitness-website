@@ -52,7 +52,7 @@ for (const daysPerWeek of DAYS_CASES) {
       for (const experience of EXPERIENCE_CASES) {
         for (const schedule of SCHEDULE_CASES) {
           scenarios++
-          const answers = { daysPerWeek, focus, equipment, experience, schedule, sessionMinutes: 60 }
+          const answers = { daysPerWeek, focus, equipment, experience, schedule }
           const label = `${daysPerWeek}d/${schedule}/${equipment}/${experience}/[${focus.join(',') || 'no focus'}]`
           const { program, summary, inputs } = generateProgram({ answers })
           audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule })
@@ -93,24 +93,40 @@ function audit(label, program, summary, inputs, opts) {
       check(label, !!db, `"${e.name}" is not in the exercise DB`)
       if (!db) continue
       if (allowed) check(label, allowed.has(db.equipment), `"${e.name}" needs ${db.equipment}`)
+      if (opts.equipment === 'gym') {
+        // A full gym has no reason to program a band, or a movement that can't
+        // be loaded — see GYM_EXCLUDED_* in generatorConfig.js.
+        check(label, db.equipment !== 'resistance band', `"${e.name}" is band work in a full-gym split`)
+        check(label, db.progressiveOverload !== 'low', `"${e.name}" can't be loaded (${db.progressiveOverload}) in a full-gym split`)
+      }
       check(label, (SKILL_RANK[db.skill] ?? 1) <= skillCap + 1, `"${e.name}" skill ${db.skill} over the ${opts.experience} cap`)
     }
   }
 
-  // ---- session budget
+  // ---- what limits a day: fatigue and the movement count, never the clock
   for (const day of summary.days.filter((d) => d.kind !== 'rest')) {
-    check(label, day.sets <= inputs.setsPerSession, `"${day.name}" plans ${day.sets} sets, budget is ${inputs.setsPerSession}`)
-    check(label, day.load.pct <= 100 * DAY_LOAD_MAX + 5, `"${day.name}" load ${day.load.pct}% (${day.load.label})`)
-  }
-  // Not asked of a 2-day split: both of its days ARE the whole body, so both
-  // being heavy is the shape working, not the shape failing.
-  if (opts.daysPerWeek >= 3) {
+    // DAY_LOAD_MAX governs DISCRETIONARY work — second movements and top-up
+    // sets. The coverage pass is deliberately exempt from it (a muscle the day
+    // is supposed to train getting nothing is worse than a day that reads
+    // heavy), so a day whose mandatory slots alone are expensive can sit above
+    // the cap. Hence the margin; what this is really guarding against is a day
+    // pinned near 100%.
+    check(label, day.load.pct <= 100 * DAY_LOAD_MAX + 10, `"${day.name}" load ${day.load.pct}% (${day.load.label})`)
     check(
       label,
-      summary.days.some((d) => d.kind !== 'rest' && d.load.pct < SYSTEMIC_LEVELS.moderate),
-      'every training day is a heavy day'
+      day.exercises.length <= EXPERIENCE_POSTURE[opts.experience].exerciseCap,
+      `"${day.name}" has ${day.exercises.length} exercises, cap is ${EXPERIENCE_POSTURE[opts.experience].exerciseCap}`
     )
   }
+  // There used to be a check here that at least one training day came out under
+  // the 'heavy' band. It was written when a day was capped by a session length,
+  // and it doesn't survive the move to sizing days by effectiveness: a day is
+  // now as big as its muscle slots and their weekly targets make it, and an
+  // upper/lower split has two comparable upper days and two comparable lower
+  // ones — there is no reason for one of them to be light, and demanding it
+  // would mean under-dosing a muscle to hit a number in a test. What still
+  // guards against a generator that crams is above (per-day load and exercise
+  // count) and below (no muscle over its weekly ceiling).
 
   // ---- frequency and volume
   for (const row of summary.volume) {

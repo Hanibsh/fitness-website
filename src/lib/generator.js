@@ -41,11 +41,11 @@ import {
   PROGRAMMED_MUSCLES, TEMPLATES, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
   EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK,
-  DEFAULT_SESSION_MINUTES, MINUTES_PER_SET, MIN_SETS_PER_SESSION, MAX_SETS_PER_SESSION,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE,
-  WEIGHTS, PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
+  WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD,
+  PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
 } from './generatorConfig'
 
@@ -60,6 +60,12 @@ const DB_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e
 const POOL = (exercisesDb.exercises || []).filter(
   (e) => e.type !== 'isometric' && e.muscles && Object.keys(e.muscles).length
 )
+
+// The top-up pass adds one set at a time and stops as soon as a whole round
+// places nothing; this is only the loop's guard rail against a pathological
+// case, not a target — what actually ends the pass is running out of muscles
+// that still owe volume, or out of fatigue budget.
+const MAX_TOP_UP_PASSES = 40
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n))
 const round1 = (n) => Math.round(n * 10) / 10
@@ -187,22 +193,12 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], now
   const equipment = equipmentValuesFor(preset)
   const allowedEquipment = new Set(equipment.length ? equipment : ALL_EQUIPMENT)
 
-  const sessionMinutes = Number(answers.sessionMinutes) > 0 ? Number(answers.sessionMinutes) : DEFAULT_SESSION_MINUTES
-  const setsPerSession = clamp(
-    Math.round(sessionMinutes / MINUTES_PER_SET),
-    MIN_SETS_PER_SESSION,
-    MAX_SETS_PER_SESSION
-  )
-  // The experience cap is an opinion about how many movements someone should be
-  // learning at once; the clock is a fact. A 30-minute session can't hold nine
-  // exercises whatever the posture says, so take the lower of the two.
-  const posture = {
-    ...EXPERIENCE_POSTURE[experience],
-    exerciseCap: Math.min(
-      EXPERIENCE_POSTURE[experience].exerciseCap,
-      Math.floor(setsPerSession / MIN_SETS_PER_EXERCISE)
-    ),
-  }
+  // What a full gym changes: loadability and stability start carrying real
+  // weight, bands come off the table, and so does anything that can't be loaded.
+  const atGym = preset === 'gym'
+  const weights = atGym ? { ...WEIGHTS, ...GYM_WEIGHTS } : WEIGHTS
+  const excludedEquipment = atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set()
+  const excludedOverload = atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set()
 
   const schedule = answers.schedule === 'rotation' ? 'rotation' : 'weekly'
   const weekdays = normaliseWeekdays(answers.weekdays, daysPerWeek)
@@ -211,11 +207,12 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], now
     daysPerWeek,
     focus,
     experience,
-    posture,
+    posture: EXPERIENCE_POSTURE[experience],
     equipmentPreset: preset,
     allowedEquipment,
-    sessionMinutes,
-    setsPerSession,
+    excludedEquipment,
+    excludedOverload,
+    weights,
     schedule,
     weekdays,
     history: historyContext(sessions, { now }),
@@ -376,14 +373,18 @@ export function scoreExercise(db, ctx) {
   const contribution = weights[ctx.muscle] || 0
   if (!contribution) return null
 
+  // Weights vary by where the person trains: a full gym leans harder on
+  // loadability and stability (see GYM_WEIGHTS).
+  const w = ctx.weights || WEIGHTS
+
   let score = 0
-  score += WEIGHTS.contribution * contribution
-  score += WEIGHTS.hypertrophy * (HP_SCORE[db.hypertrophyPotential] ?? 0.4)
-  score += WEIGHTS.sfr * (SFR_SCORE[db.sfr] ?? 0.35)
-  score += WEIGHTS.stretch * (STRETCH_SCORE[db.stretchMediated] ?? 0)
-  score += WEIGHTS.profile * (PROFILE_SCORE[db.resistanceProfile] ?? 0.35)
-  score += WEIGHTS.overload * (OVERLOAD_SCORE[db.progressiveOverload] ?? 0.4)
-  score += WEIGHTS.stability * (STABILITY_SCORE[db.stability] ?? 0.6)
+  score += w.contribution * contribution
+  score += w.hypertrophy * (HP_SCORE[db.hypertrophyPotential] ?? 0.4)
+  score += w.sfr * (SFR_SCORE[db.sfr] ?? 0.35)
+  score += w.stretch * (STRETCH_SCORE[db.stretchMediated] ?? 0)
+  score += w.profile * (PROFILE_SCORE[db.resistanceProfile] ?? 0.35)
+  score += w.overload * (OVERLOAD_SCORE[db.progressiveOverload] ?? 0.4)
+  score += w.stability * (STABILITY_SCORE[db.stability] ?? 0.6)
 
   // What else in the day this movement pays off. Only muscles that still owe
   // sets count — covering a muscle the day has already finished with is not a
@@ -394,13 +395,13 @@ export function scoreExercise(db, ctx) {
       if (m === ctx.muscle) continue
       if ((ctx.remaining[m] ?? 0) >= 1) relief += w
     }
-    score += WEIGHTS.debtRelief * Math.min(2, relief)
+    score += w.debtRelief * Math.min(2, relief)
   }
 
   // The hybrid rule: their own movements get a nudge, damped on a focus muscle
   // where fresh stimulus is the entire point of naming it.
   const fam = ctx.familiarity ?? 0
-  score += WEIGHTS.familiarity * fam * (ctx.isFocus ? FAMILIARITY_FOCUS_DAMP : 1)
+  score += w.familiarity * fam * (ctx.isFocus ? FAMILIARITY_FOCUS_DAMP : 1)
 
   // Fatigue, priced against what's LEFT of the day rather than in the abstract.
   const spent = clamp(ctx.budgetUsed ?? 0, 0, 1)
@@ -441,6 +442,8 @@ export function scoreExercise(db, ctx) {
 export function candidates(muscle, ctx) {
   const pool = POOL.filter((db) => {
     if (!ctx.allowedEquipment.has(db.equipment)) return false
+    if (ctx.excludedEquipment?.has(db.equipment)) return false
+    if (ctx.excludedOverload?.has(db.progressiveOverload)) return false
     if ((SKILL_RANK[db.skill] ?? 1) > ctx.maxSkillRank + 1) return false
     if (ctx.dayIds?.has(db.id)) return false
     if (ctx.dayFamilies?.has(movementFamily(db))) return false
@@ -487,7 +490,6 @@ export function fillDay(template, alloc, gaps, ctx) {
   let load = 0
 
   const budgetUsed = () => clamp(load / (SYSTEMIC_CAPACITY * DAY_LOAD_TARGET), 0, 1)
-  const room = () => ctx.setsPerSession - setsUsed
   const loadRoom = () => load < SYSTEMIC_CAPACITY * DAY_LOAD_MAX
 
   // Charge `sets` of `db` to the day: the set budget, the fatigue budget, and
@@ -503,12 +505,14 @@ export function fillDay(template, alloc, gaps, ctx) {
   function tryAdd(muscle, minOwed, { ignoreLoadCap = false } = {}) {
     if ((remaining[muscle] || 0) < minOwed) return false
     if (chosen.length >= ctx.posture.exerciseCap) return false
-    if (room() < MIN_SETS_PER_EXERCISE) return false
     if (!ignoreLoadCap && !loadRoom()) return false
 
     const pickCtx = {
       muscle,
       allowedEquipment: ctx.allowedEquipment,
+      excludedEquipment: ctx.excludedEquipment,
+      excludedOverload: ctx.excludedOverload,
+      weights: ctx.weights,
       maxSkillRank: ctx.maxSkillRank,
       dayIds,
       dayFamilies,
@@ -549,10 +553,10 @@ export function fillDay(template, alloc, gaps, ctx) {
   // 2 — a second angle for whatever still owes a movement's worth
   for (const muscle of template.muscles) tryAdd(muscle, MIN_SLOT_SETS * 2)
   // 3 — spend the remainder a set at a time
-  for (let pass = 0; pass < ctx.setsPerSession; pass++) {
+  for (let pass = 0; pass < MAX_TOP_UP_PASSES; pass++) {
     let added = false
     for (const muscle of template.muscles) {
-      if (room() < 1 || !loadRoom() || (remaining[muscle] || 0) < 1) continue
+      if (!loadRoom() || (remaining[muscle] || 0) < 1) continue
       // Prefer the muscle's own movements, furthest from their cap first, so its
       // sets stay spread rather than piling onto whichever came first. Failing
       // that, ANY movement in the day that trains it properly will do — that's
@@ -726,7 +730,12 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
   })
 
   const focus = new Set(inputs.focus)
-  const pickCtx = { allowedEquipment: inputs.allowedEquipment, maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2 }
+  const pickCtx = {
+    allowedEquipment: inputs.allowedEquipment,
+    excludedEquipment: inputs.excludedEquipment,
+    excludedOverload: inputs.excludedOverload,
+    maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
+  }
   const volume = ENGINE_MUSCLES.map((muscle) => {
     const sets = round1((weekly[muscle] || 0) * perWeek)
     const tier = volumeTier(sets, muscle)
@@ -757,7 +766,7 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
     historySessions: inputs.history?.sessions || 0,
     focus: inputs.focus,
     daysPerWeek: inputs.daysPerWeek,
-    sessionMinutes: inputs.sessionMinutes,
+    equipmentPreset: inputs.equipmentPreset,
     days,
     volume,
   }
@@ -910,9 +919,18 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], no
 
   const history = historyContext(sessions, { now })
   const sets = Math.max(1, Number(planned.sets) || 1)
+  const allowedEquipment = equipmentUniverse(program)
+  // A split that reaches beyond at-home equipment is a gym split, and gets the
+  // gym's posture: loadability and stability weighted up, bands and un-loadable
+  // movements off the table. An at-home split keeps the neutral weights and the
+  // whole at-home pool, because there is nothing better available to it.
+  const atGym = allowedEquipment.size > AT_HOME_EQUIPMENT.length
   const base = {
     muscle,
-    allowedEquipment: equipmentUniverse(program),
+    allowedEquipment,
+    excludedEquipment: atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set(),
+    excludedOverload: atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set(),
+    weights: atGym ? { ...WEIGHTS, ...GYM_WEIGHTS } : WEIGHTS,
     maxSkillRank: SKILL_RANK.high, // a split they wrote themselves; only the very hardest is held back
     dayIds,
     dayFamilies,
@@ -967,8 +985,10 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], n
 
   const ctx = {
     posture: inputs.posture,
-    setsPerSession: inputs.setsPerSession,
     allowedEquipment: inputs.allowedEquipment,
+    excludedEquipment: inputs.excludedEquipment,
+    excludedOverload: inputs.excludedOverload,
+    weights: inputs.weights,
     maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
     focus: inputs.focus,
     history: inputs.history,

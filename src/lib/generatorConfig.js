@@ -139,16 +139,15 @@ export const DEFAULT_EXPERIENCE = 'intermediate'
 
 export const SKILL_RANK = { low: 1, moderate: 2, high: 3, 'very high': 4 }
 
-// ---- Session budget ---------------------------------------------------------
-// Minutes → how many working sets fit. ~3 min a set all-in (warm-ups, rest,
-// setup, the walk to the machine) is honest for hypertrophy work at the rest
-// intervals the DB prescribes.
-export const SESSION_MINUTES_OPTIONS = [30, 45, 60, 75, 90]
-export const DEFAULT_SESSION_MINUTES = 60
-export const MINUTES_PER_SET = 3
-export const MIN_SETS_PER_SESSION = 9
-export const MAX_SETS_PER_SESSION = 30
-
+// ---- What limits a day ------------------------------------------------------
+// Not the clock. The generator used to ask how long a session was and cap the
+// day at minutes ÷ 3, which made time the thing deciding how much work a muscle
+// got — a session isn't better for being longer, and it isn't worse for it
+// either. What actually limits a productive day is how much volume the muscles
+// in it can still use (the weekly targets) and how much fatigue it can carry
+// (DAY_LOAD_MAX), with the exercise cap keeping the movement count learnable.
+// Those three do the whole job, and none of them is a stopwatch.
+//
 // Per-exercise and per-muscle-per-session bounds. The per-session muscle cap
 // sits just above engineConfig's WITHIN_SESSION_FULL_SETS: past that the engine
 // itself starts discounting the sets, so planning more is planning junk volume.
@@ -181,6 +180,31 @@ export const STRETCH_SCORE = { none: 0, partial: 0.5, yes: 1 }
 export const PROFILE_SCORE = { shortened: 0, balanced: 0.35, lengthened: 1 }
 export const OVERLOAD_SCORE = { low: 0, moderate: 0.4, high: 0.75, 'very high': 1 }
 export const STABILITY_SCORE = { 'highly unstable': 0, unstable: 0.25, moderate: 0.6, stable: 0.85, 'very stable': 1 }
+
+// Full-gym overlay. Loadability and stability carry more weight when someone
+// has racks, machines and cables: the point of the equipment is that you can
+// keep adding weight to a movement you're braced against, and progressive
+// overload on a stable movement is most of what drives hypertrophy. At home
+// neither is really available, so leaning on them there just penalises the pool
+// for being what it is. Merged over WEIGHTS when the preset is 'gym'.
+export const GYM_WEIGHTS = {
+  sfr: 2.2,
+  overload: 1.8,
+  stability: 1.2,
+}
+
+// What a full gym takes OFF the table. Bands are strictly redundant next to
+// cables and dumbbells, and a movement the database rates `low` for progressive
+// overload can't be loaded — which is the whole reason to be in a gym.
+//
+// Note this is a loadability rule, NOT an equipment one, and deliberately: the
+// database tags Chin-Up, Pull Up, Chest Dips, Weighted Chest Dips, Hanging Knee
+// Raise and Leg Raises as `bodyweight`, and they are gym staples. Excluding
+// "bodyweight" would delete all of them while leaving banded work untouched.
+// Excluding un-loadable movements removes exactly the push-ups, knee push-ups,
+// TRX rows and inverted rows that a gym has better versions of.
+export const GYM_EXCLUDED_EQUIPMENT = ['resistance band']
+export const GYM_EXCLUDED_OVERLOAD = ['low']
 
 export const WEIGHTS = {
   contribution: 4.0, // how much of the set actually lands on the target muscle
