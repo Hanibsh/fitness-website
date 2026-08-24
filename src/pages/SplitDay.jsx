@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Play } from 'lucide-react'
 import ExercisePicker from '../components/ExercisePicker'
+import SwapSuggestions from '../components/SwapSuggestions'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
-import { getExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
-import { upsertRemoteExerciseNotes } from '../lib/workoutRemote'
+import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
+import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats, bankIdFor } from '../lib/planStats'
 import {
@@ -42,6 +43,29 @@ export default function SplitDay() {
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [swapOpenFor, setSwapOpenFor] = useState(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
+  // Logged sessions, loaded the first time a swap panel opens rather than on
+  // mount: the suggestions read it to favour movements you already train and to
+  // spot ones you've drifted away from, and everyone who never opens a swap
+  // shouldn't pay for the fetch.
+  const [history, setHistory] = useState(null)
+
+  useEffect(() => {
+    if (swapOpenFor === null || history !== null) return
+    let cancelled = false
+    async function load() {
+      if (user) {
+        try {
+          const remote = await fetchRemoteHistory(user.id)
+          if (!cancelled) return setHistory(remote)
+        } catch {
+          // fall through to this device's copy
+        }
+      }
+      if (!cancelled) setHistory(getHistory())
+    }
+    load()
+    return () => { cancelled = true }
+  }, [swapOpenFor, history, user])
 
   const dayIndex = program.days.findIndex((d) => d.id === dayId)
   const day = dayIndex === -1 ? null : program.days[dayIndex]
@@ -320,6 +344,18 @@ export default function SplitDay() {
                     )}
                     {swapOpenFor === ex.id && (
                       <div className="mt-2">
+                        {ex.kind !== 'cardio' && (
+                          <SwapSuggestions
+                            planned={ex}
+                            program={program}
+                            dayId={day.id}
+                            sessions={history || []}
+                            onPick={(o) => {
+                              update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id }))
+                              setSwapOpenFor(null)
+                            }}
+                          />
+                        )}
                         <ExercisePicker
                           onSelect={(name, category, id) => { update((p) => substituteExercise(p, day.id, ex.id, { name, category, exerciseId: id })); setSwapOpenFor(null) }}
                           onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}

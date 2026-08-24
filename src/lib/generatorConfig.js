@@ -234,6 +234,13 @@ export const PENALTIES = {
 // the biceps) simply lead with their best isolation, which is correct for them.
 export const COMPOUND_LEAD_MIN_CONTRIBUTION = 0.75
 
+// A suggested SWAP has to be a real stand-in, so it must land at least this
+// share of what the movement it's replacing landed on the target muscle. Without
+// it, swapping an overhead press offers bench presses: the database agrees a
+// bench press trains the front delts, and it does, but someone replacing their
+// shoulder press did not ask to stop pressing overhead.
+export const SWAP_MIN_CONTRIBUTION_RATIO = 0.9
+
 // The share of a day's systemic budget the generator aims to leave unspent.
 // dayStats grades a day against SYSTEMIC_CAPACITY; planning right up to the
 // 'high' band every session is how you end up managing fatigue with a deload,

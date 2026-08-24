@@ -26,12 +26,12 @@
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
 import { createDay, createPlannedExercise, emptyProgram } from './program'
-import { dayStats } from './planStats'
+import { dayStats, ENGINE_MUSCLE_TO_COARSE } from './planStats'
 import { effectiveWeeklyVolume } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
 import { repRangeFor } from './splitFromHistory'
 import { equipmentValuesFor } from './profileFields'
-import { ALL_EQUIPMENT } from '../data/equipmentGroups'
+import { ALL_EQUIPMENT, AT_HOME_EQUIPMENT } from '../data/equipmentGroups'
 import {
   ATOM_TO_GROUP, ENGINE_MUSCLES, mevFor, ceilingFor, volumeTier, volumeScale,
   ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, DEFAULT_FATIGUE_SCORE, DEFAULT_RECOVERY_WINDOW,
@@ -46,7 +46,7 @@ import {
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE,
   WEIGHTS, PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
-  REP_RANGES, HIGH_REP_MUSCLES,
+  REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -445,7 +445,8 @@ export function candidates(muscle, ctx) {
     if (ctx.dayIds?.has(db.id)) return false
     if (ctx.dayFamilies?.has(movementFamily(db))) return false
     if (ctx.exclude?.has(db.id)) return false
-    return (muscleWeights(db)[muscle] || 0) > 0
+    const w = muscleWeights(db)[muscle] || 0
+    return w > 0 && w >= (ctx.minContribution || 0)
   })
   if (!ctx.wantCompound) return pool
   const leads = pool.filter(
@@ -768,6 +769,188 @@ function dayHits(day, muscle) {
   return (day.exercises || []).some((e) => {
     const db = e.exerciseId ? DB_BY_ID.get(e.exerciseId) : null
     return db ? (muscleWeights(db)[muscle] || 0) > 0 : false
+  })
+}
+
+// ---- Swapping one movement ---------------------------------------------------
+
+// Which equipment a swap is allowed to reach for, read off the split itself
+// rather than asked for again. Someone whose whole split is push-ups and band
+// work should not be offered a cable machine; someone with one cable row in
+// there evidently has a gym. Only a split that is ENTIRELY at-home, and big
+// enough for that to mean something, gets restricted — anything else opens up,
+// because guessing a constraint that isn't there is worse than not guessing.
+function equipmentUniverse(program) {
+  const kinds = new Set()
+  for (const day of program?.days || []) {
+    for (const planned of day.exercises || []) {
+      const db = planned.exerciseId ? DB_BY_ID.get(planned.exerciseId) : null
+      if (db) kinds.add(db.equipment)
+    }
+  }
+  if (kinds.size >= 1 && kinds.size <= AT_HOME_EQUIPMENT.length && [...kinds].every((k) => AT_HOME_EQUIPMENT.includes(k))) {
+    // Three movements is the least that reads as a deliberate at-home split
+    // rather than a split someone has only just started writing.
+    let n = 0
+    for (const day of program.days) n += (day.exercises || []).length
+    if (n >= 3) return new Set(AT_HOME_EQUIPMENT)
+  }
+  return new Set(ALL_EQUIPMENT)
+}
+
+// Hours from `dayIndex` to the next day in the program that trains `muscle`,
+// wrapping around. Works for both schedule shapes without asking which: a
+// program's own day list IS its cycle, and rest days are slots in it either way.
+function gapToNextSession(program, dayIndex, muscle) {
+  const len = program.days.length || 1
+  for (let step = 1; step <= len; step++) {
+    const j = (dayIndex + step) % len
+    const day = program.days[j]
+    if (day.kind !== 'rest' && dayHits(day, muscle)) return step * HOURS_PER_DAY
+  }
+  return len * HOURS_PER_DAY
+}
+
+// The muscle a planned row is really there for: the one it trains hardest.
+//
+// Plenty of rows train two muscles equally hard — "Seated Cable Row, Wide Grip"
+// lists Rear Delts 1.0 and Mid Back 1.0 — and taking whichever the JSON happened
+// to list first is how a row ends up offering you rear-delt flies. Ties go to
+// what the row says it IS: its Sub Category names an engine muscle outright, and
+// failing that its Home Category narrows it to a body region.
+export function primaryMuscleOf(db) {
+  const weights = muscleWeights(db)
+  const max = Math.max(0, ...Object.values(weights))
+  if (!max) return null
+  const tied = ENGINE_MUSCLES.filter((m) => weights[m] === max)
+  if (tied.length === 1) return tied[0]
+  if (db.subCategory && tied.includes(db.subCategory)) return db.subCategory
+  return tied.find((m) => ENGINE_MUSCLE_TO_COARSE[m] === db.category) || tied[0]
+}
+
+// Why this alternative, in one line. Ordered by what a person would actually
+// notice first, and only ever claiming something the database says outright —
+// the first true statement wins, so each suggestion carries its single most
+// relevant reason rather than a paragraph of hedged ones.
+function swapReason(db, current, ctx) {
+  const fatigueDrop = (current.fatigueScore ?? 3) - (db.fatigueScore ?? 3)
+  const sfrGain = (SFR_SCORE[db.sfr] ?? 0) - (SFR_SCORE[current.sfr] ?? 0)
+  const hpGain = (HP_SCORE[db.hypertrophyPotential] ?? 0) - (HP_SCORE[current.hypertrophyPotential] ?? 0)
+  const skillDrop = (SKILL_RANK[current.skill] ?? 1) - (SKILL_RANK[db.skill] ?? 1)
+  const window = db.recoveryWindowHours || DEFAULT_RECOVERY_WINDOW
+  const currentWindow = current.recoveryWindowHours || DEFAULT_RECOVERY_WINDOW
+  const mid = (window[0] + window[1]) / 2
+  const currentMid = (currentWindow[0] + currentWindow[1]) / 2
+
+  if (ctx.hoursToNext && currentMid > ctx.hoursToNext && mid <= ctx.hoursToNext) {
+    return `Recovers in time for your next ${ctx.muscle.toLowerCase()} session`
+  }
+  if (fatigueDrop >= 2 || (current.axialLoading && !db.axialLoading)) return 'Same muscles, much less systemic fatigue'
+  if (ctx.weeksSince != null && ctx.weeksSince >= 6) return `You haven't trained this in ${ctx.weeksSince} weeks`
+  if (sfrGain > 0 && fatigueDrop >= 0) return 'Better stimulus-to-fatigue for the same work'
+  if (hpGain > 0) return 'Rated higher for growth on this muscle'
+  if (db.stretchMediated === 'yes' && current.stretchMediated !== 'yes') return 'Loads the muscle in the stretched position'
+  if (skillDrop > 0) return 'Simpler to set up and execute'
+  if (db.equipment !== current.equipment) return `Same job, ${db.equipment === 'bodyweight' ? 'no equipment' : `on the ${db.equipment}`}`
+  if (movementFamily(db) === movementFamily(current)) return 'The same movement from a different angle'
+  return `Trains ${ctx.muscle.toLowerCase()} about as directly`
+}
+
+// Alternatives to one planned movement, best first.
+//
+// Runs the generator's own scorer against the muscle the row is there for, in
+// the context it's actually sitting in: what else is in that day, how much
+// fatigue the day is already carrying, and how long until the muscle is trained
+// again. So the answer to "give me something else for this slot" changes
+// depending on where the slot is, which is the whole point — the same two
+// movements are not equally good on a fresh day and a fried one.
+//
+// Returns [{ id, name, db, reason, score }]. Nothing is mutated; the caller
+// applies a choice through substituteExercise, which keeps the sets, the rep
+// target and the note exactly as planned.
+export function suggestAlternatives(planned, { program, dayId, sessions = [], now = Date.now(), limit = 4 } = {}) {
+  if (!planned || planned.kind === 'cardio' || !program) return []
+  const currentDb = DB_BY_ID.get(planned.exerciseId || exerciseIdForName(planned.name) || '')
+  if (!currentDb) return [] // custom movement: nothing to compare it against
+
+  const dayIndex = program.days.findIndex((d) => d.id === dayId)
+  const day = dayIndex === -1 ? null : program.days[dayIndex]
+  if (!day) return []
+
+  const muscle = primaryMuscleOf(currentDb)
+  if (!muscle) return []
+
+  // Everything else in the day is off the table; everything else in the WEEK is
+  // merely discouraged, through the scorer's own repeat penalties.
+  const dayIds = new Set()
+  const dayFamilies = new Set()
+  let load = 0
+  for (const other of day.exercises) {
+    const db = other.exerciseId ? DB_BY_ID.get(other.exerciseId) : null
+    if (!db) continue
+    if (other.id !== planned.id) {
+      dayIds.add(db.id)
+      dayFamilies.add(movementFamily(db))
+      load += setLoad(db) * (Number(other.sets) || 0)
+    }
+  }
+  const weekIds = new Set()
+  const weekFamilies = new Set()
+  const weekSignatures = new Set()
+  for (const other of program.days) {
+    if (other.id === dayId) continue
+    for (const row of other.exercises || []) {
+      const db = row.exerciseId ? DB_BY_ID.get(row.exerciseId) : null
+      if (!db) continue
+      weekIds.add(db.id)
+      weekFamilies.add(movementFamily(db))
+      weekSignatures.add(signature(db))
+    }
+  }
+
+  const history = historyContext(sessions, { now })
+  const sets = Math.max(1, Number(planned.sets) || 1)
+  const base = {
+    muscle,
+    allowedEquipment: equipmentUniverse(program),
+    maxSkillRank: SKILL_RANK.high, // a split they wrote themselves; only the very hardest is held back
+    dayIds,
+    dayFamilies,
+    weekIds,
+    weekFamilies,
+    weekSignatures,
+    exclude: new Set([currentDb.id]),
+    budgetUsed: clamp(load / (SYSTEMIC_CAPACITY * DAY_LOAD_TARGET), 0, 1),
+    hoursToNext: gapToNextSession(program, dayIndex, muscle),
+    // Debt relief measured against what the row being replaced was covering, so
+    // a swap is offered like for like: an alternative that also carries this
+    // day's triceps work scores the way the movement it's replacing did.
+    remaining: Object.fromEntries(Object.entries(muscleWeights(currentDb)).map(([m, w]) => [m, w * sets])),
+    minContribution: (muscleWeights(currentDb)[muscle] || 0) * SWAP_MIN_CONTRIBUTION_RATIO,
+    wantCompound: currentDb.type === 'compound',
+  }
+
+  const scored = []
+  for (const db of candidates(muscle, base)) {
+    const result = scoreExercise(db, { ...base, familiarity: familiarity(db, history) })
+    if (!result) continue
+    scored.push({ db, score: result.score })
+  }
+  scored.sort((a, b) => b.score - a.score)
+
+  return scored.slice(0, limit).map(({ db, score }) => {
+    const seen = history?.familiar.get(db.id)
+    const weeksSince = seen ? Math.floor((now - seen.lastDate) / (7 * DAY_MS)) : null
+    return {
+      id: db.id,
+      name: db.name,
+      category: db.category,
+      // The muscle the ranking was done for — carried on every option so the UI
+      // can say what it optimised for instead of asking the reader to infer it.
+      muscle,
+      score: round1(score),
+      reason: swapReason(db, currentDb, { ...base, weeksSince }),
+    }
   })
 }
 
