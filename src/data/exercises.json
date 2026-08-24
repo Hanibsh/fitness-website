@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-16",
-  "count": 279,
+  "generatedAt": "2026-08-24",
+  "count": 284,
   "exercises": [
     {
       "id": "assisted-chest-dip",
@@ -7747,8 +7747,8 @@
       "thumbnail": null
     },
     {
-      "id": "standing-calf-raise",
-      "name": "Standing Calf Raise",
+      "id": "standing-calf-raise-dumbbell",
+      "name": "Standing Calf Raise - Dumbbell",
       "category": "Legs",
       "subCategory": "Calves",
       "type": "isolation",
@@ -8666,8 +8666,8 @@
       "thumbnail": null
     },
     {
-      "id": "seated-calf-raise",
-      "name": "Seated Calf Raise",
+      "id": "seated-calf-raise-dumbbell",
+      "name": "Seated Calf Raise - Dumbbell",
       "category": "Legs",
       "subCategory": "Calves",
       "type": "isolation",
@@ -9597,6 +9597,171 @@
       "axialLoading": true,
       "skill": "high",
       "notes": "Elbow-crook loading; upper back and arms often limit the load before the legs do.",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "standing-calf-raise-bodyweight",
+      "name": "Standing Calf Raise - Bodyweight",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "low",
+      "stability": "stable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Flat floor, no deficit — progress to the single-leg or deficit variant once bodyweight is easy",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "standing-calf-raise-single-leg",
+      "name": "Standing Calf Raise - Single Leg",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Touch a wall for balance; roughly doubles the load over the bilateral version",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "standing-calf-raise-deficit",
+      "name": "Standing Calf Raise - Deficit",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Forefoot on a step; let the heel drop below the toes for the full stretch",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "standing-calf-raise-band",
+      "name": "Standing Calf Raise - Band",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Gastrocnemius": 1,
+        "Soleus": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "stable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Stand on the band, ends held at the hips or looped over the shoulders",
+      "video": null,
+      "thumbnail": null
+    },
+    {
+      "id": "seated-calf-raise-band",
+      "name": "Seated Calf Raise - Band",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "both",
+      "muscles": {
+        "Soleus": 1,
+        "Gastrocnemius": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "moderate",
+      "stability": "very stable",
+      "hypertrophyPotential": "moderate",
+      "sfr": "good",
+      "stretchMediated": "partial",
+      "resistanceProfile": "shortened",
+      "equipment": "resistance band",
+      "axialLoading": false,
+      "skill": "low",
+      "notes": "Band under the forefoot, looped over the knee; knee bent biases the soleus",
       "video": null,
       "thumbnail": null
     }
