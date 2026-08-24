@@ -71,7 +71,11 @@ export const EXERCISE_ID_ALIASES = {
   'push-down': 'push-down-straight-bar',
   'rope-push-down': 'push-down-rope',
   // legs (weighted → base merges; deadlift abbreviation renames)
-  'standing-calf-raise-weighted': 'standing-calf-raise',
+  // Standing/Seated Calf Raise became "- Dumbbell" when the bodyweight/band
+  // variants were added, same move as the lat pulldown/push-down renames above.
+  'standing-calf-raise-weighted': 'standing-calf-raise-dumbbell',
+  'standing-calf-raise': 'standing-calf-raise-dumbbell',
+  'seated-calf-raise': 'seated-calf-raise-dumbbell',
   'copenhagen-adduction-weighted': 'copenhagen-adduction',
   'romanian-deadlift': 'romanian-deadlift-rdl',
   'stiff-leg-deadlift': 'stiff-leg-deadliftsldl',

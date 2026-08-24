@@ -115,7 +115,8 @@ function audit(label, program, summary, inputs, opts) {
   // ---- frequency and volume
   for (const row of summary.volume) {
     // A muscle the library can't train with this equipment is a gap in the
-    // exercise DB, not a bug in the generator — bodyweight calves, today.
+    // exercise DB, not a bug in the generator. No current instance — every
+    // programmed muscle has at-home coverage as of the 2026-08 calf rows.
     if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment)) {
       check(label, row.sessions >= 2, `${row.muscle} trained ${row.sessions}×/wk`)
       // Clearing the minimum effective dose on all thirteen muscles is only
