@@ -132,6 +132,28 @@ export const MUSCLE_AREA_IDS = ENGINE_MUSCLES
 
 export const STRAIN_STRETCH_BOOST = { yes: 0.3, partial: 0.15, none: 0 }
 
+// ---- Rehab ------------------------------------------------------------------
+//
+// What you DID about it, as opposed to how it felt. Pain check-ins answer "is
+// this getting better"; these answer "am I doing anything about it", which is
+// the question that actually changes the first answer.
+//
+// Deliberately coarse. A five-way choice you'll actually tap beats a taxonomy
+// that's more accurate and gets logged twice. "Rested it" earns its place
+// because deciding to do nothing IS the treatment often enough to be worth
+// recording, and without it a careful week reads as a blank one.
+export const REHAB_KINDS = [
+  { id: 'physio', label: 'Physio' },
+  { id: 'mobility', label: 'Stretching & mobility' },
+  { id: 'strength', label: 'Rehab exercises' },
+  { id: 'rest', label: 'Rested it' },
+  { id: 'other', label: 'Other' },
+]
+
+// The window the overview counts over — "3 this week" is a number you can act
+// on, where a lifetime total stops meaning anything by week three.
+export const REHAB_RECENT_DAYS = 7
+
 // ---- Shared modifiers --------------------------------------------------------
 
 // An unstable movement asks the joint to stabilise as well as move, which is the

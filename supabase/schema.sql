@@ -259,10 +259,14 @@ create index if not exists day_annotations_user_date_idx on public.day_annotatio
 --     | resolved.
 --
 --     checkins  — [{ id, date, pain 0-10, note }], the pain trend
+--     rehab     — [{ id, date, kind, note }], what you DID about it. Separate
+--                 from checkins because one is an observation and the other an
+--                 action; together they answer "is it healing" and "am I doing
+--                 anything about it", which are different questions.
 --     verdicts  — { exerciseId: 'hurts' | 'ok' }, the user overriding our guess
 --                 about which movements aggravate it
---     Both are jsonb rather than tables of their own: small, never queried apart
---     from their injury, and atomic to save alongside a status change.
+--     All three are jsonb rather than tables of their own: small, never queried
+--     apart from their injury, and atomic to save alongside a status change.
 -- ---------------------------------------------------------------------------
 create table if not exists public.injuries (
   id uuid primary key default gen_random_uuid(),
@@ -276,9 +280,16 @@ create table if not exists public.injuries (
   resolved_at timestamptz,
   note text,
   checkins jsonb not null default '[]'::jsonb,
+  rehab jsonb not null default '[]'::jsonb,
   verdicts jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
+
+-- `rehab` shipped after the table did, so the create above is skipped on any
+-- database that already has it — this is the line that actually adds the column
+-- for existing installs. The client retries the save without it when it's
+-- missing (missingRehabColumn in src/lib/workoutRemote.js).
+alter table public.injuries add column if not exists rehab jsonb not null default '[]'::jsonb;
 
 alter table public.injuries enable row level security;
 

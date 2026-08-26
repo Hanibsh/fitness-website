@@ -15,6 +15,9 @@ import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate }
 import { useInjuries } from '../lib/useInjuries'
 import { openInjuries } from '../lib/injuries'
 import WorkoutCalendar from '../components/WorkoutCalendar'
+import LogTabs from '../components/LogTabs'
+import Card from '../components/Card'
+import SectionHeading from '../components/SectionHeading'
 import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR, INJURY_BAND } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 import SessionSummary from '../components/SessionSummary'
@@ -35,21 +38,6 @@ function fullDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function Card({ children, className = '' }) {
-  return <div className={`bg-white border border-border p-5 sm:p-6 ${className}`}>{children}</div>
-}
-
-function SectionHeading({ children, icon: Icon, right }) {
-  return (
-    <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-text-primary" />}
-        <h2 className="font-heading text-lg font-medium text-text-primary">{children}</h2>
-      </div>
-      {right}
-    </div>
-  )
-}
 
 // `small` is the nested variant used for the two parts of Off — same shell, just
 // quieter, so they read as belonging to the tile above rather than competing
@@ -224,6 +212,8 @@ export default function CalendarPage() {
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-3xl mx-auto">
+        <LogTabs active="/calendar" />
+
         <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-6 transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to dashboard
         </Link>

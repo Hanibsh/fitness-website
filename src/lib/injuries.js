@@ -23,6 +23,7 @@ import {
   JOINT_AREAS, STRAIN_STRETCH_BOOST, STABILITY_FACTOR,
   JOINT_STRETCH_BOOST, JOINT_EQUIPMENT_FACTOR,
   STATUS_FACTOR, PAIN_FACTOR, DEFAULT_PAIN_WEIGHT, RISK_TIERS, RISK_FLOOR,
+  REHAB_KINDS, REHAB_RECENT_DAYS,
 } from './injuryConfig'
 
 const DAY_MS = 86400000
@@ -147,6 +148,35 @@ export function painTrend(injury) {
   const delta = last - first
   if (Math.abs(delta) < 0.75) return { direction: 'flat', delta }
   return { direction: delta < 0 ? 'improving' : 'worsening', delta }
+}
+
+// ---- Rehab -------------------------------------------------------------------
+//
+// Kept apart from check-ins on purpose: a check-in is an observation, a rehab
+// entry is an action. Folded together they'd make one list that answers neither
+// question — and the pain chart would have gaps where you'd done the work.
+
+export function rehabLabel(kind) {
+  return REHAB_KINDS.find((k) => k.id === kind)?.label || 'Other'
+}
+
+export function lastRehab(injury) {
+  if (!injury?.rehab?.length) return null
+  return [...injury.rehab].sort((a, b) => b.date - a.date)[0]
+}
+
+export function daysSinceRehab(injury, now = Date.now()) {
+  const last = lastRehab(injury)
+  if (!last) return null
+  return Math.floor((startOfDay(now) - startOfDay(last.date)) / DAY_MS)
+}
+
+// How many entries in the last `days`. Counts ENTRIES, not days: two physio
+// sessions in a week are two facts, and collapsing them would flatter a week
+// where you did less.
+export function rehabCount(injury, days = REHAB_RECENT_DAYS, now = Date.now()) {
+  const cutoff = startOfDay(now) - (days - 1) * DAY_MS
+  return (injury?.rehab || []).filter((r) => startOfDay(r.date) >= cutoff).length
 }
 
 // ---- Risk --------------------------------------------------------------------

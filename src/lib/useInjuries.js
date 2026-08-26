@@ -16,7 +16,7 @@ import exercisesDb from '../data/exercises.json'
 import { useAuth } from './auth'
 import {
   getInjuries, saveInjury, deleteInjury,
-  makeCheckin, addCheckin,
+  makeCheckin, addCheckin, makeRehabEntry, addRehab, removeRehab,
 } from './workoutStore'
 import { injuryRiskMap } from './injuries'
 import { fetchRemoteInjuries, upsertRemoteInjury, deleteRemoteInjury } from './workoutRemote'
@@ -85,7 +85,14 @@ export function useInjuries() {
   const checkin = useCallback((injury, pain, { note = '', date } = {}) =>
     save(addCheckin(injury, makeCheckin(pain, note, date))), [save])
 
-  return { injuries, loading, save, remove, checkin, syncedRemotely: !!user && remoteOk }
+  // One thing you did about it. Unlike checkin, these stack within a day.
+  const logRehab = useCallback((injury, kind, { note = '', date } = {}) =>
+    save(addRehab(injury, makeRehabEntry(kind, note, date))), [save])
+
+  const unlogRehab = useCallback((injury, entryId) =>
+    save(removeRehab(injury, entryId)), [save])
+
+  return { injuries, loading, save, remove, checkin, logRehab, unlogRehab, syncedRemotely: !!user && remoteOk }
 }
 
 // The exercise id → risk lookup the badges read, memoised per injury list.

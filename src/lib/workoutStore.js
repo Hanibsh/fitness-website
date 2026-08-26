@@ -740,6 +740,7 @@ export function makeInjury({ kind, area, side = null, label = '', note = '', sta
     resolvedAt: null,
     note: (note || '').trim().slice(0, 600),
     checkins: [],
+    rehab: [],
     verdicts: {},
   }
 }
@@ -777,6 +778,30 @@ export function addCheckin(injury, checkin) {
   const checkins = [checkin, ...(injury.checkins || []).filter((c) => !sameDay(c.date, checkin.date))]
     .sort((a, b) => b.date - a.date)
   return { ...injury, checkins }
+}
+
+// One thing you did about it. Noon-anchored like everything else the app dates.
+export function makeRehabEntry(kind, note, date) {
+  let when = date
+  if (when == null) {
+    const d = new Date()
+    d.setHours(12, 0, 0, 0)
+    when = d.getTime()
+  }
+  return { id: newId(), date: when, kind, note: (note || '').trim().slice(0, 300) }
+}
+
+// Note the difference from addCheckin above, which REPLACES same-day entries:
+// rehab entries stack. A day can hold both a physio appointment and the
+// stretching you did that evening, and a second entry is a second fact rather
+// than a correction to the first.
+export function addRehab(injury, entry) {
+  const rehab = [entry, ...(injury.rehab || [])].sort((a, b) => b.date - a.date)
+  return { ...injury, rehab }
+}
+
+export function removeRehab(injury, entryId) {
+  return { ...injury, rehab: (injury.rehab || []).filter((r) => r.id !== entryId) }
 }
 
 // 'hurts' | 'ok' | null (null clears it back to the estimated risk).

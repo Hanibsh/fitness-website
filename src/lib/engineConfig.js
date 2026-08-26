@@ -311,5 +311,10 @@ export const ADVISOR_INJURY_MIN_EXERCISES = 2
 // the exercise picks, or being ignored. Two weeks — long enough that it isn't
 // nagging, short enough that a stale injury doesn't quietly shape a whole block.
 export const ADVISOR_INJURY_STALE_DAYS = 14
+// Rehab that started and then stopped. Shorter than the check-in window because
+// a lapse in doing the work matters sooner than a lapse in rating it — and it
+// only ever fires for someone who logged rehab at least once, so it's a reminder
+// of their own intention rather than a stranger's advice.
+export const ADVISOR_REHAB_STALE_DAYS = 10
 
 export const ADVISOR_MAX_RECS = 3

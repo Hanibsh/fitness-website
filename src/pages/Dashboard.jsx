@@ -29,6 +29,9 @@ import { muscleHref } from '../data/muscleInfo'
 import { adviseTraining } from '../lib/advisor'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import CalendarDayPanel from '../components/CalendarDayPanel'
+import Card from '../components/Card'
+import SectionHeading from '../components/SectionHeading'
+import MiniStat from '../components/MiniStat'
 import { useInjuries } from '../lib/useInjuries'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
@@ -91,31 +94,8 @@ function fullDate(ts) {
 }
 
 // ---- Small presentational pieces ------------------------------------------
-function Card({ children, className = '' }) {
-  return <div className={`bg-white border border-border p-5 sm:p-6 ${className}`}>{children}</div>
-}
-
-function SectionHeading({ children, icon: Icon, right }) {
-  return (
-    <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-text-primary" />}
-        <h2 className="font-heading text-lg font-medium text-text-primary">{children}</h2>
-      </div>
-      {right}
-    </div>
-  )
-}
-
-function MiniStat({ label, value, sub }) {
-  return (
-    <div className="bg-cream border border-border px-3 py-3 text-center">
-      <p className="text-[10px] uppercase tracking-wider text-text-light mb-1">{label}</p>
-      <p className="text-[15px] font-medium text-text-primary break-words">{value}</p>
-      {sub && <p className="text-[10px] text-text-muted mt-0.5">{sub}</p>}
-    </div>
-  )
-}
+// Card, SectionHeading and MiniStat moved to ../components: this file,
+// CalendarPage and Injuries each carried byte-identical copies.
 
 // Horizontal bar row used for muscle volume and distribution.
 function Bar({ label, value, max, suffix }) {

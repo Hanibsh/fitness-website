@@ -358,6 +358,14 @@ function missingInjuriesTable(error) {
   return error.code === '42P01' || (typeof error.message === 'string' && /relation .*injuries.* does not exist/i.test(error.message))
 }
 
+// `rehab` arrived after the table did, so a database that hasn't had the latest
+// schema.sql run against it won't have the column. Same treatment as
+// day_annotations.injury_id: retry without it rather than lose the whole save.
+function missingRehabColumn(error) {
+  if (!error) return false
+  return error.code === 'PGRST204' || (typeof error.message === 'string' && error.message.includes('rehab'))
+}
+
 function injuryFromRow(row) {
   return {
     id: row.id,
@@ -370,6 +378,7 @@ function injuryFromRow(row) {
     resolvedAt: row.resolved_at ? new Date(row.resolved_at).getTime() : null,
     note: row.note || '',
     checkins: (row.checkins || []).map((c) => ({ ...c, date: new Date(c.date).getTime() })),
+    rehab: (row.rehab || []).map((r) => ({ ...r, date: new Date(r.date).getTime() })),
     verdicts: row.verdicts || {},
   }
 }
@@ -389,6 +398,7 @@ function injuryToRow(userId, injury) {
     // Dates inside the jsonb go over as ISO too, so the column reads the same
     // way from psql as every timestamptz beside it.
     checkins: (injury.checkins || []).map((c) => ({ ...c, date: new Date(c.date).toISOString() })),
+    rehab: (injury.rehab || []).map((r) => ({ ...r, date: new Date(r.date).toISOString() })),
     verdicts: injury.verdicts || {},
     updated_at: new Date().toISOString(),
   }
@@ -408,7 +418,12 @@ export async function fetchRemoteInjuries(userId) {
 }
 
 export async function upsertRemoteInjury(userId, injury) {
-  const { error } = await supabase.from('injuries').upsert(injuryToRow(userId, injury))
+  const row = injuryToRow(userId, injury)
+  let { error } = await supabase.from('injuries').upsert(row)
+  if (missingRehabColumn(error)) {
+    const { rehab, ...rest } = row // eslint-disable-line no-unused-vars
+    ;({ error } = await supabase.from('injuries').upsert(rest))
+  }
   if (error) throw error
   return injury
 }

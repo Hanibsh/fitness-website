@@ -1,14 +1,21 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Bandage, Plus, Pencil, Trash2, Check, X, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { Bandage, Plus, Pencil, Trash2, Check, X, TrendingDown, TrendingUp, Minus, HeartPulse } from 'lucide-react'
 import exercisesDb from '../data/exercises.json'
 import { useInjuries } from '../lib/useInjuries'
 import {
   INJURY_STATUSES, injuryTitle, areaLabel, areaBlurb, injuryDuration, isOpen,
   latestPain, daysSinceCheckin, painPoints, painTrend, implicatedExercises, TIER_LABEL,
+  rehabLabel, lastRehab, daysSinceRehab, rehabCount,
 } from '../lib/injuries'
+import { REHAB_KINDS, REHAB_RECENT_DAYS } from '../lib/injuryConfig'
 import { setVerdict, setInjuryStatus } from '../lib/workoutStore'
+import LogTabs from '../components/LogTabs'
+import Card from '../components/Card'
+import SectionHeading from '../components/SectionHeading'
+import MiniStat from '../components/MiniStat'
+import Sparkline from '../components/Sparkline'
 import StatusChip from '../components/StatusChip'
 import ProgressChart from '../components/ProgressChart'
 import InjuryForm from '../components/InjuryForm'
@@ -16,18 +23,31 @@ import ConfirmModal from '../components/ConfirmModal'
 
 const POOL = exercisesDb.exercises
 
-// How many implicated movements to show before "see all". Enough to cover the
-// things you'd actually reach for on a training day, short enough to read.
+// How many implicated movements to show before "see all". Enough to cover what
+// you'd actually reach for on a training day, short enough to read.
 const MOVEMENT_PREVIEW = 18
-
-function Card({ children, className = '' }) {
-  return <div className={`bg-white border border-border p-5 sm:p-6 ${className}`}>{children}</div>
-}
 
 const TIER_TONE = { high: 'red', moderate: 'amber', low: 'muted' }
 
 function statusTone(status) {
   return status === 'active' ? 'amber' : status === 'managing' ? 'muted' : 'green'
+}
+
+function statusLabel(status) {
+  return INJURY_STATUSES.find((s) => s.id === status)?.label || status
+}
+
+function shortDate(ts) {
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// "today" / "yesterday" / "4 days ago" — a rehab entry is only ever a few days
+// old before it stops mattering, so an exact date reads as more precision than
+// the fact deserves.
+function agoWords(days) {
+  if (days === 0) return 'today'
+  if (days === 1) return 'yesterday'
+  return `${days} days ago`
 }
 
 // ---- Pain scale --------------------------------------------------------------
@@ -54,28 +74,93 @@ function PainScale({ value, onPick }) {
   )
 }
 
-// ---- List --------------------------------------------------------------------
+function TrendLine({ injury }) {
+  const trend = painTrend(injury)
+  if (!trend) return null
+  const Icon = trend.direction === 'improving' ? TrendingDown : trend.direction === 'worsening' ? TrendingUp : Minus
+  const tone = trend.direction === 'improving'
+    ? 'text-green-700 dark:text-green-400'
+    : trend.direction === 'worsening'
+      ? 'text-red-600 dark:text-red-400'
+      : 'text-text-muted'
+  const word = trend.direction === 'improving' ? 'Improving' : trend.direction === 'worsening' ? 'Getting worse' : 'Holding steady'
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[12px] ${tone}`}>
+      <Icon className="w-3.5 h-3.5" /> {word}
+    </span>
+  )
+}
 
-function InjuryCard({ injury }) {
+// ---- Overview ----------------------------------------------------------------
+
+// An open injury at a glance. The sparkline is the point of this card: a row of
+// numbers tells you where you are, the shape tells you where you're going, and
+// "day 36, pain 4" without it could be a recovery or a plateau.
+function OpenInjuryCard({ injury }) {
   const pain = latestPain(injury)
-  const stale = daysSinceCheckin(injury)
+  const points = painPoints(injury)
+  const staleCheckin = daysSinceCheckin(injury)
+  const rehabDays = daysSinceRehab(injury)
+  const recent = rehabCount(injury, REHAB_RECENT_DAYS)
+  const last = lastRehab(injury)
+
   return (
     <Link
       to={`/injuries/${injury.id}`}
       className="block bg-white border border-border hover:border-border-hover p-4 no-underline transition-colors"
     >
-      <div className="flex items-center gap-2 flex-wrap mb-1">
+      <div className="flex items-center gap-2 flex-wrap mb-2">
         <Bandage className="w-4 h-4 text-text-muted shrink-0" />
-        <span className="text-[14px] font-medium text-text-primary break-words">{injuryTitle(injury)}</span>
-        <StatusChip tone={statusTone(injury.status)}>
-          {INJURY_STATUSES.find((s) => s.id === injury.status)?.label || injury.status}
-        </StatusChip>
+        <span className="text-[15px] font-medium text-text-primary break-words">{injuryTitle(injury)}</span>
+        <StatusChip tone={statusTone(injury.status)}>{statusLabel(injury.status)}</StatusChip>
       </div>
-      <p className="text-[11px] text-text-light tabular-nums">
-        {areaLabel(injury)} · day {injuryDuration(injury)}
-        {pain != null ? ` · pain ${pain}/10` : ' · no pain logged yet'}
-        {isOpen(injury) && stale != null && stale >= 7 && ` · last check-in ${stale} days ago`}
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[12px] text-text-muted tabular-nums">
+            {areaLabel(injury)} · day {injuryDuration(injury)}
+            {pain != null ? ` · pain ${pain}/10` : ''}
+          </p>
+          <div className="mt-1 flex items-center gap-3 flex-wrap">
+            <TrendLine injury={injury} />
+            {pain == null && <span className="text-[12px] text-text-light">No pain logged yet</span>}
+            {pain != null && staleCheckin >= 7 && (
+              <span className="text-[12px] text-text-light">Last rated {agoWords(staleCheckin)}</span>
+            )}
+          </div>
+        </div>
+        {/* Inherits the row's colour through currentColor, so it reads in both
+            themes without a palette of its own. */}
+        <span className={points.length ? 'text-text-primary' : 'hidden'}>
+          <Sparkline points={points} domain={[0, 10]} />
+        </span>
+      </div>
+
+      <p className="mt-2 pt-2 border-t border-border text-[11px] text-text-light">
+        {last
+          ? `${rehabLabel(last.kind)} ${agoWords(rehabDays)}${recent ? ` · ${recent} this week` : ''}`
+          : 'Nothing logged about what you’re doing for it'}
       </p>
+    </Link>
+  )
+}
+
+function ResolvedRow({ injury }) {
+  const days = injuryDuration(injury)
+  const pain = latestPain(injury)
+  return (
+    <Link
+      to={`/injuries/${injury.id}`}
+      className="flex items-baseline gap-3 py-2 px-1 no-underline border-b border-border last:border-b-0 hover:bg-cream transition-colors"
+    >
+      <span className="text-[13px] text-text-primary flex-1 min-w-0 break-words">{injuryTitle(injury)}</span>
+      <span className="text-[11px] text-text-light tabular-nums shrink-0">
+        {days} day{days === 1 ? '' : 's'}
+        {pain != null && ` · ended at ${pain}`}
+      </span>
+      <span className="text-[11px] text-text-light tabular-nums shrink-0 hidden sm:inline">
+        {shortDate(injury.startedAt)}
+      </span>
     </Link>
   )
 }
@@ -85,25 +170,45 @@ function InjuryList({ injuries, onNew }) {
   const closed = injuries.filter((i) => !isOpen(i))
   const [showClosed, setShowClosed] = useState(false)
 
+  const longest = open.length ? open.reduce((a, b) => (injuryDuration(a) >= injuryDuration(b) ? a : b)) : null
+  const rehabThisWeek = open.reduce((sum, i) => sum + rehabCount(i, REHAB_RECENT_DAYS), 0)
+
   return (
     <>
       <Card>
-        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Bandage className="w-4 h-4 text-text-primary" />
-            <h2 className="font-heading text-lg font-medium text-text-primary">Open</h2>
+        <SectionHeading
+          icon={Bandage}
+          right={
+            <button
+              onClick={onNew}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-3 py-1.5 border-none cursor-pointer text-[12px] hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Track an injury
+            </button>
+          }
+        >
+          Open
+        </SectionHeading>
+
+        {open.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <MiniStat label="Open" value={open.length} />
+            <MiniStat
+              label="Longest"
+              value={`${injuryDuration(longest)}d`}
+              sub={injuryTitle(longest)}
+            />
+            <MiniStat
+              label="Rehab this week"
+              value={rehabThisWeek}
+              sub={rehabThisWeek === 0 ? 'nothing yet' : undefined}
+            />
           </div>
-          <button
-            onClick={onNew}
-            className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-3 py-1.5 border-none cursor-pointer text-[12px] hover:bg-accent-hover transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" /> Track an injury
-          </button>
-        </div>
+        )}
 
         {open.length ? (
           <div className="space-y-2">
-            {open.map((i) => <InjuryCard key={i.id} injury={i} />)}
+            {open.map((i) => <OpenInjuryCard key={i.id} injury={i} />)}
           </div>
         ) : (
           <p className="text-[13px] text-text-muted">
@@ -126,8 +231,8 @@ function InjuryList({ injuries, onNew }) {
             <span className="text-[12px] text-text-muted">{showClosed ? 'Hide' : 'Show'}</span>
           </button>
           {showClosed && (
-            <div className="space-y-2 mt-4">
-              {closed.map((i) => <InjuryCard key={i.id} injury={i} />)}
+            <div className="mt-4">
+              {closed.map((i) => <ResolvedRow key={i.id} injury={i} />)}
             </div>
           )}
         </Card>
@@ -136,7 +241,85 @@ function InjuryList({ injuries, onNew }) {
   )
 }
 
-// ---- Detail ------------------------------------------------------------------
+// ---- Rehab -------------------------------------------------------------------
+
+// The half of tracking that changes the outcome. A pain chart tells you what's
+// happening to you; this tells you what you're doing about it, and the two side
+// by side are what turn "it still hurts" into something you can act on.
+//
+// Logging is one tap. The note is optional and above the chips deliberately —
+// anything that makes this a two-step job means it gets done for a week and then
+// stops, and an abandoned log is worse than none.
+function RehabCard({ injury, onLog, onRemove }) {
+  const [note, setNote] = useState('')
+  const entries = [...(injury.rehab || [])].sort((a, b) => b.date - a.date)
+  const recent = rehabCount(injury, REHAB_RECENT_DAYS)
+  const since = daysSinceRehab(injury)
+
+  function log(kind) {
+    onLog(injury, kind, { note })
+    setNote('')
+  }
+
+  return (
+    <Card className="mt-4">
+      <SectionHeading icon={HeartPulse}>What you’ve done about it</SectionHeading>
+
+      <p className="text-[12px] text-text-muted mb-3">
+        {entries.length === 0
+          ? 'Nothing logged yet. Pain tells you how it’s going; this tells you whether you’re doing anything about it.'
+          : since === 0
+            ? `${recent} logged in the last ${REHAB_RECENT_DAYS} days, including today.`
+            : since >= 10
+              ? `Nothing for ${since} days — ${recent} in the last ${REHAB_RECENT_DAYS}.`
+              : `${recent} in the last ${REHAB_RECENT_DAYS} days · last ${agoWords(since)}.`}
+      </p>
+
+      <input
+        type="text"
+        value={note}
+        maxLength={300}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Optional note — what you did, how it went"
+        className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors mb-2"
+      />
+      <div className="flex flex-wrap gap-1.5">
+        {REHAB_KINDS.map((k) => (
+          <button
+            key={k.id}
+            type="button"
+            onClick={() => log(k.id)}
+            className="px-2.5 py-1 text-[11px] font-medium border border-border bg-white text-text-muted hover:border-text-primary hover:text-text-primary cursor-pointer transition-colors"
+          >
+            + {k.label}
+          </button>
+        ))}
+      </div>
+
+      {entries.length > 0 && (
+        <div className="mt-4">
+          {entries.map((r) => (
+            <div key={r.id} className="flex items-baseline gap-3 py-1.5 border-b border-border last:border-b-0">
+              <span className="text-[11px] text-text-light tabular-nums shrink-0 w-14">{shortDate(r.date)}</span>
+              <span className="text-[13px] text-text-primary shrink-0">{rehabLabel(r.kind)}</span>
+              {r.note && <span className="text-[12px] text-text-muted break-words min-w-0">{r.note}</span>}
+              <button
+                type="button"
+                onClick={() => onRemove(injury, r.id)}
+                aria-label={`Delete ${rehabLabel(r.kind)} on ${shortDate(r.date)}`}
+                className="ml-auto shrink-0 bg-transparent border-none p-1 text-text-light hover:text-red-600 cursor-pointer transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ---- Movements ---------------------------------------------------------------
 
 // The per-exercise verdicts, which are both the most useful thing on this page
 // and the thing that makes the whole risk model trustworthy: the estimate is
@@ -226,24 +409,9 @@ function Movements({ injury, onVerdict }) {
   )
 }
 
-function TrendLine({ injury }) {
-  const trend = painTrend(injury)
-  if (!trend) return null
-  const Icon = trend.direction === 'improving' ? TrendingDown : trend.direction === 'worsening' ? TrendingUp : Minus
-  const tone = trend.direction === 'improving'
-    ? 'text-green-700 dark:text-green-400'
-    : trend.direction === 'worsening'
-      ? 'text-red-600 dark:text-red-400'
-      : 'text-text-muted'
-  const word = trend.direction === 'improving' ? 'Improving' : trend.direction === 'worsening' ? 'Getting worse' : 'Holding steady'
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-[12px] ${tone}`}>
-      <Icon className="w-3.5 h-3.5" /> {word}
-    </span>
-  )
-}
+// ---- Detail ------------------------------------------------------------------
 
-function InjuryDetail({ injury, save, remove, checkin }) {
+function InjuryDetail({ injury, save, remove, checkin, logRehab, unlogRehab }) {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -257,9 +425,7 @@ function InjuryDetail({ injury, save, remove, checkin }) {
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <Bandage className="w-4 h-4 text-text-primary shrink-0" />
             <h1 className="font-heading text-xl font-medium text-text-primary break-words">{injuryTitle(injury)}</h1>
-            <StatusChip tone={statusTone(injury.status)}>
-              {INJURY_STATUSES.find((s) => s.id === injury.status)?.label || injury.status}
-            </StatusChip>
+            <StatusChip tone={statusTone(injury.status)}>{statusLabel(injury.status)}</StatusChip>
           </div>
           <div className="flex gap-1 shrink-0">
             <button
@@ -282,7 +448,7 @@ function InjuryDetail({ injury, save, remove, checkin }) {
         <p className="text-[12px] text-text-light tabular-nums mb-1">
           {areaLabel(injury)} · started {new Date(injury.startedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
           {' · '}day {injuryDuration(injury)}
-          {injury.resolvedAt && ` · resolved ${new Date(injury.resolvedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}
+          {injury.resolvedAt && ` · resolved ${shortDate(injury.resolvedAt)}`}
         </p>
         <p className="text-[12px] text-text-muted">{areaBlurb(injury)}</p>
         {injury.note && <p className="text-[13px] text-text-secondary mt-3 whitespace-pre-wrap break-words">{injury.note}</p>}
@@ -316,10 +482,7 @@ function InjuryDetail({ injury, save, remove, checkin }) {
       </Card>
 
       <Card className="mt-4">
-        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <h2 className="font-heading text-lg font-medium text-text-primary">Pain</h2>
-          <TrendLine injury={injury} />
-        </div>
+        <SectionHeading right={<TrendLine injury={injury} />}>Pain</SectionHeading>
 
         {points.length > 1 ? (
           <div className="overflow-x-auto -mx-1 px-1">
@@ -339,20 +502,20 @@ function InjuryDetail({ injury, save, remove, checkin }) {
         <PainScale value={pain} onPick={(n) => checkin(injury, n)} />
       </Card>
 
+      <RehabCard injury={injury} onLog={logRehab} onRemove={unlogRehab} />
+
       <Card className="mt-4">
-        <h2 className="font-heading text-lg font-medium text-text-primary mb-1">Movements</h2>
+        <SectionHeading>Movements</SectionHeading>
         <Movements injury={injury} onVerdict={(exerciseId, verdict) => save(setVerdict(injury, exerciseId, verdict))} />
       </Card>
 
       {injury.checkins?.length > 0 && (
         <Card className="mt-4">
-          <h2 className="font-heading text-lg font-medium text-text-primary mb-3">Check-ins</h2>
+          <SectionHeading>Check-ins</SectionHeading>
           <div className="space-y-1">
             {[...injury.checkins].sort((a, b) => b.date - a.date).map((c) => (
               <div key={c.id} className="flex items-baseline gap-3 py-1.5 border-b border-border last:border-b-0">
-                <span className="text-[12px] text-text-light tabular-nums shrink-0 w-20">
-                  {new Date(c.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </span>
+                <span className="text-[12px] text-text-light tabular-nums shrink-0 w-14">{shortDate(c.date)}</span>
                 <span className="text-[13px] font-medium text-text-primary tabular-nums shrink-0">{c.pain}/10</span>
                 {c.note && <span className="text-[12px] text-text-muted break-words">{c.note}</span>}
               </div>
@@ -367,7 +530,7 @@ function InjuryDetail({ injury, save, remove, checkin }) {
       {confirmDelete && (
         <ConfirmModal
           title="Delete this injury?"
-          message="Its check-ins and the movements you've judged go with it. This can't be undone."
+          message="Its check-ins, rehab log and the movements you've judged go with it. This can't be undone."
           confirmLabel="Delete"
           onConfirm={async () => { await remove(injury.id); navigate('/injuries') }}
           onClose={() => setConfirmDelete(false)}
@@ -382,7 +545,7 @@ function InjuryDetail({ injury, save, remove, checkin }) {
 export default function Injuries() {
   const { id } = useParams()
   const location = useLocation()
-  const { injuries, loading, save, remove, checkin } = useInjuries()
+  const { injuries, loading, save, remove, checkin, logRehab, unlogRehab } = useInjuries()
   // The logger sends people here with the form already open when they pick
   // "something new" while ending a session — they've just told us they're hurt,
   // so making them find the button again would be asking twice.
@@ -391,14 +554,28 @@ export default function Injuries() {
   const injury = id ? injuries.find((i) => i.id === id) : null
 
   return (
-    <div className="min-h-screen bg-cream pt-24 pb-16">
-      <div className="max-w-3xl mx-auto px-6">
-        <Link
-          to={id ? '/injuries' : '/calendar'}
-          className="inline-flex items-center gap-1.5 text-[13px] text-text-muted hover:text-text-primary no-underline mb-6"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> {id ? 'All injuries' : 'Calendar'}
-        </Link>
+    <div className="pt-28 pb-24 px-4 sm:px-6">
+      <div className="max-w-3xl mx-auto">
+        <LogTabs active="/injuries" />
+
+        {id && (
+          <Link
+            to="/injuries"
+            className="inline-flex items-center gap-1.5 text-[13px] text-text-muted hover:text-text-primary no-underline mb-6"
+          >
+            ← All injuries
+          </Link>
+        )}
+
+        {!id && (
+          <>
+            <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Injuries</h1>
+            <p className="text-text-muted text-[15px] mb-10">
+              What hurts, how it’s tracking, and what you’re doing about it. An open injury steers
+              your split and flags movements as you log them.
+            </p>
+          </>
+        )}
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           {loading ? (
@@ -410,7 +587,14 @@ export default function Injuries() {
               </p>
             </Card>
           ) : injury ? (
-            <InjuryDetail injury={injury} save={save} remove={remove} checkin={checkin} />
+            <InjuryDetail
+              injury={injury}
+              save={save}
+              remove={remove}
+              checkin={checkin}
+              logRehab={logRehab}
+              unlogRehab={unlogRehab}
+            />
           ) : (
             <InjuryList injuries={injuries} onNew={() => setCreating(true)} />
           )}

@@ -14,13 +14,13 @@ import { activeBlock } from './blocks'
 import { muscleForExercise } from './dashboard'
 import { exerciseIdForName } from './exerciseLibrary'
 import { layoffContext, reasonLabel } from './dayLog'
-import { openInjuries, injuryRisk, injuryWeight, riskTier, injuryTitle, daysSinceCheckin } from './injuries'
+import { openInjuries, injuryRisk, injuryWeight, riskTier, injuryTitle, daysSinceCheckin, daysSinceRehab } from './injuries'
 import {
   SFR_RANK, ADVISOR_MIN_SESSIONS, ADVISOR_BLOCK_SLACK,
   ADVISOR_UNDERRECOVERED_MIN, ADVISOR_UNDERRECOVERED_WINDOW,
   ADVISOR_REGRESSION_STREAK, ADVISOR_REGRESSION_EPS,
   ADVISOR_LAYOFF_MIN_DAYS, ADVISOR_LAYOFF_RETURN_WINDOW_DAYS, ADVISOR_MAX_RECS,
-  ADVISOR_INJURY_MIN_EXERCISES, ADVISOR_INJURY_STALE_DAYS,
+  ADVISOR_INJURY_MIN_EXERCISES, ADVISOR_INJURY_STALE_DAYS, ADVISOR_REHAB_STALE_DAYS,
 } from './engineConfig'
 
 const DAY = 86400000
@@ -210,6 +210,22 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], injuri
         detail:
           `${loading.slice(0, 3).map((e) => e.name).join(', ')} all load it hard, and you logged ${loading.length === 1 ? 'it' : 'them'} this week. ` +
           `Swap the worst one for something that doesn’t, or mark it as fine on the injury if it genuinely doesn’t bother you.`,
+      })
+      continue
+    }
+
+    // Rehab that started and then stopped. Deliberately only for someone who
+    // logged some: telling a person who never started that they've lapsed is
+    // inventing a commitment they never made.
+    const rehabGap = daysSinceRehab(injury)
+    if (rehabGap != null && rehabGap >= ADVISOR_REHAB_STALE_DAYS) {
+      recs.push({
+        id: `injury-rehab-${injury.id}`,
+        severity: 'amber',
+        title: `No rehab logged for your ${title.toLowerCase()} in ${rehabGap} days`,
+        detail:
+          `You were logging it, then stopped ${rehabGap} days ago. Whatever you were doing was the ` +
+          `part that changes the outcome — the pain chart only reports on it.`,
       })
       continue
     }
