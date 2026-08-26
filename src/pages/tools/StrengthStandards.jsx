@@ -147,15 +147,15 @@ export default function StrengthStandards() {
             <div className="grid grid-cols-3 gap-4 items-end">
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Bodyweight ({unit === 'metric' ? 'kg' : 'lbs'})</label>
-                <input type="number" min={inputBounds.bodyweight[unit].min} max={inputBounds.bodyweight[unit].max} value={bodyweight} onChange={e => setBodyweight(e.target.value)} placeholder={unit === 'metric' ? '80' : '176'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.bodyweight[unit].min} max={inputBounds.bodyweight[unit].max} value={bodyweight} onChange={e => setBodyweight(e.target.value)} placeholder={unit === 'metric' ? '80' : '176'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Weight lifted ({unit === 'metric' ? 'kg' : 'lbs'})</label>
-                <input type="number" min={inputBounds.lifted[unit].min} max={inputBounds.lifted[unit].max} value={lifted} onChange={e => setLifted(e.target.value)} placeholder={unit === 'metric' ? '100' : '225'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.lifted[unit].min} max={inputBounds.lifted[unit].max} value={lifted} onChange={e => setLifted(e.target.value)} placeholder={unit === 'metric' ? '100' : '225'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Reps</label>
-                <input type="number" min={inputBounds.reps.min} max={inputBounds.reps.max} value={reps} onChange={e => setReps(e.target.value)} placeholder="5" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.reps.min} max={inputBounds.reps.max} value={reps} onChange={e => setReps(e.target.value)} placeholder="5" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
             </div>
             <p className="text-[12px] text-text-light -mt-4">We estimate your 1-rep max from this set (Brzycki formula) before comparing it to the standards — see the <Link to="/tools/one-rep-max" className="text-text-primary no-underline hover:text-accent-hover">1RM calculator</Link> for why.</p>

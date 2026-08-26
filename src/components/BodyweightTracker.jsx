@@ -203,7 +203,7 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
                   onValueChange={setInput}
                   onKeyDown={(e) => { if (e.key === 'Enter') addEntry() }}
                   placeholder={`Today's weight (${unit})`}
-                  className="w-full bg-cream border border-border px-3 py-2 pr-10 text-[13px] text-text-primary outline-none focus:border-text-primary transition-colors"
+                  className="w-full bg-cream border border-border px-3 py-2 pr-10 text-[13px] text-text-primary outline-none focus:border-text-primary"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-light pointer-events-none">{unit}</span>
               </div>

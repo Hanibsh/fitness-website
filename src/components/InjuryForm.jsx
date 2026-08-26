@@ -137,7 +137,7 @@ export default function InjuryForm({ injury = null, onSave, onClose }) {
               value={started}
               max={dateInputValue(Date.now())}
               onChange={(e) => setStarted(e.target.value)}
-              className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+              className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
             />
           </div>
           <div>
@@ -149,7 +149,7 @@ export default function InjuryForm({ injury = null, onSave, onClose }) {
               maxLength={80}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. AC joint tweak"
-              className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+              className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
             />
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function InjuryForm({ injury = null, onSave, onClose }) {
           placeholder="What happened, how it feels, what makes it worse — anything worth remembering (optional)"
           rows={3}
           maxLength={600}
-          className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-none mb-4"
+          className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary resize-none mb-4"
         />
 
         <div className="flex gap-2">

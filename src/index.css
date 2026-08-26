@@ -87,7 +87,27 @@
    once. The theme is set on <html data-theme> before first paint (see
    index.html) and toggled by the navbar. The near-black tokens (text-primary,
    accent) become near-white, so black-on-cream elements invert to
-   cream-on-black and primary buttons read as light-on-dark. */
+   cream-on-black and primary buttons read as light-on-dark.
+
+   Nothing painted from these tokens may carry a colour TRANSITION. A colour
+   transition on a themed token does not survive the flip: the element keeps
+   the palette it had BEFORE the toggle, permanently, while everything around
+   it changes. Verified on the logger's set fields — after switching to light
+   they sat on the dark text-primary indefinitely, and neither a re-focus nor
+   five seconds of waiting brought them back; only a re-render did.
+
+   So every input, textarea and select in the app is written WITHOUT
+   `transition-colors`, and the focus border snaps instead of fading. That is
+   the whole cost: one 150ms fade on a 1px border. Narrowing the transition to
+   border-color would have fixed nothing, because the only transitioned state
+   these fields had was `focus:border-text-primary` — itself a themed token.
+   The same call was already made twice at the site: the rest widget's progress
+   bar (narrowed to `transition-[width]`) and the logger's done tick.
+
+   Suppressing transitions globally across the swap also works, and was
+   rejected: it leaves the trap in place on every element, requires every
+   writer of data-theme to route through it, and does not cover the rest
+   widget's variant, where a transition restarted every second never finishes. */
 :root[data-theme='dark'] {
   --color-cream: #15161a;
   --color-cream-dark: #1e2027;

@@ -201,7 +201,7 @@ export default function TDEECalculator() {
               {[['Age', age, setAge, '25', inputBounds.age.min, inputBounds.age.max], ['Weight', weight, setWeight, unit === 'metric' ? '80' : '176', inputBounds.weight[unit].min, inputBounds.weight[unit].max], ['Height', height, setHeight, unit === 'metric' ? '180' : '71', inputBounds.height[unit].min, inputBounds.height[unit].max]].map(([label, val, set, ph, min, max]) => (
                 <div key={label}>
                   <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">{label}{label !== 'Age' ? ` (${label === 'Weight' ? (unit === 'metric' ? 'kg' : 'lbs') : (unit === 'metric' ? 'cm' : 'in')})` : ''}</label>
-                  <input type="number" min={min} max={max} value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                  <input type="number" min={min} max={max} value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
                 </div>
               ))}
             </div>
@@ -209,11 +209,11 @@ export default function TDEECalculator() {
             <div className="grid grid-cols-2 gap-4 items-end">
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Workout (hrs/week)</label>
-                <input type="number" min={inputBounds.workoutHours.min} max={inputBounds.workoutHours.max} value={workoutHours} onChange={e => setWorkoutHours(e.target.value)} placeholder="4" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.workoutHours.min} max={inputBounds.workoutHours.max} value={workoutHours} onChange={e => setWorkoutHours(e.target.value)} placeholder="4" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Steps (per day)</label>
-                <input type="number" min={inputBounds.stepsPerDay.min} max={inputBounds.stepsPerDay.max} step={1000} value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="10000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.stepsPerDay.min} max={inputBounds.stepsPerDay.max} step={1000} value={stepsPerDay} onChange={e => setStepsPerDay(e.target.value)} placeholder="10000" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
             </div>
 

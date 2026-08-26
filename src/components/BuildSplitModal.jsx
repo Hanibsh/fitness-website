@@ -58,7 +58,7 @@ export default function BuildSplitModal({ sessions, onCreate, onClose }) {
           id="split-name"
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 60))}
-          className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] outline-none focus:border-text-primary transition-colors mb-5"
+          className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] outline-none focus:border-text-primary mb-5"
         />
 
         <div className="flex items-center gap-2 text-[12px] text-text-muted mb-3">

@@ -63,7 +63,7 @@ export default function AuthModal({ onClose }) {
   }
 
   const inputClass =
-    'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+    'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary'
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-sm">

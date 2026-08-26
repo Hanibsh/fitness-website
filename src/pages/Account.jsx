@@ -141,7 +141,7 @@ export default function Account() {
   )
 
   const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
-  const inputCls = 'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  const inputCls = 'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary'
   const cardCls = 'bg-white border border-border p-6 sm:p-9 space-y-7'
   const sectionHeadCls = 'font-heading text-xl font-medium text-text-primary mb-4'
 

@@ -43,7 +43,7 @@ export default function NicknameModal({ current = '', onSave, onClose }) {
           onKeyDown={(e) => { if (e.key === 'Enter' && !saving) save() }}
           placeholder="e.g. Leo"
           aria-label="Nickname"
-          className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[14px] outline-none focus:border-text-primary transition-colors"
+          className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[14px] outline-none focus:border-text-primary"
         />
         <div className="flex justify-between items-center mt-1.5 min-h-[16px]">
           {error ? <span className="text-[12px] text-red-600">{error}</span> : <span />}

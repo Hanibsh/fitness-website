@@ -49,7 +49,7 @@ export default function BlockModal({ block, onSave, onDelete, onClose }) {
   }
 
   const canSave = focus.size > 0
-  const dateInput = 'bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  const dateInput = 'bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary'
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-md">

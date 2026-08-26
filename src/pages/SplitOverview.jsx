@@ -61,7 +61,7 @@ export default function SplitOverview() {
           <input
             value={program.name}
             onChange={(e) => update((p) => setProgramName(p, e.target.value))}
-            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary"
           />
           <p className="text-[12px] text-text-muted mt-3">
             {trainingDays} training day{trainingDays !== 1 ? 's' : ''}

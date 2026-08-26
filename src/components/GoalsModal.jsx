@@ -37,7 +37,7 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
   // input ballooned to fill the row while the exercise picker got squeezed to
   // almost nothing.)
   const inputBase =
-    'min-w-0 bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+    'min-w-0 bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary'
   const METRICS = [
     { id: 'weight', label: 'Weight', unitLabel: (u) => u },
     { id: 'e1rm', label: 'Est. 1RM', unitLabel: (u) => u },

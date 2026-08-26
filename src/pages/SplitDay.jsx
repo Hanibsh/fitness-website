@@ -149,7 +149,7 @@ export default function SplitDay() {
             value={day.name}
             onChange={(e) => update((p) => setDayName(p, day.id, e.target.value))}
             aria-label="Day name"
-            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary"
           />
 
           {day.kind === 'rest' ? (
@@ -233,7 +233,7 @@ export default function SplitDay() {
                           value={ex.sets}
                           onValueChange={(v) => update((p) => setExerciseSets(p, day.id, ex.id, v))}
                           aria-label={`${ex.name} target sets`}
-                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -243,7 +243,7 @@ export default function SplitDay() {
                           value={ex.repRange?.low ?? ''}
                           onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'low', v))}
                           aria-label={`${ex.name} rep low`}
-                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                         <span className="text-text-light text-[12px]">–</span>
                         <NumberField
@@ -251,7 +251,7 @@ export default function SplitDay() {
                           value={ex.repRange?.high ?? ''}
                           onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'high', v))}
                           aria-label={`${ex.name} rep high`}
-                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                       </div>
                     </div>
@@ -340,7 +340,7 @@ export default function SplitDay() {
                         placeholder="Note — form cue, machine setting, anything worth remembering…"
                         aria-label={`Note for ${ex.name}`}
                         rows={2}
-                        className="w-full mt-2 bg-cream border border-border px-2 py-1.5 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
+                        className="w-full mt-2 bg-cream border border-border px-2 py-1.5 text-text-primary text-[12px] outline-none focus:border-text-primary resize-none"
                       />
                     )}
                     {swapOpenFor === ex.id && (

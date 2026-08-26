@@ -123,15 +123,15 @@ export default function MuscleGainPotential() {
             <div className="grid grid-cols-3 gap-4 items-end">
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Height ({unit === 'metric' ? 'cm' : 'in'})</label>
-                <input type="number" min={inputBounds.height[unit].min} max={inputBounds.height[unit].max} value={height} onChange={e => setHeight(e.target.value)} placeholder={unit === 'metric' ? '180' : '71'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.height[unit].min} max={inputBounds.height[unit].max} value={height} onChange={e => setHeight(e.target.value)} placeholder={unit === 'metric' ? '180' : '71'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Wrist ({unit === 'metric' ? 'cm' : 'in'})</label>
-                <input type="number" min={inputBounds.wrist[unit].min} max={inputBounds.wrist[unit].max} value={wrist} onChange={e => setWrist(e.target.value)} placeholder={unit === 'metric' ? '17' : '6.7'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.wrist[unit].min} max={inputBounds.wrist[unit].max} value={wrist} onChange={e => setWrist(e.target.value)} placeholder={unit === 'metric' ? '17' : '6.7'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Ankle ({unit === 'metric' ? 'cm' : 'in'})</label>
-                <input type="number" min={inputBounds.ankle[unit].min} max={inputBounds.ankle[unit].max} value={ankle} onChange={e => setAnkle(e.target.value)} placeholder={unit === 'metric' ? '22' : '8.7'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <input type="number" min={inputBounds.ankle[unit].min} max={inputBounds.ankle[unit].max} value={ankle} onChange={e => setAnkle(e.target.value)} placeholder={unit === 'metric' ? '22' : '8.7'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
               </div>
             </div>
             <p className="text-[12px] text-text-light -mt-4">Measure your wrist just past the bony bump (styloid process), and your ankle at its narrowest point — see below for details. Small measurement errors meaningfully change the result.</p>
@@ -162,7 +162,7 @@ export default function MuscleGainPotential() {
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Years of consistent training</label>
-              <input type="number" min={inputBounds.years.min} max={inputBounds.years.max} value={years} onChange={e => setYears(e.target.value)} placeholder="2" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+              <input type="number" min={inputBounds.years.min} max={inputBounds.years.max} value={years} onChange={e => setYears(e.target.value)} placeholder="2" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary" />
             </div>
 
             {error && <p className="text-[13px] text-red-600">{error}</p>}

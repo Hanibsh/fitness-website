@@ -2170,7 +2170,7 @@ export default function WorkoutTracker() {
               placeholder="Note — form cue, machine setting, anything worth remembering…"
               aria-label={`Note for ${ex.name}`}
               rows={2}
-              className="w-full mb-3 bg-white border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
+              className="w-full mb-3 bg-white border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary resize-none"
             />
           )}
           {substituteFor === ex.id && (
@@ -2234,14 +2234,14 @@ export default function WorkoutTracker() {
                     onValueChange={(v) => updateSet(ex.id, set.id, 'duration', v)}
                     {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'duration')} aria-label={`Entry ${i + 1} duration in minutes`}
-                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                   />
                   <NumberField
                     value={set.distance ?? ''}
                     onValueChange={(v) => updateSet(ex.id, set.id, 'distance', v)}
                     {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'distance')} aria-label={`Entry ${i + 1} distance in ${distUnit}`}
-                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                    className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                   />
                   {doneTick(set, i)}
                   <button
@@ -2293,7 +2293,7 @@ export default function WorkoutTracker() {
                       value={ex.repRange?.low ?? ''}
                       onValueChange={(v) => setRepRange(ex.id, 'low', v)}
                       aria-label="Target rep range low"
-                      className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                      className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary"
                     />
                     <span className="text-text-light text-[12px]">–</span>
                     <NumberField
@@ -2301,7 +2301,7 @@ export default function WorkoutTracker() {
                       value={ex.repRange?.high ?? ''}
                       onValueChange={(v) => setRepRange(ex.id, 'high', v)}
                       aria-label="Target rep range high"
-                      className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                      className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary"
                     />
                     <span className="text-[11px] text-text-light">reps</span>
                     <button
@@ -2351,7 +2351,7 @@ export default function WorkoutTracker() {
                       onValueChange={setSessionBodyweight}
                       placeholder="—"
                       aria-label="Session bodyweight"
-                      className="w-16 bg-white border border-border px-2 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                      className="w-16 bg-white border border-border px-2 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary"
                     />
                     <span className="text-[11px] text-text-light">{unit} · counted as load</span>
                   </div>
@@ -2384,7 +2384,7 @@ export default function WorkoutTracker() {
                         {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'added', null, '0')}
                         aria-label={`Set ${i + 1} added weight in ${unit}`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                       />
                       <NumberField
                         decimal={false}
@@ -2393,7 +2393,7 @@ export default function WorkoutTracker() {
                         {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'reps')}
                         aria-label={`Set ${i + 1} reps`}
-                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                        className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                       />
                       {set.type === 'warmup' ? (
                         <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
@@ -2405,7 +2405,7 @@ export default function WorkoutTracker() {
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'rir')}
                           aria-label={`Set ${i + 1} reps in reserve`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                       )}
                       {doneTick(set, i)}
@@ -2493,7 +2493,7 @@ export default function WorkoutTracker() {
                               onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'weight', v)}
                               {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                             />
                             <NumberField
                               decimal={false}
@@ -2501,7 +2501,7 @@ export default function WorkoutTracker() {
                               onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'reps', v)}
                               {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'reps', side)} aria-label={`Set ${i + 1} ${side} reps`}
-                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                              className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                             />
                             {set.type === 'warmup' ? (
                               <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
@@ -2512,7 +2512,7 @@ export default function WorkoutTracker() {
                                 onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'rir', v)}
                                 {...hintKeyProps(ex.id, set.id, side)}
                                 placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
-                                className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                                className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                               />
                             )}
                           </div>
@@ -2533,7 +2533,7 @@ export default function WorkoutTracker() {
                           onValueChange={(v) => updateSet(ex.id, set.id, 'weight', v)}
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'weight')} aria-label={`Set ${i + 1} weight in ${unit}`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                         <NumberField
                           decimal={false}
@@ -2541,7 +2541,7 @@ export default function WorkoutTracker() {
                           onValueChange={(v) => updateSet(ex.id, set.id, 'reps', v)}
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'reps')} aria-label={`Set ${i + 1} reps`}
-                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                         />
                         {set.type === 'warmup' ? (
                           <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
@@ -2552,7 +2552,7 @@ export default function WorkoutTracker() {
                             onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
                             {...hintKeyProps(ex.id, set.id)}
                             placeholder={hintFor(set, 'rir')} aria-label={`Set ${i + 1} reps in reserve`}
-                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                            className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary"
                           />
                         )}
                         {doneTick(set, i)}
@@ -2755,7 +2755,7 @@ export default function WorkoutTracker() {
                     max={toInputDate(Date.now())}
                     onChange={(e) => changeDate(e.target.value)}
                     onBlur={() => setEditingDate(false)}
-                    className="bg-cream border border-border px-2 py-1 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+                    className="bg-cream border border-border px-2 py-1 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary"
                   />
                 ) : (
                   <button
@@ -3179,7 +3179,7 @@ export default function WorkoutTracker() {
                                     max={toInputDate(Date.now())}
                                     onChange={(e) => changeSessionDate(session, e.target.value)}
                                     onBlur={() => setEditingSessionDate(null)}
-                                    className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                                    className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary"
                                   />
                                 ) : (
                                   <button
@@ -3201,7 +3201,7 @@ export default function WorkoutTracker() {
                                       aria-label="Session start time"
                                       value={editingSessionTime.start}
                                       onChange={(e) => setEditingSessionTime((p) => ({ ...p, start: e.target.value }))}
-                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary"
                                     />
                                     <span className="text-[12px] text-text-light">–</span>
                                     <input
@@ -3209,7 +3209,7 @@ export default function WorkoutTracker() {
                                       aria-label="Session end time"
                                       value={editingSessionTime.end}
                                       onChange={(e) => setEditingSessionTime((p) => ({ ...p, end: e.target.value }))}
-                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
+                                      className="bg-cream border border-border px-2 py-1 text-text-primary text-[12px] outline-none focus:border-text-primary"
                                     />
                                     <button
                                       onClick={() => changeSessionTime(session, editingSessionTime)}
@@ -3297,7 +3297,7 @@ export default function WorkoutTracker() {
                       value={guestShare.bodyweight}
                       onValueChange={(v) => updateGuestShare({ bodyweight: v })}
                       placeholder={unit === 'kg' ? '80' : '176'}
-                      className="w-full max-w-xs bg-cream border border-border px-4 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                      className="w-full max-w-xs bg-cream border border-border px-4 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary"
                     />
                   </div>
                   <p className="text-[11px] text-text-light leading-relaxed">
@@ -3442,7 +3442,7 @@ export default function WorkoutTracker() {
               onChange={(e) => setInjuryNote(e.target.value)}
               placeholder="What happened, which area, how it feels — anything worth remembering (optional)"
               rows={3}
-              className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-none mb-3"
+              className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary resize-none mb-3"
             />
 
             <button

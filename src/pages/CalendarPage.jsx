@@ -342,7 +342,7 @@ export default function CalendarPage() {
                       onChange={(e) => setNoteDraft(e.target.value)}
                       placeholder="Note (optional) — what happened, how you're feeling, anything worth remembering…"
                       rows={2}
-                      className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none mb-2.5"
+                      className="w-full bg-cream border border-border px-2.5 py-2 text-text-primary text-[12px] outline-none focus:border-text-primary resize-none mb-2.5"
                     />
                   )}
                   <div className="flex gap-1.5">
