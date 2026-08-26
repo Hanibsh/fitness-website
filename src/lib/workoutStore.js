@@ -420,6 +420,32 @@ export function saveUnit(unit) {
   write(UNIT_KEY, unit)
 }
 
+// ---- Cached account nickname ----------------------------------------------
+// The nickname itself lives in the account (profiles.display_name), but the
+// dashboard greets you by it on the very first frame — long before a network
+// round trip could answer. So the last known value is kept here, keyed by user
+// id because a shared device can hold two accounts, and the auth context seeds
+// from it and reconciles once the profile actually arrives. Without the cache a
+// slow, offline, or failed profile fetch silently downgrades the greeting to
+// the email name, which reads as the app having forgotten your name.
+const NICKNAME_KEY = 'leon_profile_name'
+
+export function getCachedNickname(userId) {
+  if (!userId) return ''
+  const map = read(NICKNAME_KEY, null)
+  const value = map && typeof map === 'object' ? map[userId] : null
+  return typeof value === 'string' ? value : ''
+}
+
+export function saveCachedNickname(userId, nickname) {
+  if (!userId) return
+  const stored = read(NICKNAME_KEY, null)
+  const next = stored && typeof stored === 'object' ? { ...stored } : {}
+  if (nickname) next[userId] = nickname
+  else delete next[userId] // cleared on purpose — don't resurrect it next open
+  write(NICKNAME_KEY, next)
+}
+
 // ---- Rest timer (preference + live anchor) ---------------------------------
 // Device-local, like the unit picker and the theme: whether you time your rests
 // is a property of how you train, not of your account, and plenty of people

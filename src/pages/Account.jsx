@@ -22,6 +22,12 @@ export default function Account() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  // Whether the profile row failed to load. Saving is blocked while it's true:
+  // this form posts every field at once, so saving from a form that fell back to
+  // blank defaults would overwrite the real row with nulls — silently wiping the
+  // nickname, sex, bodyweight and training answers.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   // About you
   const [nickname, setNickname] = useState('')
@@ -57,7 +63,9 @@ export default function Account() {
       if (!user) { setLoading(false); return }
       try {
         const p = await fetchProfile(user.id)
-        if (!cancelled && p) {
+        if (cancelled) return
+        setLoadFailed(false)
+        if (p) {
           setNickname(p.display_name || '')
           setSex(p.sex || '')
           setBirthYear(p.birth_year != null ? String(p.birth_year) : '')
@@ -70,20 +78,27 @@ export default function Account() {
           setShareData(!!p.share_data)
           setCoachingStatus(p.coaching_status || 'none')
         }
-      } catch {
-        // ignore — keep defaults
+      } catch (e) {
+        // Keep the defaults on screen, but remember that they're placeholders
+        // rather than the account's real answers (see `loadFailed`).
+        if (!cancelled) setLoadFailed(true)
+        console.warn('Profile load failed:', e?.message || e)
       }
       if (!cancelled) setLoading(false)
     }
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [user, reloadKey])
 
   function edited() { if (saved) setSaved(false) }
 
   async function save() {
     setError('')
     setSaved(false)
+    if (loadFailed) {
+      setError("Your profile couldn't be loaded, so saving is off — otherwise this would overwrite it with blanks. Try loading it again.")
+      return
+    }
     const nick = validateNickname(nickname)
     if (!nick.ok) { setError(nick.error); return }
     if (birthYear !== '') {
@@ -324,12 +339,28 @@ export default function Account() {
                 </section>
               </div>
 
+              {loadFailed && (
+                <div className="mt-8 border border-border bg-white p-4">
+                  <p className="text-[13px] text-text-primary font-medium">We couldn't load your profile.</p>
+                  <p className="text-[13px] text-text-muted mt-1 leading-relaxed">
+                    The fields above are showing blanks, not your saved answers — so saving is turned off until we can read
+                    your profile again. Nothing has been lost.
+                  </p>
+                  <button
+                    onClick={() => { setLoading(true); setReloadKey((k) => k + 1) }}
+                    className="mt-3 text-[13px] text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+
               {error && <p className="text-[13px] text-red-600 mt-6">{error}</p>}
 
               <div className="flex items-center gap-3 mt-8">
                 <button
                   onClick={save}
-                  disabled={saving}
+                  disabled={saving || loadFailed}
                   className="inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium px-7 py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saved ? <Check className="w-4 h-4" /> : null}
