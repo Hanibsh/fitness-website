@@ -144,6 +144,15 @@ export function setHasWork(set, kind) {
   return Number(set.reps) > 0
 }
 
+// The same question asked of ONE limb. `setHasWork` is asked of the whole set,
+// which is the right question for "is this row real work" and the wrong one for
+// "did something just get done": a unilateral set is two efforts with a rest
+// between them, and it counts as having work from the moment the first arm is
+// written down. The rest clock needs the finer grain — see restStamp.
+export function sideHasWork(set, side) {
+  return Number(set?.[side]?.reps) > 0
+}
+
 // Two questions that used to be one, and the difference is warm-ups.
 //
 // A set is STAMPED once it holds real work and carries the moment that work

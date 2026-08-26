@@ -46,7 +46,7 @@ import {
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, isStampedSet } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -70,6 +70,7 @@ import LogTabs from '../components/LogTabs'
 import QuickCalculator from '../components/QuickCalculator'
 import RestTimer from '../components/RestTimer'
 import HintBar from '../components/HintBar'
+import NumberField from '../components/NumberField'
 import SessionSummary from '../components/SessionSummary'
 import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
@@ -177,24 +178,40 @@ function isFutureDay(ts) {
 // marked `stampAuto` and stay open to correction however long they've sat there.
 const STAMP_REFINE_MS = 3 * 60 * 1000
 
-function restStamp(set, kind) {
-  if (!setHasWork(set, kind)) return null
-  const now = Date.now()
-  if (!set.completedAt || set.stampAuto) return { completedAt: now, stampAuto: undefined }
-  return now - set.completedAt <= STAMP_REFINE_MS ? { completedAt: now } : null
+// Nor does it apply to a limb you've only now filled in. `setHasWork` is asked
+// of the SET, and a unilateral set counts as real from the moment its first arm
+// is written down — so the second arm arrived at a row that already "had work"
+// and got dismissed as a correction to it. But the two arms of a single-limb set
+// are two efforts with a rest in between, by definition: the second one lands
+// outside the window nearly every time, and it is the opposite of a typo fix.
+// It's the moment the set actually finished, which is also the honest stamp for
+// the recorded rest, not just for the clock on screen.
+function gainedWork(prev, next, kind) {
+  if (kind === 'cardio' || !next.left) return false
+  return ['left', 'right'].some((side) => sideHasWork(next, side) && !sideHasWork(prev, side))
 }
 
-// A set with an edit applied, stamped if that edit finished it off.
-function withRestStamp(next, kind) {
-  return { ...next, ...restStamp(next, kind) }
+function restStamp(prev, next, kind) {
+  if (!setHasWork(next, kind)) return null
+  const now = Date.now()
+  if (!next.completedAt || next.stampAuto) return { completedAt: now, stampAuto: undefined }
+  if (gainedWork(prev, next, kind)) return { completedAt: now }
+  return now - next.completedAt <= STAMP_REFINE_MS ? { completedAt: now } : null
+}
+
+// A set with an edit applied, stamped if that edit finished it off. `prev` is
+// the same set before the edit — the stamp turns on what CHANGED, not only on
+// where the row ended up.
+function withRestStamp(prev, next, kind) {
+  return { ...next, ...restStamp(prev, next, kind) }
 }
 
 // The same, for a fill that covers sets you may not have done yet. The stamp
 // still lands — filling an exercise in after the fact is a real way to log it,
 // and the session would otherwise have no timestamps at all — it's just held
 // provisionally, so the first thing you do to that row afterwards wins.
-function withAutoStamp(next, kind) {
-  const stamp = restStamp(next, kind)
+function withAutoStamp(prev, next, kind) {
+  const stamp = restStamp(prev, next, kind)
   return stamp ? { ...next, ...stamp, stampAuto: true } : { ...next }
 }
 
@@ -1086,7 +1103,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, [side]: { ...s[side], [field]: value } }, e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, { ...s, [side]: { ...s[side], [field]: value } }, e.kind) : s)) }
           : e
       ),
     }))
@@ -1258,7 +1275,7 @@ export default function WorkoutTracker() {
         ...d,
         exercises: d.exercises.map((e) =>
           e.id === exId
-            ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, added: value, weight: Math.max(0, bw + (Number(value) || 0)) }, e.kind) : s)) }
+            ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, { ...s, added: value, weight: Math.max(0, bw + (Number(value) || 0)) }, e.kind) : s)) }
             : e
         ),
       }
@@ -1277,7 +1294,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp({ ...s, [field]: value }, e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, { ...s, [field]: value }, e.kind) : s)) }
           : e
       ),
     }))
@@ -1303,7 +1320,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => { const filled = promoteHint(s); return filled === s ? s : withAutoStamp(filled, e.kind) }) }
+          ? { ...e, sets: e.sets.map((s) => { const filled = promoteHint(s); return filled === s ? s : withAutoStamp(s, filled, e.kind) }) }
           : e
       ),
     }))
@@ -1342,7 +1359,7 @@ export default function WorkoutTracker() {
               sets: e.sets.map((s) => {
                 if (s.id !== setId) return s
                 const filled = promoteHint(s, side)
-                return filled === s ? s : withRestStamp(filled, e.kind)
+                return filled === s ? s : withRestStamp(s, filled, e.kind)
               }),
             }
           : e
@@ -2212,18 +2229,16 @@ export default function WorkoutTracker() {
               {ex.sets.map((set, i) => (
                 <div key={set.id} className={`${CARDIO_SET_GRID} mb-2`}>
                   <span className="text-center text-[13px] text-text-muted">{i + 1}</span>
-                  <input
-                    type="number" inputMode="decimal" min="0"
+                  <NumberField
                     value={set.duration ?? ''}
-                    onChange={(e) => updateSet(ex.id, set.id, 'duration', e.target.value)}
+                    onValueChange={(v) => updateSet(ex.id, set.id, 'duration', v)}
                     {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'duration')} aria-label={`Entry ${i + 1} duration in minutes`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                   />
-                  <input
-                    type="number" inputMode="decimal" min="0"
+                  <NumberField
                     value={set.distance ?? ''}
-                    onChange={(e) => updateSet(ex.id, set.id, 'distance', e.target.value)}
+                    onValueChange={(v) => updateSet(ex.id, set.id, 'distance', v)}
                     {...hintKeyProps(ex.id, set.id)}
                     placeholder={hintFor(set, 'distance')} aria-label={`Entry ${i + 1} distance in ${distUnit}`}
                     className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2273,18 +2288,18 @@ export default function WorkoutTracker() {
                 {ex.repRange ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] uppercase tracking-wider text-text-light">Target</span>
-                    <input
-                      type="number" inputMode="numeric" min="1" max="50"
+                    <NumberField
+                      decimal={false}
                       value={ex.repRange?.low ?? ''}
-                      onChange={(e) => setRepRange(ex.id, 'low', e.target.value)}
+                      onValueChange={(v) => setRepRange(ex.id, 'low', v)}
                       aria-label="Target rep range low"
                       className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
                     />
                     <span className="text-text-light text-[12px]">–</span>
-                    <input
-                      type="number" inputMode="numeric" min="1" max="50"
+                    <NumberField
+                      decimal={false}
                       value={ex.repRange?.high ?? ''}
-                      onChange={(e) => setRepRange(ex.id, 'high', e.target.value)}
+                      onValueChange={(v) => setRepRange(ex.id, 'high', v)}
                       aria-label="Target rep range high"
                       className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
                     />
@@ -2331,10 +2346,9 @@ export default function WorkoutTracker() {
                 <>
                   <div className="flex items-center gap-1.5 mb-3">
                     <span className="text-[10px] uppercase tracking-wider text-text-light">Bodyweight</span>
-                    <input
-                      type="number" inputMode="decimal" min="0"
+                    <NumberField
                       value={draft.bodyweight ?? ''}
-                      onChange={(e) => setSessionBodyweight(e.target.value)}
+                      onValueChange={setSessionBodyweight}
                       placeholder="—"
                       aria-label="Session bodyweight"
                       className="w-16 bg-white border border-border px-2 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
@@ -2363,19 +2377,19 @@ export default function WorkoutTracker() {
                       >
                         {setLabels[i]}
                       </button>
-                      <input
-                        type="number" inputMode="decimal"
+                      <NumberField
+                        negative
                         value={set.added ?? ''}
-                        onChange={(e) => updateAdded(ex.id, set.id, e.target.value)}
+                        onValueChange={(v) => updateAdded(ex.id, set.id, v)}
                         {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'added', null, '0')}
                         aria-label={`Set ${i + 1} added weight in ${unit}`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                       />
-                      <input
-                        type="number" inputMode="numeric" min="0"
+                      <NumberField
+                        decimal={false}
                         value={set.reps}
-                        onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                        onValueChange={(v) => updateSet(ex.id, set.id, 'reps', v)}
                         {...hintKeyProps(ex.id, set.id)}
                         placeholder={hintFor(set, 'reps')}
                         aria-label={`Set ${i + 1} reps`}
@@ -2384,10 +2398,10 @@ export default function WorkoutTracker() {
                       {set.type === 'warmup' ? (
                         <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                       ) : (
-                        <input
-                          type="number" inputMode="numeric" min="0" max="10"
+                        <NumberField
+                          decimal={false}
                           value={set.rir ?? ''}
-                          onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                          onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'rir')}
                           aria-label={`Set ${i + 1} reps in reserve`}
@@ -2474,18 +2488,17 @@ export default function WorkoutTracker() {
                         {['left', 'right'].map((side) => (
                           <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
                             <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
-                            <input
-                              type="number" inputMode="decimal" min="0"
+                            <NumberField
                               value={set[side]?.weight ?? ''}
-                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'weight', e.target.value)}
+                              onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'weight', v)}
                               {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
-                            <input
-                              type="number" inputMode="numeric" min="0"
+                            <NumberField
+                              decimal={false}
                               value={set[side]?.reps ?? ''}
-                              onChange={(e) => updateLimbSet(ex.id, set.id, side, 'reps', e.target.value)}
+                              onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'reps', v)}
                               {...hintKeyProps(ex.id, set.id, side)}
                               placeholder={hintFor(set, 'reps', side)} aria-label={`Set ${i + 1} ${side} reps`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2493,10 +2506,10 @@ export default function WorkoutTracker() {
                             {set.type === 'warmup' ? (
                               <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                             ) : (
-                              <input
-                                type="number" inputMode="numeric" min="0" max="10"
+                              <NumberField
+                                decimal={false}
                                 value={set[side]?.rir ?? ''}
-                                onChange={(e) => updateLimbSet(ex.id, set.id, side, 'rir', e.target.value)}
+                                onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'rir', v)}
                                 {...hintKeyProps(ex.id, set.id, side)}
                                 placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2515,18 +2528,17 @@ export default function WorkoutTracker() {
                         >
                           {setLabels[i]}
                         </button>
-                        <input
-                          type="number" inputMode="decimal" min="0"
+                        <NumberField
                           value={set.weight}
-                          onChange={(e) => updateSet(ex.id, set.id, 'weight', e.target.value)}
+                          onValueChange={(v) => updateSet(ex.id, set.id, 'weight', v)}
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'weight')} aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
-                        <input
-                          type="number" inputMode="numeric" min="0"
+                        <NumberField
+                          decimal={false}
                           value={set.reps}
-                          onChange={(e) => updateSet(ex.id, set.id, 'reps', e.target.value)}
+                          onValueChange={(v) => updateSet(ex.id, set.id, 'reps', v)}
                           {...hintKeyProps(ex.id, set.id)}
                           placeholder={hintFor(set, 'reps')} aria-label={`Set ${i + 1} reps`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2534,10 +2546,10 @@ export default function WorkoutTracker() {
                         {set.type === 'warmup' ? (
                           <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                         ) : (
-                          <input
-                            type="number" inputMode="numeric" min="0" max="10"
+                          <NumberField
+                            decimal={false}
                             value={set.rir ?? ''}
-                            onChange={(e) => updateSet(ex.id, set.id, 'rir', e.target.value)}
+                            onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
                             {...hintKeyProps(ex.id, set.id)}
                             placeholder={hintFor(set, 'rir')} aria-label={`Set ${i + 1} reps in reserve`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -3281,15 +3293,9 @@ export default function WorkoutTracker() {
                   </div>
                   <div>
                     <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Bodyweight ({unit})</label>
-                    <input
-                      type="number"
-                      min="0"
+                    <NumberField
                       value={guestShare.bodyweight}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                        updateGuestShare({ bodyweight: v })
-                      }}
+                      onValueChange={(v) => updateGuestShare({ bodyweight: v })}
                       placeholder={unit === 'kg' ? '80' : '176'}
                       className="w-full max-w-xs bg-cream border border-border px-4 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                     />

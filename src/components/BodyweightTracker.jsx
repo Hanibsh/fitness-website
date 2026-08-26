@@ -8,6 +8,7 @@ import { BODYWEIGHT_RANGES, bodyweightSeries, convertWeight } from '../lib/worko
 import ProgressChart from './ProgressChart'
 import Modal from './Modal'
 import AuthModal from './AuthModal'
+import NumberField from './NumberField'
 
 // A bathroom scale — the kind you step on. Hand-rolled because lucide has no
 // such icon: its `Scale` is a justice/balance scale and `Weight` is a kettlebell,
@@ -197,17 +198,9 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
             {/* add today's weight */}
             <div className="flex gap-2 mb-5">
               <div className="relative flex-1 max-w-[220px]">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  inputMode="decimal"
+                <NumberField
                   value={input}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                    setInput(v)
-                  }}
+                  onValueChange={setInput}
                   onKeyDown={(e) => { if (e.key === 'Enter') addEntry() }}
                   placeholder={`Today's weight (${unit})`}
                   className="w-full bg-cream border border-border px-3 py-2 pr-10 text-[13px] text-text-primary outline-none focus:border-text-primary transition-colors"

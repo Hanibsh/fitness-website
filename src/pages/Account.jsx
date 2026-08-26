@@ -10,6 +10,7 @@ import {
 } from '../lib/profileFields'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
+import NumberField from '../components/NumberField'
 
 const NOW_YEAR = new Date().getFullYear()
 const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
@@ -229,12 +230,10 @@ export default function Account() {
 
                     <div>
                       <label className={labelCls}>Birth year</label>
-                      <input
-                        type="number"
-                        min={MIN_BIRTH_YEAR}
-                        max={MAX_BIRTH_YEAR}
+                      <NumberField
+                        decimal={false}
                         value={birthYear}
-                        onChange={(e) => { setBirthYear(e.target.value); edited() }}
+                        onValueChange={(v) => { setBirthYear(v); edited() }}
                         placeholder="1998"
                         className={`${inputCls} max-w-[140px]`}
                       />
@@ -251,30 +250,18 @@ export default function Account() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Bodyweight ({unit})</label>
-                        <input
-                          type="number"
-                          min="0"
+                        <NumberField
                           value={bodyweight}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                            setBodyweight(v); edited()
-                          }}
+                          onValueChange={(v) => { setBodyweight(v); edited() }}
                           placeholder={unit === 'kg' ? '80' : '176'}
                           className={inputCls}
                         />
                       </div>
                       <div>
                         <label className={labelCls}>Height ({(HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg).label})</label>
-                        <input
-                          type="number"
-                          min="0"
+                        <NumberField
                           value={height}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            if (v !== '' && (!Number.isFinite(Number(v)) || Number(v) < 0)) return
-                            setHeight(v); edited()
-                          }}
+                          onValueChange={(v) => { setHeight(v); edited() }}
                           placeholder={unit === 'kg' ? '180' : '71'}
                           className={inputCls}
                         />

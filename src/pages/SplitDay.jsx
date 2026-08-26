@@ -10,6 +10,7 @@ import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workout
 import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats, bankIdFor } from '../lib/planStats'
+import NumberField from '../components/NumberField'
 import {
   canChooseLaterality,
   setDayName,
@@ -227,28 +228,28 @@ export default function SplitDay() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] uppercase tracking-wider text-text-light">Sets</span>
-                        <input
-                          type="number" inputMode="numeric" min="1" max="20"
+                        <NumberField
+                          decimal={false}
                           value={ex.sets}
-                          onChange={(e) => update((p) => setExerciseSets(p, day.id, ex.id, e.target.value))}
+                          onValueChange={(v) => update((p) => setExerciseSets(p, day.id, ex.id, v))}
                           aria-label={`${ex.name} target sets`}
                           className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] uppercase tracking-wider text-text-light">Reps</span>
-                        <input
-                          type="number" inputMode="numeric" min="1" max="50"
+                        <NumberField
+                          decimal={false}
                           value={ex.repRange?.low ?? ''}
-                          onChange={(e) => update((p) => setExerciseRep(p, day.id, ex.id, 'low', e.target.value))}
+                          onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'low', v))}
                           aria-label={`${ex.name} rep low`}
                           className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                         <span className="text-text-light text-[12px]">–</span>
-                        <input
-                          type="number" inputMode="numeric" min="1" max="50"
+                        <NumberField
+                          decimal={false}
                           value={ex.repRange?.high ?? ''}
-                          onChange={(e) => update((p) => setExerciseRep(p, day.id, ex.id, 'high', e.target.value))}
+                          onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'high', v))}
                           aria-label={`${ex.name} rep high`}
                           className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />

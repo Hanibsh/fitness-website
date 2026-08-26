@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import Modal from './Modal'
 import { newGoalId } from '../lib/workoutStore'
+import NumberField from './NumberField'
 
 // Editor for the dashboard's goals: a monthly workout target plus any number of
 // per-exercise weight goals. Fully controlled locally; commits on Save.
@@ -50,12 +51,10 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
 
         <div className="mb-6">
           <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Monthly workout goal</label>
-          <input
-            type="number"
-            min="1"
-            max="60"
+          <NumberField
+            decimal={false}
             value={monthly}
-            onChange={(e) => setMonthly(e.target.value)}
+            onValueChange={setMonthly}
             className={`${inputBase} w-full max-w-[120px]`}
             aria-label="Monthly workout goal"
           />
@@ -114,11 +113,9 @@ export default function GoalsModal({ goals, exerciseNames, unit, onSave, onClose
                         <option key={m.id} value={m.id}>{m.label}</option>
                       ))}
                     </select>
-                    <input
-                      type="number"
-                      min="0"
+                    <NumberField
                       value={l.target}
-                      onChange={(e) => updateLift(l.id, { target: e.target.value })}
+                      onValueChange={(v) => updateLift(l.id, { target: v })}
                       placeholder={metric.unitLabel(unit)}
                       aria-label="Target value"
                       className={`${inputBase} w-24 shrink-0 ml-auto`}
