@@ -2064,12 +2064,21 @@ export default function WorkoutTracker() {
                 {group.label}
               </span>
             )}
-            <span className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</span>
-            {/* An open injury this movement loads. Here, on the row you're about
-                to put weight on, because that's the moment the warning is worth
-                anything — and it's also where you find out we were wrong, so it
-                links straight to where you can say so. */}
-            <InjuryBadge hit={injuryRisk.get(ex.exerciseId)} compact />
+            {/* Name and injury badge stack, they do NOT sit side by side.
+                This row is already nearly full on a phone — reorder arrows, the
+                superset chip, and five action icons — so a badge beside the name
+                leaves the name a few pixels and `break-words` renders "Smith
+                Machine Good Morning" one letter per line. Under it, the name
+                always gets the full width and the badge is still right where you
+                need it. Costs a line only when an injury is actually open. */}
+            <div className="min-w-0">
+              <span className="block text-[14px] font-medium text-text-primary break-words">{ex.name}</span>
+              {injuryRisk.get(ex.exerciseId) && (
+                <span className="block mt-1">
+                  <InjuryBadge hit={injuryRisk.get(ex.exerciseId)} compact />
+                </span>
+              )}
+            </div>
           </div>
           <div className="relative flex items-center gap-1">
             {ex.kind !== 'cardio' && supersetTargets.length > 0 && (
