@@ -180,6 +180,13 @@ export const STRETCH_SCORE = { none: 0, partial: 0.5, yes: 1 }
 export const PROFILE_SCORE = { shortened: 0, balanced: 0.35, lengthened: 1 }
 export const OVERLOAD_SCORE = { low: 0, moderate: 0.4, high: 0.75, 'very high': 1 }
 export const STABILITY_SCORE = { 'highly unstable': 0, unstable: 0.25, moderate: 0.6, stable: 0.85, 'very stable': 1 }
+// How little the movement asks of you technically. Distinct from
+// PENALTIES.skillOverreach below, which only fires ABOVE the user's cap: this
+// separates movements that are all within reach, where the harder one buys
+// nothing for its difficulty. Spaced rather than derived from SKILL_RANK so the
+// gap between tiers can be tuned without touching the ordering — most of the
+// database is "low" or "moderate", and that is the distinction that matters.
+export const SIMPLICITY_SCORE = { low: 1, moderate: 0.6, high: 0.25, 'very high': 0 }
 
 // Full-gym overlay. Loadability and stability carry more weight when someone
 // has racks, machines and cables: the point of the equipment is that you can
@@ -214,6 +221,14 @@ export const WEIGHTS = {
   profile: 0.6,
   overload: 0.8,
   stability: 0.5,
+  // Between two movements that train the same thing equally well, the one that
+  // is simpler to set up and execute wins. Deliberately small: it should break
+  // ties, not outrank a real difference in stimulus. Before this, skill was
+  // scored only when it EXCEEDED the user's cap, so a low-skill and a high-skill
+  // movement they could both do were indistinguishable — which is how a lever
+  // triceps extension (very stable, low skill) ended up behind a skull crusher
+  // that beat it on neither.
+  simplicity: 0.6,
   familiarity: 1.2, // they already train it — the hybrid rule, a nudge not a filter
   // How much of the REST of the day's outstanding volume this movement also
   // pays off. Without it the picker compares movements one muscle at a time and

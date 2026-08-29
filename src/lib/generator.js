@@ -45,7 +45,7 @@ import {
   EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
-  HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE,
+  HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
@@ -406,6 +406,7 @@ export function scoreExercise(db, ctx) {
   score += w.profile * (PROFILE_SCORE[db.resistanceProfile] ?? 0.35)
   score += w.overload * (OVERLOAD_SCORE[db.progressiveOverload] ?? 0.4)
   score += w.stability * (STABILITY_SCORE[db.stability] ?? 0.6)
+  score += (w.simplicity ?? 0) * (SIMPLICITY_SCORE[db.skill] ?? 0.6)
 
   // What else in the day this movement pays off. Only muscles that still owe
   // sets count — covering a muscle the day has already finished with is not a
