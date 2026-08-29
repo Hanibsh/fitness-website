@@ -236,6 +236,13 @@ export const PENALTIES = {
   recoveryCap: 2.4,
   sameFamily: 1.6, // another variant of this movement is already in the week
   sameSignature: 1.0, // a near-identical movement is already in the week
+  // A second movement down the SAME PATH in the same day — a second row after a
+  // pulldown, a second press after a bench. Soft on purpose, and much softer
+  // than the week-level penalties above: a back day genuinely wants two rows,
+  // and a hard block here would leave the day unable to spend its volume. This
+  // only has to lose ties, so a day reaches for a second angle before it
+  // reaches for the same one twice.
+  samePatternInDay: 1.2,
   repeatExercise: 2.2, // this exact movement is already in the week
   skillOverreach: 1.0, // one tier above the user's cap (two tiers is a hard filter)
   // Scaled by the WEIGHTED injury risk (injuries.js): raw risk × how much the
@@ -277,6 +284,11 @@ export const COMPOUND_LEAD_MIN_CONTRIBUTION = 0.75
 // it, swapping an overhead press offers bench presses: the database agrees a
 // bench press trains the front delts, and it does, but someone replacing their
 // shoulder press did not ask to stop pressing overhead.
+// How many movements the pattern picker offers before it stops. The big paths
+// hold 25-29 movements; a phone list that long is a wall, and past the first
+// dozen the scorer is separating near-identical grip variants anyway.
+export const PATTERN_OPTION_LIMIT = 12
+
 export const SWAP_MIN_CONTRIBUTION_RATIO = 0.9
 
 // The share of a day's systemic budget the generator aims to leave unspent.

@@ -16,7 +16,7 @@
 //     carry forward from your last session as suggestions, not from the plan.
 //   - notes: shared per movement, not per plan row (see workoutStore).
 
-import { createPlannedExercise, matchesPlanned, plannedRowFor } from './program'
+import { createPlannedExercise, matchesPlanned, plannedRowFor, isOpenSlot } from './program'
 import { newSupersetId, pruneSupersets, regroupSupersets, setHasWork } from './workoutStats'
 
 const DEFAULT_REP_RANGE = { low: 6, high: 10 }
@@ -182,7 +182,11 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false, d
     // it IS changed. Only reachable through plannedRowFor's link branch: a
     // fallback pairing matches BY identity, so it can't disagree about identity.
     const swapped = !matchesPlanned(ex, pe) || (ex.kind || 'strength') !== (pe.kind || 'strength')
-    if (swapped && !declined.has(pe.id)) {
+    // An OPEN slot asked you to choose a movement, and you did. That is the row
+    // working as designed, not a deviation from it — offering to write today's
+    // pick back into the plan would quietly close a slot the split deliberately
+    // left open, every single session.
+    if (swapped && !declined.has(pe.id) && !isOpenSlot(pe)) {
       changes.push({
         id: `swap:${pe.id}`,
         kind: 'swap',

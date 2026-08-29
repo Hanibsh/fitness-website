@@ -18,6 +18,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { resolveMuscleTerm, HOME_CATEGORIES } from './muscle-taxonomy.mjs'
+import { classifyPattern, driverMismatch, PATTERN_BY_ID, PATTERN_IDS } from '../data/movement-patterns.mjs'
 import { OVERRIDES } from '../data/exercise-overrides.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -86,7 +87,7 @@ function parseTermWeight(rawTerm, defaultWeight) {
 }
 
 // ---- report accumulator ----------------------------------------------------
-const findings = { BLOCKER: [], DECISION: [], WARNING: [], NOTICE: [], APPLIED: [] }
+const findings = { BLOCKER: [], DECISION: [], WARNING: [], NOTICE: [], APPLIED: [], PATTERN_INFERRED: [] }
 const add = (sev, exercise, msg) => findings[sev].push({ exercise, msg })
 
 const MACHINE_HINTS = /\b(machine|lever|smith|pec deck|leg press|leg curl|leg extension|lat pulldown|hack)\b/i
@@ -224,6 +225,25 @@ function main() {
       add('APPLIED', name, ov._reason || 'override applied')
     }
 
+    // ---- movement pattern (derived; an override can pin it) ----
+    // Runs post-override so a row whose muscles were corrected is classified
+    // from the corrected data, and so `pattern` can be pinned by hand for the
+    // rows the rules will never get right.
+    if (ex.pattern) {
+      if (!PATTERN_BY_ID.has(ex.pattern)) add('BLOCKER', name, `Override pins unknown pattern "${ex.pattern}".`)
+    } else {
+      const hit = classifyPattern(ex)
+      if (!hit.pattern) add('BLOCKER', name, `No movement pattern — ${hit.why}. Add a name rule in data/movement-patterns.mjs, or pin one in exercise-overrides.mjs.`)
+      ex.pattern = hit.pattern
+      if (hit.confidence === 'inferred') add('PATTERN_INFERRED', name, `→ \`${hit.pattern}\` (${hit.why})`)
+    }
+    // The pattern a row landed on should claim the muscle the row trains
+    // hardest. When it doesn't, one of the two is wrong — this is what caught
+    // incline push-ups being filed as incline presses when the database
+    // (correctly) has them on the LOWER chest.
+    const offAtom = ex.pattern ? driverMismatch(ex.pattern, ex.muscles) : null
+    if (offAtom) add('WARNING', name, `Pattern \`${ex.pattern}\` doesn't list "${offAtom}" as a driver, but that's this row's heaviest muscle — check one or the other.`)
+
     // ---- validate FINAL object (post-override) ----
     for (const k of Object.keys(rawByField)) {
       if (ex[k] === undefined) add('BLOCKER', name, `Invalid ${k} value "${(rawByField[k] || '').trim()}".`)
@@ -257,6 +277,31 @@ function writeOutputs(exercises) {
   const L = []
   L.push('# Exercise DB lint report', '')
   L.push(`Parsed **${exercises.length}** exercises. **${c.BLOCKER}** blockers · **${c.APPLIED}** fixes applied · **${c.DECISION}** decisions · **${c.WARNING}** warnings · **${c.NOTICE}** notices.`, '')
+
+  // ---- movement pattern census ------------------------------------------
+  //
+  // A pattern is a SUBSTITUTION POOL: it's what you get offered when a slot
+  // says "any vertical pull". So its size is the number that matters — a
+  // pattern with one member can't substitute for anything, and that is a gap
+  // in the database rather than a problem with the taxonomy. Called out here
+  // because nothing else in the app would ever show it.
+  const byPattern = new Map(PATTERN_IDS.map((id) => [id, []]))
+  for (const e of exercises) if (byPattern.has(e.pattern)) byPattern.get(e.pattern).push(e.name)
+  const thin = [...byPattern].filter(([, list]) => list.length < 3)
+  L.push('## 🔵 Movement patterns', '')
+  L.push(`${PATTERN_IDS.length} patterns. ${thin.length ? `**${thin.length}** have fewer than 3 movements — a thin substitution pool.` : 'Every pattern has at least 3 movements.'}`, '')
+  L.push('| Pattern | Movements | |', '| --- | ---: | --- |')
+  for (const id of PATTERN_IDS) {
+    const list = byPattern.get(id)
+    L.push(`| \`${id}\` | ${list.length} | ${list.length < 3 ? `⚠️ thin — ${list.join(', ') || '_none_'}` : ''} |`)
+  }
+  L.push('')
+  if (findings.PATTERN_INFERRED.length) {
+    L.push('### Placed by muscle profile, not by name', '')
+    L.push('_No name rule matched these, so they were placed by their heaviest muscle. Worth reading._', '')
+    for (const f of findings.PATTERN_INFERRED) L.push(`- **${f.exercise}** ${f.msg}`)
+    L.push('')
+  }
   const titles = {
     BLOCKER: '🔴 Blockers — data invalid until fixed',
     APPLIED: '🟢 Fixes applied (via data/exercise-overrides.mjs)',

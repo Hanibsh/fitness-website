@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History, Route } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -57,6 +57,7 @@ import { useLocalDay } from '../lib/useLocalDay'
 import Modal from '../components/Modal'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExercisePicker from '../components/ExercisePicker'
+import PatternPicker from '../components/PatternPicker'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import SessionNamePicker from '../components/SessionNamePicker'
 import { lateralityFor, usesBodyweight } from '../lib/movements'
@@ -910,6 +911,49 @@ export default function WorkoutTracker() {
       persistProgram(updated)
       return updated
     })
+  }
+
+  // An OPEN slot got its movement. This is not a substitution — the plan asked
+  // a question and this is the answer — so nothing is written back to the split
+  // and nothing is asked about it: the row was left open on purpose and stays
+  // open for next time (see the isOpenSlot guard in splitSync).
+  //
+  // The row is rebuilt rather than patched, because until now it had no
+  // laterality, no bodyweight flag and no sets at all; those all come from the
+  // movement you just picked. The slot, the plan link and the superset pairing
+  // ride across, and the set count the plan asked for is restored so a 3-set
+  // slot opens with 3 rows.
+  function resolveSlot(exId, name, category, exerciseId) {
+    const trimmed = name.trim().slice(0, 60)
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e) => {
+        if (e.id !== exId) return e
+        const lib = exerciseId ? getExercise(exerciseId) : null
+        const kind = category === 'Cardio' ? 'cardio' : 'strength'
+        const fresh = createExercise(trimmed, kind, {
+          laterality: lib ? lib.laterality : lateralityFor(trimmed),
+          repRange: e.repRange || undefined,
+          bodyweight: lib ? lib.bodyweight : usesBodyweight(trimmed),
+          bw: Number(d.bodyweight) || 0,
+          exerciseId: exerciseId || null,
+          note: getExerciseNote({ exerciseId, name: trimmed }),
+        })
+        const target = Math.max(1, Number(e.slot?.sets) || 1)
+        while (fresh.sets.length < target) {
+          const setOpts = fresh.bodyweight ? { bodyweight: true, bw: Number(d.bodyweight) || 0 } : { unilateral: fresh.unilateral }
+          fresh.sets.push(createSet(fresh.sets[fresh.sets.length - 1], setOpts))
+        }
+        return {
+          ...prefillFromHistory(fresh, Number(d.bodyweight) || 0, null),
+          id: e.id,
+          slot: e.slot,
+          plannedExerciseId: e.plannedExerciseId,
+          supersetId: e.supersetId,
+        }
+      }),
+    }))
+    setSubstituteFor(null)
   }
 
   // The picker chose a replacement. If the exercise sits in a row of the split
@@ -2028,6 +2072,9 @@ export default function WorkoutTracker() {
     const blockIdx = kindBlocks.findIndex((b) => b.some((e) => e.id === ex.id))
     const isFirstBlock = blockIdx <= 0
     const isLastBlock = blockIdx === kindBlocks.length - 1
+    // A row the split left open, still waiting for a movement. It carries a
+    // slot and no exercise, and until that changes there is nothing to log.
+    const unresolvedSlot = !!ex.slot && !ex.exerciseId
     return (
       <motion.div
         key={ex.id}
@@ -2072,7 +2119,10 @@ export default function WorkoutTracker() {
                 always gets the full width and the badge is still right where you
                 need it. Costs a line only when an injury is actually open. */}
             <div className="min-w-0">
-              <span className="block text-[14px] font-medium text-text-primary break-words">{ex.name}</span>
+              <span className="flex items-start gap-1 text-[14px] font-medium text-text-primary break-words">
+                {unresolvedSlot && <Route className="w-3.5 h-3.5 shrink-0 mt-0.5 text-text-light" />}
+                <span className="break-words">{ex.name}</span>
+              </span>
               {injuryRisk.get(ex.exerciseId) && (
                 <span className="block mt-1">
                   <InjuryBadge hit={injuryRisk.get(ex.exerciseId)} compact />
@@ -2170,6 +2220,29 @@ export default function WorkoutTracker() {
           </div>
         </div>
 
+        {/* An OPEN slot hasn't decided what it is yet, so there is nothing to
+            log against — no laterality, no bodyweight flag, no history to
+            prefill from. The card is the question instead: the movement path,
+            the sets it wants, and the list that answers it. Sets appear the
+            moment you choose (resolveSlot rebuilds the row), which is also what
+            unblocks finishing the session. */}
+        {unresolvedSlot ? (
+          <div className="px-4 py-3">
+            <p className="text-[12px] text-text-light mb-2">
+              {ex.slot.sets} set{ex.slot.sets === 1 ? '' : 's'}
+              {ex.repRange ? ` · ${ex.repRange.low}–${ex.repRange.high} reps` : ''}
+              {ex.slot.muscle ? ` · for ${ex.slot.muscle.toLowerCase()}` : ''}
+            </p>
+            <PatternPicker
+              planned={ex.slot ? { ...ex, slot: ex.slot } : ex}
+              program={program}
+              dayId={planDayForDraft?.id}
+              sessions={history}
+              initialLimit={4}
+              onPick={(o) => resolveSlot(ex.id, o.name, o.category, o.id)}
+            />
+          </div>
+        ) : (
         <div className="px-4 py-3">
           {(noteOpenFor.has(ex.id) || !!ex.note) && (
             <textarea
@@ -2216,6 +2289,20 @@ export default function WorkoutTracker() {
                     </button>
                   </div>
                 </div>
+              ) : ex.kind !== 'cardio' && ex.slot?.pattern ? (
+                /* The machine is taken. The list that answers that is every
+                   other movement down the same path, ranked in this day's real
+                   context — one tap, without leaving the set you're mid-way
+                   through. Picking still routes through pickSubstitute, so the
+                   "save this to the split too?" prompt is unchanged. */
+                <PatternPicker
+                  planned={ex}
+                  program={program}
+                  dayId={planDayForDraft?.id}
+                  sessions={history}
+                  initialLimit={5}
+                  onPick={(o) => pickSubstitute(ex.id, o.name, o.category, o.id)}
+                />
               ) : (
                 <ExercisePicker
                   onSelect={(name, category, id) => pickSubstitute(ex.id, name, category, id)}
@@ -2609,6 +2696,7 @@ export default function WorkoutTracker() {
             </button>
           )}
         </div>
+        )}
       </motion.div>
     )
   }

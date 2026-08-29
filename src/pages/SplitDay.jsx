@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Play } from 'lucide-react'
+import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Play, Route, Pin, PinOff } from 'lucide-react'
 import ExercisePicker from '../components/ExercisePicker'
 import SwapSuggestions from '../components/SwapSuggestions'
+import PatternPicker from '../components/PatternPicker'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
 import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
 import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
 import { muscleHref } from '../data/muscleInfo'
+import { patternPhrase } from '../data/movementPatterns'
 import { dayStats, bankIdFor } from '../lib/planStats'
 import NumberField from '../components/NumberField'
 import {
@@ -22,6 +24,8 @@ import {
   toggleExerciseUnilateral,
   setExerciseNote,
   substituteExercise,
+  setSlotPinned,
+  isOpenSlot,
   pairSuperset,
   unpairSuperset,
 } from '../lib/program'
@@ -209,6 +213,7 @@ export default function SplitDay() {
                 const note = getExerciseNote(ex) || ex.note || ''
                 const noteOpen = noteOpenFor.has(ex.id) || !!note
                 const bankId = bankIdFor(ex)
+                const openSlot = isOpenSlot(ex)
                 return (
                   <div key={ex.id} className="bg-white border border-border px-3 py-3">
                     {/* The name gets the whole width — nothing else shares its
@@ -218,7 +223,44 @@ export default function SplitDay() {
                         {groups.get(ex.id) && (
                           <span className="shrink-0 mt-0.5 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{groups.get(ex.id).label}</span>
                         )}
-                        <span className="text-[14px] text-text-primary break-words">{ex.name}</span>
+                        <div className="min-w-0">
+                          {/* What the day wants here, above what is doing it.
+                              A pinned row has committed to this movement, so the
+                              path is just context and doesn't invite a tap; an
+                              unpinned one is a live choice and says so. Hidden
+                              entirely for rows with no slot — hand-built rows and
+                              anything from before slots existed read exactly as
+                              they always did. */}
+                          {ex.slot?.pattern && !openSlot && (
+                            <button
+                              type="button"
+                              onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                              aria-label={`${patternPhrase(ex.slot.pattern)} — choose a different movement`}
+                              className={`flex items-center gap-1 bg-transparent border-none p-0 mb-0.5 text-[10px] uppercase tracking-wider text-left break-words ${
+                                ex.slot.pinned ? 'text-text-light cursor-default' : 'text-text-light hover:text-text-primary cursor-pointer transition-colors'
+                              }`}
+                            >
+                              <Route className="w-3 h-3 shrink-0" />
+                              <span className="break-words">{ex.slot.pattern.replace(/-/g, ' ')}</span>
+                            </button>
+                          )}
+                          {openSlot ? (
+                            <button
+                              type="button"
+                              onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                              aria-label={`${ex.name} — choose a movement`}
+                              className="block w-full text-left bg-transparent border-none p-0 cursor-pointer"
+                            >
+                              <span className="flex items-center gap-1 text-[14px] text-text-primary break-words underline decoration-dotted underline-offset-4">
+                                <Route className="w-3.5 h-3.5 shrink-0" />
+                                <span className="break-words">{ex.name}</span>
+                              </span>
+                              <span className="block text-[11px] text-text-light mt-0.5">Pick a movement now, or leave it for the gym.</span>
+                            </button>
+                          ) : (
+                            <span className="block text-[14px] text-text-primary break-words">{ex.name}</span>
+                          )}
+                        </div>
                       </div>
                       <button onClick={() => update((p) => removeExercise(p, day.id, ex.id))} aria-label={`Remove ${ex.name}`} className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-0.5">
                         <X className="w-4 h-4" />
@@ -304,6 +346,25 @@ export default function SplitDay() {
                           <Link2 className="w-4 h-4" />
                         </button>
                       )}
+                      {/* Commit this row to the movement it names, or hand it
+                          back to its path. Unpinning doesn't lose the movement —
+                          it stays as the slot's suggestion, so the day's numbers
+                          don't move and the picker still opens on it. */}
+                      {ex.slot?.pattern && !openSlot && (
+                        <button
+                          onClick={() => update((p) => setSlotPinned(p, day.id, ex.id, !ex.slot.pinned))}
+                          aria-pressed={!!ex.slot.pinned}
+                          aria-label={
+                            ex.slot.pinned
+                              ? `${ex.name} — pinned to this movement, unpin to choose in the gym`
+                              : `${ex.name} — open to any ${ex.slot.pattern.replace(/-/g, ' ')}, pin to commit`
+                          }
+                          title={ex.slot.pinned ? 'Pinned to this movement' : 'Open — choose in the gym'}
+                          className={`bg-transparent border-none cursor-pointer p-1 ${ex.slot.pinned ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                        >
+                          {ex.slot.pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+                        </button>
+                      )}
                       {canChooseLaterality(ex) && (
                         <button
                           onClick={() => update((p) => toggleExerciseUnilateral(p, day.id, ex.id))}
@@ -321,13 +382,21 @@ export default function SplitDay() {
                           along for the return trip, so a detour through the bank
                           doesn't strand you in the split. Omitted for custom
                           movements and cardio, which have no entry to open. */}
-                      {bankId && (
+                      {bankId && !openSlot && (
                         <Link
                           to={`/exercises/${bankId}`}
                           state={{ backTo: pathname, backLabel: day.name || 'this day', backState: state }}
+                          aria-label={`Learn more about ${ex.name}`}
+                          title="Learn more"
                           className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary no-underline px-1 py-1 transition-colors"
                         >
-                          <BookOpen className="w-3.5 h-3.5" /> Learn more
+                          {/* Icon-only on a phone. This row is a fixed budget of
+                              horizontal space — reorder arrows, note, swap, pin,
+                              superset, laterality — and the 85px of label was
+                              the one thing on it wide enough to push the row
+                              onto a second line at 320px. */}
+                          <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                          <span className="hidden sm:inline">Learn more</span>
                         </Link>
                       )}
                     </div>
@@ -345,24 +414,44 @@ export default function SplitDay() {
                     )}
                     {swapOpenFor === ex.id && (
                       <div className="mt-2">
-                        {ex.kind !== 'cardio' && (
-                          <SwapSuggestions
+                        {/* A row with a movement path answers "what else does
+                            this job?" first — that list is complete, ranked, and
+                            almost always where the answer is. A row without one
+                            (cardio, or anything hand-built) goes straight to the
+                            old suggestions-then-search panel. */}
+                        {ex.kind !== 'cardio' && ex.slot?.pattern ? (
+                          <PatternPicker
                             planned={ex}
                             program={program}
                             dayId={day.id}
                             sessions={history || []}
                             onPick={(o) => {
-                              update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id }))
+                              update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
                               setSwapOpenFor(null)
                             }}
                           />
+                        ) : (
+                          <>
+                            {ex.kind !== 'cardio' && (
+                              <SwapSuggestions
+                                planned={ex}
+                                program={program}
+                                dayId={day.id}
+                                sessions={history || []}
+                                onPick={(o) => {
+                                  update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
+                                  setSwapOpenFor(null)
+                                }}
+                              />
+                            )}
+                            <ExercisePicker
+                              onSelect={(name, category, id) => { update((p) => substituteExercise(p, day.id, ex.id, { name, category, exerciseId: id })); setSwapOpenFor(null) }}
+                              onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}
+                              excludeCategory={ex.kind === 'cardio' ? undefined : 'Cardio'}
+                              placeholder="Replace with…"
+                            />
+                          </>
                         )}
-                        <ExercisePicker
-                          onSelect={(name, category, id) => { update((p) => substituteExercise(p, day.id, ex.id, { name, category, exerciseId: id })); setSwapOpenFor(null) }}
-                          onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}
-                          excludeCategory={ex.kind === 'cardio' ? undefined : 'Cardio'}
-                          placeholder="Replace with…"
-                        />
                       </div>
                     )}
                     {supersetMenuFor === ex.id && (

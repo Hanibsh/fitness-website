@@ -63,6 +63,7 @@ export default function SplitWizard() {
   const [focus, setFocus] = useState([])
   const [experience, setExperience] = useState('')
   const [equipment, setEquipment] = useState('')
+  const [openSlots, setOpenSlots] = useState(false)
   const [name, setName] = useState('')
   // Open injuries steer the picks — a bad shoulder pushes overhead pressing down
   // the ranking without removing it (PENALTIES.injury in generatorConfig).
@@ -131,12 +132,13 @@ export default function SplitWizard() {
         focus,
         experience: experience || undefined,
         equipment: equipment || undefined,
+        openSlots,
       },
       profile,
       sessions: history,
       injuries,
     })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, profile, history, injuries])
+  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, openSlots, profile, history, injuries])
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
@@ -268,6 +270,20 @@ export default function SplitWizard() {
                 ? 'At a full gym the picks lean on stimulus-to-fatigue, loadability and stability — the things a rack, a machine and a cable actually give you. Bands and movements you can’t add weight to are left out.'
                 : 'Bodyweight and bands only. Nothing that needs a gym will appear.'}
             </p>
+
+            {/* Whether the split names a movement or names the JOB. Either way
+                every row keeps its movement path and can be reopened later —
+                this only decides what the split says on the day it's created. */}
+            <label className={labelCls}>Movements</label>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {choice(!openSlots, () => setOpenSlots(false), 'Pick for me', 'A movement in every slot')}
+              {choice(openSlots, () => setOpenSlots(true), 'Leave open', 'Choose in the gym')}
+            </div>
+            <p className="text-[12px] text-text-light leading-relaxed">
+              {openSlots
+                ? 'Every row prescribes a movement path and a set target — “any vertical pull, 3 × 6–10” — and you pick the movement when you get there. The volume is planned the same either way; only the machine is left undecided.'
+                : 'Every row names a movement. You can still swap any of them for anything else on the same movement path, before or during a session.'}
+            </p>
           </section>
 
           {/* ---- 4. The proposal ----------------------------------------- */}
@@ -332,7 +348,18 @@ function Preview({ built, name, setName, onCreate }) {
                   <ul className="mt-1.5 space-y-0.5 list-none p-0 m-0">
                     {d.exercises.map((e) => (
                       <li key={e.id} className="flex items-baseline gap-2 text-[12px]">
-                        <span className="text-text-secondary break-words min-w-0">{e.name}</span>
+                        <span className="text-text-secondary break-words min-w-0">
+                          {e.name}
+                          {/* The path a committed row fills, so the shape of the
+                              day is readable even when every line names a
+                              machine. An open row already says its path as its
+                              name, so repeating it would be noise. */}
+                          {e.pattern && !e.open && (
+                            <span className="block text-[10px] uppercase tracking-wider text-text-light">
+                              {e.pattern.replace(/-/g, ' ')}
+                            </span>
+                          )}
+                        </span>
                         <span className="text-text-light shrink-0 ml-auto tabular-nums">
                           {e.sets} × {e.repRange.low}–{e.repRange.high}
                         </span>
@@ -372,6 +399,28 @@ function Preview({ built, name, setName, onCreate }) {
           </div>
         ))}
       </div>
+      {/* What the week trains is one question; HOW it trains it is another, and
+          the bars above cannot answer the second. A chest number that adds up
+          entirely out of flat presses is a week with no incline path in it —
+          which reads as fine on the muscle chart and is not fine. */}
+      {summary.patterns?.length > 0 && (
+        <>
+          <p className="text-[11px] uppercase tracking-wider text-text-light mb-2 mt-6">Movement paths</p>
+          <ul className="flex flex-wrap gap-x-3 gap-y-1 list-none p-0 m-0 mb-3">
+            {summary.patterns.map((pt) => (
+              <li key={pt.id} className="text-[12px] text-text-secondary">
+                {pt.label}
+                <span className="text-text-light tabular-nums"> {pt.sets}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-text-light mb-6 leading-relaxed">
+            Weekly sets down each resistance path. Every one of these is a choice you can change — a slot asks
+            for the path, not the machine.
+          </p>
+        </>
+      )}
+
       <p className="text-[11px] text-text-light mb-6 leading-relaxed">
         Graded on the same curve as your dashboard: green is a productive dose, amber is under the useful
         minimum or past the point it pays for itself.

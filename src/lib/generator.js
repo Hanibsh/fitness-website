@@ -26,13 +26,14 @@
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
 import { createDay, createPlannedExercise, emptyProgram } from './program'
-import { dayStats, ENGINE_MUSCLE_TO_COARSE } from './planStats'
+import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId } from './planStats'
 import { injuryRiskMap } from './injuries'
 import { effectiveWeeklyVolume } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
 import { repRangeFor } from './splitFromHistory'
 import { equipmentValuesFor } from './profileFields'
 import { ALL_EQUIPMENT, AT_HOME_EQUIPMENT } from '../data/equipmentGroups'
+import { PATTERN_IDS, getPattern, patternPhrase } from '../data/movementPatterns'
 import {
   ATOM_TO_GROUP, ENGINE_MUSCLES, mevFor, ceilingFor, volumeTier, volumeScale,
   ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, DEFAULT_FATIGUE_SCORE, DEFAULT_RECOVERY_WINDOW,
@@ -48,6 +49,7 @@ import {
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
+  PATTERN_OPTION_LIMIT,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -106,11 +108,19 @@ export function movementFamily(db) {
   return db.name.toLowerCase().split(/\s+-\s+|,/)[0].trim()
 }
 
-// Two movements are "the same idea" when they train the same thing the same way.
-// Coarser than the family: it's what stops a week reading Barbell Row / Dumbbell
-// Row / T-Bar Row, none of which share a family name.
+// Two movements are "the same idea" when they send the same joints down the same
+// resistance path with the same hardware. It's what stops a week reading Barbell
+// Row / Dumbbell Row / T-Bar Row, none of which share a family name.
+//
+// This used to be `category|subCategory|type|equipment`, which was a guess at
+// the question the `pattern` column now answers outright. The guess was wrong in
+// both directions: it couldn't see that a Chest Supported T-Bar Row and a Seated
+// Row Machine are the same job, and it merged a Lat Pulldown with a Straight-Arm
+// Pulldown, which are not remotely the same job. Equipment stays in the key
+// because the same path on a cable and on a barbell really is a different
+// session — a different strength curve and a different queue.
 function signature(db) {
-  return [db.category, db.subCategory || '-', db.type, db.equipment].join('|')
+  return [db.pattern || db.category, db.equipment].join('|')
 }
 
 // ---- Reading the user's history ---------------------------------------------
@@ -201,6 +211,11 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
   const excludedEquipment = atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set()
   const excludedOverload = atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set()
 
+  // Leave each slot's movement undecided, to be chosen in the gym? Off by
+  // default: a split you can read straight through is a better first impression
+  // than a list of questions, and every row can be opened afterwards anyway.
+  const openSlots = answers.openSlots === true
+
   const schedule = answers.schedule === 'rotation' ? 'rotation' : 'weekly'
   const weekdays = normaliseWeekdays(answers.weekdays, daysPerWeek)
 
@@ -216,6 +231,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
     weights,
     schedule,
     weekdays,
+    openSlots,
     history: historyContext(sessions, { now }),
     // Built once here rather than per scored exercise: fillDay ranks the whole
     // pool for every muscle slot of every day, so this would otherwise be
@@ -427,6 +443,11 @@ export function scoreExercise(db, ctx) {
   else if (ctx.weekFamilies?.has(movementFamily(db))) score -= PENALTIES.sameFamily
   else if (ctx.weekSignatures?.has(signature(db))) score -= PENALTIES.sameSignature
 
+  // ...and within the day, down the same path. Not a filter: the point of a
+  // second movement for a muscle is usually a second ANGLE, but sometimes the
+  // volume genuinely wants two rows, and this lets it have them at a cost.
+  if (db.pattern && ctx.dayPatterns?.has(db.pattern)) score -= PENALTIES.samePatternInDay
+
   // One tier of stretch above their level is allowed but discouraged; two is a
   // hard filter and never reaches this function.
   const over = (SKILL_RANK[db.skill] ?? 1) - ctx.maxSkillRank
@@ -463,6 +484,9 @@ export function candidates(muscle, ctx) {
     if (ctx.dayIds?.has(db.id)) return false
     if (ctx.dayFamilies?.has(movementFamily(db))) return false
     if (ctx.exclude?.has(db.id)) return false
+    // Scoped to one movement path — this is what makes "any vertical pull" a
+    // list rather than a search.
+    if (ctx.pattern && db.pattern !== ctx.pattern) return false
     const w = muscleWeights(db)[muscle] || 0
     return w > 0 && w >= (ctx.minContribution || 0)
   })
@@ -499,6 +523,7 @@ export function fillDay(template, alloc, gaps, ctx) {
   const remaining = { ...alloc }
   const dayIds = new Set()
   const dayFamilies = new Set()
+  const dayPatterns = new Set()
   const compoundFor = new Set()
   const chosen = []
   let setsUsed = 0
@@ -531,6 +556,7 @@ export function fillDay(template, alloc, gaps, ctx) {
       maxSkillRank: ctx.maxSkillRank,
       dayIds,
       dayFamilies,
+      dayPatterns,
       remaining,
       weekIds: ctx.weekIds,
       weekFamilies: ctx.weekFamilies,
@@ -554,6 +580,7 @@ export function fillDay(template, alloc, gaps, ctx) {
     chosen.push({ db: best.db, sets: MIN_SETS_PER_EXERCISE, muscle })
     dayIds.add(best.db.id)
     dayFamilies.add(movementFamily(best.db))
+    if (best.db.pattern) dayPatterns.add(best.db.pattern)
     ctx.weekIds.add(best.db.id)
     ctx.weekFamilies.add(movementFamily(best.db))
     ctx.weekSignatures.add(signature(best.db))
@@ -594,14 +621,27 @@ export function fillDay(template, alloc, gaps, ctx) {
       .sort((a, b) => a.sets - b.sets)[0]
   }
 
-  day.exercises = chosen.map(({ db, sets, muscle }) =>
-    createPlannedExercise(db.name, {
-      exerciseId: db.id,
+  // Every row carries the SLOT it was picked for, not just the pick: the
+  // movement path the day wanted here and the muscle it wanted it for. That is
+  // what the split page and the logger read to offer "any vertical pull"
+  // instead of one pulldown, and what a swap is checked against.
+  //
+  // `openSlots` decides whether the pick is committed. Open leaves the row
+  // reading as its path with the pick kept as `suggestedId` — so the day still
+  // costs and grades exactly the same (see plannedExerciseDbId), it just hasn't
+  // decided yet. Either way the row is UNPINNED: the generator proposes, it
+  // doesn't insist.
+  day.exercises = chosen.map(({ db, sets, muscle }) => {
+    const slot = { pattern: db.pattern || null, muscle, pinned: false, suggestedId: db.id }
+    const open = ctx.openSlots && db.pattern
+    return createPlannedExercise(open ? patternPhrase(db.pattern) : db.name, {
+      exerciseId: open ? null : db.id,
       kind: 'strength',
       sets,
       repRange: repRangeForExercise(db, muscle, ctx.history),
+      slot,
     })
-  )
+  })
   return day
 }
 
@@ -666,7 +706,7 @@ export function trimOvershoot(trainingDays, { perWeek, focus = [] }) {
     for (const day of trainingDays) {
       for (const planned of day.exercises) {
         if (planned.sets <= MIN_SETS_PER_EXERCISE) continue
-        const weights = muscleWeights(DB_BY_ID.get(planned.exerciseId))
+        const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(planned)))
         const w = weights[worst.muscle] || 0
         if (!w) continue
         const robs = Object.entries(weights).some(
@@ -741,6 +781,8 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
         name: e.name,
         sets: e.sets,
         repRange: e.repRange,
+        pattern: e.slot?.pattern || null,
+        open: !!e.slot && !e.exerciseId,
       })),
     })
   })
@@ -771,6 +813,29 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
     }
   }).filter((row) => row.sets > 0 || row.target != null)
 
+  // Which movement paths the week covers, and how much of it goes down each.
+  //
+  // The volume table below says which MUSCLES the week trains; this says how it
+  // trains them. They answer different questions and a split can look fine on
+  // one and wrong on the other — a chest number that adds up entirely out of
+  // flat presses is a week with no incline path in it, which the muscle table
+  // has no way to show.
+  const patternSets = new Map()
+  for (const day of program.days) {
+    if (day.kind === 'rest') continue
+    for (const e of day.exercises || []) {
+      const db = DB_BY_ID.get(plannedExerciseDbId(e) || '')
+      if (!db?.pattern) continue
+      patternSets.set(db.pattern, (patternSets.get(db.pattern) || 0) + (Number(e.sets) || 0))
+    }
+  }
+  const patterns = PATTERN_IDS.filter((id) => patternSets.has(id)).map((id) => ({
+    id,
+    label: getPattern(id)?.label || id,
+    group: getPattern(id)?.group || null,
+    sets: round1(patternSets.get(id) * perWeek),
+  }))
+
   const training = program.days.filter((d) => d.kind !== 'rest').length
   return {
     schedule,
@@ -785,6 +850,7 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
     equipmentPreset: inputs.equipmentPreset,
     days,
     volume,
+    patterns,
   }
 }
 
@@ -792,7 +858,7 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
 // frequency readout, which is a claim about sessions, not about sets.
 function dayHits(day, muscle) {
   return (day.exercises || []).some((e) => {
-    const db = e.exerciseId ? DB_BY_ID.get(e.exerciseId) : null
+    const db = DB_BY_ID.get(plannedExerciseDbId(e) || '')
     return db ? (muscleWeights(db)[muscle] || 0) > 0 : false
   })
 }
@@ -809,7 +875,7 @@ function equipmentUniverse(program) {
   const kinds = new Set()
   for (const day of program?.days || []) {
     for (const planned of day.exercises || []) {
-      const db = planned.exerciseId ? DB_BY_ID.get(planned.exerciseId) : null
+      const db = DB_BY_ID.get(plannedExerciseDbId(planned) || '')
       if (db) kinds.add(db.equipment)
     }
   }
@@ -881,39 +947,49 @@ function swapReason(db, current, ctx) {
   return `Trains ${ctx.muscle.toLowerCase()} about as directly`
 }
 
-// Alternatives to one planned movement, best first.
+// Everything situational about one planned row's slot, gathered once.
 //
-// Runs the generator's own scorer against the muscle the row is there for, in
-// the context it's actually sitting in: what else is in that day, how much
-// fatigue the day is already carrying, and how long until the muscle is trained
-// again. So the answer to "give me something else for this slot" changes
-// depending on where the slot is, which is the whole point — the same two
-// movements are not equally good on a fresh day and a fried one.
+// Both "give me something else" (suggestAlternatives) and "show me this whole
+// movement path" (patternOptions) rank with the generator's own scorer, and they
+// have to rank it in the SAME context or the two panels would quietly disagree
+// about what a good vertical pull is. So the context is built here, once, and
+// each of them narrows it.
 //
-// Returns [{ id, name, db, reason, score }]. Nothing is mutated; the caller
-// applies a choice through substituteExercise, which keeps the sets, the rep
-// target and the note exactly as planned.
-export function suggestAlternatives(planned, { program, dayId, sessions = [], injuries = [], now = Date.now(), limit = 4 } = {}) {
-  if (!planned || planned.kind === 'cardio' || !program) return []
-  const currentDb = DB_BY_ID.get(planned.exerciseId || exerciseIdForName(planned.name) || '')
-  if (!currentDb) return [] // custom movement: nothing to compare it against
+// Resolves through plannedExerciseDbId, so an OPEN slot works too: the row has
+// no committed movement, but its slot still carries the one the generator would
+// have picked, and that is a perfectly good thing to rank against.
+function slotContext(planned, { program, dayId, sessions = [], injuries = [], now = Date.now() } = {}) {
+  if (!planned || planned.kind === 'cardio' || !program) return null
+  const currentDb = DB_BY_ID.get(plannedExerciseDbId(planned) || '')
+  if (!currentDb) return null // custom movement: nothing to compare it against
 
   const dayIndex = program.days.findIndex((d) => d.id === dayId)
   const day = dayIndex === -1 ? null : program.days[dayIndex]
-  if (!day) return []
+  if (!day) return null
 
-  const muscle = primaryMuscleOf(currentDb)
-  if (!muscle) return []
+  // The slot's own muscle outranks the movement's, because the slot is what the
+  // day asked for — a row that has drifted through a couple of swaps should
+  // still be ranked for the job it was put there to do.
+  const slotMuscle = planned.slot?.muscle
+  const muscle = (slotMuscle && ENGINE_MUSCLES.includes(slotMuscle) ? slotMuscle : null) || primaryMuscleOf(currentDb)
+  if (!muscle) return null
 
   // Everything else in the day is off the table; everything else in the WEEK is
   // merely discouraged, through the scorer's own repeat penalties.
+  //
+  // "Else" is measured against the PLAN row, because the caller may be holding a
+  // session exercise rather than a plan row — the logger passes what you are
+  // mid-way through logging, and its id is a session id. Without the plan link
+  // the row would fail to recognise itself and filter its own movement (and
+  // every variant of it) out of its own picker.
+  const selfPlannedId = planned.plannedExerciseId || planned.id
   const dayIds = new Set()
   const dayFamilies = new Set()
   let load = 0
   for (const other of day.exercises) {
-    const db = other.exerciseId ? DB_BY_ID.get(other.exerciseId) : null
+    const db = DB_BY_ID.get(plannedExerciseDbId(other) || '')
     if (!db) continue
-    if (other.id !== planned.id) {
+    if (other.id !== selfPlannedId) {
       dayIds.add(db.id)
       dayFamilies.add(movementFamily(db))
       load += setLoad(db) * (Number(other.sets) || 0)
@@ -925,7 +1001,7 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], in
   for (const other of program.days) {
     if (other.id === dayId) continue
     for (const row of other.exercises || []) {
-      const db = row.exerciseId ? DB_BY_ID.get(row.exerciseId) : null
+      const db = DB_BY_ID.get(plannedExerciseDbId(row) || '')
       if (!db) continue
       weekIds.add(db.id)
       weekFamilies.add(movementFamily(db))
@@ -968,15 +1044,41 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], in
     injuryRisk: injuryRiskMap(injuries, POOL),
   }
 
+  return { base, currentDb, muscle, history, now }
+}
+
+// Rank a candidate list with the generator's own scorer. Shared tail of both
+// entry points below, so a movement can never rank differently in the two.
+function rankWithin(muscle, base, history) {
   const scored = []
   for (const db of candidates(muscle, base)) {
     const result = scoreExercise(db, { ...base, familiarity: familiarity(db, history) })
     if (!result) continue
     scored.push({ db, score: result.score })
   }
-  scored.sort((a, b) => b.score - a.score)
+  return scored.sort((a, b) => b.score - a.score)
+}
 
-  return scored.slice(0, limit).map(({ db, score }) => {
+// Alternatives to one planned movement, best first.
+//
+// Runs the generator's own scorer against the muscle the row is there for, in
+// the context it is actually sitting in: what else is in that day, how much
+// fatigue the day is already carrying, and how long until the muscle is trained
+// again. So the answer to "give me something else for this slot" changes
+// depending on where the slot is, which is the whole point — the same two
+// movements are not equally good on a fresh day and a fried one.
+//
+// Every option says whether it is the same movement PATH as what is there now,
+// so the panel can separate a true substitute from a different angle.
+//
+// Nothing is mutated; the caller applies a choice through substituteExercise,
+// which keeps the sets, the rep target and the note exactly as planned.
+export function suggestAlternatives(planned, { program, dayId, sessions = [], injuries = [], now = Date.now(), limit = 4 } = {}) {
+  const ctx = slotContext(planned, { program, dayId, sessions, injuries, now })
+  if (!ctx) return []
+  const { base, currentDb, muscle, history } = ctx
+
+  return rankWithin(muscle, base, history).slice(0, limit).map(({ db, score }) => {
     const seen = history?.familiar.get(db.id)
     const weeksSince = seen ? Math.floor((now - seen.lastDate) / (7 * DAY_MS)) : null
     return {
@@ -987,7 +1089,70 @@ export function suggestAlternatives(planned, { program, dayId, sessions = [], in
       // can say what it optimised for instead of asking the reader to infer it.
       muscle,
       score: round1(score),
+      // Whether this is the same movement path as what is there now. The panel
+      // groups on it: swapping WITHIN the path is a true like-for-like
+      // substitute, swapping across it is a different angle on the same muscle,
+      // and those are different decisions that deserve different headings.
+      pattern: db.pattern || null,
+      samePattern: !!db.pattern && db.pattern === currentDb.pattern,
       reason: swapReason(db, currentDb, { ...base, weeksSince }),
+    }
+  })
+}
+
+// Every movement down one path that trains this slot's muscle, best first.
+//
+// This is the list behind "any vertical pull". It is deliberately the SAME
+// scorer and the SAME hard filters the generator used to write the split, run in
+// the slot's real context — what else is in the day, how much fatigue the day is
+// already carrying, how long until the muscle is trained again, your open
+// injuries, and the equipment the split itself implies you have. So the order
+// you are offered is the order the generator would have picked in, and taking
+// the top one gives you back exactly what it proposed.
+//
+// `pattern` defaults to the slot's own path; pass one to browse a different
+// path. Nothing is mutated — the caller applies a choice through
+// substituteExercise.
+export function patternOptions(planned, { program, dayId, sessions = [], injuries = [], now = Date.now(), pattern, limit = PATTERN_OPTION_LIMIT } = {}) {
+  const ctx = slotContext(planned, { program, dayId, sessions, injuries, now })
+  if (!ctx) return []
+  const path = pattern || planned.slot?.pattern || ctx.currentDb.pattern
+  if (!path) return []
+
+  const { currentDb, muscle, history } = ctx
+  const base = {
+    ...ctx.base,
+    pattern: path,
+    // Browsing a path, not hunting a replacement: show everything on it that
+    // trains this muscle at all and let the ranking speak, rather than imposing
+    // the swap panel's "at least as direct as what is there" floor. Nothing is
+    // excluded either — for an open slot the generator's own suggestion belongs
+    // in the list, and for a filled one, seeing where the current pick sits is
+    // the most useful thing the list can show.
+    minContribution: 0,
+    exclude: new Set(),
+    wantCompound: false,
+  }
+
+  return rankWithin(muscle, base, history).slice(0, limit).map(({ db, score }) => {
+    const seen = history?.familiar.get(db.id)
+    const weeksSince = seen ? Math.floor((ctx.now - seen.lastDate) / (7 * DAY_MS)) : null
+    return {
+      id: db.id,
+      name: db.name,
+      category: db.category,
+      equipment: db.equipment,
+      muscle,
+      pattern: path,
+      score: round1(score),
+      current: !!planned.exerciseId && db.id === planned.exerciseId,
+      suggested: db.id === (planned.slot?.suggestedId || null),
+      reason:
+        db.id !== currentDb.id
+          ? swapReason(db, currentDb, { ...base, weeksSince })
+          : planned.exerciseId
+            ? 'What you have here now'
+            : 'What the generator would pick for this slot',
     }
   })
 }
@@ -1013,6 +1178,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     focus: inputs.focus,
     history: inputs.history,
     injuryRisk: inputs.injuryRisk,
+    openSlots: inputs.openSlots,
     // Week-wide variety state, shared across days on purpose: the second Push
     // day should know what the first one already used.
     weekIds: new Set(),

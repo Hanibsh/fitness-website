@@ -139,3 +139,46 @@ Accepted shorthands: `Calves` → Gastrocnemius; the three triceps heads
 (`Long/Lateral/Medial Head Triceps`) all collapse to `Triceps`. `Full Back`
 expands to Spinal Erectors + Lats + Upper Traps. To track a genuinely new muscle,
 add it to the taxonomy first.
+
+## Movement pattern — a DERIVED column
+
+Every emitted record carries a `pattern` (`vertical-pull`, `hip-hinge`,
+`elbow-flexion`, …). **There is no column for it in the CSV** — it is derived at
+build time by `classifyPattern` in `data/movement-patterns.mjs`, from the name,
+the muscles and the type.
+
+A pattern is the resistance path a movement puts a muscle through, defined by
+which joints move in which direction (`jointActions`), where the load travels
+relative to the torso (`path`), and which muscles it exists to grow (`drivers`).
+Two movements sharing a pattern are substitutable — same joints, same strength
+curve, different hardware — which is what lets a plan prescribe *"any vertical
+pull, 3 × 6–10"* and let you fill it with whatever is free.
+
+The pattern says the PATH, never the target. "Any horizontal push" holds both a
+wide-grip bench and a close-grip JM press; which end of that list you get is
+decided by the muscle the plan slot is there to train.
+
+Three things to know when editing the CSV:
+
+1. **The build reports every pattern.** `data/lint-report.md` has a census with
+   each pattern's exercise count. A pattern with fewer than three movements is
+   flagged: it is a thin substitution pool, and usually a real gap in the
+   database rather than a problem with the taxonomy. (Today `hip-abduction` has
+   exactly one movement in it.)
+2. **Renaming an exercise can move its pattern**, because the rules read the
+   name first. The build cross-checks every row against its pattern's `drivers`
+   and warns when the row's heaviest muscle isn't one — that check is what
+   caught incline *push-ups* being filed with incline *presses* when the
+   database (correctly) has them on the lower chest.
+3. **A row the rules get wrong is pinned by hand**, in
+   `data/exercise-overrides.mjs`, like any other correction:
+
+   ```js
+   export const OVERRIDES = {
+     'some-exercise-id': { pattern: 'straight-arm-lat', _reason: 'rules read the name as a row' },
+   }
+   ```
+
+Pattern ids are a fixed list, like the muscle taxonomy. Adding one is a code
+change — it needs a definition (joint actions, path, drivers, blurb) and at
+least one classification rule.

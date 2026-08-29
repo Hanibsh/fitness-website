@@ -46,8 +46,27 @@ export const ENGINE_MUSCLE_TO_COARSE = {
 // still links to the right page.
 export function bankIdFor(planned) {
   if (!planned) return null
-  const id = planned.exerciseId || exerciseIdForName(planned.name)
+  const id = plannedExerciseDbId(planned)
   return id && getFullExercise(id) ? id : null
+}
+
+// The database row a PLANNED row should be costed against.
+//
+// Three terms, in order: what the row says it is; what its movement slot would
+// pick if you left the choice open; then its name, for rows planned before the
+// picker started stamping ids.
+//
+// The middle term is what makes an open slot free. A row reading "Any vertical
+// pull" still carries the generator's own pick in `slot.suggestedId`, so it
+// costs exactly what it will cost once you choose — the day card, the volume
+// bars and the generator's own budgeting all resolve through here and none of
+// them has to estimate from a pattern average.
+//
+// Only ever called on PLANNED rows. A logged exercise always names a real
+// movement, because the logger will not let a slot be logged until it's filled.
+export function plannedExerciseDbId(planned) {
+  if (!planned) return null
+  return planned.exerciseId || planned.slot?.suggestedId || exerciseIdForName(planned.name) || null
 }
 
 function round1(n) {

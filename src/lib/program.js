@@ -20,8 +20,12 @@
 
 import { createExercise, createSet, convertSet, getExerciseNote, saveExerciseNote, exerciseNoteKey } from './workoutStore'
 import { getExercise } from './exerciseLibrary'
+import { plannedExerciseDbId } from './planStats'
 import { lateralityFor, usesBodyweight } from './movements'
 import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
+import { patternPhrase } from '../data/movementPatterns'
+
+export { plannedExerciseDbId }
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
@@ -52,10 +56,32 @@ export function moveInArray(arr, index, delta) {
 // can't be overridden by a plan, and bodyweight-loaded sets have no L/R shape.
 // Null rather than false so splits built before this field read identically to
 // a fresh row, with no migration.
+// `slot` is what the row is there to DO, as opposed to what it currently says:
+//
+//   { pattern: 'vertical-pull', muscle: 'Lats', pinned: false, suggestedId: 'lat-pulldown-wide-grip' }
+//
+// A row with a slot prescribes a movement PATH and a target muscle; the
+// exercise filling it is an implementation detail you can change without
+// changing the plan. `pinned` means you have committed to this exact movement
+// and don't want to be offered the path. `suggestedId` is the movement the
+// generator would pick — it stays put even when the row is OPEN (exerciseId
+// null, name reading "Any vertical pull"), because every planned-side
+// calculation resolves through it, so an open slot still has honest volume and
+// fatigue numbers instead of an estimate. See plannedExerciseDbId.
+//
+// Null on every hand-built row and on every split written before this existed,
+// and null reads exactly as the app read before — nothing migrates.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '', unilateral = null } = opts
-  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note, unilateral }
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '', unilateral = null, slot = null } = opts
+  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note, unilateral, slot }
 }
+
+// Is this row waiting for you to choose a movement?
+export function isOpenSlot(pe) {
+  return !!pe?.slot && !pe.exerciseId
+}
+
+
 
 export function createDay(kind = 'train', name = '') {
   return {
@@ -174,7 +200,11 @@ export function toggleExerciseUnilateral(program, dayId, exId) {
 export function setExerciseNote(program, dayId, exId, note) {
   const target = program.days.find((d) => d.id === dayId)?.exercises.find((e) => e.id === exId)
   if (!target) return program
-  saveExerciseNote(target, note)
+  // An OPEN slot has no movement yet, so there is nothing for a movement-scoped
+  // note to belong to. Writing one to the shared store would file it under the
+  // pattern phrase and then show it on every future "any vertical pull" — so it
+  // stays on the row until the slot is filled.
+  if (!isOpenSlot(target)) saveExerciseNote(target, note)
   const trimmed = note.slice(0, 300)
   return {
     ...program,
@@ -192,13 +222,43 @@ export function setExerciseNote(program, dayId, exId, note) {
 
 // Swap a planned exercise's identity (name/DB link/kind) in place — sets, rep
 // target and note all stay as planned, only WHAT you're doing changes.
-export function substituteExercise(program, dayId, exId, { name, category, exerciseId }) {
-  return withExercise(program, dayId, exId, (e) => ({
-    ...e,
-    name: name.trim().slice(0, 60),
-    exerciseId,
-    kind: category === 'Cardio' ? 'cardio' : 'strength',
-  }))
+// `pattern` is the movement path of what you picked, when the caller knows it.
+// A pick from inside the slot's own path leaves the slot alone; a pick from
+// somewhere else RE-POINTS the slot rather than letting it keep claiming a path
+// the row no longer follows — a slot that says "vertical pull" above a leg curl
+// is worse than no slot at all.
+export function substituteExercise(program, dayId, exId, { name, category, exerciseId, pattern }) {
+  return withExercise(program, dayId, exId, (e) => {
+    const slot = e.slot && pattern && pattern !== e.slot.pattern ? { ...e.slot, pattern } : e.slot
+    return {
+      ...e,
+      name: name.trim().slice(0, 60),
+      exerciseId,
+      kind: category === 'Cardio' ? 'cardio' : 'strength',
+      slot,
+    }
+  })
+}
+
+// Commit this row to the movement it currently names, or hand it back to its
+// path. Unpinning CLEARS the movement (the row reads "Any vertical pull" again)
+// but keeps it as the slot's suggestion, so the numbers don't move and the
+// picker still opens on it.
+export function setSlotPinned(program, dayId, exId, pinned) {
+  return withExercise(program, dayId, exId, (e) => {
+    if (!e.slot) return e
+    // Nothing to pin to, and nothing to un-pin from: a row with no movement is
+    // already as open as it gets.
+    if (!e.exerciseId) return e
+    if (pinned) return { ...e, slot: { ...e.slot, pinned: true } }
+    const suggestedId = e.exerciseId || e.slot.suggestedId || null
+    return {
+      ...e,
+      exerciseId: null,
+      name: patternPhrase(e.slot.pattern),
+      slot: { ...e.slot, pinned: false, suggestedId },
+    }
+  })
 }
 
 // Same superset model as the logger: partners share a supersetId, groups are
@@ -742,7 +802,7 @@ export function dayForSession(program, session) {
 // builder's toggle and draftFromDay's override below both gate on this, so
 // they can never disagree about which rows the field means anything for.
 export function canChooseLaterality(pe) {
-  if (!pe || pe.kind === 'cardio') return false
+  if (!pe || pe.kind === 'cardio' || isOpenSlot(pe)) return false
   const lib = pe.exerciseId ? getExercise(pe.exerciseId) : null
   if (lib ? lib.bodyweight : usesBodyweight(pe.name)) return false
   return (lib ? lib.laterality : lateralityFor(pe.name)) === 'both'
@@ -761,6 +821,19 @@ export function plannedLaterality(pe) {
 export function draftFromDay(day, opts = {}) {
   const sessionBw = Number(opts.bodyweight) || 0
   return (day?.exercises || []).map((pe) => {
+    // An OPEN slot starts the session as a question rather than an exercise:
+    // no library row, no laterality, and NO SETS, so it can't be logged until
+    // the movement is chosen. The logger renders it as a chooser card and
+    // rebuilds it through this same path once you pick (see WorkoutTracker).
+    if (isOpenSlot(pe)) {
+      const ex = createExercise(pe.name, 'strength', { repRange: pe.repRange || undefined })
+      ex.sets = []
+      ex.exerciseId = null
+      ex.slot = { ...pe.slot, sets: Math.max(1, Number(pe.sets) || 1) }
+      ex.plannedExerciseId = pe.id
+      ex.supersetId = pe.supersetId || null
+      return ex
+    }
     const strength = pe.kind !== 'cardio'
     const lib = pe.exerciseId ? getExercise(pe.exerciseId) : null
     const laterality = strength ? (lib ? lib.laterality : lateralityFor(pe.name)) : undefined
