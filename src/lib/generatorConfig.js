@@ -67,38 +67,193 @@ const FULL_A = fullBody(['Quads', 'Chest', 'Lats'])
 const FULL_B = fullBody(['Chest', 'Lats', 'Hamstrings'])
 const FULL_C = fullBody(['Lats', 'Glutes', 'Quads'])
 
-// daysPerWeek → the training days of the week, in order.
+// Arnold's pairing: the chest and back trained together as antagonists, then
+// the delts with the arms, then legs. Rear delts ride with the back day because
+// every row already credits them — the shoulder day is there for the side and
+// front heads.
+const CHEST_BACK = ['Chest', 'Lats', 'Upper Back', 'Rear Delts']
+const SHOULDERS_ARMS = ['Side Delts', 'Front Delts', 'Rear Delts', 'Biceps', 'Triceps', 'Forearms']
+
+// One body part a day. The lists are deliberately NARROW — a chest day asks for
+// chest and nothing else — because the generator credits every muscle a movement
+// touches, not just the one whose slot asked for it (see `charge` in
+// generator.js). So a chest day still banks most of a day's triceps volume
+// without a triceps slot competing for the session's fatigue budget, which is
+// how these splits are actually run.
+const BRO_CHEST = ['Chest']
+const BRO_BACK = ['Lats', 'Upper Back']
+const BRO_SHOULDERS = ['Side Delts', 'Rear Delts', 'Front Delts']
+const BRO_ARMS = ['Biceps', 'Triceps', 'Forearms']
+const BRO_LEGS = ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs']
+
+// daysPerWeek → the shapes on offer, each a named set of training days in order.
+//
+// The FIRST shape at each count is the recommended one and what "Pick for me"
+// takes. The rest are there because people ask for them by name, and a split
+// somebody will actually run beats a better one they abandon.
+//
+// `note` is the one-line consequence shown in the picker. The bro shapes say
+// what they cost outright: with a muscle trained once a week, `allocate` caps
+// the session at MAX_SETS_PER_MUSCLE_PER_SESSION and the weekly total lands
+// well under what the same person would get training it twice. That is the
+// volume model working as designed, not a fault to hide — but it is the
+// user's decision to make, so it is stated before they make it.
 export const TEMPLATES = {
   2: [
-    { name: 'Full body A', muscles: FULL_A },
-    { name: 'Full body B', muscles: FULL_B },
+    {
+      id: 'full-body',
+      name: 'Full body',
+      note: 'Everything, twice a week. The most volume two sessions can carry.',
+      days: [
+        { name: 'Full body A', muscles: FULL_A },
+        { name: 'Full body B', muscles: FULL_B },
+      ],
+    },
   ],
   3: [
-    { name: 'Full body A', muscles: FULL_A },
-    { name: 'Full body B', muscles: FULL_B },
-    { name: 'Full body C', muscles: FULL_C },
+    {
+      id: 'full-body',
+      name: 'Full body',
+      note: 'Every muscle three times a week — the best frequency at this count.',
+      days: [
+        { name: 'Full body A', muscles: FULL_A },
+        { name: 'Full body B', muscles: FULL_B },
+        { name: 'Full body C', muscles: FULL_C },
+      ],
+    },
+    {
+      id: 'ppl',
+      name: 'Push / Pull / Legs',
+      note: 'Shorter, more focused days — but each muscle only once a week.',
+      days: [
+        { name: 'Push', muscles: PUSH },
+        { name: 'Pull', muscles: PULL },
+        { name: 'Legs', muscles: LEGS },
+      ],
+    },
   ],
   4: [
-    { name: 'Upper A', muscles: UPPER },
-    { name: 'Lower A', muscles: LOWER },
-    { name: 'Upper B', muscles: UPPER },
-    { name: 'Lower B', muscles: LOWER },
+    {
+      id: 'upper-lower',
+      name: 'Upper / Lower',
+      note: 'Everything twice a week. The most reliable four-day shape.',
+      days: [
+        { name: 'Upper A', muscles: UPPER },
+        { name: 'Lower A', muscles: LOWER },
+        { name: 'Upper B', muscles: UPPER },
+        { name: 'Lower B', muscles: LOWER },
+      ],
+    },
+    {
+      id: 'arnold-4',
+      name: 'Arnold',
+      note: 'Chest with back, delts with arms. Chest and back get two sessions.',
+      days: [
+        { name: 'Chest & Back A', muscles: CHEST_BACK },
+        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS },
+        { name: 'Legs', muscles: LEGS },
+        { name: 'Chest & Back B', muscles: CHEST_BACK },
+      ],
+    },
+    {
+      id: 'bro-4',
+      name: 'Bro split',
+      note: 'One body part a day, once a week. Weekly volume lands lower for it.',
+      days: [
+        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Back', muscles: BRO_BACK },
+        { name: 'Shoulders & Arms', muscles: [...BRO_SHOULDERS, ...BRO_ARMS] },
+        { name: 'Legs', muscles: BRO_LEGS },
+      ],
+    },
   ],
   5: [
-    { name: 'Upper', muscles: UPPER },
-    { name: 'Lower', muscles: LOWER },
-    { name: 'Push', muscles: PUSH },
-    { name: 'Pull', muscles: PULL },
-    { name: 'Legs', muscles: LEGS },
+    {
+      id: 'upper-lower-ppl',
+      name: 'Upper / Lower + PPL',
+      note: 'Most muscles twice a week, with the extra day spent on the split.',
+      days: [
+        { name: 'Upper', muscles: UPPER },
+        { name: 'Lower', muscles: LOWER },
+        { name: 'Push', muscles: PUSH },
+        { name: 'Pull', muscles: PULL },
+        { name: 'Legs', muscles: LEGS },
+      ],
+    },
+    {
+      id: 'bro-5',
+      name: 'Bro split',
+      note: 'The classic five. One body part a day, once a week — volume lands lower.',
+      days: [
+        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Back', muscles: BRO_BACK },
+        { name: 'Shoulders', muscles: BRO_SHOULDERS },
+        { name: 'Arms', muscles: BRO_ARMS },
+        { name: 'Legs', muscles: BRO_LEGS },
+      ],
+    },
+    {
+      id: 'arnold-5',
+      name: 'Arnold',
+      note: 'Arnold pairing with a second legs day.',
+      days: [
+        { name: 'Chest & Back A', muscles: CHEST_BACK },
+        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS },
+        { name: 'Legs A', muscles: LEGS },
+        { name: 'Chest & Back B', muscles: CHEST_BACK },
+        { name: 'Legs B', muscles: LEGS },
+      ],
+    },
   ],
   6: [
-    { name: 'Push A', muscles: PUSH },
-    { name: 'Pull A', muscles: PULL },
-    { name: 'Legs A', muscles: LEGS },
-    { name: 'Push B', muscles: PUSH },
-    { name: 'Pull B', muscles: PULL },
-    { name: 'Legs B', muscles: LEGS },
+    {
+      id: 'ppl-x2',
+      name: 'Push / Pull / Legs ×2',
+      note: 'Everything twice a week across six shorter sessions.',
+      days: [
+        { name: 'Push A', muscles: PUSH },
+        { name: 'Pull A', muscles: PULL },
+        { name: 'Legs A', muscles: LEGS },
+        { name: 'Push B', muscles: PUSH },
+        { name: 'Pull B', muscles: PULL },
+        { name: 'Legs B', muscles: LEGS },
+      ],
+    },
+    {
+      id: 'arnold-6',
+      name: 'Arnold ×2',
+      note: 'The full Arnold split — every muscle twice a week.',
+      days: [
+        { name: 'Chest & Back A', muscles: CHEST_BACK },
+        { name: 'Shoulders & Arms A', muscles: SHOULDERS_ARMS },
+        { name: 'Legs A', muscles: LEGS },
+        { name: 'Chest & Back B', muscles: CHEST_BACK },
+        { name: 'Shoulders & Arms B', muscles: SHOULDERS_ARMS },
+        { name: 'Legs B', muscles: LEGS },
+      ],
+    },
+    {
+      id: 'bro-6',
+      name: 'Bro + arms',
+      note: 'One body part a day, with a second arms and delts session.',
+      days: [
+        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Back', muscles: BRO_BACK },
+        { name: 'Shoulders', muscles: BRO_SHOULDERS },
+        { name: 'Arms', muscles: BRO_ARMS },
+        { name: 'Legs', muscles: BRO_LEGS },
+        // Not a second arm day for its own sake: arms and delts are the groups
+        // that suffer most from once-a-week frequency, and a second exposure is
+        // the only thing that lifts them inside this shape.
+        { name: 'Arms & Delts', muscles: [...BRO_ARMS, ...BRO_SHOULDERS] },
+      ],
+    },
   ],
+}
+
+// The shapes on offer at a day count, and the one taken by default.
+export function shapesFor(daysPerWeek) {
+  return TEMPLATES[daysPerWeek] || TEMPLATES[DEFAULT_DAYS_PER_WEEK]
 }
 
 export const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6]

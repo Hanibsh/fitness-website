@@ -39,6 +39,59 @@ export const ENGINE_MUSCLE_TO_COARSE = {
   Calves: 'Legs', Tibialis: 'Legs',
 }
 
+// ---- The donut vocabulary --------------------------------------------------
+//
+// A third rollup, for the pie charts, and it exists because neither of the other
+// two can draw one. The 7 coarse categories are too blunt — a leg day comes out
+// as a single slice reading "100% Legs", which tells you nothing about whether it
+// was quad-dominant or a posterior-chain day. The 20 engine muscles are too many
+// slices to read, and would need 20 distinguishable colours.
+//
+// These 12 are the dashboard donut's existing 11 (src/components/MuscleDonut.jsx
+// owns the palette) plus Adductors. Squats and lunges put real volume through the
+// adductors, and folding them into Quads — the only other plausible home — would
+// overstate quads on every single leg day.
+export const DONUT_GROUP_ORDER = [
+  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms',
+  'Quads', 'Hamstrings', 'Glutes', 'Adductors', 'Calves', 'Abs',
+]
+
+// Two mappings worth defending: Abductors roll into GLUTES because that is
+// anatomically what they are (glute medius and minimus), not a separate muscle
+// that happens to sit nearby; and Tibialis rolls into CALVES as the other half
+// of the same shank, since a lone tibialis sliver would be unreadable and it has
+// no other home.
+export const ENGINE_MUSCLE_TO_DONUT = {
+  Chest: 'Chest',
+  Lats: 'Back', 'Upper Back': 'Back', 'Lower Back': 'Back', 'Neck & Traps': 'Back',
+  'Front Delts': 'Shoulders', 'Side Delts': 'Shoulders', 'Rear Delts': 'Shoulders',
+  Biceps: 'Biceps', Triceps: 'Triceps', Forearms: 'Forearms',
+  Abs: 'Abs', Obliques: 'Abs',
+  Quads: 'Quads', Hamstrings: 'Hamstrings',
+  Glutes: 'Glutes', Abductors: 'Glutes',
+  Adductors: 'Adductors',
+  Calves: 'Calves', Tibialis: 'Calves',
+}
+
+// Roll `muscles` rows (from dayStats/sessionStats, or summarize's weekly volume)
+// into slices for MuscleDonut, biggest first.
+//
+// Takes the ALREADY-WEIGHTED rows rather than recomputing from the database, so
+// a donut and the bars beside it are the same numbers drawn twice — the max-not-
+// sum rule, the contribution weighting and any per-week normalisation the caller
+// applied are all already baked in.
+export function donutRows(rows, { key = 'muscle', valueKey = 'sets' } = {}) {
+  const totals = {}
+  for (const row of rows || []) {
+    const group = ENGINE_MUSCLE_TO_DONUT[row[key]]
+    if (!group) continue
+    totals[group] = (totals[group] || 0) + (Number(row[valueKey]) || 0)
+  }
+  return DONUT_GROUP_ORDER.filter((g) => round1(totals[g]) > 0)
+    .map((g) => ({ muscle: g, label: g === 'Abs' ? 'Core' : g, value: round1(totals[g]) }))
+    .sort((a, b) => b.value - a.value)
+}
+
 // The exercise bank id a planned row points at, or null when it has none (custom
 // movements, and the cardio / Olympic / full-body entries that have no DB row).
 // The stored id wins; falling back to the name catches rows planned before the

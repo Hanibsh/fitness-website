@@ -26,7 +26,7 @@
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
 import { createDay, createPlannedExercise, emptyProgram } from './program'
-import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId } from './planStats'
+import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId, donutRows } from './planStats'
 import { injuryRiskMap } from './injuries'
 import { effectiveWeeklyVolume } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
@@ -40,7 +40,7 @@ import {
   FATIGUE_SCORE_COEF, AXIAL_MULT, FREE_WEIGHT_MULT,
 } from './engineConfig'
 import {
-  PROGRAMMED_MUSCLES, TEMPLATES, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
+  PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
   EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
@@ -211,6 +211,10 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
   const excludedEquipment = atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set()
   const excludedOverload = atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set()
 
+  // Which named shape of split — Upper/Lower, Arnold, a bro split. Null means
+  // "pick for me", which takes the recommended one for this day count.
+  const shape = typeof answers.shape === 'string' ? answers.shape : null
+
   // Leave each slot's movement undecided, to be chosen in the gym? Off by
   // default: a split you can read straight through is a better first impression
   // than a list of questions, and every row can be opened afterwards anyway.
@@ -231,6 +235,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
     weights,
     schedule,
     weekdays,
+    shape,
     openSlots,
     history: historyContext(sessions, { now }),
     // Built once here rather than per scored exercise: fillDay ranks the whole
@@ -284,9 +289,13 @@ export function weeklyTargets({ posture, focus, history }) {
 // Template days for this frequency, with the focus muscles promoted to the front
 // of every day they appear in and given an extra weekly session where one of the
 // other days has room. "Earlier and more often" is the whole ask of a focus.
-export function pickTemplate(daysPerWeek, focus = []) {
-  const base = TEMPLATES[daysPerWeek] || TEMPLATES[DEFAULT_DAYS_PER_WEEK]
-  const days = base.map((d) => ({ name: d.name, muscles: [...d.muscles] }))
+export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
+  // An unrecognised shape falls back to the first one rather than erroring: the
+  // id can arrive from a saved answer whose day count has since changed, and a
+  // sensible split beats a broken one.
+  const shapes = shapesFor(daysPerWeek)
+  const shape = shapes.find((sh) => sh.id === shapeId) || shapes[0]
+  const days = shape.days.map((d) => ({ name: d.name, muscles: [...d.muscles] }))
 
   for (const muscle of focus) {
     let freq = days.filter((d) => d.muscles.includes(muscle)).length
@@ -305,6 +314,9 @@ export function pickTemplate(daysPerWeek, focus = []) {
     const lead = focus.filter((m) => d.muscles.includes(m))
     d.muscles = [...lead, ...d.muscles.filter((m) => !lead.includes(m))]
   }
+  // The shape rides along on the days so summarize can name it without having to
+  // resolve the id a second time.
+  days.shape = shape
   return days
 }
 
@@ -751,7 +763,7 @@ function suggestName(focus, daysPerWeek) {
 // from the intermediate steps — so what's shown is what will be created. Weekly
 // volume is the sum of each training day's dayStats, normalised to a week for a
 // rotation whose cycle isn't 7 days long.
-export function summarize(program, { targets, schedule, cycle, inputs }) {
+export function summarize(program, { targets, schedule, cycle, inputs, shape = null }) {
   const weekly = {}
   const days = []
   const perWeek = 7 / cycle.length
@@ -777,6 +789,9 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
       sets: stats.sets,
       load: stats.load,
       lead: stats.muscles.slice(0, 3).map((m) => m.muscle),
+      // What this day trains, rolled up for the day's donut. Same weighted rows
+      // the muscle bars use, so the chart and the numbers can never disagree.
+      donut: donutRows(stats.muscles),
       exercises: day.exercises.map((e) => ({
         id: e.id,
         name: e.name,
@@ -844,6 +859,13 @@ export function summarize(program, { targets, schedule, cycle, inputs }) {
       schedule === 'weekly'
         ? `Fixed week · ${training} training day${training !== 1 ? 's' : ''}`
         : `${program.days.length}-day rotation · ${training} training day${training !== 1 ? 's' : ''}`,
+    shape: shape ? { id: shape.id, name: shape.name, note: shape.note } : null,
+    // A rotation whose cycle is not 7 days long reports an AVERAGE week, and the
+    // preview has to say so — every landmark in engineConfig is weekly, so this
+    // is the only form that can be graded, but an averaged number must never be
+    // mistaken for a literal one.
+    cycleLength: cycle.length,
+    perWeek,
     fromHistory: !!inputs.history,
     historySessions: inputs.history?.sessions || 0,
     focus: inputs.focus,
@@ -1164,7 +1186,7 @@ export function patternOptions(planned, { program, dayId, sessions = [], injurie
 export function generateProgram({ answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
   const inputs = resolveInputs({ answers, profile, sessions, injuries, now })
   const targets = weeklyTargets(inputs)
-  const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus)
+  const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus, inputs.shape)
   const cycle = cycleShape(inputs)
   const gaps = recoveryGaps(templateDays, cycle)
   const allocation = allocate(targets, templateDays)
@@ -1190,5 +1212,9 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   const trainingDays = templateDays.map((t, i) => fillDay(t, allocation[i], gaps[i], ctx))
   trimOvershoot(trainingDays, { perWeek: 7 / cycle.length, focus: inputs.focus })
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
-  return { program, summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs }), inputs }
+  return {
+    program,
+    summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape }),
+    inputs,
+  }
 }

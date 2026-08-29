@@ -24,6 +24,13 @@
   --color-muscle-glutes: #be185d;
   --color-muscle-calves: #06b6d4;
   --color-muscle-abs: #4338ca;
+  /* Adductors is deliberately the one DESATURATED step. Every other muscle here
+     is a saturated hue, so a neutral can't collide with any of them under any
+     colour-vision deficiency — protan, deutan and tritan confusions all run
+     between hues, and this step has almost no hue to confuse. It also keeps the
+     usually-small adductor slice from shouting over quads and glutes, which sit
+     either side of it in the legend order. */
+  --color-muscle-adductors: #64748b;
   /* Chart series — categorical (identity: which thing, never how much). Slots
      are assigned in fixed order and never cycled; the order is what keeps
      neighbours apart under colour blindness. Both themes validated against the
@@ -99,6 +106,7 @@
   --color-muscle-glutes: #ec4899;
   --color-muscle-calves: #0891b2;
   --color-muscle-abs: #6366f1;
+  --color-muscle-adductors: #94a3b8;
   /* Series 6 (green) and the tier-over cap are absent on purpose: both already
      clear the dark card, so re-stepping them would only shift them off a
      validated pair. */

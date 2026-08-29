@@ -6,13 +6,14 @@ import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { fetchProfile } from '../lib/profile'
+import MuscleDonut from './MuscleDonut'
 import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
 import { setProgramName } from '../lib/program'
+import { donutRows } from '../lib/planStats'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
-  DEFAULT_EXPERIENCE, PROGRAMMED_MUSCLES,
-} from '../lib/generatorConfig'
+  DEFAULT_EXPERIENCE, PROGRAMMED_MUSCLES, shapesFor } from '../lib/generatorConfig'
 import { ENGINE_MUSCLES } from '../lib/engineConfig'
 import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS } from '../lib/profileFields'
 
@@ -64,6 +65,8 @@ export default function SplitWizard() {
   const [experience, setExperience] = useState('')
   const [equipment, setEquipment] = useState('')
   const [openSlots, setOpenSlots] = useState(false)
+  // null = "pick for me": pickTemplate takes the recommended shape for the count.
+  const [shape, setShape] = useState(null)
   const [name, setName] = useState('')
   // Open injuries steer the picks — a bad shoulder pushes overhead pressing down
   // the ranking without removing it (PENALTIES.injury in generatorConfig).
@@ -102,6 +105,10 @@ export default function SplitWizard() {
   // Changing the frequency re-spreads the training days, unless the user has
   // already placed exactly that many themselves.
   function chooseDays(n) {
+    // A shape id belongs to one day count ('bro-5' means nothing at 4 days), so
+    // changing the count hands the choice back to "pick for me" rather than
+    // silently falling through to whatever pickTemplate defaults to.
+    setShape(null)
     setDaysPerWeek(n)
     if (weekdays.length !== n) setWeekdays([...DEFAULT_WEEKDAYS[n]])
   }
@@ -132,13 +139,14 @@ export default function SplitWizard() {
         focus,
         experience: experience || undefined,
         equipment: equipment || undefined,
+        shape: shape || undefined,
         openSlots,
       },
       profile,
       sessions: history,
       injuries,
     })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, openSlots, profile, history, injuries])
+  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, openSlots, shape, profile, history, injuries])
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
@@ -181,6 +189,19 @@ export default function SplitWizard() {
             <div className="grid grid-cols-5 gap-2 mb-6">
               {DAYS_PER_WEEK_OPTIONS.map((n) => choice(daysPerWeek === n, () => chooseDays(n), `${n}`, 'days'))}
             </div>
+
+            <label className={labelCls}>Shape</label>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              {choice(shape === null, () => setShape(null), 'Pick for me', 'The one that trains you best')}
+              {shapesFor(daysPerWeek).map((sh) => choice(shape === sh.id, () => setShape(sh.id), sh.name))}
+            </div>
+            {/* What the chosen shape costs, in its own words. The bro splits say
+                outright that a muscle trained once a week takes less weekly
+                volume — the user should read that before choosing, not discover
+                it in the amber bars afterwards. */}
+            <p className="text-[12px] text-text-light mb-5 leading-relaxed">
+              {(shapesFor(daysPerWeek).find((sh) => sh.id === shape) || shapesFor(daysPerWeek)[0]).note}
+            </p>
 
             <label className={labelCls}>Schedule</label>
             <div className="grid grid-cols-2 gap-2 mb-5">
@@ -306,6 +327,10 @@ function Preview({ built, name, setName, onCreate }) {
   // Two different reasons a planned muscle can end up with nothing, and they
   // deserve different sentences: the library has no movement for it at this
   // equipment level, or it simply didn't fit in the time available.
+  // The same rows the bars below are drawn from, rolled up to the chart's twelve
+  // groups — so the donut and the bars are one dataset drawn twice, already
+  // normalised to a week by summarize.
+  const weekDonut = donutRows(summary.volume)
   const unavailable = summary.volume.filter((v) => v.target != null && v.sets === 0 && !v.available)
   const squeezed = summary.volume.filter((v) => v.target != null && v.sets === 0 && v.available)
 
@@ -313,6 +338,7 @@ function Preview({ built, name, setName, onCreate }) {
     <section className={cardCls}>
       <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Your split</h2>
       <p className="text-[12px] text-text-light mb-6">
+        {summary.shape ? `${summary.shape.name} · ` : ''}
         {summary.shapeLabel}
         {summary.focus.length ? ` · ${summary.focus.join(' + ')} focus` : ''}
         {summary.fromHistory
@@ -345,7 +371,17 @@ function Preview({ built, name, setName, onCreate }) {
                 {d.kind === 'rest' ? (
                   <p className="text-[11px] text-text-light mt-0.5">Rest</p>
                 ) : (
-                  <ul className="mt-1.5 space-y-0.5 list-none p-0 m-0">
+                  <>
+                  {/* What this day is FOR, at a glance. The exercise list below
+                      says what you will do; this says what it adds up to — which
+                      is the question a day name like "Lower A" only half
+                      answers. */}
+                  {d.donut?.length > 0 && (
+                    <div className="mt-2">
+                      <MuscleDonut items={d.donut} unitLabel="sets" compact />
+                    </div>
+                  )}
+                  <ul className="mt-2 space-y-0.5 list-none p-0 m-0">
                     {d.exercises.map((e) => (
                       <li key={e.id} className="flex items-baseline gap-2 text-[12px]">
                         <span className="text-text-secondary break-words min-w-0">
@@ -366,12 +402,29 @@ function Preview({ built, name, setName, onCreate }) {
                       </li>
                     ))}
                   </ul>
+                  </>
                 )}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* The week as one picture, before the per-muscle detail below it. A
+          rotation whose cycle is not 7 days long is an AVERAGE, and it says so:
+          the volume landmarks are all weekly, so weekly is the only form that
+          can be graded — but an averaged number must never read as a literal
+          one. */}
+      {weekDonut.length > 0 && (
+        <>
+          <p className="text-[11px] uppercase tracking-wider text-text-light mb-3">
+            {summary.schedule === 'weekly' ? 'Every week' : `Average week · ${summary.cycleLength}-day rotation`}
+          </p>
+          <div className="mb-7">
+            <MuscleDonut items={weekDonut} unitLabel="sets per week" />
+          </div>
+        </>
+      )}
 
       {/* Weekly volume per muscle, graded on the same curve the dashboard uses.
           Everything the week produces is listed, including what the compounds
