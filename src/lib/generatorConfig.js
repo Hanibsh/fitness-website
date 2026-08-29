@@ -272,6 +272,27 @@ export const DEFAULT_WEEKDAYS = {
 // ---- Focus ------------------------------------------------------------------
 // A focus muscle gets three things: more weekly volume, an extra weekly session
 // where the template has room for one, and the front of every day it appears in.
+// Which half of the body a muscle belongs to. Used to decide whether a training
+// day can host a focus muscle it wasn't built for: raising a lagging muscle to
+// three sessions a week is only worth doing if the extra sessions make sense,
+// and quads on an upper day never do.
+//
+// Covers all of ENGINE_MUSCLES. Abs and Obliques are listed for completeness but
+// are portable below, so their region never decides anything.
+export const MUSCLE_REGION = {
+  Chest: 'upper', Lats: 'upper', 'Upper Back': 'upper', 'Neck & Traps': 'upper',
+  'Front Delts': 'upper', 'Side Delts': 'upper', 'Rear Delts': 'upper',
+  Biceps: 'upper', Triceps: 'upper', Forearms: 'upper',
+  Abs: 'upper', Obliques: 'upper',
+  'Lower Back': 'lower', Quads: 'lower', Hamstrings: 'lower', Glutes: 'lower',
+  Adductors: 'lower', Abductors: 'lower', Calves: 'lower', Tibialis: 'lower',
+}
+
+// Muscles that can be tacked onto any day regardless of region: small, cheap to
+// recover from, and genuinely trained anywhere in practice — calves at the end
+// of a push day is ordinary programming, quads on a push day is not.
+export const PORTABLE_MUSCLES = new Set(['Calves', 'Tibialis', 'Abs', 'Obliques', 'Forearms', 'Neck & Traps'])
+
 export const MAX_FOCUS_MUSCLES = 3
 export const FOCUS_VOLUME_MULT = 1.4
 export const FOCUS_TARGET_FREQUENCY = 3 // sessions/wk to lift a focus muscle to

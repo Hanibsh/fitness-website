@@ -42,6 +42,7 @@ import {
 import {
   PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
+  MUSCLE_REGION, PORTABLE_MUSCLES,
   EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
@@ -297,22 +298,53 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   const shape = shapes.find((sh) => sh.id === shapeId) || shapes[0]
   const days = shape.days.map((d) => ({ name: d.name, muscles: [...d.muscles] }))
 
+  // Which half of the body a day is for, read off the day rather than hardcoded
+  // per shape, so a shape added later is classified without anyone remembering
+  // to update a table. Ties go to upper, which only arises for a day with no
+  // muscles at all.
+  const regionOf = (day) => {
+    let lower = 0
+    for (const m of day.muscles) if (MUSCLE_REGION[m] === 'lower') lower++
+    return lower * 2 > day.muscles.length ? 'lower' : 'upper'
+  }
+
+  // A day can take a focus muscle it wasn't built for only if the muscle is
+  // portable or the day trains that half of the body. Without this the loop
+  // dropped the muscle on the first day that lacked it, which is how squats
+  // ended up leading "Upper A" and lateral raises leading "Lower A".
+  const borrowed = new Map(days.map((d) => [d, []]))
   for (const muscle of focus) {
     let freq = days.filter((d) => d.muscles.includes(muscle)).length
     for (const d of days) {
       if (freq >= FOCUS_TARGET_FREQUENCY) break
-      if (!d.muscles.includes(muscle)) {
-        d.muscles.push(muscle)
-        freq++
-      }
+      if (d.muscles.includes(muscle)) continue
+      if (!PORTABLE_MUSCLES.has(muscle) && regionOf(d) !== MUSCLE_REGION[muscle]) continue
+      d.muscles.push(muscle)
+      borrowed.get(d).push(muscle)
+      freq++
     }
   }
+  // A muscle with no eligible day simply stays at the frequency the shape gives
+  // it. Quads on Upper/Lower already has two sessions and there is no honest
+  // third home for it — better to leave it at two and say so (summarize reports
+  // the shortfall) than to invent a day for it.
 
   // One ordering pass at the end rather than promoting as we go, so the focus
   // muscles lead in the order the user listed them.
   for (const d of days) {
     const lead = focus.filter((m) => d.muscles.includes(m))
     d.muscles = [...lead, ...d.muscles.filter((m) => !lead.includes(m))]
+  }
+
+  // A day that borrowed a muscle says so. The focus muscle still leads — being
+  // trained fresh is the whole point of naming one — but a day called "Chest"
+  // that opens with lateral raises is lying about itself, and this name follows
+  // the split into the editor, the calendar and the logger. Renamed once, after
+  // every focus muscle is placed, so a day that borrowed two reads
+  // "Legs + Biceps, Forearms" rather than being renamed twice.
+  for (const d of days) {
+    const extra = borrowed.get(d)
+    if (extra.length) d.name = `${d.name} + ${extra.join(', ')}`
   }
   // The shape rides along on the days so summarize can name it without having to
   // resolve the id a second time.
@@ -852,6 +884,25 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     sets: round1(patternSets.get(id) * perWeek),
   }))
 
+  // A focus muscle that didn't reach its target frequency. Someone who named a
+  // muscle asked for it to be trained more often; where the shape can't deliver
+  // that, they should be told rather than left to count the days themselves.
+  //
+  // Measured on `sessions` — days that actually train the muscle at all — not on
+  // the template's slots, because a muscle picks up real work from movements
+  // that were chosen for something else, and that counts.
+  const focusShortfall = inputs.focus
+    .map((m) => volume.find((v) => v.muscle === m))
+    .filter((v) => v && v.sessions < FOCUS_TARGET_FREQUENCY)
+    .map((v) => ({
+      muscle: v.muscle,
+      sessions: v.sessions,
+      // Two different reasons, and they deserve different sentences: there
+      // aren't enough training days in the week at all, or there are, but none
+      // of the others train that half of the body.
+      reason: inputs.daysPerWeek < FOCUS_TARGET_FREQUENCY ? 'days' : 'shape',
+    }))
+
   const training = program.days.filter((d) => d.kind !== 'rest').length
   return {
     schedule,
@@ -874,6 +925,7 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     days,
     volume,
     patterns,
+    focusShortfall,
   }
 }
 

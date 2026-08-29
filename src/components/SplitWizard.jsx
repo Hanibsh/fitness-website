@@ -474,6 +474,22 @@ function Preview({ built, name, setName, onCreate }) {
         </>
       )}
 
+      {/* Asked for a muscle to be brought up and the shape couldn't do it. Said
+          here, beside the volume it did get, rather than left for the reader to
+          work out by counting the day cards. */}
+      {summary.focusShortfall?.length > 0 && (
+        <p className="text-[12px] text-amber-600 mb-3 leading-relaxed">
+          {summary.focusShortfall.map((f) => (
+            <span key={f.muscle} className="block">
+              {f.muscle} stays at {f.sessions} session{f.sessions === 1 ? '' : 's'} a week
+              {f.reason === 'days'
+                ? ` — you train ${summary.daysPerWeek} days.`
+                : ' — no other day in this shape trains that half of the body. It still leads on the days it has.'}
+            </span>
+          ))}
+        </p>
+      )}
+
       <p className="text-[11px] text-text-light mb-6 leading-relaxed">
         Graded on the same curve as your dashboard: green is a productive dose, amber is under the useful
         minimum or past the point it pays for itself.
