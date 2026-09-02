@@ -44,14 +44,21 @@ function repRangeLabel(r) {
   return r && r.low != null && r.high != null ? `${r.low}–${r.high}` : 'none'
 }
 
-// The shape this exercise was actually LOGGED in, or null when there's no single
-// answer. Read from the sets themselves (`!!set.left`) rather than the exercise's
-// `unilateral` flag, which is cosmetic — it only decides what the toggle says and
-// what a fresh "add set" inherits, while each set's real shape is what got
-// logged. Null for: cardio, bodyweight-loaded (no L/R shape exists), a movement
-// whose laterality the DB fixes, nothing logged, or a MIXED session — some sets
-// flat, some L/R. A plan row holds one flag, so a mix isn't representable; it's
-// left alone rather than flattened into a lie.
+// The shape this exercise's WORKING sets were actually LOGGED in, or null when
+// there's no single answer. Read from the sets themselves (`!!set.left`) rather
+// than the exercise's `unilateral` flag, which is cosmetic — it only decides
+// what the toggle says and what a fresh "add set" inherits, while each set's real
+// shape is what got logged. Null for: cardio, bodyweight-loaded (no L/R shape
+// exists), a movement whose laterality the DB fixes, nothing logged, or working
+// sets that disagree with EACH OTHER — a plan row holds one flag, so that mix
+// isn't representable and is left alone rather than flattened into a lie.
+//
+// Warm-ups are not consulted, deliberately, and for the same reason
+// prescribedSetCount ignores them: this flag governs the sets the plan
+// prescribes, and a bilateral ramp into unilateral work is a normal way to train
+// one movement, not a contradiction to resolve. The warm-up's own shape survives
+// because replaying it reads the log rather than this flag — see
+// setsFromPrevious, which lets the plan's opinion reach working sets only.
 function loggedLaterality(ex) {
   if (ex.kind === 'cardio' || ex.bodyweight) return null
   if ((ex.laterality || 'both') !== 'both') return null

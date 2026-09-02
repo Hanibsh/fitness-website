@@ -193,17 +193,28 @@ export function convertSet(s, unilateral) {
 // Returns null if bodyweight-loaded doesn't match (that's a different logging
 // mechanism entirely) — the caller falls back to its own default set.
 //
-// Laterality is mirrored PER SET from what was actually logged last time,
-// not forced to a single exercise-wide shape — this is the per-day memory: a
-// "both" exercise done unilateral on Push day and bilateral on a Full-Body day
-// recreates that exact mix next time, with no flag to keep in sync. Only a
-// FIXED-laterality exercise (`opts.laterality` is 'unilateral' or 'bilateral')
-// coerces every set to that shape, since its rows can never legitimately differ.
+// Laterality is mirrored PER SET from what was actually logged last time, not
+// forced to a single exercise-wide shape — a "both" exercise warmed up with both
+// legs and then worked one at a time comes back exactly that way, with no flag
+// to keep in sync. Two things can override that mirror, and they are
+// deliberately NOT the same thing:
+//
+//   - `opts.laterality` is the exercise DB's FIXED answer ('unilateral' or
+//     'bilateral'), and it binds EVERY set. A single-leg press has no bilateral
+//     warm-up to remember; its rows can never legitimately differ.
+//   - `opts.plannedUnilateral` (true / false / null) is the SPLIT's opinion, and
+//     it binds the WORKING sets only. A plan row prescribes working sets and
+//     nothing else — warm-ups are ad-hoc ramping it never counted, which is why
+//     prescribedSetCount ignores them too — so a warm-up keeps whichever shape
+//     you last gave it, and a bilateral ramp into unilateral work survives being
+//     replayed instead of needing to be rebuilt every session. Ignored wherever
+//     the DB has already fixed the answer.
+//
 // `asHint` returns the same set-for-set structure with the numbers moved into
 // `hint` and the fields left blank — the shape and the ramp carry over, the
 // values are only a suggestion until you log them.
 export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
-  const { bodyweight = false, bw = 0, laterality, asHint = false } = opts
+  const { bodyweight = false, bw = 0, laterality, plannedUnilateral = null, asHint = false } = opts
   if (!prevEx || !Array.isArray(prevEx.sets) || !prevEx.sets.length) return null
   if (bodyweight !== !!prevEx.bodyweight) return null
   const conv = (w) => (w === '' || w == null ? (w ?? '') : Math.round(convertWeight(Number(w), fromUnit, toUnit) * 100) / 100)
@@ -215,7 +226,12 @@ export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
       return out({ id: newId(), ...keep(s), added, reps: s.reps ?? '', rir: s.rir ?? '', bw, weight: (Number(bw) || 0) + (Number(added) || 0) })
     })
   }
-  const forceUnilateral = laterality === 'unilateral' ? true : laterality === 'bilateral' ? false : null
+  const fixed = laterality === 'unilateral' ? true : laterality === 'bilateral' ? false : null
+  const planned = typeof plannedUnilateral === 'boolean' ? plannedUnilateral : null
+  // The shape a set has to take, or null for "keep the shape it was logged in".
+  // The DB outranks the split: a laterality the library fixes isn't the plan's
+  // to reopen, and a warm-up is nobody's to reshape but yours.
+  const wantedShape = (s) => (fixed !== null ? fixed : s.type === 'warmup' ? null : planned)
   return prevEx.sets.map((s) => {
     const mirrored = s.left
       ? {
@@ -225,7 +241,8 @@ export function setsFromPrevious(prevEx, fromUnit, toUnit, opts = {}) {
           right: { weight: conv(s.right?.weight), reps: s.right?.reps ?? '', rir: s.right?.rir ?? '' },
         }
       : { id: newId(), ...keep(s), reps: s.reps ?? '', weight: conv(s.weight), rir: s.rir ?? '', duration: s.duration ?? '', distance: s.distance ?? '' }
-    const shaped = forceUnilateral === null || forceUnilateral === !!mirrored.left ? mirrored : convertSet(mirrored, forceUnilateral)
+    const wanted = wantedShape(s)
+    const shaped = wanted === null || wanted === !!mirrored.left ? mirrored : convertSet(mirrored, wanted)
     return out(shaped)
   })
 }

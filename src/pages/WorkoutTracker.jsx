@@ -1506,9 +1506,11 @@ export default function WorkoutTracker() {
   // Seed an exercise's sets from the last time it was logged (any session, not
   // just this same routine day): set count (warm-ups included) and each set's
   // own bilateral/unilateral shape come from there, and so do the numbers — but
-  // as GREY SUGGESTIONS, not as entries. This is the per-day memory: a "both"
-  // exercise logged unilateral on Push day and bilateral on a Full-Body day
-  // recreates that exact per-set mix next time.
+  // as GREY SUGGESTIONS, not as entries. So a per-set mix you built by hand — a
+  // bilateral warm-up ramping into unilateral working sets — comes back the way
+  // you left it. The memory is per MOVEMENT rather than per day: lastLoggedExercise
+  // takes the most recent match from ANY session, and what makes one day's working
+  // sets differ from another's is the split's own laterality flag, below.
   //
   // Suggestions rather than values because the split now learns from what you
   // logged: pre-typing last week's numbers would mean every planned exercise
@@ -1520,29 +1522,47 @@ export default function WorkoutTracker() {
     if (ex.kind === 'cardio') return ex
     const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
     if (!last) return ex
-    // Per-day memory replays last time's per-set mix — EXCEPT where the split
-    // has stated an opinion. A laterality you just set in the builder must not
-    // be quietly undone by last week's log; a split that says nothing still
-    // defers to history, exactly as before.
-    const laterality =
-      ex.bodyweight || typeof plannedUnilateral !== 'boolean'
-        ? ex.laterality
-        : plannedUnilateral
-          ? 'unilateral'
-          : 'bilateral'
-    const sets = setsFromPrevious(last.ex, last.unit, unit, { laterality, bodyweight: ex.bodyweight, bw: sessionBw, asHint: true })
+    // The two things that can override that memory are handed over SEPARATELY
+    // rather than collapsed into one shape, because they bind differently: the
+    // DB's fixed laterality binds every set, while the split's flag binds only
+    // the sets the split actually prescribes. Collapsing them is what used to let
+    // a planned "unilateral" re-split a bilateral warm-up into left/right every
+    // session, quietly undoing a per-set choice the logger offers on purpose. A
+    // laterality you set in the builder still outranks last week's working sets,
+    // and a split that says nothing still defers to history, exactly as before.
+    const planned = ex.bodyweight || typeof plannedUnilateral !== 'boolean' ? null : plannedUnilateral
+    const sets = setsFromPrevious(last.ex, last.unit, unit, {
+      laterality: ex.laterality,
+      plannedUnilateral: planned,
+      bodyweight: ex.bodyweight,
+      bw: sessionBw,
+      asHint: true,
+    })
     if (!sets || !sets.length) return ex
     // Top back up to whatever the plan asked for, so a day prescribing four sets
-    // still shows four rows when last time only got two.
+    // still shows four rows when last time only got two. Rows added here are
+    // working sets by definition — the plan has never prescribed a warm-up — so
+    // they take the shape the plan asks for, falling back to the last replayed
+    // set's shape where it has no opinion. Built at that shape and converted
+    // after, rather than created unilateral outright, so the suggestion travels
+    // with it: a hint mirrors the shape of the set it came from, and pasting a
+    // flat one onto an L/R row would leave the fill-from-last-time tap nothing
+    // to fill.
+    const padShape = ex.bodyweight || (ex.laterality || 'both') !== 'both' ? null : planned
     while (sets.length < ex.sets.length) {
       const prev = sets[sets.length - 1]
       const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: !!prev?.left }
-      sets.push({ ...createSet(undefined, setOpts), ...(prev?.hint ? { hint: prev.hint } : {}) })
+      const fresh = { ...createSet(undefined, setOpts), ...(prev?.hint ? { hint: prev.hint } : {}) }
+      sets.push(padShape === null ? fresh : convertSet(fresh, padShape))
     }
-    // Keep the display flag roughly in sync with what a fresh "add set" would
-    // now inherit (the last set's shape) — purely cosmetic for the toggle
-    // button's label; each set's real shape is what actually gets logged.
-    const unilateral = ex.bodyweight ? false : !!sets[sets.length - 1].left
+    // Keep the display flag in sync with the shape this exercise is being logged
+    // in — the last WORKING set, not simply the last one. A warm-up left at the
+    // end of an interrupted session shouldn't decide the toggle's label, nor make
+    // the exercise-wide toggle flip the wrong way on its first tap. Beyond that
+    // it's cosmetic: each set's real shape is what actually gets logged, and
+    // "add set" copies the row above it.
+    const shapeSet = [...sets].reverse().find((s) => s.type !== 'warmup') || sets[sets.length - 1]
+    const unilateral = ex.bodyweight ? false : !!shapeSet.left
     return { ...ex, sets, unilateral }
   }
 
