@@ -2,6 +2,7 @@
 //
 //   node scripts/audit-generator.mjs            # summary, fails on any violation
 //   node scripts/audit-generator.mjs --verbose  # + the volume table per scenario
+//   node scripts/audit-generator.mjs --volume=lower  # one volume preference only
 //
 // The generator is a pure function, so it can be checked exhaustively: run it
 // across every combination of frequency, focus, equipment and experience the
@@ -24,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -34,6 +35,9 @@ const FOCUS_CASES = [[], ['Side Delts'], ['Chest', 'Lats', 'Glutes']]
 const EQUIPMENT_CASES = ['gym', 'bodyweight']
 const EXPERIENCE_CASES = ['beginner', 'intermediate', 'advanced']
 const SCHEDULE_CASES = ['weekly', 'rotation']
+const TIGHT_WEEK_SETS = 48
+const VOLUME_ONLY =process.argv.find((a) => a.startsWith('--volume='))?.slice('--volume='.length)
+const VOLUME_CASES = VOLUME_PREFERENCES.map((p) => p.value).filter((v) => !VOLUME_ONLY || v === VOLUME_ONLY)
 const DAYS_CASES = [2, 3, 4, 5, 6]
 
 const round = (n) => Math.round(n * 10) / 10
@@ -51,11 +55,13 @@ for (const daysPerWeek of DAYS_CASES) {
     for (const equipment of EQUIPMENT_CASES) {
       for (const experience of EXPERIENCE_CASES) {
         for (const schedule of SCHEDULE_CASES) {
-          scenarios++
-          const answers = { daysPerWeek, focus, equipment, experience, schedule }
-          const label = `${daysPerWeek}d/${schedule}/${equipment}/${experience}/[${focus.join(',') || 'no focus'}]`
-          const { program, summary, inputs } = generateProgram({ answers })
-          audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule })
+          for (const volume of VOLUME_CASES) {
+            scenarios++
+            const answers = { daysPerWeek, focus, equipment, experience, schedule, volume }
+            const label = `${daysPerWeek}d/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]`
+            const { program, summary, inputs } = generateProgram({ answers })
+            audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume })
+          }
         }
       }
     }
@@ -117,6 +123,10 @@ function audit(label, program, summary, inputs, opts) {
       day.exercises.length <= EXPERIENCE_POSTURE[opts.experience].exerciseCap,
       `"${day.name}" has ${day.exercises.length} exercises, cap is ${EXPERIENCE_POSTURE[opts.experience].exerciseCap}`
     )
+    // The volume preference's hard-set cap is never waived, coverage included.
+    const cap = volumePreference(opts.volume).setCap
+    const sets = day.exercises.reduce((n, e) => n + (Number(e.sets) || 0), 0)
+    check(label, sets <= cap, `"${day.name}" has ${sets} sets, the ${opts.volume} cap is ${cap}`)
   }
   // There used to be a check here that at least one training day came out under
   // the 'heavy' band. It was written when a day was capped by a session length,
@@ -133,7 +143,19 @@ function audit(label, program, summary, inputs, opts) {
     // A muscle the library can't train with this equipment is a gap in the
     // exercise DB, not a bug in the generator. No current instance — every
     // programmed muscle has at-home coverage as of the 2026-08 calf rows.
-    if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment)) {
+    // A TIGHT week — the day cap times the training days comes to 48 sets or
+    // fewer (Lower up to 4 days, Standard up to 3, Higher on 2) — can't put all
+    // thirteen muscles on two sessions each at their minimum: that takes more
+    // sets than the user asked for. Hani's call (2026-10-01): accept it. There
+    // the bar is that every muscle still gets real work every week; the
+    // preview's amber bars say which ones landed short.
+    const tight = volumePreference(opts.volume).setCap * opts.daysPerWeek <= TIGHT_WEEK_SETS
+    if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment) && tight) {
+      check(label, row.sessions >= 1, `${row.muscle} not trained at all in a tight week`)
+      // Focus muscles take the lion's share of a tight week by design, so the
+      // "real work" bar only applies when nothing was asked to be brought up.
+      if (!opts.focus.length) check(label, row.sets >= 2, `${row.muscle} at ${row.sets} sets in a tight week — nothing to speak of`)
+    } else if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment)) {
       check(label, row.sessions >= 2, `${row.muscle} trained ${row.sessions}×/wk`)
       // Clearing the minimum effective dose on all thirteen muscles is only
       // asked of splits that train three days or more. Two sessions a week is
@@ -146,7 +168,12 @@ function audit(label, program, summary, inputs, opts) {
         // Quarter-set tolerance: these are one-decimal sums of contribution-
         // weighted credit, not whole sets, so "3.9 against a 4.0 minimum" is
         // rounding, not a shortfall worth failing a build over.
-        check(label, row.sets >= mevFor(row.muscle) - 0.25, `${row.muscle} at ${row.sets} sets (${row.tier.label})`)
+        // A rotation longer than a week is graded on its AVERAGE week, and sets
+        // come in whole chunks: a muscle given exactly its minimum per 8-day
+        // cycle averages 3.5 a week against a 4. That's the cycle length, not
+        // a shortfall — so a rotation is held to its minimum per cycle.
+        const floor = mevFor(row.muscle) * (opts.schedule === 'rotation' ? summary.perWeek : 1)
+        check(label, row.sets >= floor - 0.25, `${row.muscle} at ${row.sets} sets (${row.tier.label})`)
       } else {
         check(label, row.sets > 2, `${row.muscle} at ${row.sets} sets — nothing to speak of`)
       }

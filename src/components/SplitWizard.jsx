@@ -13,7 +13,8 @@ import { setProgramName } from '../lib/program'
 import { donutRows } from '../lib/planStats'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
-  DEFAULT_EXPERIENCE, PROGRAMMED_MUSCLES, shapesFor } from '../lib/generatorConfig'
+  DEFAULT_EXPERIENCE, PROGRAMMED_MUSCLES, shapesFor,
+  VOLUME_PREFERENCES, DEFAULT_VOLUME_PREFERENCE, volumePreference } from '../lib/generatorConfig'
 import { ENGINE_MUSCLES } from '../lib/engineConfig'
 import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS } from '../lib/profileFields'
 
@@ -63,6 +64,7 @@ export default function SplitWizard() {
   const [weekdays, setWeekdays] = useState(DEFAULT_WEEKDAYS[DEFAULT_DAYS_PER_WEEK])
   const [focus, setFocus] = useState([])
   const [experience, setExperience] = useState('')
+  const [volume, setVolume] = useState(DEFAULT_VOLUME_PREFERENCE)
   const [equipment, setEquipment] = useState('')
   const [openSlots, setOpenSlots] = useState(false)
   // null = "pick for me": pickTemplate takes the recommended shape for the count.
@@ -138,6 +140,7 @@ export default function SplitWizard() {
         weekdays: weekdays.length === daysPerWeek ? weekdays : null,
         focus,
         experience: experience || undefined,
+        volume,
         equipment: equipment || undefined,
         shape: shape || undefined,
         openSlots,
@@ -146,7 +149,7 @@ export default function SplitWizard() {
       sessions: history,
       injuries,
     })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, equipment, openSlots, shape, profile, history, injuries])
+  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, volume, equipment, openSlots, shape, profile, history, injuries])
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
@@ -281,6 +284,15 @@ export default function SplitWizard() {
                 )
               )}
             </div>
+
+            {/* Separate from training age on purpose: fewer, harder sets is a
+                valid way to train at any experience level, so it's a choice
+                rather than something experience decides for you. */}
+            <label className={labelCls}>Volume</label>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {VOLUME_PREFERENCES.map((p) => choice(volume === p.value, () => setVolume(p.value), p.label, p.sub))}
+            </div>
+            <p className="text-[12px] text-text-light mb-6 leading-relaxed">{volumePreference(volume).note}</p>
 
             <label className={labelCls}>Equipment</label>
             <div className="grid grid-cols-2 gap-2 mb-3">

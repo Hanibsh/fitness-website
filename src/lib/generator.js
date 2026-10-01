@@ -43,7 +43,7 @@ import {
   PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
   MUSCLE_REGION, PORTABLE_MUSCLES,
-  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK,
+  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
@@ -229,6 +229,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
     focus,
     experience,
     posture: EXPERIENCE_POSTURE[experience],
+    volumePref: volumePreference(answers.volume),
     equipmentPreset: preset,
     allowedEquipment,
     excludedEquipment,
@@ -264,7 +265,7 @@ function normaliseWeekdays(picked, daysPerWeek) {
 // have never trained at. Either way the result is clamped into the engine's own
 // landmarks, so the generator can't write a split the dashboard would
 // immediately grade "below minimum" or "low efficiency".
-export function weeklyTargets({ posture, focus, history }) {
+export function weeklyTargets({ posture, focus, history, volumePref = volumePreference() }) {
   const wanted = new Set([...PROGRAMMED_MUSCLES, ...focus])
   const isFocus = new Set(focus)
   const targets = {}
@@ -276,7 +277,9 @@ export function weeklyTargets({ posture, focus, history }) {
     // A muscle they've been neglecting still gets a real slot — their zero is
     // the reason they're generating a split, not a preference to honour.
     let target = seen > mevFor(muscle) ? seen : posture.baseWeeklySets * scale
-    target = clamp(target, mevFor(muscle), ceilingFor(muscle))
+    // The preference applies to their own history too: someone asking for
+    // "lower" wants less than they've been doing, not a copy of it.
+    target = clamp(target * volumePref.targetMult, mevFor(muscle), ceilingFor(muscle))
     if (isFocus.has(muscle)) {
       target = Math.min(target * FOCUS_VOLUME_MULT, ceilingFor(muscle) * ADVISOR_BLOCK_SLACK)
     }
@@ -576,6 +579,11 @@ export function fillDay(template, alloc, gaps, ctx) {
 
   const budgetUsed = () => clamp(load / (SYSTEMIC_CAPACITY * DAY_LOAD_TARGET), 0, 1)
   const loadRoom = () => load < SYSTEMIC_CAPACITY * DAY_LOAD_MAX
+  // The day's hard-set cap (the volume preference). Unlike the load cap it is
+  // never waived, coverage included: generateProgram has already scaled the
+  // targets to fit it, so this only bites on what that estimate missed.
+  const setCap = ctx.setCap ?? Infinity
+  const setRoom = (n) => setsUsed + n <= setCap
 
   // Charge `sets` of `db` to the day: the set budget, the fatigue budget, and
   // every muscle it credits.
@@ -590,6 +598,7 @@ export function fillDay(template, alloc, gaps, ctx) {
   function tryAdd(muscle, minOwed, { ignoreLoadCap = false } = {}) {
     if ((remaining[muscle] || 0) < minOwed) return false
     if (chosen.length >= ctx.posture.exerciseCap) return false
+    if (!setRoom(MIN_SETS_PER_EXERCISE)) return false
     if (!ignoreLoadCap && !loadRoom()) return false
 
     const pickCtx = {
@@ -644,6 +653,7 @@ export function fillDay(template, alloc, gaps, ctx) {
   for (let pass = 0; pass < MAX_TOP_UP_PASSES; pass++) {
     let added = false
     for (const muscle of template.muscles) {
+      if (!setRoom(1)) break
       if (!loadRoom() || (remaining[muscle] || 0) < 1) continue
       // Prefer the muscle's own movements, furthest from their cap first, so its
       // sets stay spread rather than piling onto whichever came first. Failing
@@ -1241,32 +1251,88 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus, inputs.shape)
   const cycle = cycleShape(inputs)
   const gaps = recoveryGaps(templateDays, cycle)
-  const allocation = allocate(targets, templateDays)
+  const perWeek = 7 / cycle.length
+  const setCap = inputs.volumePref.setCap
 
-  const ctx = {
-    posture: inputs.posture,
-    allowedEquipment: inputs.allowedEquipment,
-    excludedEquipment: inputs.excludedEquipment,
-    excludedOverload: inputs.excludedOverload,
-    weights: inputs.weights,
-    maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
-    focus: inputs.focus,
-    history: inputs.history,
-    injuryRisk: inputs.injuryRisk,
-    openSlots: inputs.openSlots,
-    // Week-wide variety state, shared across days on purpose: the second Push
-    // day should know what the first one already used.
-    weekIds: new Set(),
-    weekFamilies: new Set(),
-    weekSignatures: new Set(),
+  const fillWeek = (weekTargets, cap) => {
+    // Uncapped, each day gets a fixed share of the week (allocate). Capped, the
+    // days are planned in order against what the week still OWES: a muscle
+    // Monday already paid off is skipped on Wednesday, and that room goes to
+    // whatever Monday's cap squeezed out. A fixed share can't do that — it
+    // splits a small target into slivers too thin to earn an exercise, and the
+    // same muscles at the bottom of every day lose out every day.
+    const allocation = Number.isFinite(cap) ? null : allocate(weekTargets, templateDays)
+    const credited = {}
+    const owedAlloc = (i) => {
+      const alloc = {}
+      for (const m of templateDays[i].muscles) {
+        const target = weekTargets[m]
+        if (!target) continue
+        const daysLeft = templateDays.slice(i).filter((d) => d.muscles.includes(m)).length
+        const owed = Math.max(0, target - (credited[m] || 0))
+        // An even share can be too thin to earn an exercise on any day; a
+        // muscle still owed a slot's worth may take one today instead.
+        const share = Math.max(owed / daysLeft, owed >= MIN_SLOT_SETS ? MIN_SLOT_SETS : 0)
+        alloc[m] = Math.min(share, MAX_SETS_PER_MUSCLE_PER_SESSION)
+      }
+      return alloc
+    }
+    // Under the cap the day's lead muscles still open it (that order is the
+    // point of a lead), but the rest go most-owed first, so the muscles a
+    // previous day's cap squeezed out are first in line today.
+    const owedOrder = (template) => {
+      const lead = template.muscles.slice(0, CAPPED_LEAD_SLOTS)
+      const owedFrac = (m) => (weekTargets[m] ? 1 - (credited[m] || 0) / weekTargets[m] : 0)
+      const rest = template.muscles.slice(CAPPED_LEAD_SLOTS).sort((a, b) => owedFrac(b) - owedFrac(a))
+      return { ...template, muscles: [...lead, ...rest] }
+    }
+    const ctx = {
+      posture: inputs.posture,
+      allowedEquipment: inputs.allowedEquipment,
+      excludedEquipment: inputs.excludedEquipment,
+      excludedOverload: inputs.excludedOverload,
+      weights: inputs.weights,
+      maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
+      focus: inputs.focus,
+      history: inputs.history,
+      injuryRisk: inputs.injuryRisk,
+      openSlots: inputs.openSlots,
+      setCap: cap,
+      // Week-wide variety state, shared across days on purpose: the second Push
+      // day should know what the first one already used.
+      weekIds: new Set(),
+      weekFamilies: new Set(),
+      weekSignatures: new Set(),
+    }
+    const days = templateDays.map((t, i) => {
+      const alloc = allocation ? allocation[i] : owedAlloc(i)
+      const day = fillDay(allocation ? t : owedOrder(t), alloc, gaps[i], ctx)
+      for (const e of day.exercises) {
+        const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(e)))
+        for (const [m, w] of Object.entries(weights)) credited[m] = (credited[m] || 0) + w * e.sets
+      }
+      return day
+    })
+    trimOvershoot(days, { perWeek, focus: inputs.focus })
+    return days
   }
 
-  const trainingDays = templateDays.map((t, i) => fillDay(t, allocation[i], gaps[i], ctx))
-  trimOvershoot(trainingDays, { perWeek: 7 / cycle.length, focus: inputs.focus })
+  // Fill the week as before; only if a day comes out over the cap is it
+  // refilled under the cap, planned day by day against what the week still
+  // owes. That way a split whose days already fit is exactly what it was, and
+  // one that doesn't gets the cap spread across the week rather than the same
+  // muscles losing out every day.
+  let trainingDays = fillWeek(targets, Infinity)
+  if (Math.max(0, ...trainingDays.map(daySets)) > setCap) trainingDays = fillWeek(targets, setCap)
+
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
   return {
     program,
     summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape }),
     inputs,
   }
+}
+
+function daySets(day) {
+  return day.exercises.reduce((sum, e) => sum + (Number(e.sets) || 0), 0)
 }

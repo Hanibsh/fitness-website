@@ -313,6 +313,41 @@ export const EXPERIENCE_POSTURE = {
 }
 export const DEFAULT_EXPERIENCE = 'intermediate'
 
+// ---- Volume preference --------------------------------------------------------
+// How much work the person wants a session to hold — a separate choice from
+// experience, on purpose. "Less volume, closer to failure" is a legitimate way
+// to train at any training age (it suits strong lifters, whose sets cost more
+// fatigue each), but the studies don't show advanced lifters needing LESS
+// volume — if anything the reverse — so it's offered, never imposed.
+//
+// `targetMult` scales the weekly per-muscle targets (still clamped to the
+// engine's landmarks); `setCap` is the most hard sets a single day may hold.
+// The cap is about the QUALITY of the work, not the clock: past ~16–20 hard
+// sets, systemic fatigue degrades every set that follows, and Pelland's tiers
+// put the best return per set at 4–10 weekly sets a muscle — so trimming a long
+// day costs little growth. The numbers are coaching judgement, not findings.
+export const VOLUME_PREFERENCES = [
+  {
+    value: 'lower', label: 'Lower', sub: '≤ 12 sets/day', setCap: 12, targetMult: 0.75,
+    note: 'Fewer sets, each taken closer to failure. The least fatigue to carry, and every set is in the best-return range.',
+  },
+  {
+    value: 'standard', label: 'Standard', sub: '≤ 16 sets/day', setCap: 16, targetMult: 1,
+    note: 'Enough work for steady growth without any one day turning into a slog.',
+  },
+  {
+    value: 'higher', label: 'Higher', sub: '≤ 20 sets/day', setCap: 20, targetMult: 1.25,
+    note: 'More sets, stopping a little further from failure. A bit more growth at the top end, and noticeably more fatigue.',
+  },
+]
+export const DEFAULT_VOLUME_PREFERENCE = 'standard'
+// When the cap binds, a day's first this-many muscles keep their place; the
+// rest are reordered most-owed-first so the cap rotates across the week.
+export const CAPPED_LEAD_SLOTS = 3
+export function volumePreference(value) {
+  return VOLUME_PREFERENCES.find((p) => p.value === value) || VOLUME_PREFERENCES.find((p) => p.value === DEFAULT_VOLUME_PREFERENCE)
+}
+
 export const SKILL_RANK = { low: 1, moderate: 2, high: 3, 'very high': 4 }
 
 // ---- What limits a day ------------------------------------------------------
@@ -321,8 +356,10 @@ export const SKILL_RANK = { low: 1, moderate: 2, high: 3, 'very high': 4 }
 // got — a session isn't better for being longer, and it isn't worse for it
 // either. What actually limits a productive day is how much volume the muscles
 // in it can still use (the weekly targets) and how much fatigue it can carry
-// (DAY_LOAD_MAX), with the exercise cap keeping the movement count learnable.
-// Those three do the whole job, and none of them is a stopwatch.
+// (DAY_LOAD_MAX), with the exercise cap keeping the movement count learnable —
+// plus the volume preference's hard-set cap (VOLUME_PREFERENCES), which counts
+// sets because set quality is what decays over a long day. None of them is a
+// stopwatch.
 //
 // Per-exercise and per-muscle-per-session bounds. The per-session muscle cap
 // sits just above engineConfig's WITHIN_SESSION_FULL_SETS: past that the engine
