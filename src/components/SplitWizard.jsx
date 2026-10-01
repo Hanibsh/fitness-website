@@ -9,7 +9,7 @@ import { fetchProfile } from '../lib/profile'
 import MuscleDonut from './MuscleDonut'
 import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName } from '../lib/program'
+import { setProgramName, rirLabel } from '../lib/program'
 import { donutRows } from '../lib/planStats'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
@@ -410,6 +410,7 @@ function Preview({ built, name, setName, onCreate }) {
                         </span>
                         <span className="text-text-light shrink-0 ml-auto tabular-nums">
                           {e.sets} × {e.repRange.low}–{e.repRange.high}
+                          {rirLabel(e.rirTarget) && <span className="text-text-light"> · {rirLabel(e.rirTarget)}</span>}
                         </span>
                       </li>
                     ))}

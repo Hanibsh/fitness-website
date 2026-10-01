@@ -47,7 +47,11 @@ export function moveInArray(arr, index, delta) {
 
 // A planned exercise inside a training day. `exerciseId` links to the DB when
 // picked from the library (null for custom), `sets` is the target count, and
-// `repRange` is the double-progression target.
+// `repRange` is the double-progression target. `rirTarget` ({low, high}, or
+// null) is how close to failure the working sets should go — set by the
+// generator from training age and volume preference, editable in the split
+// editor, shown read-only in the logger. Null on rows built before it existed,
+// which read exactly as they always did.
 //
 // `unilateral` is the plan's opinion on left/right logging, for the movements
 // the exercise DB leaves open (a dumbbell press works either way): true = log
@@ -72,8 +76,15 @@ export function moveInArray(arr, index, delta) {
 // Null on every hand-built row and on every split written before this existed,
 // and null reads exactly as the app read before — nothing migrates.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, note = '', unilateral = null, slot = null } = opts
-  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, note, unilateral, slot }
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, rirTarget = null, note = '', unilateral = null, slot = null } = opts
+  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, rirTarget, note, unilateral, slot }
+}
+
+// "1–2 RIR", "0 RIR", or '' when there's no usable target.
+export function rirLabel(t) {
+  if (!t || t.low === '' || t.low == null) return ''
+  const high = t.high === '' || t.high == null ? t.low : t.high
+  return Number(high) > Number(t.low) ? `${t.low}–${high} RIR` : `${t.low} RIR`
 }
 
 // Is this row waiting for you to choose a movement?
@@ -176,6 +187,16 @@ export function setExerciseSets(program, dayId, exId, value) {
 export function setExerciseRep(program, dayId, exId, field, value) {
   const n = value === '' ? '' : Math.max(1, Math.min(50, parseInt(value, 10) || 0))
   return withExercise(program, dayId, exId, (e) => ({ ...e, repRange: { ...(e.repRange || { low: 6, high: 10 }), [field]: n } }))
+}
+
+// A row with no effort target yet starts from the one value typed, on both ends.
+// Clearing both ends removes the target rather than leaving an empty shell.
+export function setExerciseRir(program, dayId, exId, field, value) {
+  const n = value === '' ? '' : Math.max(0, Math.min(10, parseInt(value, 10) || 0))
+  return withExercise(program, dayId, exId, (e) => {
+    const next = { ...(e.rirTarget || { low: n, high: n }), [field]: n }
+    return { ...e, rirTarget: next.low === '' && next.high === '' ? null : next }
+  })
 }
 
 // Whether this movement is logged one limb at a time. Two-state, not tri-: for a
@@ -827,6 +848,7 @@ export function draftFromDay(day, opts = {}) {
     // rebuilds it through this same path once you pick (see WorkoutTracker).
     if (isOpenSlot(pe)) {
       const ex = createExercise(pe.name, 'strength', { repRange: pe.repRange || undefined })
+      ex.rirTarget = pe.rirTarget || null
       ex.sets = []
       ex.exerciseId = null
       ex.slot = { ...pe.slot, sets: Math.max(1, Number(pe.sets) || 1) }
@@ -863,6 +885,7 @@ export function draftFromDay(day, opts = {}) {
     // Traces this session exercise back to its slot in the routine, so a
     // mid-session substitution can optionally update the plan too.
     ex.plannedExerciseId = pe.id
+    ex.rirTarget = strength ? pe.rirTarget || null : null
     // Planned supersets carry into the session: partners share the same group
     // id in the plan, so the log renders the same A1/A2 pairing.
     ex.supersetId = pe.supersetId || null

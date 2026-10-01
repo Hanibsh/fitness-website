@@ -43,7 +43,7 @@ import {
   PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
   MUSCLE_REGION, PORTABLE_MUSCLES,
-  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS,
+  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS, RIR_TARGETS, HEAVY_COMPOUND_MIN_RIR,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
@@ -694,6 +694,7 @@ export function fillDay(template, alloc, gaps, ctx) {
       kind: 'strength',
       sets,
       repRange: repRangeForExercise(db, muscle, ctx.history),
+      rirTarget: rirTargetForExercise(db, ctx.experience, ctx.volumePref),
       slot,
     })
   })
@@ -706,6 +707,18 @@ export function fillDay(template, alloc, gaps, ctx) {
 function setLoad(db) {
   const coef = FATIGUE_SCORE_COEF[db.fatigueScore ?? DEFAULT_FATIGUE_SCORE] || 1
   return coef * (db.axialLoading ? AXIAL_MULT : 1) * (db.equipment === 'free weight' ? FREE_WEIGHT_MULT : 1)
+}
+
+// Effort target: the training-age range for the movement's type, shifted by
+// the volume preference, with heavy compounds held off failure.
+export function rirTargetForExercise(db, experience, volumePref = volumePreference()) {
+  const byType = RIR_TARGETS[experience] || RIR_TARGETS[DEFAULT_EXPERIENCE]
+  const compound = db.type === 'compound'
+  const base = compound ? byType.compound : byType.isolation
+  const floor = compound && (db.fatigueScore ?? 0) >= 4 ? HEAVY_COMPOUND_MIN_RIR : 0
+  const low = Math.max(floor, base.low + (volumePref.rirShift || 0))
+  const high = Math.max(low, base.high + (volumePref.rirShift || 0))
+  return { low, high }
 }
 
 // Rep target: their own logged range for this movement when they have one,
@@ -839,6 +852,7 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
         name: e.name,
         sets: e.sets,
         repRange: e.repRange,
+        rirTarget: e.rirTarget || null,
         pattern: e.slot?.pattern || null,
         open: !!e.slot && !e.exerciseId,
       })),
@@ -1297,6 +1311,8 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       history: inputs.history,
       injuryRisk: inputs.injuryRisk,
       openSlots: inputs.openSlots,
+      experience: inputs.experience,
+      volumePref: inputs.volumePref,
       setCap: cap,
       // Week-wide variety state, shared across days on purpose: the second Push
       // day should know what the first one already used.

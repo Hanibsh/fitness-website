@@ -21,6 +21,7 @@ import {
   moveExercise,
   setExerciseSets,
   setExerciseRep,
+  setExerciseRir,
   toggleExerciseUnilateral,
   setExerciseNote,
   substituteExercise,
@@ -296,6 +297,29 @@ export default function SplitDay() {
                           className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
                       </div>
+                      {/* Effort target: how many reps to leave in the tank. The
+                          generator sets it from training age and volume
+                          preference; blank on both ends means no target. */}
+                      {ex.kind !== 'cardio' && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] uppercase tracking-wider text-text-light">RIR</span>
+                          <NumberField
+                            decimal={false}
+                            value={ex.rirTarget?.low ?? ''}
+                            onValueChange={(v) => update((p) => setExerciseRir(p, day.id, ex.id, 'low', v))}
+                            aria-label={`${ex.name} RIR target low`}
+                            className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                          <span className="text-text-light text-[12px]">–</span>
+                          <NumberField
+                            decimal={false}
+                            value={ex.rirTarget?.high ?? ''}
+                            onValueChange={(v) => update((p) => setExerciseRir(p, day.id, ex.id, 'high', v))}
+                            aria-label={`${ex.name} RIR target high`}
+                            className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1 mt-3 pt-2.5 border-t border-border">

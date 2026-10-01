@@ -25,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, HEAVY_COMPOUND_MIN_RIR } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -99,6 +99,11 @@ function audit(label, program, summary, inputs, opts) {
       check(label, !!db, `"${e.name}" is not in the exercise DB`)
       if (!db) continue
       if (allowed) check(label, allowed.has(db.equipment), `"${e.name}" needs ${db.equipment}`)
+      const t = e.rirTarget
+      check(label, !!t && t.low >= 0 && t.high >= t.low && t.high <= 5, `"${e.name}" RIR target ${t ? `${t.low}–${t.high}` : 'missing'}`)
+      if (t && db.type === 'compound' && (db.fatigueScore ?? 0) >= 4) {
+        check(label, t.low >= HEAVY_COMPOUND_MIN_RIR, `"${e.name}" is a heavy compound programmed to ${t.low} RIR`)
+      }
       if (opts.equipment === 'gym') {
         // A full gym has no reason to program a band, or a movement that can't
         // be loaded — see GYM_EXCLUDED_* in generatorConfig.js.

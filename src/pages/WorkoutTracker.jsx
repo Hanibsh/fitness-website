@@ -45,7 +45,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel } from '../lib/program'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
@@ -872,6 +872,7 @@ export default function WorkoutTracker() {
           id: e.id,
           supersetId: kind === 'cardio' || e.kind === 'cardio' ? null : e.supersetId,
           plannedExerciseId: e.plannedExerciseId,
+          rirTarget: isStrength ? e.rirTarget || null : null,
         }
       }),
     }))
@@ -950,6 +951,7 @@ export default function WorkoutTracker() {
           slot: e.slot,
           plannedExerciseId: e.plannedExerciseId,
           supersetId: e.supersetId,
+          rirTarget: kind === 'cardio' ? null : e.rirTarget || null,
         }
       }),
     }))
@@ -2251,6 +2253,7 @@ export default function WorkoutTracker() {
             <p className="text-[12px] text-text-light mb-2">
               {ex.slot.sets} set{ex.slot.sets === 1 ? '' : 's'}
               {ex.repRange ? ` · ${ex.repRange.low}–${ex.repRange.high} reps` : ''}
+              {rirLabel(ex.rirTarget) ? ` · ${rirLabel(ex.rirTarget)}` : ''}
               {ex.slot.muscle ? ` · for ${ex.slot.muscle.toLowerCase()}` : ''}
             </p>
             <PatternPicker
@@ -2420,6 +2423,11 @@ export default function WorkoutTracker() {
                       className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
                     />
                     <span className="text-[11px] text-text-light">reps</span>
+                    {/* The plan's effort target. Read-only here — it belongs to
+                        the split, so it's edited there. */}
+                    {rirLabel(ex.rirTarget) && (
+                      <span className="text-[11px] text-text-light whitespace-nowrap">· {rirLabel(ex.rirTarget)}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setRepTarget(ex.id, null)}
@@ -2427,6 +2435,17 @@ export default function WorkoutTracker() {
                       className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0.5 ml-0.5"
                     >
                       <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : rirLabel(ex.rirTarget) ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-text-light whitespace-nowrap">{rirLabel(ex.rirTarget)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRepTarget(ex.id, { low: 6, high: 10 })}
+                      className="inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-2 py-1 cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Rep target
                     </button>
                   </div>
                 ) : (
