@@ -50,7 +50,7 @@ import {
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
-  PATTERN_OPTION_LIMIT,
+  PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -299,7 +299,10 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   // sensible split beats a broken one.
   const shapes = shapesFor(daysPerWeek)
   const shape = shapes.find((sh) => sh.id === shapeId) || shapes[0]
-  const days = shape.days.map((d) => ({ name: d.name, muscles: [...d.muscles] }))
+  // `sizedAs` (Upper B) is the order the day is measured in for its set budget;
+  // it takes the same focus edits as `muscles` so the two always list the same
+  // muscles.
+  const days = shape.days.map((d) => ({ name: d.name, muscles: [...d.muscles], sizedAs: d.sizedAs ? [...d.sizedAs] : null }))
 
   // Which half of the body a day is for, read off the day rather than hardcoded
   // per shape, so a shape added later is classified without anyone remembering
@@ -323,6 +326,7 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
       if (d.muscles.includes(muscle)) continue
       if (!PORTABLE_MUSCLES.has(muscle) && regionOf(d) !== MUSCLE_REGION[muscle]) continue
       d.muscles.push(muscle)
+      d.sizedAs?.push(muscle)
       borrowed.get(d).push(muscle)
       freq++
     }
@@ -337,6 +341,7 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   for (const d of days) {
     const lead = focus.filter((m) => d.muscles.includes(m))
     d.muscles = [...lead, ...d.muscles.filter((m) => !lead.includes(m))]
+    if (d.sizedAs) d.sizedAs = [...lead, ...d.sizedAs.filter((m) => !lead.includes(m))]
   }
 
   // A day that borrowed a muscle says so. The focus muscle still leads — being
@@ -353,6 +358,34 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   // resolve the id a second time.
   days.shape = shape
   return days
+}
+
+// Which day of the week guarantees each DIRECT_WORK muscle its own movement.
+// Once a week is enough, so each muscle gets ONE day. If the week already trains
+// it directly somewhere (`natural`, the week filled without these rules), the
+// guarantee goes there and simply keeps it — nothing has to move. Otherwise it
+// goes to the day that trains the muscle earliest, where it's freshest: Upper B
+// on an upper/lower split, the push day for triceps. Ties go to the day that
+// has had to make room for the fewest new movements so far, so a full-body week
+// spreads them out instead of stacking them all on day A, then to the earlier
+// day. One list per day.
+export function assignDirectWork(days, natural = null) {
+  const direct = days.map(() => [])
+  const added = days.map(() => 0)
+  for (const muscle of Object.keys(DIRECT_WORK)) {
+    const listing = days.map((_, i) => i).filter((i) => days[i].muscles.includes(muscle))
+    const already = natural ? listing.filter((i) => hasDirectMovement(natural[i], muscle)) : []
+    let best = -1
+    for (const i of already.length ? already : listing) {
+      const at = days[i].muscles.indexOf(muscle)
+      const bestAt = best === -1 ? Infinity : days[best].muscles.indexOf(muscle)
+      if (at < bestAt || (at === bestAt && added[i] < added[best])) best = i
+    }
+    if (best === -1) continue
+    direct[best].push(muscle)
+    if (!already.length) added[best]++
+  }
+  return direct
 }
 
 // Where the training days sit inside one cycle, and how long the cycle is.
@@ -535,6 +568,8 @@ export function candidates(muscle, ctx) {
     // Scoped to one movement path — this is what makes "any vertical pull" a
     // list rather than a search.
     if (ctx.pattern && db.pattern !== ctx.pattern) return false
+    // ...or to a muscle's direct-work paths (DIRECT_WORK).
+    if (ctx.patterns && !ctx.patterns.includes(db.pattern)) return false
     const w = muscleWeights(db)[muscle] || 0
     return w > 0 && w >= (ctx.minContribution || 0)
   })
@@ -595,12 +630,28 @@ export function fillDay(template, alloc, gaps, ctx) {
     }
   }
 
+  // The DIRECT_WORK muscles this day guarantees (assignDirectWork), until each
+  // has its movement. Room for them is held from the start — a set budget and an
+  // exercise count — so the slots ahead of them can't spend it. A guaranteed
+  // slot is taken even when the compounds have already paid its allocation:
+  // that's the point of it. What keeps it from adding volume is the day's set
+  // cap, which generateProgram sizes from the week filled without guarantees.
+  const pending = new Set(template.direct || [])
+  const held = (muscle) => pending.size - (pending.has(muscle) ? 1 : 0)
+
   function tryAdd(muscle, minOwed, { ignoreLoadCap = false } = {}) {
-    if ((remaining[muscle] || 0) < minOwed) return false
-    if (chosen.length >= ctx.posture.exerciseCap) return false
-    if (!setRoom(MIN_SETS_PER_EXERCISE)) return false
+    const first = !chosen.some((c) => c.muscle === muscle)
+    if (!(first && pending.has(muscle)) && (remaining[muscle] || 0) < minOwed) return false
+    if (chosen.length + 1 + held(muscle) > ctx.posture.exerciseCap) return false
+    if (!setRoom(MIN_SETS_PER_EXERCISE * (1 + held(muscle)))) return false
     if (!ignoreLoadCap && !loadRoom()) return false
 
+    // On its guaranteed day a DIRECT_WORK muscle's first movement comes down its
+    // own paths — a curl, an extension, a raise — rather than the compound lead,
+    // which hands the triceps slot to a close-grip press. Its other days pick
+    // the way they always have: once a week is the ask, and a push day opening
+    // on an overhead press is still a good push day.
+    const paths = first && pending.has(muscle) ? DIRECT_WORK[muscle] : null
     const pickCtx = {
       muscle,
       allowedEquipment: ctx.allowedEquipment,
@@ -620,17 +671,25 @@ export function fillDay(template, alloc, gaps, ctx) {
       hoursToNext: gaps[muscle],
       isFocus: ctx.focus.includes(muscle),
       // Only the muscle's FIRST movement of the day leads with a compound.
-      wantCompound: !compoundFor.has(muscle) && !chosen.some((c) => c.muscle === muscle),
+      wantCompound: !paths && !compoundFor.has(muscle) && first,
+      patterns: paths,
     }
 
-    let best = null
-    for (const db of candidates(muscle, pickCtx)) {
-      const scored = scoreExercise(db, { ...pickCtx, familiarity: familiarity(db, ctx.history) })
-      if (!scored) continue
-      if (!best || scored.score > best.score) best = { db, ...scored }
+    const pick = (pctx) => {
+      let top = null
+      for (const db of candidates(muscle, pctx)) {
+        const scored = scoreExercise(db, { ...pctx, familiarity: familiarity(db, ctx.history) })
+        if (!scored) continue
+        if (!top || scored.score > top.score) top = { db, ...scored }
+      }
+      return top
     }
+    // Nothing down those paths with this equipment: fall back to the whole pool
+    // and the usual compound lead, rather than leaving the muscle untrained.
+    const best = pick(pickCtx) || (paths ? pick({ ...pickCtx, patterns: null, wantCompound: !compoundFor.has(muscle) }) : null)
     if (!best) return false
 
+    pending.delete(muscle)
     chosen.push({ db: best.db, sets: MIN_SETS_PER_EXERCISE, muscle })
     dayIds.add(best.db.id)
     dayFamilies.add(movementFamily(best.db))
@@ -647,6 +706,9 @@ export function fillDay(template, alloc, gaps, ctx) {
   // train getting nothing at all is worse than a day that reads heavy, and the
   // cap still governs everything after this.
   for (const muscle of template.muscles) tryAdd(muscle, MIN_SLOT_SETS, { ignoreLoadCap: true })
+  // A guarantee that couldn't be placed (no movement at all for it here) stops
+  // holding room once coverage is done.
+  pending.clear()
   // 2 — a second angle for whatever still owes a movement's worth
   for (const muscle of template.muscles) tryAdd(muscle, MIN_SLOT_SETS * 2)
   // 3 — spend the remainder a set at a time
@@ -779,15 +841,24 @@ function weeklyMuscleSets(trainingDays, perWeek) {
 // they ever see it: when volume outruns what it's worth, take sets off the
 // movement driving it and leave everything else training. Never a set that would
 // drop another muscle below its minimum — that's robbing one to pay another.
-export function trimOvershoot(trainingDays, { perWeek, focus = [] }) {
+//
+// A DIRECT_WORK muscle is also held to its weekly target (plus a little slack),
+// because its guaranteed slot spends sets the compounds had already covered —
+// that must come back out rather than raise what the volume setting asked for.
+// Only the muscle's OWN movements give sets back for that: a press doesn't lose
+// a set because the triceps extension beside it went over.
+export function trimOvershoot(trainingDays, { perWeek, focus = [], targets = {} }) {
   const limitFor = (m) => ceilingFor(m) * (focus.includes(m) ? ADVISOR_BLOCK_SLACK : 1)
+  const targetFor = (m) => (DIRECT_WORK[m] && targets[m] != null ? targets[m] + DIRECT_WORK_TARGET_SLACK : Infinity)
+  const stuck = new Set() // over target with nothing of its own left to trim
 
   for (let guard = 0; guard < 60; guard++) {
     const weekly = weeklyMuscleSets(trainingDays, perWeek)
     let worst = null
     for (const [muscle, sets] of Object.entries(weekly)) {
-      const over = sets - limitFor(muscle)
-      if (over > 0 && (!worst || over > worst.over)) worst = { muscle, over }
+      const overCeiling = sets - limitFor(muscle)
+      const over = Math.max(overCeiling, stuck.has(muscle) ? 0 : sets - targetFor(muscle))
+      if (over > 0 && (!worst || over > worst.over)) worst = { muscle, over, ownOnly: overCeiling <= 0 }
     }
     if (!worst) return
 
@@ -797,6 +868,7 @@ export function trimOvershoot(trainingDays, { perWeek, focus = [] }) {
     for (const day of trainingDays) {
       for (const planned of day.exercises) {
         if (planned.sets <= MIN_SETS_PER_EXERCISE) continue
+        if (worst.ownOnly && planned.slot?.muscle !== worst.muscle) continue
         const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(planned)))
         const w = weights[worst.muscle] || 0
         if (!w) continue
@@ -805,6 +877,37 @@ export function trimOvershoot(trainingDays, { perWeek, focus = [] }) {
         )
         if (robs) continue
         if (!victim || w > victim.w) victim = { planned, w }
+      }
+    }
+    if (!victim) {
+      if (!worst.ownOnly) return
+      stuck.add(worst.muscle)
+      continue
+    }
+    victim.planned.sets--
+  }
+}
+
+// Take sets back off the week until it holds no more than `total`. Used when a
+// day had to be given room for its DIRECT_WORK guarantees beyond what it held on
+// its own: those sets come back out of whatever muscle is furthest past its
+// weekly target, one at a time, never below a movement's minimum and never
+// pulling another muscle under its minimum.
+function giveBack(trainingDays, total, { perWeek, targets }) {
+  for (let guard = 0; guard < 60; guard++) {
+    if (trainingDays.reduce((n, d) => n + daySets(d), 0) <= total) return
+    const weekly = weeklyMuscleSets(trainingDays, perWeek)
+    let victim = null
+    for (const day of trainingDays) {
+      for (const planned of day.exercises) {
+        if (planned.sets <= MIN_SETS_PER_EXERCISE) continue
+        const muscle = planned.slot?.muscle
+        if (!muscle || targets[muscle] == null) continue
+        const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(planned)))
+        const robs = Object.entries(weights).some(([m, mw]) => (weekly[m] || 0) - mw * perWeek < mevFor(m))
+        if (robs) continue
+        const surplus = (weekly[muscle] || 0) - targets[muscle]
+        if (!victim || surplus > victim.surplus) victim = { planned, surplus }
       }
     }
     if (!victim) return
@@ -1291,7 +1394,12 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   const perWeek = 7 / cycle.length
   const setCap = inputs.volumePref.setCap
 
-  const fillWeek = (weekTargets, cap) => {
+  // `direct` is each day's DIRECT_WORK guarantees (assignDirectWork); without it
+  // the week fills the way it did before they existed. `dayCaps` holds each day
+  // to a set count of its own (under the volume cap) without switching the week
+  // into the owed-allocation mode, which stays tied to `cap`.
+  const fillWeek = (weekTargets, cap, { direct = null, dayCaps = null } = {}) => {
+    const directWork = !!direct
     // Uncapped, each day gets a fixed share of the week (allocate). Capped, the
     // days are planned in order against what the week still OWES: a muscle
     // Monday already paid off is skipped on Wednesday, and that room goes to
@@ -1343,31 +1451,66 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       weekFamilies: new Set(),
       weekSignatures: new Set(),
     }
-    const days = templateDays.map((t, i) => {
+    const days = templateDays.map((template, i) => {
+      // Measuring the day's size uses the order it is sized in (`sizedAs`).
+      const t = directWork
+        ? { ...template, direct: direct[i] }
+        : template.sizedAs ? { ...template, muscles: template.sizedAs } : template
       const alloc = allocation ? allocation[i] : owedAlloc(i)
-      const day = fillDay(allocation ? t : owedOrder(t), alloc, gaps[i], ctx)
+      const dayCtx = dayCaps ? { ...ctx, setCap: Math.min(cap, dayCaps[i]) } : ctx
+      const day = fillDay(allocation ? t : owedOrder(t), alloc, gaps[i], dayCtx)
       for (const e of day.exercises) {
         const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(e)))
         for (const [m, w] of Object.entries(weights)) credited[m] = (credited[m] || 0) + w * e.sets
       }
       return day
     })
-    trimOvershoot(days, { perWeek, focus: inputs.focus })
+    trimOvershoot(days, { perWeek, focus: inputs.focus, targets: directWork ? weekTargets : {} })
     return days
+  }
+
+  // DIRECT_WORK moves volume, it doesn't add any. So the week is filled once
+  // without it, to learn how many sets each day and the week hold on their own
+  // and where it already trains these muscles directly, and then again with it.
+  // A day whose guaranteed muscle had no movement of its own gets exactly the
+  // room that movement needs — squeezing it into the old count would push out
+  // the second press on a small push day, and the close-grip press it replaced
+  // was half chest work — and the week then gives the same number of sets back
+  // from wherever it is most over its targets (giveBack). The volume setting's
+  // day cap still bounds every day.
+  const fit = (cap) => {
+    const natural = fillWeek(targets, cap)
+    const direct = assignDirectWork(templateDays, natural)
+    const room = natural.map((d, i) => {
+      const missing = direct[i].filter((m) => !hasDirectMovement(d, m)).length
+      return Math.min(setCap, daySets(d) + MIN_SETS_PER_EXERCISE * missing)
+    })
+    const days = fillWeek(targets, cap, { direct, dayCaps: room })
+    giveBack(days, natural.reduce((n, d) => n + daySets(d), 0), { perWeek, targets })
+    return { natural, days }
   }
 
   // Fill the week as before; only if a day comes out over the cap is it
   // refilled under the cap, planned day by day against what the week still
   // owes. That way a split whose days already fit is exactly what it was, and
   // one that doesn't gets the cap spread across the week rather than the same
-  // muscles losing out every day.
-  let trainingDays = fillWeek(targets, Infinity)
-  if (Math.max(0, ...trainingDays.map(daySets)) > setCap) trainingDays = fillWeek(targets, setCap)
+  // muscles losing out every day. Decided on the natural fill, so the
+  // guarantees never change which of the two a week gets.
+  let week = fit(Infinity)
+  if (Math.max(0, ...week.natural.map(daySets)) > setCap) week = fit(setCap)
+  const trainingDays = week.days
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
   // What the split was built FOR, kept on it: the day cap the split editor
-  // measures against, and what the wizard reopens with next time.
-  program.settings = { volume: inputs.volumePref.value, experience: inputs.experience }
+  // measures against, and what the wizard reopens with next time. Focus and
+  // shape are kept for the NEXT program — a split runs for months, and knowing
+  // what this one emphasised is what lets a later one suggest a change.
+  program.settings = {
+    volume: inputs.volumePref.value,
+    experience: inputs.experience,
+    focus: [...inputs.focus],
+    shape: templateDays.shape?.id || null,
+  }
   return {
     program,
     summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape }),
@@ -1377,4 +1520,10 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
 
 function daySets(day) {
   return day.exercises.reduce((sum, e) => sum + (Number(e.sets) || 0), 0)
+}
+
+// Does the day already hold a movement down one of `muscle`'s DIRECT_WORK paths?
+function hasDirectMovement(day, muscle) {
+  const paths = DIRECT_WORK[muscle] || []
+  return day.exercises.some((e) => paths.includes(DB_BY_ID.get(plannedExerciseDbId(e) || '')?.pattern))
 }

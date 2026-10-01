@@ -25,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram, failureSafe } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -50,22 +50,29 @@ function check(label, ok, detail) {
   if (!ok) failures.push(`${label}: ${detail}`)
 }
 
+// Every shape on offer at each day count, not just the recommended one — a
+// bro split or an Arnold week is a split someone will run. The recommended
+// shape (the first, what "Pick for me" takes) is held to everything below; the
+// others to everything except frequency and minimum volume, because training a
+// muscle once a week is what a bro split IS, and its picker note says so.
 for (const daysPerWeek of DAYS_CASES) {
-  for (const focus of FOCUS_CASES) {
-    for (const equipment of EQUIPMENT_CASES) {
-      for (const experience of EXPERIENCE_CASES) {
-        for (const schedule of SCHEDULE_CASES) {
-          for (const volume of VOLUME_CASES) {
-            scenarios++
-            const answers = { daysPerWeek, focus, equipment, experience, schedule, volume }
-            const label = `${daysPerWeek}d/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]`
-            const { program, summary, inputs } = generateProgram({ answers })
-            audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume })
+  shapesFor(daysPerWeek).forEach(({ id: shape }, rank) => {
+    for (const focus of FOCUS_CASES) {
+      for (const equipment of EQUIPMENT_CASES) {
+        for (const experience of EXPERIENCE_CASES) {
+          for (const schedule of SCHEDULE_CASES) {
+            for (const volume of VOLUME_CASES) {
+              scenarios++
+              const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume }
+              const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]`
+              const { program, summary, inputs } = generateProgram({ answers })
+              audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, recommended: rank === 0 })
+            }
           }
         }
       }
     }
-  }
+  })
 }
 
 function audit(label, program, summary, inputs, opts) {
@@ -158,7 +165,9 @@ function audit(label, program, summary, inputs, opts) {
     // the bar is that every muscle still gets real work every week; the
     // preview's amber bars say which ones landed short.
     const tight = volumePreference(opts.volume).setCap * opts.daysPerWeek <= TIGHT_WEEK_SETS
-    if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment) && tight) {
+    if (!opts.recommended) {
+      // Frequency and minimum volume are the shape's own trade-off (see the loop).
+    } else if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment) && tight) {
       check(label, row.sessions >= 1, `${row.muscle} not trained at all in a tight week`)
       // Focus muscles take the lion's share of a tight week by design, so the
       // "real work" bar only applies when nothing was asked to be brought up.
@@ -190,21 +199,35 @@ function audit(label, program, summary, inputs, opts) {
     check(label, row.sets <= ceiling + 0.5, `${row.muscle} at ${row.sets} sets, over the ${round(ceiling)} ceiling`)
   }
 
+  // ---- direct work: the main muscles the compounds can't stand in for get a
+  // movement of their own every week (DIRECT_WORK in generatorConfig.js) — a
+  // curl, a triceps extension, a raise, a calf raise — wherever the equipment
+  // has one. A close-grip press does not count as the triceps exercise.
+  for (const [muscle, paths] of Object.entries(DIRECT_WORK)) {
+    if (!directTrainable(muscle, paths, opts.equipment)) continue
+    const hit = training.some((day) => day.exercises.some((e) => paths.includes(getFullExercise(e.exerciseId)?.pattern)))
+    check(label, hit, `${muscle} has no direct movement (${paths.join(' / ')}) all week`)
+  }
+
   // ---- focus: more often, more volume, and earlier in the day
   for (const muscle of opts.focus) {
     const row = summary.volume.find((v) => v.muscle === muscle)
     check(label, !!row && row.sets > 0, `focus ${muscle} got no work`)
     if (!row) continue
-    if (opts.daysPerWeek >= 4) {
+    if (opts.daysPerWeek >= 4 && opts.recommended) {
       check(label, row.sessions >= 3, `focus ${muscle} only ${row.sessions}×/wk`)
     }
   }
   // "Earlier" can only be checked once, for the set: with three focus muscles
   // only one of them can literally open the day. The claim that has to hold is
-  // that whatever opens a day is focus work whenever the day has any — measured
-  // against a real contribution, not the trace a squat leaves on the chest.
+  // that whatever opens a day is focus work whenever the day has a slot for a
+  // focus muscle — measured against a real contribution, not the trace a squat
+  // leaves on the chest. A day with no focus slot (an arm day in a week focused
+  // on chest) opens on its own lead, even if an overhead press there happens to
+  // touch the chest too.
   if (opts.focus.length) {
     for (const day of training) {
+      if (!day.exercises.some((e) => opts.focus.includes(e.slot?.muscle))) continue
       const targets = day.exercises.map((e) => opts.focus.filter((m) => hitsMuscle(e, m, 0.5)))
       if (!targets.some((t) => t.length)) continue
       check(label, targets[0].length > 0, `"${day.name}" opens on non-focus work (${day.exercises[0].name})`)
@@ -241,6 +264,19 @@ function trainable(muscle, equipment) {
     )
   }
   return trainableCache.get(key)
+}
+
+// Does the library hold a movement down these paths that this equipment level
+// allows — at the gym, minus the bands and un-loadable rows a full gym drops?
+function directTrainable(muscle, paths, equipment) {
+  return EXERCISES.some(
+    (db) =>
+      db.type !== 'isometric' &&
+      paths.includes(db.pattern) &&
+      (equipment === 'bodyweight'
+        ? AT_HOME_EQUIPMENT.includes(db.equipment)
+        : db.equipment !== 'resistance band' && db.progressiveOverload !== 'low')
+  )
 }
 
 function hitsMuscle(planned, muscle, min = 0) {

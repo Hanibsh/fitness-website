@@ -37,6 +37,20 @@ export const OPTIONAL_MUSCLES = ENGINE_MUSCLES.filter((m) => !PROGRAMMED_MUSCLES
 // which is the frequency the app leans toward. Nothing here is a "program name"
 // the user has to recognise; the names are just what the days get called.
 const UPPER = ['Chest', 'Lats', 'Upper Back', 'Front Delts', 'Side Delts', 'Triceps', 'Biceps', 'Rear Delts']
+// The second upper day of the week leads with what the first one left for last:
+// the shoulders (an overhead press or a raise), then the arms while they're
+// fresh, then back and chest. Same reasoning as the rotating full-body leads
+// below — the muscle that always comes last always gets the scraps — and it
+// gives the arms a day where their direct work isn't squeezed in after
+// everything else. Front and rear delts stay at the back, as on Upper A: by then
+// the presses and rows have paid most of their bill, and a front-delt slot ahead
+// of the chest press only writes a second overhead press.
+//
+// The day is SIZED as the compound-led order (`sizedAs`): opening on isolation
+// work gives up the debt relief a press or a row brings, so left alone the same
+// muscles would take more sets — and the reorder is about what's fresh, not
+// about adding volume.
+const UPPER_B = ['Side Delts', 'Biceps', 'Triceps', 'Lats', 'Chest', 'Upper Back', 'Front Delts', 'Rear Delts']
 const LOWER = ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs']
 const PUSH = ['Chest', 'Front Delts', 'Side Delts', 'Triceps']
 const PULL = ['Lats', 'Upper Back', 'Rear Delts', 'Biceps']
@@ -136,11 +150,11 @@ export const TEMPLATES = {
     {
       id: 'upper-lower',
       name: 'Upper / Lower',
-      note: 'Everything twice a week. The most reliable four-day shape.',
+      note: 'Everything twice a week. Upper A leads with presses and rows, Upper B with shoulders and arms.',
       days: [
         { name: 'Upper A', muscles: UPPER },
         { name: 'Lower A', muscles: LOWER },
-        { name: 'Upper B', muscles: UPPER },
+        { name: 'Upper B', muscles: UPPER_B, sizedAs: UPPER },
         { name: 'Lower B', muscles: LOWER },
       ],
     },
@@ -536,7 +550,37 @@ export const PENALTIES = {
 // stimulus-to-fatigue that's right — but a chest day still opens on the press.
 // Muscles with no compound at this contribution (side delts, calves, abs, and
 // the biceps) simply lead with their best isolation, which is correct for them.
+// The DIRECT_WORK muscles below skip it on their guaranteed day.
 export const COMPOUND_LEAD_MIN_CONTRIBUTION = 0.75
+
+// Main muscles that get their OWN movement at least once a week, and the paths
+// that count as one. Everything else is trained well enough by the compounds:
+// chest, lats, upper back, quads, hamstrings and glutes lead their own days, and
+// presses and rows already load the front and rear delts as near-prime movers.
+// These four are the ones the compounds can't stand in for — nothing presses or
+// pulls the side delts or calves as a prime mover, a row hands the biceps half a
+// set, and a press works the triceps with the shoulder flexed, which leaves the
+// long head short of the stretch an extension gives it. Without this the
+// generator filled the triceps slot with a close-grip press, so a split almost
+// never had a real triceps exercise in it.
+//
+// Once a week each of them gets a guaranteed slot whose movement comes down
+// these paths — on a day that already trains it that way if the week has one,
+// else on the day that ranks it earliest (assignDirectWork). The rest of the
+// week picks for them as before. The sets for it are moved, not added: the
+// week holds no more than it would have without the guarantee, unless every
+// set left to take back would drop some muscle under its minimum (see
+// generateProgram). Every day stays inside the volume setting's cap.
+export const DIRECT_WORK = {
+  Biceps: ['elbow-flexion'],
+  Triceps: ['elbow-extension'],
+  'Side Delts': ['lateral-raise', 'upright-row'],
+  Calves: ['calf-straight-leg', 'calf-bent-leg'],
+}
+// How far over its weekly target a DIRECT_WORK muscle may land before
+// trimOvershoot takes sets back. A guaranteed slot spends a muscle's sets on its
+// own movement; it must not quietly raise what the volume setting asked for.
+export const DIRECT_WORK_TARGET_SLACK = 0.5
 
 // A suggested SWAP has to be a real stand-in, so it must land at least this
 // share of what the movement it's replacing landed on the target muscle. Without
