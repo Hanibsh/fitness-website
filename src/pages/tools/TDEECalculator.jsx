@@ -7,23 +7,50 @@ import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
+import { proteinRange, macroSplit, CARB_NOTE_BELOW_G } from '../../lib/macros'
+import { macroFoods, foodKcal } from '../../data/macroFoods'
 
 const loseSpeeds = [
-  { label: 'Slow', percent: 0.25 },
-  { label: 'Moderate', percent: 0.5 },
-  { label: 'Fast', percent: 1 },
+  { id: 'lose-slow', label: 'Slow', percent: 0.25 },
+  { id: 'lose-moderate', label: 'Moderate', percent: 0.5 },
+  { id: 'lose-fast', label: 'Fast', percent: 1 },
 ]
 
 const gainOptions = [
-  { label: 'Lean bulk', sub: 'minimal fat gain', delta: 200 },
-  { label: 'Normal bulk', sub: 'moderate fat gain', delta: 500 },
+  { id: 'gain-lean', label: 'Lean bulk', sub: 'minimal fat gain', delta: 200 },
+  { id: 'gain-normal', label: 'Normal bulk', sub: 'moderate fat gain', delta: 500 },
 ]
 
+// `posture` is how the macro split leans for this target (see lib/macros) —
+// the slow fat-loss recomp is still a deficit, so it eats like a cut.
 const recompOptions = [
-  { label: 'Maintain', delta: 0 },
-  { label: 'Muscle-gain focus', delta: 150 },
-  { label: 'Fat-loss focus', percent: 0.35 },
+  { id: 'recomp-maintain', label: 'Maintain', delta: 0, posture: 'recomp' },
+  { id: 'recomp-muscle', label: 'Muscle-gain focus', delta: 150, posture: 'recomp' },
+  { id: 'recomp-fat', label: 'Fat-loss focus', percent: 0.35, posture: 'cut' },
 ]
+
+// Which target a profile goal starts on, before anyone taps a card.
+const GOAL_DEFAULT_TARGET = { lose_fat: 'lose-moderate', gain_muscle: 'gain-lean', recomp: 'recomp-maintain' }
+const DEFAULT_TARGET = 'recomp-maintain'
+
+const deficitKcal = (weightKg, percent) => Math.round((weightKg * (percent / 100) * 7700) / 7)
+
+// Every calorie target on the page, keyed by id, so the cards and the macro
+// split read the same numbers.
+function calorieTargets({ tdee, weightKg }) {
+  const list = [
+    ...loseSpeeds.map(s => ({ id: s.id, name: `${s.label} cut`, kcal: tdee - deficitKcal(weightKg, s.percent), posture: 'cut' })),
+    ...gainOptions.map(g => ({ id: g.id, name: g.label, kcal: tdee + g.delta, posture: 'bulk' })),
+    ...recompOptions.map(r => ({ id: r.id, name: `Recomp (${r.label.toLowerCase()})`, kcal: r.percent ? tdee - deficitKcal(weightKg, r.percent) : tdee + r.delta, posture: r.posture })),
+  ]
+  return Object.fromEntries(list.map(t => [t.id, t]))
+}
+
+const macroMeta = {
+  protein: { label: 'Protein', color: 'bg-series-1', kcalPerG: 4 },
+  carbs: { label: 'Carbs', color: 'bg-series-2', kcalPerG: 4 },
+  fat: { label: 'Fat', color: 'bg-series-3', kcalPerG: 9 },
+}
 
 const inputBounds = {
   age: { min: 10, max: 100 },
@@ -50,11 +77,13 @@ export default function TDEECalculator() {
   const [stepsPerDay, setStepsPerDay] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [targetId, setTargetId] = useState(null)
 
   // Seed from the profile. Unit goes first: a height in cm would fail the
   // imperial bounds. Text fields only fill while still empty, so a value typed
   // before the profile arrived survives.
   const prefill = usePrefillEffect((p) => {
+    if (p.goal) setTargetId((v) => v ?? GOAL_DEFAULT_TARGET[p.goal])
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setBodyFat(bodyFatBounds[p.sex].default) }
     if (p.age != null) setAge((v) => (v === '' ? String(p.age) : v))
@@ -127,6 +156,8 @@ export default function TDEECalculator() {
       tdee: Math.round(tdee),
       weightKg,
       age: a,
+      sex,
+      protein: proteinRange({ lbmKg: lbm, bodyFat, trainingHours: hours, age: a }),
     })
   }
 
@@ -144,6 +175,31 @@ export default function TDEECalculator() {
     { label: 'TEF', value: result.tef, color: 'bg-series-4', typicalRange: '10-15%' },
   ] : []
 
+  const targets = result ? calorieTargets(result) : null
+  const selected = targets ? targets[targetId ?? DEFAULT_TARGET] : null
+  const split = selected ? macroSplit({ kcal: selected.kcal, posture: selected.posture, weightKg: result.weightKg, sex: result.sex, protein: result.protein }) : null
+  const macros = split ? Object.entries(macroMeta).map(([key, m]) => {
+    const target = Math.round(split[key].target)
+    return { key, ...m, target, min: Math.round(split[key].min), max: Math.round(split[key].max), kcal: target * m.kcalPerG }
+  }) : []
+  const macroKcal = macros.reduce((sum, m) => sum + m.kcal, 0)
+  // Grams per unit of bodyweight, in the unit the person typed their weight in.
+  const perBodyweight = (grams) => unit === 'imperial'
+    ? `${(grams / (result.weightKg / 0.453592)).toFixed(2)} g/lb`
+    : `${(grams / result.weightKg).toFixed(1)} g/kg`
+
+  // A tappable calorie target; the selected one drives the macro split.
+  const targetCard = (id, title, sub) => {
+    const on = selected?.id === id
+    return (
+      <button key={id} type="button" aria-pressed={on} onClick={() => setTargetId(id)} className={`px-1.5 py-4 sm:p-4 text-center border cursor-pointer transition-colors ${on ? 'bg-text-primary border-text-primary' : 'bg-cream border-border hover:border-border-hover'}`}>
+        <p className={`text-[10px] sm:text-[11px] uppercase sm:tracking-wider mb-2 ${on ? 'text-cream-70' : 'text-text-muted'}`}>{title}{sub && <><br /><span className={on ? 'text-cream-50' : 'text-text-light'}>{sub}</span></>}</p>
+        <p className={`text-xl font-medium ${on ? 'text-cream' : 'text-text-primary'}`}>{targets[id].kcal}</p>
+        <p className={`text-[10px] ${on ? 'text-cream-50' : 'text-text-light'}`}>cal/day</p>
+      </button>
+    )
+  }
+
   const weightUnitLabel = unit === 'imperial' ? 'lbs' : 'kg'
   const fatCalConst = unit === 'imperial' ? '3,500' : '7,700'
   const fatUnitLabel = unit === 'imperial' ? 'pound' : 'kilogram'
@@ -159,9 +215,9 @@ export default function TDEECalculator() {
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">TDEE calculator</h1>
-          <p className="text-text-muted text-[15px] mb-10">Find out how many calories you burn per day, and how to adjust intake to hit your goal.</p>
+          <p className="text-text-muted text-[15px] mb-10">Find out how many calories you burn per day, and how to adjust intake and split it into protein, fat and carbs to hit your goal.</p>
 
-          <div className="bg-white border border-border p-9 space-y-7">
+          <div className="bg-white border border-border p-5 sm:p-9 space-y-7">
             <div className="flex gap-3 items-center">
               {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg/cm)')}
               {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs/in)')}
@@ -226,7 +282,7 @@ export default function TDEECalculator() {
 
           {result && (
             <>
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-6">Your results</h2>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {[['LBM', result.lbm], ['BMR', result.bmr], ['TDEE', result.tdee]].map(([label, val], i) => (
@@ -242,58 +298,102 @@ export default function TDEECalculator() {
                 )}
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Lose weight</h2>
-                <p className="text-text-muted text-[13px] mb-6">Deficits scaled to your bodyweight — a fixed kcal number doesn't make sense for everyone at the same rate.</p>
-                <div className="grid grid-cols-3 gap-4">
-                  {loseSpeeds.map(s => {
-                    const weeklyLossKg = result.weightKg * (s.percent / 100)
-                    const dailyDeficit = Math.round((weeklyLossKg * 7700) / 7)
-                    return (
-                      <div key={s.label} className="bg-cream border border-border p-4 text-center">
-                        <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{s.label}<br /><span className="text-text-light">{s.percent}% BW/week</span></p>
-                        <p className="text-xl font-medium text-text-primary">{result.tdee - dailyDeficit}</p>
-                        <p className="text-[10px] text-text-light">cal/day</p>
-                      </div>
-                    )
-                  })}
+                <p className="text-text-muted text-[13px] mb-6">Deficits scaled to your bodyweight — a fixed kcal number doesn't make sense for everyone at the same rate. Tap any target on this page to see its macros below.</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  {loseSpeeds.map(s => targetCard(s.id, s.label, `${s.percent}% BW/week`))}
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Gain weight</h2>
                 <p className="text-text-muted text-[13px] mb-6">Pick how much fat gain you're willing to trade for faster muscle growth.</p>
-                <div className="grid grid-cols-2 gap-4">
-                  {gainOptions.map(g => (
-                    <div key={g.label} className="bg-cream border border-border p-4 text-center">
-                      <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{g.label}<br /><span className="text-text-light">{g.sub}</span></p>
-                      <p className="text-xl font-medium text-text-primary">{result.tdee + g.delta}</p>
-                      <p className="text-[10px] text-text-light">cal/day</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  {gainOptions.map(g => targetCard(g.id, g.label, g.sub))}
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Recomp</h2>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">Eating close to maintenance while training hard and eating enough protein lets you build muscle and lose fat at the same time — no dedicated cut/bulk cycling needed. Pick a lean depending on what you want more of: hold steady, lean into muscle with a very clean bulk, or lean into fat loss at a slow, sustainable pace.</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  {recompOptions.map(r => targetCard(r.id, r.label))}
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Your macros</h2>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">For <strong className="text-text-primary">{selected.name}</strong> at {selected.kcal} cal/day. Tap any calorie target above to switch. Aim for the big number; anywhere in the range underneath works.</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  {macros.map(m => (
+                    <div key={m.key} className="bg-cream border border-border px-2 py-4 sm:p-5 text-center">
+                      <span className={`block w-6 h-1 mx-auto mb-2.5 ${m.color}`} />
+                      <p className="text-[10px] sm:text-[11px] uppercase sm:tracking-wider text-text-muted mb-1.5">{m.label}</p>
+                      <p className="text-2xl sm:text-3xl font-medium text-text-primary">{m.target}<span className="text-[13px] font-normal text-text-muted">g</span></p>
+                      {/* Only fat can collapse to one number: when the essential
+                          floor outweighs its whole percentage band. */}
+                      <p className="text-[11px] text-text-light">{m.min === m.max ? 'essential minimum' : `${m.min}–${m.max}g`}</p>
+                      <p className="text-[11px] text-text-light">{perBodyweight(m.target)}</p>
                     </div>
                   ))}
                 </div>
-              </motion.div>
-
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
-                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Recomp</h2>
-                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">Eating close to maintenance while training hard and eating enough protein lets you build muscle and lose fat at the same time — no dedicated cut/bulk cycling needed. Pick a lean depending on what you want more of: hold steady, lean into muscle with a very clean bulk, or lean into fat loss at a slow, sustainable pace.</p>
-                <div className="grid grid-cols-3 gap-4">
-                  {recompOptions.map(r => {
-                    const value = r.percent
-                      ? result.tdee - Math.round((result.weightKg * (r.percent / 100) * 7700) / 7)
-                      : result.tdee + r.delta
-                    return (
-                      <div key={r.label} className="bg-cream border border-border p-4 text-center">
-                        <p className="text-[11px] text-text-muted uppercase tracking-wider mb-2">{r.label}</p>
-                        <p className="text-xl font-medium text-text-primary">{value}</p>
-                        <p className="text-[10px] text-text-light">cal/day</p>
-                      </div>
-                    )
-                  })}
+                <div className="flex w-full h-3 gap-[2px] mt-6 mb-4">
+                  {macros.map(m => (
+                    <div key={m.key} className={m.color} style={{ flex: `${m.kcal} 1 0%` }} />
+                  ))}
                 </div>
+                <div className="space-y-2">
+                  {macros.map(m => (
+                    <div key={m.key} className="flex items-center gap-3">
+                      <span className={`w-2.5 h-2.5 rounded-full ${m.color} shrink-0`} />
+                      <span className="text-[13px] text-text-primary flex-1">{m.label}</span>
+                      <span className="text-[13px] text-text-muted">{m.kcal} cal ({Math.round((m.kcal / macroKcal) * 100)}%)</span>
+                    </div>
+                  ))}
+                </div>
+                {split.carbs.target < CARB_NOTE_BELOW_G && (
+                  <p className="text-[13px] text-text-muted mt-6 leading-relaxed">Your carbs land under {CARB_NOTE_BELOW_G}g a day — roughly what your brain alone runs on. That's the protein and essential-fat minimums squeezing them at this calorie level. Rather than eating less, it's usually a better trade to add walking or steps to widen the deficit, so you keep enough carbs to train hard.</p>
+                )}
+                <p className="text-[13px] text-text-muted mt-6 leading-relaxed">
+                  {result.protein.ageBumped && 'Protein includes +15% for age 60+ (anabolic resistance). '}
+                  Vegan? The <Link to="/tools/protein" className="text-text-primary underline">protein calculator</Link> adds a little extra for plant protein's lower digestibility.
+                </p>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Foods to build it from</h2>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">A few ideas per macro, grouped by what each food is mostly known for. Most foods carry more than one — lentils bring real protein alongside their carbs, and peanut butter is mostly fat, not protein.</p>
+                <div className="space-y-8">
+                  {macroFoods.map(group => (
+                    <div key={group.macro}>
+                      <div className="flex items-center gap-3 pb-2">
+                        <span className="flex-1 min-w-0 flex items-center gap-2 text-[13px] font-medium text-text-primary"><span className={`w-2.5 h-2.5 rounded-full ${macroMeta[group.macro].color} shrink-0`} />{group.title}</span>
+                        <span className="grid grid-cols-3 sm:grid-cols-4 w-[96px] sm:w-[148px] shrink-0 text-right text-[10px] uppercase tracking-wider text-text-light">
+                          <span>P</span><span>C</span><span>F</span><span className="hidden sm:block">Cal</span>
+                        </span>
+                      </div>
+                      {group.foods.map(food => (
+                        <div key={food.food} className="flex items-center gap-3 py-2.5 border-t border-border">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] text-text-primary">{food.food}</p>
+                            <p className="text-[11px] text-text-light">{food.serving}</p>
+                          </div>
+                          <span className="grid grid-cols-3 sm:grid-cols-4 w-[96px] sm:w-[148px] shrink-0 text-right text-[12px] tabular-nums">
+                            {[['protein', food.p], ['carbs', food.c], ['fat', food.f]].map(([key, g]) => (
+                              <span key={key} className={key === group.macro ? 'font-medium text-text-primary' : 'text-text-muted'}>{g}</span>
+                            ))}
+                            <span className="hidden sm:block text-text-light">{foodKcal(food)}</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-text-light mt-6">Grams per serving (P protein, C carbs, F fat), rounded from USDA FoodData Central. Packaged foods vary, so check the label.</p>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Where your calories go</h2>
                 <p className="text-text-muted text-[13px] mb-6">Your {result.tdee} cal/day TDEE breaks down into:</p>
                 {/* Segments grow rather than take a percentage width, so the 2px
@@ -317,7 +417,7 @@ export default function TDEECalculator() {
                 </div>
               </motion.div>
 
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Boost your NEAT</h2>
                 <p className="text-text-muted text-[13px] mb-6 leading-relaxed">NEAT (non-exercise activity thermogenesis) is the energy you burn on everything that isn't sleeping, eating, or deliberate exercise — walking, standing, fidgeting. It's currently <strong className="text-text-primary">{result.neat} cal/day</strong>, and it's the easiest lever to adjust without extra gym time.</p>
                 <div className="space-y-4">
@@ -341,7 +441,7 @@ export default function TDEECalculator() {
             </>
           )}
 
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
             <h2 className="font-heading text-xl font-medium text-text-primary mb-6">How this calculator works</h2>
             <div className="space-y-6">
               <div>
@@ -372,10 +472,14 @@ export default function TDEECalculator() {
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Calorie targets</p>
                 <p className="text-[13px] text-text-muted leading-relaxed">One {fatUnitLabel} of body fat holds roughly {fatCalConst} calories. For cutting, the deficit is scaled to a percentage of your bodyweight per week (0.25 / 0.5 / 1%) instead of a fixed number, since a flat deficit doesn't mean the same thing for a {lightExample} person and a {heavyExample} person. For bulking, instead of a speed choice, you pick how much fat gain you're willing to accept: a lean bulk (+200 cal/day, minimal fat gain) or a normal bulk (+500 cal/day, moderate fat gain) — deliberately bulking "fast" mostly just adds fat, not muscle. Recomp offers three closer-to-maintenance options: hold at maintenance, a very clean +150 cal/day surplus for muscle-gain focus, or a slow 0.35%-bodyweight/week deficit for fat-loss focus.</p>
               </div>
+              <div>
+                <p className="text-[13px] font-medium text-text-primary mb-1.5">Macros</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">Protein comes first, from the same formula as our protein calculator: dosed from lean body mass, rising with weekly training (Morton et al. 2018) and with leanness below 20% body fat (Helms et al. 2014) — the leaner you are, the more of your weight is muscle to protect. Your goal then picks where in that range you land: near the top in a deficit, where lean mass is most at risk, and toward the middle in a surplus, where extra calories do more as carbs. For most lifters that works out to roughly 2 g per kg of bodyweight. Fat is set at 20–30% of calories (20–25% on a cut, 25–30% on a bulk) but never below an essential minimum of 0.5 g per kg of bodyweight for men and 0.6 g/kg for women — fat carries hormone production and the absorption of vitamins A, D, E and K, and very low intakes are linked to hormonal and menstrual disruption in women. Carbs get every calorie that's left, because they're what fuels hard training. That's also why the carb range runs the opposite way: it's highest when protein and fat sit at the low end of theirs.</p>
+              </div>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-9">
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
             <h2 className="font-heading text-xl font-medium text-text-primary mb-4">One more thing</h2>
             <div className="space-y-4">
               <p className="text-[13px] text-text-muted leading-relaxed">No matter how many formulas and citations go into this, it's still an estimate. Your real metabolism, digestion, hormones, sleep, and stress all move the actual number around in ways no calculator can fully capture. Treat everything above as a good place to start your journey, not a verdict — give it a few weeks, then adjust based on what the scale and the mirror are actually telling you, rather than assuming the number was wrong from day one.</p>

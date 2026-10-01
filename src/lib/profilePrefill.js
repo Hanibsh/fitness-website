@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useAuth } from './auth'
 import { getBodyweightLog } from './workoutStore'
 import { convertWeight } from './workoutStats'
+import { GOAL_VALUES } from './profileFields'
 
 export function unitSystemFromProfile(unit) {
   return unit === 'lbs' ? 'imperial' : 'metric'
@@ -53,13 +54,14 @@ function bodyweightIn(profile, unit) {
 //   ready      — the profile has loaded (false while signed out or in flight)
 //   from       — true if anything was filled, for the "from your profile" hint
 //   unitSystem — 'metric' | 'imperial', null when the user has no saved preference
+//   goal       — a GOAL_VALUES entry, null when unset
 export function usePrefill() {
   const { user, profile } = useAuth()
 
   return useMemo(() => {
     const empty = {
       ready: false, from: false, sex: null, unitSystem: null,
-      height: null, weight: null, age: null,
+      height: null, weight: null, age: null, goal: null,
     }
     if (!user || !profile) return empty
 
@@ -70,6 +72,7 @@ export function usePrefill() {
     const height = profile.height != null && profile.height !== '' ? round1(Number(profile.height)) : null
     const weight = bodyweightIn(profile, weightUnitFor(unitSystem))
     const age = ageFromBirthYear(profile.birth_year)
+    const goal = GOAL_VALUES.includes(profile.goal) ? profile.goal : null
 
     return {
       ready: true,
@@ -79,6 +82,7 @@ export function usePrefill() {
       height,
       weight,
       age,
+      goal,
     }
   }, [user, profile])
 }

@@ -19,7 +19,7 @@ const tools = [
     to: '/tools/tdee',
     icon: Flame,
     title: 'TDEE calculator',
-    desc: 'Find your Total Daily Energy Expenditure — how many calories you burn per day.',
+    desc: 'Find your Total Daily Energy Expenditure — how many calories you burn per day — plus a protein, fat and carb split for your goal.',
   },
   {
     to: '/tools/one-rep-max',

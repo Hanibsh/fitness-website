@@ -7,6 +7,7 @@ import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
+import { proteinRange } from '../../lib/macros'
 
 const inputBounds = {
   age: { min: 10, max: 100 },
@@ -48,9 +49,6 @@ const aminoCombos = [
   { combo: 'Corn + black beans', covers: 'Classic Latin American pairing — same grain/legume logic.' },
   { combo: 'Dal (lentils) + rice', covers: 'Traditional South Asian staple — grain + legume again.' },
 ]
-
-const AGE_PROTEIN_BUMP = 1.15
-const VEGAN_PROTEIN_BUMP = 1.15
 
 export default function ProteinCalculator() {
   const [unit, setUnit] = useState('metric')
@@ -103,26 +101,16 @@ export default function ProteinCalculator() {
     const weightKg = unit === 'imperial' ? w * 0.453592 : w
     const lbm = weightKg * (1 - bodyFat / 100)
 
-    const t = Math.min(hours, 12) / 12
-    const baseMinPerKg = 1.6 + 0.5 * t
-    const baseMaxPerKg = 2.1 + 0.8 * t
-    const leanBonus = Math.max(0, 20 - bodyFat) * 0.01
-    const ageBumped = a >= 60
-    const multiplier = (1 + leanBonus) * (ageBumped ? AGE_PROTEIN_BUMP : 1) * (vegan ? VEGAN_PROTEIN_BUMP : 1)
-
-    const minG = lbm * baseMinPerKg * multiplier
-    const maxG = lbm * baseMaxPerKg * multiplier
-    const optimalFraction = 0.45 + 0.4 * t
-    const optimalG = minG + (maxG - minG) * optimalFraction
+    const range = proteinRange({ lbmKg: lbm, bodyFat, trainingHours: hours, age: a, vegan })
 
     setResult({
       lbm: Math.round(lbm),
-      min: Math.round(minG),
-      max: Math.round(maxG),
-      optimal: Math.round(optimalG),
-      ageBumped,
+      min: Math.round(range.min),
+      max: Math.round(range.max),
+      optimal: Math.round(range.optimal),
+      ageBumped: range.ageBumped,
       vegan,
-      leanBonusPercent: Math.round(leanBonus * 100),
+      leanBonusPercent: range.leanBonusPercent,
       trainingHours: hours,
     })
   }
