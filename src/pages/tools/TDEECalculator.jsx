@@ -9,6 +9,7 @@ import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
 import { proteinRange, macroSplit, CARB_NOTE_BELOW_G } from '../../lib/macros'
 import { macroFoods, foodKcal } from '../../data/macroFoods'
+import { CARDIO_PRESETS, netKcalPerMin, kmhToMph } from '../../lib/cardio'
 
 const loseSpeeds = [
   { id: 'lose-slow', label: 'Slow', percent: 0.25 },
@@ -94,6 +95,7 @@ export default function TDEECalculator() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [targetId, setTargetId] = useState(null)
+  const [burnChoice, setBurnChoice] = useState(250)
 
   // Seed from the profile. Unit goes first: a height in cm would fail the
   // imperial bounds. Text fields only fill while still empty, so a value typed
@@ -203,6 +205,20 @@ export default function TDEECalculator() {
   const perBodyweight = (grams) => unit === 'imperial'
     ? `${(grams / (result.weightKg / 0.453592)).toFixed(2)} g/lb`
     : `${(grams / result.weightKg).toFixed(1)} g/kg`
+
+  // The "burn more" box: a few set amounts, plus the selected target's floor
+  // gap when it has one. A remembered "gap" choice falls back once it's gone.
+  const burnOptions = [200, 250, 300].map(v => ({ value: v, label: `${v} cal` }))
+  if (selected?.floored) burnOptions.push({ value: 'gap', label: `Gap ${selected.moveKcal}` })
+  const burn = burnOptions.some(o => o.value === burnChoice) ? burnChoice : 250
+  const burnKcal = burn === 'gap' ? selected.moveKcal : burn
+  const speedLabel = (kmh) => unit === 'imperial' ? `${(Math.round(kmhToMph(kmh) * 10) / 10)} mph` : `${kmh} km/h`
+  const cardioRows = result ? CARDIO_PRESETS.map(p => ({
+    id: p.id,
+    label: p.label,
+    detail: p.params.watts ? `${p.params.watts} W` : `${speedLabel(p.params.speedKmh)}${p.params.gradePct ? `, ${p.params.gradePct}% incline` : ', flat'}`,
+    minutes: Math.round(burnKcal / netKcalPerMin(p.activity, p.params, result.weightKg)),
+  })) : []
 
   // A tappable calorie target; the selected one drives the macro split.
   const targetCard = (id, title, sub) => {
@@ -343,11 +359,34 @@ export default function TDEECalculator() {
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Lose weight</h2>
-                <p className="text-text-muted text-[13px] mb-6">Deficits scaled to your bodyweight — a fixed kcal number doesn't make sense for everyone at the same rate. Tap any target on this page to see its macros below.</p>
+                <p className="text-text-muted text-[13px] mb-3">Deficits scaled to your bodyweight — a fixed kcal number doesn't make sense for everyone at the same rate. Tap any target on this page to see its macros below.</p>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">Want it faster? <strong className="text-text-primary">Move more rather than eat less.</strong> Walking more and adding some cardio keeps your food — and your protein, energy and training — intact while the deficit grows.</p>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {loseSpeeds.map(s => targetCard(s.id, s.label, `${s.percent}% BW/week`))}
                 </div>
                 {floorNote(loseSpeeds)}
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
+                <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Burn more instead of eating less</h2>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">How long it takes you, at your weight, to burn a little extra. These are extra calories on top of your normal day, so they add straight to your deficit.</p>
+                <div className="flex gap-2 mb-6">
+                  {burnOptions.map(o => (
+                    <button key={o.value} type="button" aria-pressed={burn === o.value} onClick={() => setBurnChoice(o.value)} className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burn === o.value ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{o.label}</button>
+                  ))}
+                </div>
+                <div className="space-y-3">
+                  {cardioRows.map(r => (
+                    <div key={r.id} className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-text-primary">{r.label}</p>
+                        <p className="text-[11px] text-text-light">{r.detail}</p>
+                      </div>
+                      <span className="text-[13px] text-text-muted shrink-0"><strong className="text-text-primary font-medium">{r.minutes}</strong> min</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[13px] text-text-muted mt-6 leading-relaxed">More activities, your own speed and incline, or what a session burned: <Link to="/tools/cardio" className="text-text-primary underline">cardio calculator</Link>.</p>
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">

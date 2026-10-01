@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler, Dna, ClipboardList, CalendarRange } from 'lucide-react'
+import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler, Dna, ClipboardList, CalendarRange, Footprints } from 'lucide-react'
 
 const tools = [
   {
@@ -20,6 +20,12 @@ const tools = [
     icon: Flame,
     title: 'TDEE calculator',
     desc: 'Find your Total Daily Energy Expenditure — how many calories you burn per day — plus a protein, fat and carb split for your goal.',
+  },
+  {
+    to: '/tools/cardio',
+    icon: Footprints,
+    title: 'Cardio calculator',
+    desc: 'How long a walk, run, ride or swim takes to burn the calories you want — at your weight, speed and incline.',
   },
   {
     to: '/tools/one-rep-max',

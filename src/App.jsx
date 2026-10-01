@@ -11,6 +11,7 @@ const Tools = lazy(() => import('./pages/Tools'))
 const Programs = lazy(() => import('./pages/Programs'))
 const Contact = lazy(() => import('./pages/Contact'))
 const TDEECalculator = lazy(() => import('./pages/tools/TDEECalculator'))
+const CardioCalculator = lazy(() => import('./pages/tools/CardioCalculator'))
 const OneRepMax = lazy(() => import('./pages/tools/OneRepMax'))
 const ProteinCalculator = lazy(() => import('./pages/tools/ProteinCalculator'))
 const CreatineCalculator = lazy(() => import('./pages/tools/CreatineCalculator'))
@@ -81,6 +82,7 @@ function App() {
         <Route path="/programs" element={<Programs />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/tools/tdee" element={<TDEECalculator />} />
+        <Route path="/tools/cardio" element={<CardioCalculator />} />
         <Route path="/tools/one-rep-max" element={<OneRepMax />} />
         <Route path="/tools/protein" element={<ProteinCalculator />} />
         <Route path="/tools/creatine" element={<CreatineCalculator />} />
