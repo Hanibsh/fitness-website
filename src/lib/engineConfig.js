@@ -15,10 +15,37 @@ export const RIR_EFFECTIVENESS = {
 // When RIR wasn't logged, assume a hard-ish set but don't reward the missing data.
 export const RIR_EFFECTIVENESS_DEFAULT = 0.9
 
-export function rirEffectiveness(rir) {
+// Load changes how much stopping short costs. With a heavy load the biggest
+// motor units are recruited from the first rep, so a heavy set left a few reps
+// shy of failure still did most of its work; a light set only recruits them as
+// it nears failure (the effective-reps idea, and Robinson et al. 2024 report
+// the same load dependence). Load is read off reps + RIR ≈ reps-to-failure, so
+// it needs no 1RM: at or under HEAVY the RIR penalty is scaled by
+// HEAVY_RIR_WEIGHT, at or over LIGHT it applies in full, linear in between.
+// The direction is evidence-backed; the exact exchange rate is an ESTIMATE —
+// no study pins it down. Tune freely.
+export const RIR_LOAD_HEAVY_RTF = 6
+export const RIR_LOAD_LIGHT_RTF = 15
+export const HEAVY_RIR_WEIGHT = 0.5
+
+function rirLoadWeight(rir, reps) {
+  const n = Number(reps)
+  if (!Number.isFinite(n) || n <= 0) return 1 // no reps: no load signal
+  const t = (n + rir - RIR_LOAD_HEAVY_RTF) / (RIR_LOAD_LIGHT_RTF - RIR_LOAD_HEAVY_RTF)
+  return HEAVY_RIR_WEIGHT + (1 - HEAVY_RIR_WEIGHT) * Math.max(0, Math.min(1, t))
+}
+
+// `reps` is optional; without it this is the plain RIR curve. Fractional RIR
+// (load-weighted, or an averaged unilateral set) interpolates between entries.
+export function rirEffectiveness(rir, reps) {
   if (rir == null || rir === '') return RIR_EFFECTIVENESS_DEFAULT
-  const r = Math.max(0, Math.min(10, Math.round(Number(rir))))
-  return Number.isFinite(r) ? RIR_EFFECTIVENESS[r] : RIR_EFFECTIVENESS_DEFAULT
+  const raw = Number(rir)
+  if (!Number.isFinite(raw)) return RIR_EFFECTIVENESS_DEFAULT
+  const clamped = Math.max(0, Math.min(10, raw))
+  const r = clamped * rirLoadWeight(clamped, reps)
+  const lo = Math.floor(r)
+  const hi = Math.min(10, lo + 1)
+  return RIR_EFFECTIVENESS[lo] + (RIR_EFFECTIVENESS[hi] - RIR_EFFECTIVENESS[lo]) * (r - lo)
 }
 
 // ---- Within-session diminishing returns (stimulus) ---------------------------

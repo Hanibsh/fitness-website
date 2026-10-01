@@ -51,6 +51,16 @@ function setRir(set) {
   return set.rir === '' || set.rir == null ? null : Number(set.rir)
 }
 
+// The set's reps (unilateral: average the logged limbs), or null if unlogged.
+function setReps(set) {
+  if (set.left) {
+    const vals = [set.left?.reps, set.right?.reps].map(Number).filter((n) => Number.isFinite(n) && n > 0)
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  }
+  const n = Number(set.reps)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 const round1 = (n) => Math.round(n * 10) / 10
 
 // Walk every working resistance set logged on/after `since` (a start-of-day
@@ -96,7 +106,7 @@ export function effectiveWeeklyVolume(sessions, { days = 7, now = Date.now() } =
       curSession = s
       k = {}
     }
-    const eff = rirEffectiveness(setRir(set))
+    const eff = rirEffectiveness(setRir(set), setReps(set))
     if (db && db.muscles && Object.keys(db.muscles).length) {
       // Bucket the set's atoms by group so the multiplier applies once per
       // muscle group per set (a deadlift's three Back atoms share one slot).
