@@ -2423,11 +2423,6 @@ export default function WorkoutTracker() {
                       className="w-11 bg-white border border-border px-1.5 py-1 text-center text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors"
                     />
                     <span className="text-[11px] text-text-light">reps</span>
-                    {/* The plan's effort target. Read-only here — it belongs to
-                        the split, so it's edited there. */}
-                    {rirLabel(ex.rirTarget) && (
-                      <span className="text-[11px] text-text-light whitespace-nowrap">· {rirLabel(ex.rirTarget)}</span>
-                    )}
                     <button
                       type="button"
                       onClick={() => setRepTarget(ex.id, null)}
@@ -2435,17 +2430,6 @@ export default function WorkoutTracker() {
                       className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0.5 ml-0.5"
                     >
                       <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : rirLabel(ex.rirTarget) ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-text-light whitespace-nowrap">{rirLabel(ex.rirTarget)}</span>
-                    <button
-                      type="button"
-                      onClick={() => setRepTarget(ex.id, { low: 6, high: 10 })}
-                      className="inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-2 py-1 cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3 h-3" /> Rep target
                     </button>
                   </div>
                 ) : (
@@ -2458,6 +2442,15 @@ export default function WorkoutTracker() {
                   </button>
                 )}
               </div>
+
+              {/* The plan's effort target, read-only — it belongs to the split,
+                  so it's edited there. Its own line: "1–2 RIR, last set to
+                  failure" doesn't fit beside the rep fields on a phone. */}
+              {rirLabel(ex.rirTarget) && (
+                <p className={`text-[11px] -mt-1.5 mb-3 ${ex.rirTarget?.lastSetFailure ? 'text-text-secondary' : 'text-text-light'}`}>
+                  Effort: {rirLabel(ex.rirTarget)}
+                </p>
+              )}
 
               {status && (
                 <p className={`inline-flex items-center text-[11px] font-medium border px-2 py-1 mb-3 ${CHIP_TONE[status.tone]}`}>

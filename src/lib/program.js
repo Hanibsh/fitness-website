@@ -47,8 +47,9 @@ export function moveInArray(arr, index, delta) {
 
 // A planned exercise inside a training day. `exerciseId` links to the DB when
 // picked from the library (null for custom), `sets` is the target count, and
-// `repRange` is the double-progression target. `rirTarget` ({low, high}, or
-// null) is how close to failure the working sets should go — set by the
+// `repRange` is the double-progression target. `rirTarget` ({low, high,
+// lastSetFailure?}, or null) is how close to failure the working sets should
+// go, and whether the last one is a finisher taken to failure — set by the
 // generator from training age and volume preference, editable in the split
 // editor, shown read-only in the logger. Null on rows built before it existed,
 // which read exactly as they always did.
@@ -80,11 +81,15 @@ export function createPlannedExercise(name, opts = {}) {
   return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, rirTarget, note, unilateral, slot }
 }
 
-// "1–2 RIR", "0 RIR", or '' when there's no usable target.
+// "1–2 RIR", "1–2 RIR, last set to failure", "Last set to failure", or ''
+// when there's no target at all.
 export function rirLabel(t) {
-  if (!t || t.low === '' || t.low == null) return ''
+  if (!t) return ''
+  const hasRange = t.low !== '' && t.low != null
   const high = t.high === '' || t.high == null ? t.low : t.high
-  return Number(high) > Number(t.low) ? `${t.low}–${high} RIR` : `${t.low} RIR`
+  const range = hasRange ? (Number(high) > Number(t.low) ? `${t.low}–${high} RIR` : `${t.low} RIR`) : ''
+  if (!t.lastSetFailure) return range
+  return range ? `${range}, last set to failure` : 'Last set to failure'
 }
 
 // Is this row waiting for you to choose a movement?
@@ -195,7 +200,16 @@ export function setExerciseRir(program, dayId, exId, field, value) {
   const n = value === '' ? '' : Math.max(0, Math.min(10, parseInt(value, 10) || 0))
   return withExercise(program, dayId, exId, (e) => {
     const next = { ...(e.rirTarget || { low: n, high: n }), [field]: n }
-    return { ...e, rirTarget: next.low === '' && next.high === '' ? null : next }
+    return { ...e, rirTarget: next.low === '' && next.high === '' && !next.lastSetFailure ? null : next }
+  })
+}
+
+// The finisher: take this movement's last set to failure, or don't.
+export function setExerciseLastSetFailure(program, dayId, exId, on) {
+  return withExercise(program, dayId, exId, (e) => {
+    const next = { ...(e.rirTarget || { low: '', high: '' }), lastSetFailure: !!on }
+    if (!on) delete next.lastSetFailure
+    return { ...e, rirTarget: next.low === '' && next.high === '' && !next.lastSetFailure ? null : next }
   })
 }
 

@@ -407,10 +407,17 @@ function Preview({ built, name, setName, onCreate }) {
                               {e.pattern.replace(/-/g, ' ')}
                             </span>
                           )}
+                          {/* The effort target, on its own line — "1–2 RIR,
+                              last set to failure" is too long to share the
+                              narrow sets column on a phone. */}
+                          {rirLabel(e.rirTarget) && (
+                            <span className={`block text-[11px] ${e.rirTarget?.lastSetFailure ? 'text-text-secondary' : 'text-text-light'}`}>
+                              {rirLabel(e.rirTarget)}
+                            </span>
+                          )}
                         </span>
                         <span className="text-text-light shrink-0 ml-auto tabular-nums">
                           {e.sets} × {e.repRange.low}–{e.repRange.high}
-                          {rirLabel(e.rirTarget) && <span className="text-text-light"> · {rirLabel(e.rirTarget)}</span>}
                         </span>
                       </li>
                     ))}

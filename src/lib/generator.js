@@ -43,7 +43,7 @@ import {
   PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
   MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
   MUSCLE_REGION, PORTABLE_MUSCLES,
-  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS, RIR_TARGETS, HEAVY_COMPOUND_MIN_RIR,
+  EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS, RIR_TARGETS, MIN_WORKING_RIR, FAILURE_MAX_FATIGUE_SCORE,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
@@ -686,7 +686,9 @@ export function fillDay(template, alloc, gaps, ctx) {
   // costs and grades exactly the same (see plannedExerciseDbId), it just hasn't
   // decided yet. Either way the row is UNPINNED: the generator proposes, it
   // doesn't insist.
-  day.exercises = chosen.map(({ db, sets, muscle }) => {
+  const effort = chosen.map(({ db }) => ({ db, rirTarget: rirTargetForExercise(db, ctx.experience, ctx.volumePref) }))
+  markFailureSets(effort, ctx.volumePref.failureSetsPerDay || 0)
+  day.exercises = chosen.map(({ db, sets, muscle }, i) => {
     const slot = { pattern: db.pattern || null, muscle, pinned: false, suggestedId: db.id }
     const open = ctx.openSlots && db.pattern
     return createPlannedExercise(open ? patternPhrase(db.pattern) : db.name, {
@@ -694,7 +696,7 @@ export function fillDay(template, alloc, gaps, ctx) {
       kind: 'strength',
       sets,
       repRange: repRangeForExercise(db, muscle, ctx.history),
-      rirTarget: rirTargetForExercise(db, ctx.experience, ctx.volumePref),
+      rirTarget: effort[i].rirTarget,
       slot,
     })
   })
@@ -709,16 +711,37 @@ function setLoad(db) {
   return coef * (db.axialLoading ? AXIAL_MULT : 1) * (db.equipment === 'free weight' ? FREE_WEIGHT_MULT : 1)
 }
 
-// Effort target: the training-age range for the movement's type, shifted by
-// the volume preference, with heavy compounds held off failure.
+// Effort target for a movement's WORKING sets: the training-age range for its
+// type, shifted by the volume preference, never below MIN_WORKING_RIR. Whether
+// its last set goes to failure is decided per day (markFailureSets), not here.
 export function rirTargetForExercise(db, experience, volumePref = volumePreference()) {
   const byType = RIR_TARGETS[experience] || RIR_TARGETS[DEFAULT_EXPERIENCE]
-  const compound = db.type === 'compound'
-  const base = compound ? byType.compound : byType.isolation
-  const floor = compound && (db.fatigueScore ?? 0) >= 4 ? HEAVY_COMPOUND_MIN_RIR : 0
-  const low = Math.max(floor, base.low + (volumePref.rirShift || 0))
-  const high = Math.max(low, base.high + (volumePref.rirShift || 0))
+  const base = db.type === 'compound' ? byType.compound : byType.isolation
+  const shift = volumePref.rirShift || 0
+  const low = Math.max(MIN_WORKING_RIR, base.low + shift)
+  const high = Math.max(low, base.high + shift)
   return { low, high }
+}
+
+// Can this movement's last set safely go to failure? Isolations, and machine or
+// cable compounds — never free weights or bodyweight compounds, never a heavy
+// lift even on a machine, and not an isometric hold.
+export function failureSafe(db) {
+  if (!db || (db.fatigueScore ?? 0) >= FAILURE_MAX_FATIGUE_SCORE) return false
+  if (db.type === 'isolation') return true
+  return db.type === 'compound' && (db.equipment === 'machine' || db.equipment === 'cable')
+}
+
+// Give the day's last `count` failure-safe movements a last set to failure.
+// Last, because the extra fatigue then lands where nothing else in the session
+// has to pay for it.
+function markFailureSets(rows, count) {
+  let left = count
+  for (let i = rows.length - 1; i >= 0 && left > 0; i--) {
+    if (!failureSafe(rows[i].db)) continue
+    rows[i].rirTarget = { ...rows[i].rirTarget, lastSetFailure: true }
+    left--
+  }
 }
 
 // Rep target: their own logged range for this movement when they have one,

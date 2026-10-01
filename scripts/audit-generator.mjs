@@ -22,10 +22,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VERBOSE = process.argv.includes('--verbose')
 
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-const { generateProgram } = await server.ssrLoadModule('/src/lib/generator.js')
+const { generateProgram, failureSafe } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, HEAVY_COMPOUND_MIN_RIR } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -99,11 +99,11 @@ function audit(label, program, summary, inputs, opts) {
       check(label, !!db, `"${e.name}" is not in the exercise DB`)
       if (!db) continue
       if (allowed) check(label, allowed.has(db.equipment), `"${e.name}" needs ${db.equipment}`)
+      // Failure is avoided: no working-set range under MIN_WORKING_RIR, and a
+      // last-set-to-failure finisher only on a movement where that's safe.
       const t = e.rirTarget
-      check(label, !!t && t.low >= 0 && t.high >= t.low && t.high <= 5, `"${e.name}" RIR target ${t ? `${t.low}–${t.high}` : 'missing'}`)
-      if (t && db.type === 'compound' && (db.fatigueScore ?? 0) >= 4) {
-        check(label, t.low >= HEAVY_COMPOUND_MIN_RIR, `"${e.name}" is a heavy compound programmed to ${t.low} RIR`)
-      }
+      check(label, !!t && t.low >= MIN_WORKING_RIR && t.high >= t.low && t.high <= 5, `"${e.name}" RIR target ${t ? `${t.low}–${t.high}` : 'missing'}`)
+      if (t?.lastSetFailure) check(label, failureSafe(db), `"${e.name}" takes its last set to failure but isn't failure-safe`)
       if (opts.equipment === 'gym') {
         // A full gym has no reason to program a band, or a movement that can't
         // be loaded — see GYM_EXCLUDED_* in generatorConfig.js.
@@ -129,6 +129,9 @@ function audit(label, program, summary, inputs, opts) {
       `"${day.name}" has ${day.exercises.length} exercises, cap is ${EXPERIENCE_POSTURE[opts.experience].exerciseCap}`
     )
     // The volume preference's hard-set cap is never waived, coverage included.
+    const finishers = day.exercises.filter((e) => e.rirTarget?.lastSetFailure).length
+    const maxFinishers = volumePreference(opts.volume).failureSetsPerDay
+    check(label, finishers <= maxFinishers, `"${day.name}" has ${finishers} failure finishers, the ${opts.volume} limit is ${maxFinishers}`)
     const cap = volumePreference(opts.volume).setCap
     const sets = day.exercises.reduce((n, e) => n + (Number(e.sets) || 0), 0)
     check(label, sets <= cap, `"${day.name}" has ${sets} sets, the ${opts.volume} cap is ${cap}`)

@@ -22,6 +22,7 @@ import {
   setExerciseSets,
   setExerciseRep,
   setExerciseRir,
+  setExerciseLastSetFailure,
   toggleExerciseUnilateral,
   setExerciseNote,
   substituteExercise,
@@ -319,6 +320,19 @@ export default function SplitDay() {
                             className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
                         </div>
+                      )}
+                      {/* The finisher. Failure is the exception in this app — a
+                          set or two a day — so it's opt-in per movement. */}
+                      {ex.kind !== 'cardio' && (
+                        <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!ex.rirTarget?.lastSetFailure}
+                            onChange={(e) => update((p) => setExerciseLastSetFailure(p, day.id, ex.id, e.target.checked))}
+                            className="w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
+                          />
+                          Last set to failure
+                        </label>
                       )}
                     </div>
 

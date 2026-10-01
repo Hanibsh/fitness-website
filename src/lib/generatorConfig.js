@@ -328,38 +328,49 @@ export const DEFAULT_EXPERIENCE = 'intermediate'
 // day costs little growth. The numbers are coaching judgement, not findings.
 export const VOLUME_PREFERENCES = [
   {
-    value: 'lower', rirShift: -1, label: 'Lower', sub: '≤ 12 sets/day', setCap: 12, targetMult: 0.75,
-    note: 'Fewer sets, each taken closer to failure. The least fatigue to carry, and every set is in the best-return range.',
+    value: 'lower', label: 'Lower', sub: '≤ 12 sets/day', setCap: 12, targetMult: 0.75, rirShift: 0,
+    failureSetsPerDay: 2,
+    note: 'Fewer sets, and up to two finishing sets a day taken to failure. The least fatigue to carry, and every set is in the best-return range.',
   },
   {
-    value: 'standard', rirShift: 0, label: 'Standard', sub: '≤ 16 sets/day', setCap: 16, targetMult: 1,
-    note: 'Enough work for steady growth without any one day turning into a slog.',
+    value: 'standard', label: 'Standard', sub: '≤ 16 sets/day', setCap: 16, targetMult: 1, rirShift: 0,
+    failureSetsPerDay: 1,
+    note: 'Enough work for steady growth without any one day turning into a slog. One finishing set a day goes to failure.',
   },
   {
-    value: 'higher', rirShift: 1, label: 'Higher', sub: '≤ 20 sets/day', setCap: 20, targetMult: 1.25,
+    value: 'higher', label: 'Higher', sub: '≤ 20 sets/day', setCap: 20, targetMult: 1.25, rirShift: 1,
+    failureSetsPerDay: 0,
     note: 'More sets, stopping a little further from failure. A bit more growth at the top end, and noticeably more fatigue.',
   },
 ]
 export const DEFAULT_VOLUME_PREFERENCE = 'standard'
+
 // ---- Effort (RIR) targets ---------------------------------------------------
-// How close to failure a generated row's working sets should go, by training
-// age and by whether the movement is a compound. Beginners aim further off
-// failure: they misjudge RIR badly (a "2" is often really a 4–5), and solid
-// reps while a movement is still being learned matter more than the last rep.
-// Experienced lifters judge it well and can take isolations right up to it.
-// The volume preference then shifts the range (rirShift above): fewer sets
-// taken closer to failure, or more sets stopping further from it — the trade
-// its note describes. Coaching judgement grounded in Refalo 2023/2025 (growth
-// peaks ~0–3 RIR) and the RIR-accuracy literature, not a measured table.
+// How close to failure a generated row's WORKING sets should go, by training
+// age and by whether the movement is a compound. Beginners aim further off:
+// they misjudge RIR badly (a "2" is often really a 4–5), and solid reps while a
+// movement is still being learned matter more than the last rep.
+//
+// Failure is avoided, for everyone. No working-set range goes below
+// MIN_WORKING_RIR: failure builds about the same muscle as 1–2 RIR (Refalo
+// 2023/2025) but costs noticeably more recovery — exactly the fatigue this app
+// manages through volume. What's left is a finisher: the LAST set of at most
+// `failureSetsPerDay` movements a day (by volume preference, above), placed on
+// the day's last SAFE movements — an isolation, or a machine/cable compound —
+// never a free-weight or bodyweight compound, and never a heavy one (fatigue
+// score ≥ FAILURE_MAX_FATIGUE_SCORE) even on a machine: a Smith-machine good
+// morning to failure is all risk. Going last means the extra fatigue lands
+// where nothing else in the session pays for it, and a failure set now and
+// then teaches what 0 RIR feels like, which sharpens every other estimate.
+// Higher volume shifts the range one rep further off (`rirShift`).
+// Coaching judgement grounded in that literature, not a measured table.
 export const RIR_TARGETS = {
   beginner: { compound: { low: 2, high: 3 }, isolation: { low: 2, high: 3 } },
   intermediate: { compound: { low: 1, high: 3 }, isolation: { low: 1, high: 2 } },
-  advanced: { compound: { low: 1, high: 2 }, isolation: { low: 0, high: 1 } },
+  advanced: { compound: { low: 1, high: 2 }, isolation: { low: 1, high: 2 } },
 }
-// Heavy, fatiguing compounds (the generator's heavyCompound rep shape: fatigue
-// score ≥ 4 — squats, deadlifts and the like) never get a target below this.
-// Failure there costs a lot of fatigue and risk for little extra stimulus.
-export const HEAVY_COMPOUND_MIN_RIR = 1
+export const MIN_WORKING_RIR = 1
+export const FAILURE_MAX_FATIGUE_SCORE = 4 // this score and above: no failure set
 
 // When the cap binds, a day's first this-many muscles keep their place; the
 // rest are reordered most-owed-first so the cap rotates across the week.
