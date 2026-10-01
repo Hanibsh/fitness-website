@@ -4,7 +4,7 @@ import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import DayCard from '../components/DayCard'
-import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay } from '../lib/program'
+import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay, splitSetCap } from '../lib/program'
 import { dayStats } from '../lib/planStats'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -94,6 +94,7 @@ export default function SplitOverview() {
                   to={day.kind === 'rest' ? undefined : dayHref}
                   linkLabel={`Open ${day.name || 'this day'}`}
                   stats={stats}
+                  setCap={day.kind === 'rest' ? null : splitSetCap(program)}
                   chips={day.exercises.map((ex) => ({ key: ex.id, label: ex.name, suffix: `${ex.sets}×` }))}
                   note={
                     day.kind === 'rest'

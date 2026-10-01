@@ -24,6 +24,7 @@ import { plannedExerciseDbId } from './planStats'
 import { lateralityFor, usesBodyweight } from './movements'
 import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
 import { patternPhrase } from '../data/movementPatterns'
+import { volumePreference } from './generatorConfig'
 
 export { plannedExerciseDbId }
 
@@ -134,6 +135,12 @@ function withDay(program, dayId, fn) {
 // Apply a change to one exercise within one day.
 function withExercise(program, dayId, exId, fn) {
   return withDay(program, dayId, (d) => ({ ...d, exercises: d.exercises.map((e) => (e.id === exId ? fn(e) : e)) }))
+}
+
+// The hard-set cap per day this split was generated with, or null for a split
+// built by hand (or before settings were stored) — those have no cap to keep.
+export function splitSetCap(program) {
+  return program?.settings?.volume ? volumePreference(program.settings.volume).setCap : null
 }
 
 export function setProgramName(program, name) {

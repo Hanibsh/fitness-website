@@ -21,6 +21,7 @@ import {
   ADVISOR_REGRESSION_STREAK, ADVISOR_REGRESSION_EPS,
   ADVISOR_LAYOFF_MIN_DAYS, ADVISOR_LAYOFF_RETURN_WINDOW_DAYS, ADVISOR_MAX_RECS,
   ADVISOR_INJURY_MIN_EXERCISES, ADVISOR_INJURY_STALE_DAYS, ADVISOR_REHAB_STALE_DAYS,
+  ADVISOR_FAILURE_PER_SESSION, ADVISOR_FAILURE_MIN_SETS,
 } from './engineConfig'
 
 const DAY = 86400000
@@ -44,6 +45,33 @@ function recentExercises(sessions, days, now) {
     }
   }
   return [...seen.values()]
+}
+
+// Working sets logged at 0 RIR in the last `days`, how many sessions they
+// came from, and which exercises took the most. A unilateral set counts once,
+// when either limb went to failure. Unlogged RIR is never assumed to be 0.
+function failureSets(sessions, days, now) {
+  const cutoff = now - days * DAY
+  let sets = 0
+  let sessionCount = 0
+  const byExercise = new Map()
+  for (const s of sessions) {
+    if (s.date < cutoff) continue
+    sessionCount++
+    for (const ex of s.exercises || []) {
+      if (ex.kind === 'cardio') continue
+      for (const set of ex.sets || []) {
+        if (set.type === 'warmup') continue
+        const rirs = set.left ? [set.left?.rir, set.right?.rir] : [set.rir]
+        if (!rirs.some((r) => r !== '' && r != null && Number(r) === 0)) continue
+        sets++
+        const name = ex.name.trim()
+        byExercise.set(name, (byExercise.get(name) || 0) + 1)
+      }
+    }
+  }
+  const top = [...byExercise.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  return { sets, sessions: sessionCount, top }
 }
 
 // Up to ADVISOR_MAX_RECS recommendations, worst first:
@@ -246,6 +274,29 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], injuri
           'It’s still steering your exercise picks — rate it, or mark it resolved if it’s done.',
       })
     }
+  }
+
+  // R6 — failure as a habit rather than a finisher. The app's rule is to avoid
+  // failure: it builds about the same muscle as 1–2 RIR and costs noticeably
+  // more recovery. A finisher or two a session is fine; more than that, week
+  // after week, is fatigue bought for nothing. Reads the RIR you LOGGED, so it
+  // works with or without a split.
+  const failure = failureSets(sessions, 7, now)
+  if (
+    failure.sessions > 0 &&
+    failure.sets >= ADVISOR_FAILURE_MIN_SETS &&
+    failure.sets > failure.sessions * ADVISOR_FAILURE_PER_SESSION
+  ) {
+    const perSession = Math.round((failure.sets / failure.sessions) * 10) / 10
+    recs.push({
+      id: 'failure-habit',
+      severity: 'amber',
+      title: `${failure.sets} sets to failure this week`,
+      detail:
+        `That’s about ${perSession} a session, mostly on ${failure.top.slice(0, 2).join(' and ')}. ` +
+        `Failure builds about the same muscle as stopping 1–2 reps short, but costs noticeably more recovery. ` +
+        `Keep it to one or two finishing sets a session, on isolations or machines, and leave a rep or two in the tank on the rest.`,
+    })
   }
 
   if (!recs.length) {

@@ -344,4 +344,11 @@ export const ADVISOR_INJURY_STALE_DAYS = 14
 // of their own intention rather than a stranger's advice.
 export const ADVISOR_REHAB_STALE_DAYS = 10
 
+// Failure as a habit (R6). The house rule is to avoid failure — at most a
+// finisher or two a session — so the advisor speaks up when a week's logged
+// 0-RIR working sets run past this many per session, and only once there are
+// enough of them to be a pattern rather than one enthusiastic day.
+export const ADVISOR_FAILURE_PER_SESSION = 2
+export const ADVISOR_FAILURE_MIN_SETS = 5
+
 export const ADVISOR_MAX_RECS = 3

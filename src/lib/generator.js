@@ -1365,6 +1365,9 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   if (Math.max(0, ...trainingDays.map(daySets)) > setCap) trainingDays = fillWeek(targets, setCap)
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
+  // What the split was built FOR, kept on it: the day cap the split editor
+  // measures against, and what the wizard reopens with next time.
+  program.settings = { volume: inputs.volumePref.value, experience: inputs.experience }
   return {
     program,
     summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape }),

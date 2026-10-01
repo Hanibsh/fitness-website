@@ -23,6 +23,7 @@ import {
   setExerciseRep,
   setExerciseRir,
   setExerciseLastSetFailure,
+  splitSetCap,
   toggleExerciseUnilateral,
   setExerciseNote,
   substituteExercise,
@@ -76,6 +77,7 @@ export default function SplitDay() {
 
   const dayIndex = program.days.findIndex((d) => d.id === dayId)
   const day = dayIndex === -1 ? null : program.days[dayIndex]
+  const setCap = splitSetCap(program)
 
   // Back goes wherever you actually came FROM. Arriving through the split you
   // came from its overview, and that's the fallback; arriving from the dashboard
@@ -168,12 +170,23 @@ export default function SplitDay() {
             <>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[12px] text-text-muted">
                 <span className="tabular-nums">
-                  {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
+                  {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} ·{' '}
+                  <span className={setCap != null && stats.sets > setCap ? 'text-amber-600' : undefined}>
+                    {stats.sets}
+                    {setCap != null ? ` / ${setCap}` : ''} set{stats.sets !== 1 || setCap != null ? 's' : ''}
+                  </span>
                 </span>
                 <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
                   {stats.load.label}
                 </span>
               </div>
+              {/* The split's day cap, from the volume preference it was
+                  generated with. Not enforced — editing is yours — just said. */}
+              {setCap != null && stats.sets > setCap && (
+                <p className="text-[11px] text-amber-600 mt-1">
+                  Over this split’s {setCap}-set day — the sets past it are done tired and buy little.
+                </p>
+              )}
               {stats.muscles.length > 0 && (
                 <div className="mt-4">
                   <p className="text-[11px] uppercase tracking-wider text-text-light mb-2.5">What this day works</p>

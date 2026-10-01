@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Dumbbell, Moon, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
@@ -53,7 +53,7 @@ const FOCUS_OPTIONS = [...PROGRAMMED_MUSCLES, ...ENGINE_MUSCLES.filter((m) => !P
 export default function SplitWizard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { addRoutine } = useProgramsState()
+  const { addRoutine, programsState, loading: programsLoading } = useProgramsState()
 
   const [history, setHistory] = useState([])
   const [profile, setProfile] = useState(null)
@@ -65,6 +65,12 @@ export default function SplitWizard() {
   const [focus, setFocus] = useState([])
   const [experience, setExperience] = useState('')
   const [volume, setVolume] = useState(DEFAULT_VOLUME_PREFERENCE)
+  // Picked by hand this visit? Then the active split's setting never overrides it.
+  const volumeTouched = useRef(false)
+  function chooseVolume(v) {
+    volumeTouched.current = true
+    setVolume(v)
+  }
   const [equipment, setEquipment] = useState('')
   const [openSlots, setOpenSlots] = useState(false)
   // null = "pick for me": pickTemplate takes the recommended shape for the count.
@@ -103,6 +109,17 @@ export default function SplitWizard() {
     load()
     return () => { cancelled = true }
   }, [user])
+
+  // Reopen on what the ACTIVE split was generated with — volume always (the
+  // profile has no such field), training age only when the profile didn't say.
+  useEffect(() => {
+    if (programsLoading || loading) return
+    const active = programsState?.programs?.find((p) => p.id === programsState.activeId)
+    const settings = active?.settings
+    if (!settings) return
+    if (settings.volume && !volumeTouched.current) setVolume(settings.volume)
+    if (settings.experience && !profile?.experience_level) setExperience((e) => e || settings.experience)
+  }, [programsLoading, loading, programsState, profile])
 
   // Changing the frequency re-spreads the training days, unless the user has
   // already placed exactly that many themselves.
@@ -290,7 +307,7 @@ export default function SplitWizard() {
                 rather than something experience decides for you. */}
             <label className={labelCls}>Volume</label>
             <div className="grid grid-cols-3 gap-2 mb-2">
-              {VOLUME_PREFERENCES.map((p) => choice(volume === p.value, () => setVolume(p.value), p.label, p.sub))}
+              {VOLUME_PREFERENCES.map((p) => choice(volume === p.value, () => chooseVolume(p.value), p.label, p.sub))}
             </div>
             <p className="text-[12px] text-text-light mb-6 leading-relaxed">{volumePreference(volume).note}</p>
 

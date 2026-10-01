@@ -22,7 +22,10 @@ import MuscleShareBars from './MuscleShareBars'
 //
 // `onOpen` is the button-shaped twin of `to`, for when opening means a dialog
 // rather than a route.
-export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, onOpen, note, cta = 'Open day', highlight = false, compact = false, footer }) {
+// `setCap` is the split's hard-set cap per day, for a PLANNED day only: the count
+// reads "18 / 16 sets" and says so when an edit has pushed the day past it.
+export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, onOpen, note, cta = 'Open day', highlight = false, compact = false, footer, setCap = null }) {
+  const overCap = setCap != null && stats && stats.sets > setCap
   const openable = !!to || !!onOpen
   const body = (
     <>
@@ -32,12 +35,21 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
         <>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-text-muted">
             <span className="tabular-nums">
-              {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
+              {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} ·{' '}
+              <span className={overCap ? 'text-amber-600' : undefined}>
+                {stats.sets}
+                {setCap != null ? ` / ${setCap}` : ''} set{stats.sets !== 1 || setCap != null ? 's' : ''}
+              </span>
             </span>
             <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
               {stats.load.label}
             </span>
           </div>
+          {overCap && (
+            <p className="text-[11px] text-amber-600 mt-1">
+              Over this split’s {setCap}-set day — the sets past it are done tired and buy little.
+            </p>
+          )}
 
           {!compact && stats.groups.length > 0 && (
             <div className="mt-3">
