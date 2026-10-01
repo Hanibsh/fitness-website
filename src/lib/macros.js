@@ -32,18 +32,22 @@ export function proteinRange({ lbmKg, bodyFat, trainingHours = 0, age = 0, vegan
 }
 
 // How each goal leans the split. A deficit pushes protein toward the top of the
-// range (lean mass is what's at risk) and trims fat to leave room for carbs; a
-// surplus relaxes protein toward the middle, since extra calories do more as
-// carbs fuelling training.
+// range (lean mass is what's at risk); a surplus relaxes protein toward the
+// middle, since extra calories do more as carbs fuelling training.
+//
+// Fat targets the middle of its band, except on a cut: there it aims for
+// `fatPerKg` of bodyweight, held inside the band. The 35% ceiling is what keeps
+// that from crowding out carbs for heavier people, whose bodyweight is partly fat.
 export const MACRO_POSTURES = {
-  cut: { proteinShift: 0.3, fatPct: [0.2, 0.25] },
+  cut: { proteinShift: 0.3, fatPct: [0.2, 0.35], fatPerKg: 0.8 },
   recomp: { proteinShift: 0, fatPct: [0.2, 0.3] },
   bulk: { proteinShift: -0.15, fatPct: [0.25, 0.3] },
 }
 
 // Essential-fat floor, per kg of bodyweight — hormones and fat-soluble vitamins.
-// Women get a higher floor: very low fat intake is linked to menstrual and
-// hormonal disruption.
+// Women get a higher floor as a safety margin: menstrual disruption tracks low
+// total energy intake more than low fat itself (the calorie floor guards that),
+// but very low-fat diets tend to be part of the picture.
 export const FAT_FLOOR_PER_KG = { male: 0.5, female: 0.6 }
 
 // The carb floor that triggers the "you're squeezed" note: the RDA, roughly what
@@ -57,14 +61,16 @@ const clamp01 = (x) => Math.min(1, Math.max(0, x))
 // so their range is the mirror image of the other two (most carbs when protein
 // and fat sit at their low ends).
 export function macroSplit({ kcal, posture, weightKg, sex, protein }) {
-  const { proteinShift, fatPct } = MACRO_POSTURES[posture]
+  const { proteinShift, fatPct, fatPerKg } = MACRO_POSTURES[posture]
 
   const proteinTarget = protein.min + (protein.max - protein.min) * clamp01(protein.optimalFraction + proteinShift)
 
   const floor = weightKg * FAT_FLOOR_PER_KG[sex]
   const fatMin = Math.max(floor, (kcal * fatPct[0]) / 9)
   const fatMax = Math.max(fatMin, (kcal * fatPct[1]) / 9)
-  const fatTarget = (fatMin + fatMax) / 2
+  const fatTarget = fatPerKg
+    ? Math.min(fatMax, Math.max(fatMin, weightKg * fatPerKg))
+    : (fatMin + fatMax) / 2
 
   const carbsFrom = (p, f) => Math.max(0, (kcal - p * 4 - f * 9) / 4)
 
