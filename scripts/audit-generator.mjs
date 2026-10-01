@@ -116,7 +116,12 @@ function audit(label, program, summary, inputs, opts) {
         // be loaded — see GYM_EXCLUDED_* in generatorConfig.js.
         check(label, db.equipment !== 'resistance band', `"${e.name}" is band work in a full-gym split`)
         check(label, db.progressiveOverload !== 'low', `"${e.name}" can't be loaded (${db.progressiveOverload}) in a full-gym split`)
+        // An advanced lifter's set ends on the muscle, never on their grip, their
+        // balance or the equipment running out — see LIMITER_EXCLUDED.
+        if (opts.experience === 'advanced') check(label, db.limiter === 'target', `"${e.name}" is limited by ${db.limiter}, not the muscle, in an advanced gym split`)
       }
+      // "Don't Program" rows stay in the bank, never in a generated split.
+      check(label, db.programmable !== false, `"${e.name}" is marked Don't Program`)
       check(label, (SKILL_RANK[db.skill] ?? 1) <= skillCap + 1, `"${e.name}" skill ${db.skill} over the ${opts.experience} cap`)
     }
   }

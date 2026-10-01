@@ -47,7 +47,7 @@ import {
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
-  WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD,
+  WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD, LIMITER_PENALTY, LIMITER_EXCLUDED,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
   PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK,
@@ -60,10 +60,23 @@ const DB_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e
 
 // The pool the generator picks from. Isometrics are excluded: a plan row carries
 // a rep range, and "8–12 reps of a plank" is a lie the logger would then have to
-// live with. They stay pickable by hand in the split editor.
+// live with. They stay pickable by hand in the split editor. So do the rows the
+// DB marks "Don't Program": Hani's call that a movement isn't good enough to
+// recommend, which keeps it out of every split, swap and slot this file offers
+// without deleting it from the bank or anyone's history.
 const POOL = (exercisesDb.exercises || []).filter(
-  (e) => e.type !== 'isometric' && e.muscles && Object.keys(e.muscles).length
+  (e) => e.type !== 'isometric' && e.programmable !== false && e.muscles && Object.keys(e.muscles).length
 )
+
+// How the Limiting Factor column applies to this person (see LIMITER_PENALTY).
+// Experience falls back to the default for a split with none on record.
+export function limiterPolicy(experience, atGym) {
+  const level = EXPERIENCE_POSTURE[experience] ? experience : DEFAULT_EXPERIENCE
+  return {
+    limiterPenalty: atGym ? LIMITER_PENALTY[level] : 0,
+    excludeLimited: atGym && LIMITER_EXCLUDED[level],
+  }
+}
 
 // The top-up pass adds one set at a time and stops as soon as a whole round
 // places nothing; this is only the loop's guard rail against a pathological
@@ -211,6 +224,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
   const weights = atGym ? { ...WEIGHTS, ...GYM_WEIGHTS } : WEIGHTS
   const excludedEquipment = atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set()
   const excludedOverload = atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set()
+  const limiter = limiterPolicy(experience, atGym)
 
   // Which named shape of split — Upper/Lower, Arnold, a bro split. Null means
   // "pick for me", which takes the recommended one for this day count.
@@ -234,6 +248,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
     allowedEquipment,
     excludedEquipment,
     excludedOverload,
+    ...limiter,
     weights,
     schedule,
     weekdays,
@@ -545,6 +560,8 @@ export function scoreExercise(db, ctx) {
   }
 
   if (db.laterality === 'unilateral') score -= PENALTIES.unilateral
+  // Something other than the muscle ends the set (see LIMITER_PENALTY).
+  if (ctx.limiterPenalty && db.limiter && db.limiter !== 'target') score -= ctx.limiterPenalty
   score -= PENALTIES.perNameChar * db.name.length
 
   return { score, contribution }
@@ -561,6 +578,7 @@ export function candidates(muscle, ctx) {
     if (!ctx.allowedEquipment.has(db.equipment)) return false
     if (ctx.excludedEquipment?.has(db.equipment)) return false
     if (ctx.excludedOverload?.has(db.progressiveOverload)) return false
+    if (ctx.excludeLimited && db.limiter && db.limiter !== 'target') return false
     if ((SKILL_RANK[db.skill] ?? 1) > ctx.maxSkillRank + 1) return false
     if (ctx.dayIds?.has(db.id)) return false
     if (ctx.dayFamilies?.has(movementFamily(db))) return false
@@ -657,6 +675,8 @@ export function fillDay(template, alloc, gaps, ctx) {
       allowedEquipment: ctx.allowedEquipment,
       excludedEquipment: ctx.excludedEquipment,
       excludedOverload: ctx.excludedOverload,
+      limiterPenalty: ctx.limiterPenalty,
+      excludeLimited: ctx.excludeLimited,
       weights: ctx.weights,
       maxSkillRank: ctx.maxSkillRank,
       dayIds,
@@ -990,6 +1010,7 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     allowedEquipment: inputs.allowedEquipment,
     excludedEquipment: inputs.excludedEquipment,
     excludedOverload: inputs.excludedOverload,
+    excludeLimited: inputs.excludeLimited,
     maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
   }
   const volume = ENGINE_MUSCLES.map((muscle) => {
@@ -1247,6 +1268,9 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
     allowedEquipment,
     excludedEquipment: atGym ? new Set(GYM_EXCLUDED_EQUIPMENT) : new Set(),
     excludedOverload: atGym ? new Set(GYM_EXCLUDED_OVERLOAD) : new Set(),
+    // A generated split remembers the experience it was written for; one they
+    // wrote themselves gets the default's softer penalty rather than the filter.
+    ...limiterPolicy(program.settings?.experience, atGym),
     weights: atGym ? { ...WEIGHTS, ...GYM_WEIGHTS } : WEIGHTS,
     maxSkillRank: SKILL_RANK.high, // a split they wrote themselves; only the very hardest is held back
     dayIds,
@@ -1436,6 +1460,8 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       allowedEquipment: inputs.allowedEquipment,
       excludedEquipment: inputs.excludedEquipment,
       excludedOverload: inputs.excludedOverload,
+      limiterPenalty: inputs.limiterPenalty,
+      excludeLimited: inputs.excludeLimited,
       weights: inputs.weights,
       maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
       focus: inputs.focus,

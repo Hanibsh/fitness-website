@@ -60,11 +60,21 @@ const ENUMS = {
   resistance: { balanced: 'balanced', 'shortened bias': 'shortened', 'lengthened bias': 'lengthened' },
   equipment: { 'free weight': 'free weight', machine: 'machine', cable: 'cable', bodyweight: 'bodyweight', 'resistance band': 'resistance band' },
   axial: { no: false, yes: true },
+  // What ends a hard set for a strong, experienced lifter before the target
+  // muscle does. Read by the split generator, which keeps anything not limited
+  // by the target muscle away from advanced lifters at a full gym.
+  limiter: { 'target muscle': 'target', grip: 'grip', balance: 'balance', 'load cap': 'load cap' },
+  // "Don't Program": Yes keeps the row in the exercise bank and the logger,
+  // but out of everything the generator writes or suggests. Blank means No.
+  noProgram: { '': false, no: false, yes: true },
 }
 function normEnum(kind, raw) {
   const key = String(raw || '').trim().toLowerCase()
   return key in ENUMS[kind] ? ENUMS[kind][key] : undefined
 }
+// Flips a parsed yes/no while keeping `undefined` (an unrecognised cell) intact,
+// so the blocker check below still catches it.
+const invert = (v) => (v === undefined ? undefined : !v)
 function parseRange(raw, unit) {
   const nums = String(raw || '').match(/[\d.]+/g)
   if (!nums) return null
@@ -131,6 +141,10 @@ function resolveColumns(header) {
     axial: need(/axial/i, 'Axial Loading'),
     skill: need(/skill/i, 'Skill Requirement'),
     rest: need(/rest time/i, 'Recommended Rest Time'),
+    // Optional, so an older copy of the CSV still builds: absent reads as every
+    // row limited by the target muscle and every row programmable.
+    limiter: idx(/limiting factor/i),
+    noProgram: idx(/^don.?t program$/i),
     notes: idx(/notes/i), // optional
     // Optional media columns — reserved for the exercise bank's future movement
     // clips / thumbnails (Leon's own recordings). Absent for now; a filled cell
@@ -191,6 +205,8 @@ function main() {
       type: r[COL.type], laterality: r[COL.laterality], progressiveOverload: r[COL.overload], stability: r[COL.stability],
       hypertrophyPotential: r[COL.hypertrophy], sfr: r[COL.sfr], stretchMediated: r[COL.stretch], resistanceProfile: r[COL.resistance],
       equipment: r[COL.equipment], axialLoading: r[COL.axial], skill: r[COL.skill],
+      ...(COL.limiter !== -1 && (r[COL.limiter] || '').trim() ? { limiter: r[COL.limiter] } : {}),
+      ...(COL.noProgram !== -1 ? { programmable: r[COL.noProgram] } : {}),
     }
     const ex = {
       id, name, category: (r[COL.category] || '').trim(),
@@ -210,6 +226,10 @@ function main() {
       equipment: normEnum('equipment', r[COL.equipment]),
       axialLoading: normEnum('axial', r[COL.axial]),
       skill: normEnum('level', r[COL.skill]),
+      // A blank cell reads as the target muscle (warned below) rather than
+      // failing the row, so a freshly added exercise still builds.
+      limiter: COL.limiter !== -1 && (r[COL.limiter] || '').trim() ? normEnum('limiter', r[COL.limiter]) : 'target',
+      programmable: COL.noProgram !== -1 ? invert(normEnum('noProgram', r[COL.noProgram])) : true,
       notes: (COL.notes !== -1 ? (r[COL.notes] || '').trim() : '') || null,
       video: (COL.video !== -1 ? (r[COL.video] || '').trim() : '') || null,
       thumbnail: (COL.thumbnail !== -1 ? (r[COL.thumbnail] || '').trim() : '') || null,
@@ -248,6 +268,7 @@ function main() {
     for (const k of Object.keys(rawByField)) {
       if (ex[k] === undefined) add('BLOCKER', name, `Invalid ${k} value "${(rawByField[k] || '').trim()}".`)
     }
+    if (COL.limiter !== -1 && !(r[COL.limiter] || '').trim()) add('WARNING', name, `Limiting Factor is blank — read as "Target Muscle". Fill in Target Muscle, Grip, Balance or Load Cap.`)
     if (!(ex.fatigueScore >= 1 && ex.fatigueScore <= 5)) add('BLOCKER', name, `Fatigue score out of range 1–5.`)
     if (!Object.keys(ex.muscles).length) add('BLOCKER', name, `No muscle contributions resolved.`)
 

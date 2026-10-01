@@ -471,6 +471,22 @@ export const GYM_WEIGHTS = {
 export const GYM_EXCLUDED_EQUIPMENT = ['resistance band']
 export const GYM_EXCLUDED_OVERLOAD = ['low']
 
+// What ends the set. The DB's `Limiting Factor` column says what gives out
+// first for a strong lifter: the target muscle, or their grip (dumbbells held
+// for a leg movement), their balance (a free-weight lunge), or the equipment's
+// load cap (a kettlebell, bodyweight, a band). A set that ends on anything but
+// the target muscle stops short of the stimulus it's there for — and the
+// stronger the lifter, the further short. A beginner's legs give out holding
+// two dumbbells; an advanced lifter's hands give out long before the legs that
+// squat twice their bodyweight are anywhere near failure.
+//
+// Gym only, like GYM_WEIGHTS: at home there is nothing more loadable to swap in,
+// so penalising the pool for being what it is would only reshuffle it.
+// Intermediates pay a penalty (still pickable when nothing better fits);
+// advanced lifters never get one at all.
+export const LIMITER_PENALTY = { beginner: 0, intermediate: 1.5, advanced: 0 }
+export const LIMITER_EXCLUDED = { beginner: false, intermediate: false, advanced: true }
+
 export const WEIGHTS = {
   contribution: 4.0, // how much of the set actually lands on the target muscle
   hypertrophy: 2.0,
