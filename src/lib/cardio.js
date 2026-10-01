@@ -76,6 +76,17 @@ export function netKcalPerMin(activityId, params, weightKg) {
   return (netVO2 * weightKg * KCAL_PER_L_O2) / 1000
 }
 
+// Steps. Flat walking's net cost per metre doesn't depend on speed (the ACSM
+// walking equation is 0.1 ml O2 per kg per metre), so a step costs that times
+// the step's length. Step length from height is the standard pedometer rule of
+// thumb (0.415 × height for men, 0.413 for women).
+const WALK_NET_KCAL_PER_KG_PER_M = (0.1 * KCAL_PER_L_O2) / 1000
+
+export const stepLengthM = (heightCm, sex) => (heightCm / 100) * (sex === 'female' ? 0.413 : 0.415)
+
+export const netKcalPerStep = (weightKg, heightCm, sex) =>
+  WALK_NET_KCAL_PER_KG_PER_M * weightKg * stepLengthM(heightCm, sex)
+
 // Ready-made settings for the TDEE page's box: one easy-to-picture option per
 // common machine or habit, all moderate and low-fatigue enough to stack on
 // top of lifting.

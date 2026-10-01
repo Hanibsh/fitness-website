@@ -84,3 +84,55 @@ export function macroSplit({ kcal, posture, weightKg, sex, protein }) {
     },
   }
 }
+
+// ── Manual adjusting ────────────────────────────────────────────────────────
+// People can nudge the suggested split. Each tap moves 5% of the day's calories
+// into or out of one macro; the other unlocked macros make up the difference,
+// so total calories never change.
+
+export const MACRO_STEP_PCT = 0.05
+
+// Healthy bounds for adjusting, in calories per macro. The suggested split
+// always sits inside them, so a fresh split can never start out of bounds.
+//   protein — bottom of the evidence range up to ~3.3 g/kg of lean mass, past
+//             which extra protein just gets burned as fuel
+//   fat     — the essential minimum up to 40% of calories
+//   carbs   — at least 130 g (the RDA, roughly the brain's daily use), or the
+//             suggested amount if a low calorie target already put it lower
+export const PROTEIN_CEILING_PER_KG_LBM = 3.3
+export const FAT_CEILING_PCT = 0.4
+
+export function macroLimits(split, { kcal, lbmKg }) {
+  return {
+    protein: { lo: split.protein.min * 4, hi: Math.max(split.protein.max, PROTEIN_CEILING_PER_KG_LBM * lbmKg) * 4 },
+    carbs: { lo: Math.min(CARB_NOTE_BELOW_G, split.carbs.target) * 4, hi: Infinity },
+    fat: { lo: split.fat.floor * 9, hi: Math.max(kcal * FAT_CEILING_PCT, split.fat.target * 9) },
+  }
+}
+
+// Move `delta` calories into macro `key` (negative moves them out), paid for
+// by the unlocked others: split evenly, and when one payer runs into its limit
+// the rest passes to the other. The move shrinks to whatever fits; returns the
+// new calories per macro, or null when nothing can move at all.
+export function shiftMacro(current, limits, key, delta, locked = []) {
+  if (locked.includes(key)) return null
+  const payers = Object.keys(current).filter(k => k !== key && !locked.includes(k))
+  if (!payers.length) return null
+  // How far macro k can still move in direction `dir` before a limit.
+  const room = (k, dir) => Math.max(0, dir > 0 ? limits[k].hi - current[k] : current[k] - limits[k].lo)
+
+  const dir = Math.sign(delta)
+  const payersRoom = payers.reduce((sum, k) => sum + room(k, -dir), 0)
+  const size = Math.min(Math.abs(delta), room(key, dir), payersRoom)
+  if (size < 1) return null
+
+  const next = { ...current, [key]: current[key] + dir * size }
+  let left = size
+  const tightestFirst = [...payers].sort((a, b) => room(a, -dir) - room(b, -dir))
+  tightestFirst.forEach((k, i) => {
+    const take = Math.min(left / (tightestFirst.length - i), room(k, -dir))
+    next[k] = current[k] - dir * take
+    left -= take
+  })
+  return next
+}
