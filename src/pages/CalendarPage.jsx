@@ -38,7 +38,6 @@ function fullDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-
 // `small` is the nested variant used for the two parts of Off — same shell, just
 // quieter, so they read as belonging to the tile above rather than competing
 // with it. No tracking on the small label: it has ~52px to fit "SKIPPED" in.
