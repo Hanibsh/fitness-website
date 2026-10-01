@@ -41,6 +41,11 @@ const deficitKcal = (weightKg, percent) => Math.round((weightKg * (percent / 100
 // moving more, not eating less.
 const CALORIE_FLOOR = { male: 1500, female: 1400 }
 
+// Lifting's cost as a gross MET (moderate-to-vigorous resistance training).
+// One of those METs is just resting, which BMR already counts, so only the
+// rest goes into the exercise slice — the same net rule as steps and cardio.
+const WORKOUT_MET = 6.3
+
 // A deficit target held at the floor. `moveKcal` is the part of the deficit the
 // floor stops eating from covering, which has to be burned with extra movement.
 function deficitTarget(tdee, weightKg, percent, sex) {
@@ -166,7 +171,7 @@ export default function TDEECalculator() {
     const heightCm = unit === 'imperial' ? h * 2.54 : h
     const kcalPerStep = netKcalPerStep(weightKg, heightCm, sex)
     const neat = steps * kcalPerStep
-    const exercise = (hours / 7) * 6.3 * weightKg
+    const exercise = (hours / 7) * (WORKOUT_MET - 1) * weightKg
     const tef = 0.1 * (bmr + neat + exercise)
     const tdee = bmr + neat + exercise + tef
 
@@ -598,7 +603,7 @@ export default function TDEECalculator() {
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Exercise calories</p>
-                <p className="text-[13px] text-text-muted leading-relaxed">Estimated from your weekly workout hours using a moderate-to-vigorous intensity estimate (~6 METs), converted to calories per hour based on your body weight, then averaged across the week.</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">Estimated from your weekly workout hours using a moderate-to-vigorous intensity estimate (~6 METs), converted to calories per hour based on your body weight, then averaged across the week. One MET is what you'd burn resting anyway, and that's already counted in your BMR, so we take it off and only count the extra your training adds — the same rule we use for steps.</p>
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">TEF — thermic effect of food</p>
