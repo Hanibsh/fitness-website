@@ -35,13 +35,29 @@ const DEFAULT_TARGET = 'recomp-maintain'
 
 const deficitKcal = (weightKg, percent) => Math.round((weightKg * (percent / 100) * 7700) / 7)
 
+// No deficit target goes below this. Under it, protein, vitamins and the rest
+// get genuinely hard to cover; past this point a faster pace has to come from
+// moving more, not eating less.
+const CALORIE_FLOOR = { male: 1500, female: 1400 }
+
+// Walking cost, calories per step per kg of bodyweight — the NEAT estimate uses it too.
+const KCAL_PER_STEP_PER_KG = 0.0005
+
+// A deficit target held at the floor. `moveKcal` is the part of the deficit the
+// floor stops eating from covering, which has to be burned with extra movement.
+function deficitTarget(tdee, weightKg, percent, sex) {
+  const ideal = tdee - deficitKcal(weightKg, percent)
+  const kcal = Math.max(ideal, CALORIE_FLOOR[sex])
+  return { kcal, floored: kcal > ideal, moveKcal: kcal - ideal }
+}
+
 // Every calorie target on the page, keyed by id, so the cards and the macro
 // split read the same numbers.
-function calorieTargets({ tdee, weightKg }) {
+function calorieTargets({ tdee, weightKg, sex }) {
   const list = [
-    ...loseSpeeds.map(s => ({ id: s.id, name: `${s.label} cut`, kcal: tdee - deficitKcal(weightKg, s.percent), posture: 'cut' })),
+    ...loseSpeeds.map(s => ({ id: s.id, name: `${s.label} cut`, ...deficitTarget(tdee, weightKg, s.percent, sex), posture: 'cut' })),
     ...gainOptions.map(g => ({ id: g.id, name: g.label, kcal: tdee + g.delta, posture: 'bulk' })),
-    ...recompOptions.map(r => ({ id: r.id, name: `Recomp (${r.label.toLowerCase()})`, kcal: r.percent ? tdee - deficitKcal(weightKg, r.percent) : tdee + r.delta, posture: r.posture })),
+    ...recompOptions.map(r => ({ id: r.id, name: `Recomp (${r.label.toLowerCase()})`, ...(r.percent ? deficitTarget(tdee, weightKg, r.percent, sex) : { kcal: tdee + r.delta }), posture: r.posture })),
   ]
   return Object.fromEntries(list.map(t => [t.id, t]))
 }
@@ -141,7 +157,7 @@ export default function TDEECalculator() {
     const ageDecline = a > 60 ? 0.007 * (a - 60) : 0
     const bmr = bmrRaw * (1 - ageDecline)
 
-    const neat = steps * weightKg * 0.0005
+    const neat = steps * weightKg * KCAL_PER_STEP_PER_KG
     const exercise = (hours / 7) * 6.3 * weightKg
     const tef = 0.1 * (bmr + neat + exercise)
     const tdee = bmr + neat + exercise + tef
@@ -196,7 +212,34 @@ export default function TDEECalculator() {
         <p className={`text-[10px] sm:text-[11px] uppercase sm:tracking-wider mb-2 ${on ? 'text-cream-70' : 'text-text-muted'}`}>{title}{sub && <><br /><span className={on ? 'text-cream-50' : 'text-text-light'}>{sub}</span></>}</p>
         <p className={`text-xl font-medium ${on ? 'text-cream' : 'text-text-primary'}`}>{targets[id].kcal}</p>
         <p className={`text-[10px] ${on ? 'text-cream-50' : 'text-text-light'}`}>cal/day</p>
+        {targets[id].floored && <p className={`text-[10px] uppercase sm:tracking-wider mt-1 ${on ? 'text-cream-70' : 'text-text-muted'}`}>Floor</p>}
       </button>
+    )
+  }
+
+  // Under a section whose deficit targets hit the floor: what extra movement
+  // keeps each pace, in steps — the floor never just silently slows the cut.
+  // `brief` drops the explanation for Recomp: its fat-loss pace sits between
+  // Slow and Moderate, so whenever it's floored the Lose note is already up.
+  const floorNote = (options, brief = false) => {
+    const held = options.filter(o => targets[o.id].floored)
+    if (!held.length) return null
+    const floor = CALORIE_FLOOR[result.sex]
+    const steps = (kcal) => (Math.round(kcal / (result.weightKg * KCAL_PER_STEP_PER_KG) / 500) * 500).toLocaleString()
+    return (
+      <div className="text-[13px] text-text-muted mt-6 leading-relaxed space-y-3">
+        {brief ? null : result.tdee <= floor ? (
+          <p>You burn about {result.tdee} cal a day, which is already at or under the {floor} cal/day floor — eating less isn't a safe lever for you. Any deficit has to come from moving more, so the targets marked "floor" hold you at {floor} and the pace comes from extra steps.</p>
+        ) : (
+          <p>Targets marked "floor" would put you under {floor} cal/day, which makes protein, vitamins and everything else hard to cover. They're held at {floor} instead, and the rest of the deficit comes from moving more.</p>
+        )}
+        <ul className="space-y-1">
+          {held.map(o => (
+            <li key={o.id}><strong className="text-text-primary">{o.label}{brief && ' (held at the floor)'}:</strong> burn about {targets[o.id].moveKcal} cal more a day — roughly {steps(targets[o.id].moveKcal)} extra steps.</li>
+          ))}
+        </ul>
+        {!brief && <p>If that's more walking than you can realistically fit in, pick a slower pace. It's the better trade over eating less.</p>}
+      </div>
     )
   }
 
@@ -304,6 +347,7 @@ export default function TDEECalculator() {
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {loseSpeeds.map(s => targetCard(s.id, s.label, `${s.percent}% BW/week`))}
                 </div>
+                {floorNote(loseSpeeds)}
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
@@ -320,11 +364,12 @@ export default function TDEECalculator() {
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {recompOptions.map(r => targetCard(r.id, r.label))}
                 </div>
+                {floorNote(recompOptions, true)}
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Your macros</h2>
-                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">For <strong className="text-text-primary">{selected.name}</strong> at {selected.kcal} cal/day. Tap any calorie target above to switch. Aim for the big number; anywhere in the range underneath works.</p>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">For <strong className="text-text-primary">{selected.name}</strong> at {selected.kcal} cal/day{selected.floored && ' (held at the floor, with the rest of the deficit coming from extra steps)'}. Tap any calorie target above to switch. Aim for the big number; anywhere in the range underneath works.</p>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {macros.map(m => (
                     <div key={m.key} className="bg-cream border border-border px-2 py-4 sm:p-5 text-center">
@@ -470,7 +515,7 @@ export default function TDEECalculator() {
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Calorie targets</p>
-                <p className="text-[13px] text-text-muted leading-relaxed">One {fatUnitLabel} of body fat holds roughly {fatCalConst} calories. For cutting, the deficit is scaled to a percentage of your bodyweight per week (0.25 / 0.5 / 1%) instead of a fixed number, since a flat deficit doesn't mean the same thing for a {lightExample} person and a {heavyExample} person. For bulking, instead of a speed choice, you pick how much fat gain you're willing to accept: a lean bulk (+200 cal/day, minimal fat gain) or a normal bulk (+500 cal/day, moderate fat gain) — deliberately bulking "fast" mostly just adds fat, not muscle. Recomp offers three closer-to-maintenance options: hold at maintenance, a very clean +150 cal/day surplus for muscle-gain focus, or a slow 0.35%-bodyweight/week deficit for fat-loss focus.</p>
+                <p className="text-[13px] text-text-muted leading-relaxed">One {fatUnitLabel} of body fat holds roughly {fatCalConst} calories. For cutting, the deficit is scaled to a percentage of your bodyweight per week (0.25 / 0.5 / 1%) instead of a fixed number, since a flat deficit doesn't mean the same thing for a {lightExample} person and a {heavyExample} person. For bulking, instead of a speed choice, you pick how much fat gain you're willing to accept: a lean bulk (+200 cal/day, minimal fat gain) or a normal bulk (+500 cal/day, moderate fat gain) — deliberately bulking "fast" mostly just adds fat, not muscle. Recomp offers three closer-to-maintenance options: hold at maintenance, a very clean +150 cal/day surplus for muscle-gain focus, or a slow 0.35%-bodyweight/week deficit for fat-loss focus. No deficit target goes below {CALORIE_FLOOR.male.toLocaleString()} cal/day for men or {CALORIE_FLOOR.female.toLocaleString()} for women: when a pace would need less than that, the target is held at the floor and the gap is shown as extra daily steps instead (about {KCAL_PER_STEP_PER_KG} cal per step per kg of bodyweight).</p>
               </div>
               <div>
                 <p className="text-[13px] font-medium text-text-primary mb-1.5">Macros</p>
@@ -483,7 +528,7 @@ export default function TDEECalculator() {
             <h2 className="font-heading text-xl font-medium text-text-primary mb-4">One more thing</h2>
             <div className="space-y-4">
               <p className="text-[13px] text-text-muted leading-relaxed">No matter how many formulas and citations go into this, it's still an estimate. Your real metabolism, digestion, hormones, sleep, and stress all move the actual number around in ways no calculator can fully capture. Treat everything above as a good place to start your journey, not a verdict — give it a few weeks, then adjust based on what the scale and the mirror are actually telling you, rather than assuming the number was wrong from day one.</p>
-              <p className="text-[13px] text-text-muted leading-relaxed">One line worth not crossing: don't chase a deficit by dropping below about 1,400–1,500 calories a day. Below that range, it gets genuinely hard to hit your protein, vitamins, and everything else your body needs to function properly — you're not losing fat faster, you're just shortchanging yourself. If you want to lose weight quicker than a moderate deficit gets you there, it's almost always a better trade to add more walking, steps, or cardio than to cut calories that low.</p>
+              <p className="text-[13px] text-text-muted leading-relaxed">One line worth not crossing: don't chase a deficit by dropping below about {CALORIE_FLOOR.female.toLocaleString()}–{CALORIE_FLOOR.male.toLocaleString()} calories a day — it's why the targets above never go under {CALORIE_FLOOR.male.toLocaleString()} for men or {CALORIE_FLOOR.female.toLocaleString()} for women. Below that range, it gets genuinely hard to hit your protein, vitamins, and everything else your body needs to function properly — you're not losing fat faster, you're just shortchanging yourself. If you want to lose weight quicker than a moderate deficit gets you there, it's almost always a better trade to add more walking, steps, or cardio than to cut calories that low.</p>
             </div>
           </motion.div>
         </motion.div>
