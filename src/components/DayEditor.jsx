@@ -1,0 +1,430 @@
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Route, Pin, PinOff } from 'lucide-react'
+import ExercisePicker from './ExercisePicker'
+import SlotSwapPanel from './SlotSwapPanel'
+import NumberField from './NumberField'
+import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
+import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
+import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
+import { patternPhrase } from '../data/movementPatterns'
+import { bankIdFor } from '../lib/planStats'
+import {
+  canChooseLaterality,
+  addExercise,
+  removeExercise,
+  moveExercise,
+  setExerciseSets,
+  setExerciseRep,
+  setExerciseRir,
+  setExerciseLastSetFailure,
+  toggleExerciseUnilateral,
+  setExerciseNote,
+  setRowNote,
+  substituteExercise,
+  setSlotPinned,
+  isOpenSlot,
+  pairSuperset,
+  unpairSuperset,
+} from '../lib/program'
+
+// One training day's exercises, editable: every row's movement, sets, reps and
+// effort, its order, its note, its superset, its slot — and a picker to add
+// more. Edits go through the pure mutators in program.js and come back out
+// through `update`, so the host decides what an edit means: the split editor
+// (SplitDay) saves it, the generator's preview (SplitWizard) keeps it as a draft
+// until Create.
+//
+// Each exercise owns a full-width block and its name wraps over as many lines as
+// it needs; the sets/reps inputs and the action icons sit on their own rows
+// underneath instead of competing with it for horizontal space.
+//
+// `notes`: 'shared' writes to the per-movement store everyone reads (your own
+// split); 'row' keeps a note on its row only — a client's split, or a draft
+// that isn't saved yet. `sessions` feeds the swap rankings; left out, your log
+// is loaded the first time a swap panel opens. `onSubstitute` replaces the plain
+// substitution (the preview re-derives reps for the new movement).
+// `learnMore` links each movement to its bank page, which a host with unsaved
+// work turns off.
+export default function DayEditor({
+  program,
+  day,
+  update,
+  user = null,
+  notes = 'shared',
+  sessions,
+  onSubstitute,
+  learnMore = true,
+}) {
+  const { pathname, state } = useLocation()
+  const sharedNotes = notes === 'shared'
+  const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
+  const [swapOpenFor, setSwapOpenFor] = useState(null)
+  const [supersetMenuFor, setSupersetMenuFor] = useState(null)
+  // Logged sessions, loaded the first time a swap panel opens rather than on
+  // mount: the suggestions read it to favour movements you already train and to
+  // spot ones you've drifted away from, and everyone who never opens a swap
+  // shouldn't pay for the fetch.
+  const [loaded, setLoaded] = useState(null)
+  const history = sessions ?? loaded
+
+  useEffect(() => {
+    if (sessions !== undefined || swapOpenFor === null || loaded !== null) return
+    let cancelled = false
+    async function load() {
+      if (user) {
+        try {
+          const remote = await fetchRemoteHistory(user.id)
+          if (!cancelled) return setLoaded(remote)
+        } catch {
+          // fall through to this device's copy
+        }
+      }
+      if (!cancelled) setLoaded(getHistory())
+    }
+    load()
+    return () => { cancelled = true }
+  }, [sessions, swapOpenFor, loaded, user])
+
+  // Push the notes map up once typing stops (blur), not per keystroke — a
+  // network call per character would be wasteful and racy. Best-effort: a
+  // failed push just leaves the account slightly behind until the next one.
+  function syncNotesToRemote() {
+    if (!user || !sharedNotes) return
+    upsertRemoteExerciseNotes(user.id, getExerciseNotesMap()).catch(() => {})
+  }
+  const toggleNote = (exId) =>
+    setNoteOpenFor((prev) => {
+      const next = new Set(prev)
+      if (next.has(exId)) next.delete(exId)
+      else next.add(exId)
+      return next
+    })
+  const substitute = (exId, o) => {
+    if (onSubstitute) onSubstitute(day.id, exId, o)
+    else update((p) => substituteExercise(p, day.id, exId, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
+    setSwapOpenFor(null)
+  }
+
+  // Per-day superset context: A1/A2 labels, and the block index of each exercise
+  // (a contiguous group is one block) for the move-up/down disabled states.
+  const groups = supersetLabels(day.exercises)
+  const blocks = exerciseBlocks(day.exercises)
+  const blockIdxOf = new Map()
+  blocks.forEach((b, i) => b.forEach((e) => blockIdxOf.set(e.id, i)))
+  const strengthCount = day.exercises.filter((e) => e.kind !== 'cardio').length
+
+  // A superset goes back and forth between its movements, so they want the same
+  // number of sets (Hani: "2 and 4 can't be a superset"). Said under the group's
+  // last member when they don't — said, not fixed: which count is right is
+  // yours to decide.
+  function setsMismatch(ex) {
+    const g = groups.get(ex.id)
+    if (!g || g.position !== g.size - 1) return null
+    const members = day.exercises.filter((e) => groups.get(e.id)?.letter === g.letter)
+    if (new Set(members.map((e) => Number(e.sets) || 0)).size < 2) return null
+    return members.map((e) => `${groups.get(e.id).label} has ${e.sets} set${Number(e.sets) === 1 ? '' : 's'}`).join(', ')
+  }
+
+  return (
+    <>
+      <div className="space-y-2 mb-3">
+        {day.exercises.map((ex) => {
+          // The shared store wins over this row's copy, so a note written
+          // against this movement in another split (or in the logger) shows up
+          // here too.
+          const note = (sharedNotes && getExerciseNote(ex)) || ex.note || ''
+          const noteOpen = noteOpenFor.has(ex.id) || !!note
+          const bankId = bankIdFor(ex)
+          const openSlot = isOpenSlot(ex)
+          const mismatch = setsMismatch(ex)
+          return (
+            <div key={ex.id} className="bg-white border border-border px-3 py-3">
+              {/* The name gets the whole width — nothing else shares its line
+                  but the remove button. */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex items-start gap-1.5">
+                  {groups.get(ex.id) && (
+                    <span className="shrink-0 mt-0.5 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{groups.get(ex.id).label}</span>
+                  )}
+                  <div className="min-w-0">
+                    {/* What the day wants here, above what is doing it. A pinned
+                        row has committed to this movement, so the path is just
+                        context and doesn't invite a tap; an unpinned one is a
+                        live choice and says so. Hidden entirely for rows with no
+                        slot — hand-built rows and anything from before slots
+                        existed read exactly as they always did. */}
+                    {ex.slot?.pattern && !openSlot && (
+                      <button
+                        type="button"
+                        onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                        aria-label={`${patternPhrase(ex.slot.pattern)} — choose a different movement`}
+                        className={`flex items-center gap-1 bg-transparent border-none p-0 mb-0.5 text-[10px] uppercase tracking-wider text-left break-words ${
+                          ex.slot.pinned ? 'text-text-light cursor-default' : 'text-text-light hover:text-text-primary cursor-pointer transition-colors'
+                        }`}
+                      >
+                        <Route className="w-3 h-3 shrink-0" />
+                        <span className="break-words">{ex.slot.pattern.replace(/-/g, ' ')}</span>
+                      </button>
+                    )}
+                    {openSlot ? (
+                      <button
+                        type="button"
+                        onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                        aria-label={`${ex.name} — choose a movement`}
+                        className="block w-full text-left bg-transparent border-none p-0 cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1 text-[14px] text-text-primary break-words underline decoration-dotted underline-offset-4">
+                          <Route className="w-3.5 h-3.5 shrink-0" />
+                          <span className="break-words">{ex.name}</span>
+                        </span>
+                        <span className="block text-[11px] text-text-light mt-0.5">Pick a movement now, or leave it for the gym.</span>
+                      </button>
+                    ) : (
+                      <span className="block text-[14px] text-text-primary break-words">{ex.name}</span>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => update((p) => removeExercise(p, day.id, ex.id))} aria-label={`Remove ${ex.name}`} className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-text-light">Sets</span>
+                  <NumberField
+                    decimal={false}
+                    value={ex.sets}
+                    onValueChange={(v) => update((p) => setExerciseSets(p, day.id, ex.id, v))}
+                    aria-label={`${ex.name} target sets`}
+                    className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-text-light">Reps</span>
+                  <NumberField
+                    decimal={false}
+                    value={ex.repRange?.low ?? ''}
+                    onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'low', v))}
+                    aria-label={`${ex.name} rep low`}
+                    className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                  <span className="text-text-light text-[12px]">–</span>
+                  <NumberField
+                    decimal={false}
+                    value={ex.repRange?.high ?? ''}
+                    onValueChange={(v) => update((p) => setExerciseRep(p, day.id, ex.id, 'high', v))}
+                    aria-label={`${ex.name} rep high`}
+                    className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                </div>
+                {/* Effort target: how many reps to leave in the tank. The
+                    generator sets it from training age and volume preference;
+                    blank on both ends means no target. */}
+                {ex.kind !== 'cardio' && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-text-light">RIR</span>
+                    <NumberField
+                      decimal={false}
+                      value={ex.rirTarget?.low ?? ''}
+                      onValueChange={(v) => update((p) => setExerciseRir(p, day.id, ex.id, 'low', v))}
+                      aria-label={`${ex.name} RIR target low`}
+                      className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                    />
+                    <span className="text-text-light text-[12px]">–</span>
+                    <NumberField
+                      decimal={false}
+                      value={ex.rirTarget?.high ?? ''}
+                      onValueChange={(v) => update((p) => setExerciseRir(p, day.id, ex.id, 'high', v))}
+                      aria-label={`${ex.name} RIR target high`}
+                      className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                    />
+                  </div>
+                )}
+                {/* The finisher. Failure is the exception in this app — a set
+                    or two a day — so it's opt-in per movement. */}
+                {ex.kind !== 'cardio' && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-text-muted cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!ex.rirTarget?.lastSetFailure}
+                      onChange={(e) => update((p) => setExerciseLastSetFailure(p, day.id, ex.id, e.target.checked))}
+                      className="w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
+                    />
+                    Last set to failure
+                  </label>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1 mt-3 pt-2.5 border-t border-border">
+                <button
+                  onClick={() => update((p) => moveExercise(p, day.id, ex.id, -1))}
+                  disabled={blockIdxOf.get(ex.id) === 0}
+                  aria-label={`Move ${ex.name} up`}
+                  title="Move up"
+                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => update((p) => moveExercise(p, day.id, ex.id, 1))}
+                  disabled={blockIdxOf.get(ex.id) === blocks.length - 1}
+                  aria-label={`Move ${ex.name} down`}
+                  title="Move down"
+                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                <span className="w-px h-4 bg-border mx-1" />
+                <button
+                  onClick={() => toggleNote(ex.id)}
+                  aria-label={note ? `Edit note for ${ex.name}` : `Add note for ${ex.name}`}
+                  title="Note"
+                  className={`bg-transparent border-none cursor-pointer p-1 ${note ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                >
+                  <StickyNote className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSwapOpenFor(swapOpenFor === ex.id ? null : ex.id)}
+                  aria-label={`Substitute ${ex.name}`}
+                  aria-pressed={swapOpenFor === ex.id}
+                  title="Substitute exercise"
+                  className={`bg-transparent border-none cursor-pointer p-1 ${swapOpenFor === ex.id ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                >
+                  <Repeat className="w-4 h-4" />
+                </button>
+                {ex.kind !== 'cardio' && strengthCount > 1 && (
+                  <button
+                    onClick={() => setSupersetMenuFor(supersetMenuFor === ex.id ? null : ex.id)}
+                    aria-label={`Superset options for ${ex.name}`}
+                    aria-expanded={supersetMenuFor === ex.id}
+                    title={groups.get(ex.id) ? `In superset ${groups.get(ex.id).letter}` : 'Superset with another exercise'}
+                    className={`bg-transparent border-none cursor-pointer p-1 ${groups.get(ex.id) ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </button>
+                )}
+                {/* Commit this row to the movement it names, or hand it back to
+                    its path. Unpinning doesn't lose the movement — it stays as
+                    the slot's suggestion, so the day's numbers don't move and
+                    the picker still opens on it. */}
+                {ex.slot?.pattern && !openSlot && (
+                  <button
+                    onClick={() => update((p) => setSlotPinned(p, day.id, ex.id, !ex.slot.pinned))}
+                    aria-pressed={!!ex.slot.pinned}
+                    aria-label={
+                      ex.slot.pinned
+                        ? `${ex.name} — pinned to this movement, unpin to choose in the gym`
+                        : `${ex.name} — open to any ${ex.slot.pattern.replace(/-/g, ' ')}, pin to commit`
+                    }
+                    title={ex.slot.pinned ? 'Pinned to this movement' : 'Open — choose in the gym'}
+                    className={`bg-transparent border-none cursor-pointer p-1 ${ex.slot.pinned ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                  >
+                    {ex.slot.pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+                  </button>
+                )}
+                {canChooseLaterality(ex) && (
+                  <button
+                    onClick={() => update((p) => toggleExerciseUnilateral(p, day.id, ex.id, { sharedNotes }))}
+                    aria-pressed={!!ex.unilateral}
+                    aria-label={`${ex.name} — ${ex.unilateral ? 'logged one limb at a time' : 'logged both limbs together'}`}
+                    title={ex.unilateral ? 'Logged one limb at a time' : 'Logged both limbs together'}
+                    className={`bg-transparent border-none cursor-pointer p-1 ${ex.unilateral ? 'text-text-primary' : 'text-text-light hover:text-text-primary'}`}
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </button>
+                )}
+                {/* Straight into the bank entry for this movement. `state` tells
+                    that page to come back HERE rather than to the bank's index —
+                    and carries THIS page's own back target along for the return
+                    trip, so a detour through the bank doesn't strand you in the
+                    split. Omitted for custom movements and cardio, which have no
+                    entry to open. */}
+                {learnMore && bankId && !openSlot && (
+                  <Link
+                    to={`/exercises/${bankId}`}
+                    state={{ backTo: pathname, backLabel: day.name || 'this day', backState: state }}
+                    aria-label={`Learn more about ${ex.name}`}
+                    title="Learn more"
+                    className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary no-underline px-1 py-1 transition-colors"
+                  >
+                    {/* Icon-only on a phone. This row is a fixed budget of
+                        horizontal space — reorder arrows, note, swap, pin,
+                        superset, laterality — and the 85px of label was the one
+                        thing on it wide enough to push the row onto a second
+                        line at 320px. */}
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Learn more</span>
+                  </Link>
+                )}
+              </div>
+
+              {mismatch && (
+                <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
+                  {mismatch} — a superset goes back and forth, so give them the same number.
+                </p>
+              )}
+              {noteOpen && (
+                <textarea
+                  value={note}
+                  onChange={(e) => update((p) => (sharedNotes ? setExerciseNote : setRowNote)(p, day.id, ex.id, e.target.value))}
+                  onBlur={syncNotesToRemote}
+                  placeholder="Note — form cue, machine setting, anything worth remembering…"
+                  aria-label={`Note for ${ex.name}`}
+                  rows={2}
+                  className="w-full mt-2 bg-cream border border-border px-2 py-1.5 text-text-primary text-[12px] outline-none focus:border-text-primary transition-colors resize-none"
+                />
+              )}
+              {swapOpenFor === ex.id && (
+                <div className="mt-2">
+                  <SlotSwapPanel
+                    planned={ex}
+                    program={program}
+                    dayId={day.id}
+                    sessions={history || []}
+                    onPick={(o) => substitute(ex.id, o)}
+                  />
+                </div>
+              )}
+              {supersetMenuFor === ex.id && (
+                <div className="mt-2 border border-border bg-white">
+                  <p className="px-3 py-2 text-[10px] uppercase tracking-wider text-text-light border-b border-border">Superset with</p>
+                  {day.exercises.filter((o) => o.id !== ex.id && o.kind !== 'cardio').map((o) => {
+                    const og = groups.get(o.id)
+                    const together = !!ex.supersetId && o.supersetId === ex.supersetId
+                    return (
+                      <button
+                        key={o.id}
+                        onClick={() => { update((p) => pairSuperset(p, day.id, ex.id, o.id)); setSupersetMenuFor(null) }}
+                        className="w-full flex items-start justify-between gap-2 px-3 py-2 text-left bg-transparent border-none cursor-pointer hover:bg-cream transition-colors"
+                      >
+                        <span className="text-[12px] text-text-primary break-words">{o.name}</span>
+                        {(og || together) && (
+                          <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{together ? 'paired' : og.label}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                  {!!ex.supersetId && (
+                    <button
+                      onClick={() => { update((p) => unpairSuperset(p, day.id, ex.id)); setSupersetMenuFor(null) }}
+                      className="w-full text-left px-3 py-2 text-[12px] text-red-600 bg-transparent border-t border-border cursor-pointer hover:bg-cream transition-colors"
+                    >
+                      Remove from superset
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <ExercisePicker
+        onSelect={(name, category, id) => update((p) => addExercise(p, day.id, { name, category, exerciseId: id }, { sharedNotes }))}
+        placeholder="Add an exercise…"
+      />
+    </>
+  )
+}

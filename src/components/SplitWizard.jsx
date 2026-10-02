@@ -1,18 +1,19 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Dumbbell, FileText, Moon, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
+import { Check, Dumbbell, FileText, Moon, Pencil, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
-import { getHistory } from '../lib/workoutStore'
-import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import FocusPicker from './FocusPicker'
 import MuscleDonut from './MuscleDonut'
 import ExportModal from './ExportModal'
 import SlotSwapPanel from './SlotSwapPanel'
+import DayEditor from './DayEditor'
 import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
+import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
+import { getHistory, saveExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
+import { fetchRemoteHistory, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { donutRows } from '../lib/planStats'
 import { supersetLabels } from '../lib/workoutStats'
 import {
@@ -191,36 +192,61 @@ export default function SplitWizard({ client = null, onCreate = null }) {
 
   // The proposal. Recomputed on every answer — the generator is pure and cheap,
   // so the preview below is always the split the button would create.
+  //
+  // Each week is kept by the answers that produced it, so switching an answer
+  // back hands back the SAME week — same row ids — and the edits made on it
+  // (below) come back with it rather than being thrown away by a tap spent
+  // looking at "Higher". Profile, history and injuries settle once, at load;
+  // when they change, every kept week is stale and goes.
+  const answers = {
+    daysPerWeek,
+    schedule,
+    weekdays: weekdays.length === daysPerWeek ? weekdays : null,
+    focus,
+    experience: experience || undefined,
+    volume,
+    core,
+    equipment: equipment || undefined,
+    shape: shape || undefined,
+    openSlots,
+  }
+  const answersKey = JSON.stringify(answers)
+  const weeks = useRef({ inputs: null, byAnswers: new Map() })
   const built = useMemo(() => {
     if (loading) return null
-    return generateProgram({
-      answers: {
-        daysPerWeek,
-        schedule,
-        weekdays: weekdays.length === daysPerWeek ? weekdays : null,
-        focus,
-        experience: experience || undefined,
-        volume,
-        core,
-        equipment: equipment || undefined,
-        shape: shape || undefined,
-        openSlots,
-      },
-      profile,
-      sessions: history,
-      injuries,
-    })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, volume, core, equipment, openSlots, shape, profile, history, injuries])
+    const kept = weeks.current
+    if (!kept.inputs || kept.inputs.profile !== profile || kept.inputs.history !== history || kept.inputs.injuries !== injuries) {
+      weeks.current = { inputs: { profile, history, injuries }, byAnswers: new Map() }
+    }
+    const hit = weeks.current.byAnswers.get(answersKey)
+    if (hit) return hit
+    const week = generateProgram({ answers: JSON.parse(answersKey), profile, sessions: history, injuries })
+    weeks.current.byAnswers.set(answersKey, week)
+    return week
+  }, [loading, answersKey, profile, history, injuries])
 
-  // Movements swapped in the preview, on top of the proposal. Tied to the
-  // proposal they were made on: change an answer and the week is planned
-  // again from scratch, so swaps made on the old one fall away with it rather
-  // than landing on rows that are no longer the same rows.
-  const [edited, setEdited] = useState(null)
-  const program = edited && edited.base === built ? edited.program : built?.program
+  // Everything edited in the preview — swaps, added and removed movements,
+  // sets, supersets, notes — on top of the proposal, per week. Tied to the
+  // week it was made on, so a week planned again from scratch never inherits
+  // edits made to rows that are no longer the same rows.
+  const [edits, setEdits] = useState({})
+  const draft = edits[answersKey]
+  const edited = !!built && draft?.base === built
+  const program = edited ? draft.program : built?.program
   const summary = useMemo(() => (built ? summarizeProposal(built, program) : null), [built, program])
-  function swap(dayId, rowId, choice) {
-    setEdited({ base: built, program: swapProposedRow(built, program, dayId, rowId, choice) })
+  function update(fn) {
+    setEdits((prev) => {
+      const current = prev[answersKey]?.base === built ? prev[answersKey].program : built.program
+      return { ...prev, [answersKey]: { base: built, program: fn(current) } }
+    })
+  }
+  const swap = (dayId, rowId, choice) => update((p) => swapProposedRow(built, p, dayId, rowId, choice))
+  function undoEdits() {
+    setEdits((prev) => {
+      const next = { ...prev }
+      delete next[answersKey]
+      return next
+    })
   }
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
@@ -230,6 +256,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     const named = name.trim() ? setProgramName(program, name.trim()) : program
     if (onCreate) return onCreate(named, { focus })
     addRoutine(named)
+    fileDraftNotes(named)
     // The muscles they're bringing up live on the profile, so the next split
     // starts from them. Best effort: the split is what they asked for, and a
     // failed profile write must never stand between them and it.
@@ -238,6 +265,22 @@ export default function SplitWizard({ client = null, onCreate = null }) {
       saveProfile(user.id, { focus_muscles: focus.length ? focus : null }).catch(() => {})
     }
     navigate(`/split/${named.id}`)
+  }
+
+  // Notes typed in the preview stayed on their rows, so nothing was written
+  // before Create. On your own split a note belongs to the movement — what the
+  // split editor and the logger read — so that's where they go now, exactly as
+  // if they'd been typed in the editor. A client's split keeps them on its rows.
+  function fileDraftNotes(created) {
+    let filed = false
+    for (const day of created.days) {
+      for (const row of day.exercises || []) {
+        if (!row.note?.trim() || isOpenSlot(row)) continue
+        saveExerciseNote(row, row.note)
+        filed = true
+      }
+    }
+    if (filed && user) upsertRemoteExerciseNotes(user.id, getExerciseNotesMap()).catch(() => {})
   }
 
   const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
@@ -400,8 +443,10 @@ export default function SplitWizard({ client = null, onCreate = null }) {
               program={program}
               summary={summary}
               history={history}
+              edited={edited}
+              update={update}
               onSwap={swap}
-              onUndoSwaps={() => setEdited(null)}
+              onUndoEdits={undoEdits}
               name={name}
               setName={setName}
               onCreate={create}
@@ -488,15 +533,25 @@ function FocusTrade({ trade }) {
   )
 }
 
-function Preview({ base, program, summary, history, onSwap, onUndoSwaps, name, setName, onCreate, client }) {
+function Preview({ base, program, summary, history, edited, update, onSwap, onUndoEdits, name, setName, onCreate, client }) {
   const [exporting, setExporting] = useState(false)
   // The row whose swap panel is open — one at a time, as in the split editor.
   const [swapOpenFor, setSwapOpenFor] = useState(null)
-  // The real plan rows behind the summary's, for the swap panel to rank in
-  // context, and what the generator first put in each, to mark what's changed.
+  // The days open in the full editor. A set, not one at a time: comparing two
+  // days while moving work between them is the point of editing a week.
+  const [editing, setEditing] = useState(() => new Set())
+  const toggleEditing = (id) =>
+    setEditing((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  // The real plan rows behind the summary's, for the editor and the swap panel
+  // to work on, and what the generator first put in each, to mark what's changed.
+  const days = new Map(program.days.map((d) => [d.id, d]))
   const rows = new Map(program.days.flatMap((d) => d.exercises.map((e) => [e.id, e])))
   const proposed = new Map(base.days.flatMap((d) => d.exercises.map((e) => [e.id, e.exerciseId])))
-  const swapped = [...rows.values()].filter((e) => proposed.get(e.id) !== e.exerciseId).length
   const cardCls = 'bg-white border border-border p-6 sm:p-8'
   const trained = summary.volume.filter((v) => v.sets > 0)
   const maxSets = Math.max(1, ...trained.map((v) => v.sets))
@@ -559,10 +614,13 @@ function Preview({ base, program, summary, history, onSwap, onUndoSwaps, name, s
                       <MuscleDonut items={d.donut} unitLabel="sets" compact />
                     </div>
                   )}
+                  {!editing.has(d.id) && (
+                  <>
                   <ul className="mt-2 space-y-1 list-none p-0 m-0">
                     {d.exercises.map((e) => {
                       const row = rows.get(e.id)
-                      const changed = proposed.get(e.id) !== row?.exerciseId
+                      const added = !proposed.has(e.id)
+                      const changed = added || proposed.get(e.id) !== row?.exerciseId
                       // What the small caps line says: the path a committed
                       // row fills, so the shape of the day is readable even
                       // when every line names a machine (an open row already
@@ -570,7 +628,7 @@ function Preview({ base, program, summary, history, onSwap, onUndoSwaps, name, s
                       // generator's pick.
                       const tag = [
                         e.pattern && !e.open && e.pattern.replace(/-/g, ' '),
-                        changed && (proposed.get(e.id) ? 'swapped' : 'chosen'),
+                        changed && (added ? 'added' : proposed.get(e.id) ? 'swapped' : 'chosen'),
                       ].filter(Boolean).join(' · ')
                       return (
                         <li key={e.id} className="text-[12px]">
@@ -641,28 +699,73 @@ function Preview({ base, program, summary, history, onSwap, onUndoSwaps, name, s
                       )
                     })}
                   </ul>
+                  <button
+                    type="button"
+                    onClick={() => toggleEditing(d.id)}
+                    className="inline-flex items-center gap-1.5 min-h-8 mt-1 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit day
+                  </button>
+                  </>
+                  )}
                   </>
                 )}
               </div>
             </div>
+            {/* The split editor's own day editor, on the draft: add, remove,
+                reorder, sets and reps, supersets, notes. Everything above and
+                below — this day's sets and donut, the week's volume and paths —
+                is measured from the same draft, so it moves as you type. Full
+                width of the card: the inputs need it on a phone. Notes stay on
+                their rows until Create, and "Learn more" is left out — leaving
+                the page would lose the split. */}
+            {d.kind !== 'rest' && editing.has(d.id) && days.get(d.id) && (
+              <div className="mt-3">
+                <label className="block text-[10px] uppercase tracking-wider text-text-light mb-1" htmlFor={`day-name-${d.id}`}>
+                  Day name
+                </label>
+                <input
+                  id={`day-name-${d.id}`}
+                  value={days.get(d.id).name}
+                  onChange={(ev) => update((p) => setDayName(p, d.id, ev.target.value))}
+                  className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] outline-none focus:border-text-primary transition-colors mb-3"
+                />
+                <DayEditor
+                  program={program}
+                  day={days.get(d.id)}
+                  update={update}
+                  notes="row"
+                  sessions={history}
+                  onSubstitute={onSwap}
+                  learnMore={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleEditing(d.id)}
+                  className="inline-flex items-center gap-1.5 min-h-8 mt-2 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
+                >
+                  <Check className="w-3.5 h-3.5" /> Done
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Swaps are the user's edits on a proposal that is still being shaped
-          by the answers above — said once, beside the way back. */}
-      {swapped > 0 && (
+      {/* Edits are the user's, on a proposal still being shaped by the answers
+          above — said once, beside the way back. */}
+      {edited && (
         <div className="flex items-start gap-3 -mt-4 mb-7">
           <p className="min-w-0 flex-1 text-[12px] text-text-light leading-relaxed">
-            {swapped} movement{swapped === 1 ? '' : 's'} changed. Changing an answer above plans the week again and
-            clears {swapped === 1 ? 'it' : 'them'}.
+            You&apos;ve edited this split. Changing an answer above shows a new week — switch it back and your
+            edits return.
           </p>
           <button
             type="button"
-            onClick={onUndoSwaps}
+            onClick={onUndoEdits}
             className="shrink-0 inline-flex items-center gap-1 min-h-8 -mt-1.5 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
           >
-            <Undo2 className="w-3.5 h-3.5" /> Undo all
+            <Undo2 className="w-3.5 h-3.5" /> Undo all edits
           </button>
         </div>
       )}
