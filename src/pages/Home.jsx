@@ -4,21 +4,38 @@ import { ArrowRight, MessageCircle, Video, CalendarClock, Calculator } from 'luc
 import { VERSION, STAGE } from '../lib/version'
 import BodyweightTracker from '../components/BodyweightTracker'
 
+// A first visit leads with the program maker — the most useful free thing on
+// the site, no account needed — and the coaching pitch follows it.
+const programSteps = [
+  {
+    title: 'Answer a few questions',
+    desc: 'Days, focus, experience, equipment.',
+  },
+  {
+    title: 'Get your week',
+    desc: 'Exercises, sets and reps, ready to go.',
+  },
+  {
+    title: 'Train and log it',
+    desc: 'Track your progress. No sign-up needed.',
+  },
+]
+
 const coachingFeatures = [
   {
     icon: MessageCircle,
     title: 'A direct line to me',
-    desc: 'Message me when you\'re stuck, sore, or second-guessing something. No ticket system, no chatbot — you text your coach, your coach answers.',
+    desc: 'Text me anytime. Your coach answers, not a chatbot.',
   },
   {
     icon: Video,
     title: 'Video calls & check-ins',
-    desc: 'Regular calls to review your progress, fix your form, and adjust the plan when life throws you a curveball.',
+    desc: 'Progress reviews, form checks, plan updates.',
   },
   {
     icon: CalendarClock,
     title: 'Training that fits your life',
-    desc: 'Built around the hours you actually have. Three solid days a week you\'ll stick to beats six perfect ones you won\'t.',
+    desc: 'Three days you\'ll stick to beat six you won\'t.',
   },
 ]
 
@@ -53,8 +70,7 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-[15px] text-text-muted mb-10 max-w-md mx-auto leading-relaxed"
           >
-            I&apos;m Leon. I help busy people get in shape, build muscle, and get
-            stronger — with training that fits around your life instead of taking it over.
+            I&apos;m Leon. Get a free program built around your week.
           </motion.p>
 
           <motion.div
@@ -64,19 +80,69 @@ export default function Home() {
             className="flex flex-col sm:flex-row gap-3 justify-center"
           >
             <Link
-              to="/contact"
+              to="/programs?start=build"
               className="inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium px-7 py-2.5 rounded-lg no-underline hover:bg-accent-hover transition-colors text-[13px]"
             >
-              Book a free intro chat
+              Build my free program
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
             <Link
-              to="/tools"
+              to="/contact"
               className="inline-flex items-center justify-center gap-2 border border-border text-text-secondary px-7 py-2.5 rounded-lg no-underline hover:border-border-hover hover:text-text-primary transition-colors text-[13px]"
             >
-              Free tools
+              Book a free intro chat
             </Link>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="py-20 px-6 border-t border-border">
+        <div className="max-w-5xl mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-[11px] uppercase tracking-[3px] text-text-light mb-4 text-center"
+          >
+            Free program maker
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="font-heading text-3xl md:text-4xl font-medium text-text-primary mb-10 tracking-tight text-center"
+          >
+            Your training week, built in minutes
+          </motion.h2>
+          <div className="grid md:grid-cols-3 gap-4 mb-10">
+            {programSteps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="bg-white border border-border rounded-xl p-7"
+              >
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-border text-[12px] font-medium text-text-primary mb-4">
+                  {i + 1}
+                </span>
+                <h3 className="font-heading text-[15px] font-medium text-text-primary mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-text-muted text-[13px] leading-relaxed">{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+          <div className="text-center">
+            <Link
+              to="/programs?start=build"
+              className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-7 py-2.5 rounded-lg no-underline hover:bg-accent-hover transition-colors text-[13px]"
+            >
+              Build my free program
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -106,20 +172,11 @@ export default function Home() {
             className="space-y-4 text-[15px] text-text-muted leading-relaxed"
           >
             <p>
-              I&apos;ve been training for the better part of a decade. I&apos;m not a pro
-              bodybuilder — I&apos;m an engineer by degree who fell in love with lifting and
-              never stopped. Somewhere between the barbell and the day job, friends and
-              family started asking me to train them too.
+              An engineer who&apos;s been lifting for the better part of a decade. I coach
+              busy people who still want to build muscle and feel strong.
             </p>
             <p>
-              Coaching them taught me the thing most programs miss: the best plan is the
-              one that survives your actual life. The job, the family, the weeks where
-              everything goes sideways. That&apos;s who I coach — people with full
-              schedules who still want to get in shape, build muscle, and feel strong.
-            </p>
-            <p>
-              You won&apos;t find stock-photo transformations here. Just straight answers,
-              a plan built around you, and a coach who actually replies.
+              Straight answers, a plan built around you, and a coach who actually replies.
             </p>
           </motion.div>
         </div>
@@ -173,9 +230,7 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="text-text-muted text-[15px] mb-8 leading-relaxed"
           >
-            Before anything else, we hop on a free call and talk — about your life, your
-            goals, and the effort you&apos;re honestly willing to put in. If we&apos;re a
-            fit, we build your plan. If not, no hard feelings.
+            A free call about your life and your goals. If we&apos;re a fit, we build your plan.
           </motion.p>
           <Link
             to="/contact"
@@ -199,8 +254,7 @@ export default function Home() {
               Not ready for coaching yet?
             </h2>
             <p className="text-text-muted text-[14px] mb-6 leading-relaxed">
-              Start with the free calculators — TDEE, one rep max, protein, strength
-              standards, and more. No sign-up, no catch.
+              Free calculators: calories, protein, one rep max and more.
             </p>
             <Link
               to="/tools"
