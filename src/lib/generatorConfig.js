@@ -472,13 +472,15 @@ export const GYM_EXCLUDED_EQUIPMENT = ['resistance band']
 export const GYM_EXCLUDED_OVERLOAD = ['low']
 
 // What ends the set. The DB's `Limiting Factor` column says what gives out
-// first for a strong lifter: the target muscle, or their grip (dumbbells held
+// first for a strong lifter: the target muscle, or their grip (a kettlebell held
 // for a leg movement), their balance (a free-weight lunge), or the equipment's
 // load cap (a kettlebell, bodyweight, a band). A set that ends on anything but
 // the target muscle stops short of the stimulus it's there for — and the
 // stronger the lifter, the further short. A beginner's legs give out holding
-// two dumbbells; an advanced lifter's hands give out long before the legs that
-// squat twice their bodyweight are anywhere near failure.
+// two kettlebells; an advanced lifter's hands give out long before the legs that
+// squat twice their bodyweight are anywhere near failure. Straps are assumed
+// for barbells and dumbbells, never kettlebells (Hani's rule), so a dumbbell
+// split squat is rated on what gives out once the hands are strapped in.
 //
 // Gym only, like GYM_WEIGHTS: at home there is nothing more loadable to swap in,
 // so penalising the pool for being what it is would only reshuffle it.
@@ -552,7 +554,7 @@ export const PENALTIES = {
   // time. It has to earn that on its own merits, not win a tie.
   unilateral: 0.7,
   // The database carries whole families of near-identical variants ("Hack Squat"
-  // vs "Hack Squat Wide Stance") whose columns are, correctly, almost the same —
+  // vs "Hack Squat - Wide Stance") whose columns are, correctly, almost the same —
   // so ties get broken by whichever happens to sort first, and a generated split
   // fills up with oddities nobody asked for. Nudging toward the shorter name
   // picks the canonical member of the family, which is the same tiebreak

@@ -79,6 +79,9 @@ export const EXERCISE_ID_ALIASES = {
   'copenhagen-adduction-weighted': 'copenhagen-adduction',
   'romanian-deadlift': 'romanian-deadlift-rdl',
   'stiff-leg-deadlift': 'stiff-leg-deadliftsldl',
+  // 2026-10-02: "Hack Squats Machine" became the bare "Hack Squat" when its wide-
+  // stance variant was renamed "Hack Squat - Wide Stance" (whose id didn't change).
+  'hack-squats-machine': 'hack-squat',
 }
 
 // Add alias keys to a Map<id, exercise> so a lookup by an old id resolves to the

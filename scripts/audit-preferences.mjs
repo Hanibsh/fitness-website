@@ -48,7 +48,7 @@ const CHAINS = [
     source: 'Pouriq Zarrin — Lower 1/2, "any kind of squat movement"',
     pattern: 'squat',
     muscle: 'Quads',
-    order: ['pendulum-squat', 'hack-squats-machine', 'smith-machine-squat', 'barbell-squat'],
+    order: ['pendulum-squat', 'hack-squat', 'smith-machine-squat', 'barbell-squat'],
   },
   {
     source: 'Pouriq Zarrin — Lower 1/2, "stiff leg calf raises"',
