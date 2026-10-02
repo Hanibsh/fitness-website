@@ -3,8 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Play, Route, Pin, PinOff } from 'lucide-react'
 import ExercisePicker from '../components/ExercisePicker'
-import SwapSuggestions from '../components/SwapSuggestions'
-import PatternPicker from '../components/PatternPicker'
+import SlotSwapPanel from '../components/SlotSwapPanel'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
 import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
@@ -474,44 +473,16 @@ export default function SplitDay() {
                     )}
                     {swapOpenFor === ex.id && (
                       <div className="mt-2">
-                        {/* A row with a movement path answers "what else does
-                            this job?" first — that list is complete, ranked, and
-                            almost always where the answer is. A row without one
-                            (cardio, or anything hand-built) goes straight to the
-                            old suggestions-then-search panel. */}
-                        {ex.kind !== 'cardio' && ex.slot?.pattern ? (
-                          <PatternPicker
-                            planned={ex}
-                            program={program}
-                            dayId={day.id}
-                            sessions={history || []}
-                            onPick={(o) => {
-                              update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
-                              setSwapOpenFor(null)
-                            }}
-                          />
-                        ) : (
-                          <>
-                            {ex.kind !== 'cardio' && (
-                              <SwapSuggestions
-                                planned={ex}
-                                program={program}
-                                dayId={day.id}
-                                sessions={history || []}
-                                onPick={(o) => {
-                                  update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
-                                  setSwapOpenFor(null)
-                                }}
-                              />
-                            )}
-                            <ExercisePicker
-                              onSelect={(name, category, id) => { update((p) => substituteExercise(p, day.id, ex.id, { name, category, exerciseId: id })); setSwapOpenFor(null) }}
-                              onlyCategory={ex.kind === 'cardio' ? 'Cardio' : undefined}
-                              excludeCategory={ex.kind === 'cardio' ? undefined : 'Cardio'}
-                              placeholder="Replace with…"
-                            />
-                          </>
-                        )}
+                        <SlotSwapPanel
+                          planned={ex}
+                          program={program}
+                          dayId={day.id}
+                          sessions={history || []}
+                          onPick={(o) => {
+                            update((p) => substituteExercise(p, day.id, ex.id, { name: o.name, category: o.category, exerciseId: o.id, pattern: o.pattern }))
+                            setSwapOpenFor(null)
+                          }}
+                        />
                       </div>
                     )}
                     {supersetMenuFor === ex.id && (

@@ -25,7 +25,7 @@
 
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
-import { createDay, createPlannedExercise, emptyProgram } from './program'
+import { createDay, createPlannedExercise, emptyProgram, substituteExercise } from './program'
 import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId, donutRows, isCoreMovement } from './planStats'
 import { newSupersetId } from './workoutStats'
 import { injuryRiskMap } from './injuries'
@@ -1576,8 +1576,9 @@ export function patternOptions(planned, { program, dayId, sessions = [], injurie
   const path = pattern || planned.slot?.pattern || ctx.currentDb.pattern
   if (!path) return []
 
-  const { currentDb, muscle, history } = ctx
-  const base = {
+  const { currentDb, history } = ctx
+  let { muscle } = ctx
+  let base = {
     ...ctx.base,
     pattern: path,
     // Browsing a path, not hunting a replacement: show everything on it that
@@ -1591,7 +1592,22 @@ export function patternOptions(planned, { program, dayId, sessions = [], injurie
     wantCompound: false,
   }
 
-  return rankWithin(muscle, base, history).slice(0, limit).map(({ db, score }) => {
+  // A slot can be filled by a movement its muscle only rides along on — a
+  // Copenhagen adduction picked for the abs, toes-to-bar for the lats — and
+  // down that movement's path nothing else trains the slot's muscle at all, so
+  // the list would hold the current movement and nothing to swap it for. Then
+  // the path is ranked for what the movement mainly trains: "other ways to do
+  // this movement" is the question being asked.
+  let ranked = rankWithin(muscle, base, history)
+  const own = primaryMuscleOf(currentDb)
+  if (own && own !== muscle && !ranked.some(({ db }) => db.id !== currentDb.id)) {
+    const dayIndex = program.days.findIndex((d) => d.id === dayId)
+    muscle = own
+    base = { ...base, muscle, hoursToNext: gapToNextSession(program, dayIndex, muscle) }
+    ranked = rankWithin(muscle, base, history)
+  }
+
+  return ranked.slice(0, limit).map(({ db, score }) => {
     const seen = history?.familiar.get(db.id)
     const weeksSince = seen ? Math.floor((ctx.now - seen.lastDate) / (7 * DAY_MS)) : null
     return {
@@ -1801,7 +1817,65 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   }
   const summary = summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape })
   if (baseline) summary.focusTrade = focusTrade(program, summary, baseline, inputs.focus, sessionCap)
-  return { program, summary, inputs }
+  // What the summary was measured against, kept so a proposal edited in the
+  // preview (swapProposedRow) can be re-summarised on the same terms.
+  const context = { targets, cycle, shape: templateDays.shape, baseline, sessionCap }
+  return { program, summary, inputs, context }
+}
+
+// ---- Editing the proposal ----------------------------------------------------
+
+// One movement in a not-yet-created split swapped for another, from the
+// wizard's preview. The sets stay — they're the volume setting's, and the week
+// was sized around them — but the rep range and the effort target are the
+// generator's own numbers for the NEW movement, since nothing about this row is
+// the user's yet: an adduction machine gets machine reps, not the lengthened
+// range that suited a Copenhagen. The last set to failure stays only where the
+// generator put one AND the new movement can take it (failureSafe). The slot,
+// the superset pairing and the row id all survive, through substituteExercise —
+// except the slot's muscle when the new movement doesn't train it at all (an
+// adduction machine in for a Copenhagen that was there for the abs): the row is
+// now there for what the new movement trains, and a later swap ranks for that.
+export function swapProposedRow(built, program, dayId, rowId, { id, name, category, pattern }) {
+  const original = built.program.days.find((d) => d.id === dayId)?.exercises.find((e) => e.id === rowId)
+  // Back to what the generator picked: the row exactly as it was proposed.
+  if (original?.exerciseId && id === original.exerciseId) {
+    return { ...program, days: program.days.map((d) => d.id !== dayId ? d : { ...d, exercises: d.exercises.map((e) => (e.id === rowId ? original : e)) }) }
+  }
+  const db = DB_BY_ID.get(id || '') || null
+  const next = substituteExercise(program, dayId, rowId, { name, category, exerciseId: id || null, pattern: pattern || db?.pattern })
+  // A custom movement from the search: nothing to derive numbers from.
+  if (!db) return next
+  const { experience, volumePref, history } = built.inputs
+  const rirTarget = rirTargetForExercise(db, experience, volumePref)
+  if (original?.rirTarget?.lastSetFailure && failureSafe(db)) rirTarget.lastSetFailure = true
+  return {
+    ...next,
+    days: next.days.map((d) => d.id !== dayId ? d : {
+      ...d,
+      exercises: d.exercises.map((e) => {
+        if (e.id !== rowId) return e
+        const muscle = muscleWeights(db)[e.slot?.muscle] ? e.slot.muscle : primaryMuscleOf(db)
+        return {
+          ...e,
+          slot: e.slot && muscle && muscle !== e.slot.muscle ? { ...e.slot, muscle } : e.slot,
+          repRange: repRangeForExercise(db, muscle, history),
+          rirTarget,
+        }
+      }),
+    }),
+  }
+}
+
+// The preview's summary for a proposal that may have been edited: the day
+// cards, the weekly volume, the movement paths and the focus trade, measured
+// against the same targets and the same no-focus week the original was.
+export function summarizeProposal(built, program) {
+  if (program === built.program) return built.summary
+  const { targets, cycle, shape, baseline, sessionCap } = built.context
+  const summary = summarize(program, { targets, schedule: built.inputs.schedule, cycle, inputs: built.inputs, shape })
+  if (baseline) summary.focusTrade = focusTrade(program, summary, baseline, built.inputs.focus, sessionCap)
+  return summary
 }
 
 // What bringing the focus muscles up did, measured against the same week built

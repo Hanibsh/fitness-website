@@ -35,6 +35,7 @@ export default function PatternPicker({ planned, program, dayId, sessions = [], 
   )
 
   const info = getPattern(pattern)
+  const rankedFor = options[0]?.muscle || planned?.slot?.muscle || null
   // `initialLimit` trims the list where several of these are on screen at once
   // (the logger, mid-session). 0 means show everything, which is what the split
   // editor wants — there you are looking at one slot on purpose.
@@ -66,9 +67,12 @@ export default function PatternPicker({ planned, program, dayId, sessions = [], 
             whole premise of choosing your own movement is that you know what
             the slot is asking for. */}
         {info?.path && <p className="text-[11px] text-text-light mt-1 break-words">{info.path}</p>}
-        {planned?.slot?.muscle && (
+        {/* The muscle the list was actually ranked for — usually the slot's,
+            but the movement's own when the slot's muscle only rides along on
+            this path (see patternOptions). */}
+        {rankedFor && (
           <p className="text-[11px] text-text-light mt-1 break-words">
-            Ranked for <span className="text-text-primary">{planned.slot.muscle.toLowerCase()}</span> in this slot.
+            Ranked for <span className="text-text-primary">{rankedFor.toLowerCase()}</span> in this slot.
           </p>
         )}
       </div>

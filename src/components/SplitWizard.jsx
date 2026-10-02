@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Dumbbell, FileText, Moon, RefreshCw, Wand2 } from 'lucide-react'
+import { Dumbbell, FileText, Moon, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -9,7 +9,8 @@ import { fetchProfile, saveProfile } from '../lib/profile'
 import FocusPicker from './FocusPicker'
 import MuscleDonut from './MuscleDonut'
 import ExportModal from './ExportModal'
-import { generateProgram } from '../lib/generator'
+import SlotSwapPanel from './SlotSwapPanel'
+import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
 import { setProgramName, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
 import { donutRows } from '../lib/planStats'
@@ -211,13 +212,24 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     })
   }, [loading, daysPerWeek, schedule, weekdays, focus, experience, volume, core, equipment, openSlots, shape, profile, history, injuries])
 
+  // Movements swapped in the preview, on top of the proposal. Tied to the
+  // proposal they were made on: change an answer and the week is planned
+  // again from scratch, so swaps made on the old one fall away with it rather
+  // than landing on rows that are no longer the same rows.
+  const [edited, setEdited] = useState(null)
+  const program = edited && edited.base === built ? edited.program : built?.program
+  const summary = useMemo(() => (built ? summarizeProposal(built, program) : null), [built, program])
+  function swap(dayId, rowId, choice) {
+    setEdited({ base: built, program: swapProposedRow(built, program, dayId, rowId, choice) })
+  }
+
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
   function create() {
     if (!built) return
-    const program = name.trim() ? setProgramName(built.program, name.trim()) : built.program
-    if (onCreate) return onCreate(program, { focus })
-    addRoutine(program)
+    const named = name.trim() ? setProgramName(program, name.trim()) : program
+    if (onCreate) return onCreate(named, { focus })
+    addRoutine(named)
     // The muscles they're bringing up live on the profile, so the next split
     // starts from them. Best effort: the split is what they asked for, and a
     // failed profile write must never stand between them and it.
@@ -225,7 +237,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     if (user && (saved.length !== focus.length || saved.some((m, i) => m !== focus[i]))) {
       saveProfile(user.id, { focus_muscles: focus.length ? focus : null }).catch(() => {})
     }
-    navigate(`/split/${program.id}`)
+    navigate(`/split/${named.id}`)
   }
 
   const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
@@ -377,12 +389,25 @@ export default function SplitWizard({ client = null, onCreate = null }) {
             <p className="text-[12px] text-text-light leading-relaxed">
               {openSlots
                 ? 'Every row prescribes a movement path and a set target — “any vertical pull, 3 × 6–10” — and you pick the movement when you get there. The volume is planned the same either way; only the machine is left undecided.'
-                : 'Every row names a movement. You can still swap any of them for anything else on the same movement path, before or during a session.'}
+                : 'Every row names a movement. Swap any of them in the preview below before you save, or later — before or during a session.'}
             </p>
           </section>
 
           {/* ---- 4. The proposal ----------------------------------------- */}
-          {built && <Preview built={built} name={name} setName={setName} onCreate={create} client={client} />}
+          {built && (
+            <Preview
+              base={built.program}
+              program={program}
+              summary={summary}
+              history={history}
+              onSwap={swap}
+              onUndoSwaps={() => setEdited(null)}
+              name={name}
+              setName={setName}
+              onCreate={create}
+              client={client}
+            />
+          )}
         </div>
       )}
     </>
@@ -463,9 +488,15 @@ function FocusTrade({ trade }) {
   )
 }
 
-function Preview({ built, name, setName, onCreate, client }) {
-  const { summary } = built
+function Preview({ base, program, summary, history, onSwap, onUndoSwaps, name, setName, onCreate, client }) {
   const [exporting, setExporting] = useState(false)
+  // The row whose swap panel is open — one at a time, as in the split editor.
+  const [swapOpenFor, setSwapOpenFor] = useState(null)
+  // The real plan rows behind the summary's, for the swap panel to rank in
+  // context, and what the generator first put in each, to mark what's changed.
+  const rows = new Map(program.days.flatMap((d) => d.exercises.map((e) => [e.id, e])))
+  const proposed = new Map(base.days.flatMap((d) => d.exercises.map((e) => [e.id, e.exerciseId])))
+  const swapped = [...rows.values()].filter((e) => proposed.get(e.id) !== e.exerciseId).length
   const cardCls = 'bg-white border border-border p-6 sm:p-8'
   const trained = summary.volume.filter((v) => v.sets > 0)
   const maxSets = Math.max(1, ...trained.map((v) => v.sets))
@@ -528,41 +559,87 @@ function Preview({ built, name, setName, onCreate, client }) {
                       <MuscleDonut items={d.donut} unitLabel="sets" compact />
                     </div>
                   )}
-                  <ul className="mt-2 space-y-0.5 list-none p-0 m-0">
-                    {d.exercises.map((e) => (
-                      <li key={e.id} className="flex items-baseline gap-2 text-[12px]">
-                        {/* A1/A2: the abs paired with the day's lightest
-                            movement — the same badge the split page shows. */}
-                        {pairs.get(d.id)?.get(e.id) && (
-                          <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">
-                            {pairs.get(d.id).get(e.id).label}
-                          </span>
-                        )}
-                        <span className="text-text-secondary break-words min-w-0">
-                          {e.name}
-                          {/* The path a committed row fills, so the shape of the
-                              day is readable even when every line names a
-                              machine. An open row already says its path as its
-                              name, so repeating it would be noise. */}
-                          {e.pattern && !e.open && (
-                            <span className="block text-[10px] uppercase tracking-wider text-text-light">
-                              {e.pattern.replace(/-/g, ' ')}
+                  <ul className="mt-2 space-y-1 list-none p-0 m-0">
+                    {d.exercises.map((e) => {
+                      const row = rows.get(e.id)
+                      const changed = proposed.get(e.id) !== row?.exerciseId
+                      // What the small caps line says: the path a committed
+                      // row fills, so the shape of the day is readable even
+                      // when every line names a machine (an open row already
+                      // says its path as its name), and whether it's still the
+                      // generator's pick.
+                      const tag = [
+                        e.pattern && !e.open && e.pattern.replace(/-/g, ' '),
+                        changed && (proposed.get(e.id) ? 'swapped' : 'chosen'),
+                      ].filter(Boolean).join(' · ')
+                      return (
+                        <li key={e.id} className="text-[12px]">
+                          <div className="flex items-baseline gap-2">
+                            {/* A1/A2: the abs paired with the day's lightest
+                                movement — the same badge the split page shows. */}
+                            {pairs.get(d.id)?.get(e.id) && (
+                              <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">
+                                {pairs.get(d.id).get(e.id).label}
+                              </span>
+                            )}
+                            <span className="text-text-secondary break-words min-w-0">
+                              {e.name}
+                              {tag && (
+                                <span className={`block text-[10px] uppercase tracking-wider ${changed ? 'text-text-secondary' : 'text-text-light'}`}>
+                                  {tag}
+                                </span>
+                              )}
+                              {/* The effort target, on its own line — "1–2 RIR,
+                                  last set to failure" is too long to share the
+                                  narrow sets column on a phone. */}
+                              {rirLabel(e.rirTarget) && (
+                                <span className={`block text-[11px] ${e.rirTarget?.lastSetFailure ? 'text-text-secondary' : 'text-text-light'}`}>
+                                  {rirLabel(e.rirTarget)}
+                                </span>
+                              )}
                             </span>
-                          )}
-                          {/* The effort target, on its own line — "1–2 RIR,
-                              last set to failure" is too long to share the
-                              narrow sets column on a phone. */}
-                          {rirLabel(e.rirTarget) && (
-                            <span className={`block text-[11px] ${e.rirTarget?.lastSetFailure ? 'text-text-secondary' : 'text-text-light'}`}>
-                              {rirLabel(e.rirTarget)}
+                            <span className="text-text-light shrink-0 ml-auto tabular-nums">
+                              {e.sets} × {e.repRange.low}–{e.repRange.high}
                             </span>
+                            {/* A full-size tap target that takes up only a line
+                                of height: the negative margins hand the rest
+                                back to the row. */}
+                            {row && (
+                              <button
+                                type="button"
+                                onClick={() => setSwapOpenFor(swapOpenFor === e.id ? null : e.id)}
+                                aria-label={e.open ? `Choose a movement for ${e.name}` : `Swap ${e.name}`}
+                                aria-pressed={swapOpenFor === e.id}
+                                title={e.open ? 'Choose a movement' : 'Swap for a similar movement'}
+                                className={`shrink-0 self-start w-8 h-8 -my-[7px] inline-flex items-center justify-center bg-transparent border-none cursor-pointer p-0 transition-colors ${
+                                  swapOpenFor === e.id ? 'text-text-primary' : 'text-text-light hover:text-text-primary'
+                                }`}
+                              >
+                                <Repeat className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          {/* Out over the day's icon column (w-3.5 + gap-3): on
+                              a phone the list needs every pixel it can get. */}
+                          {swapOpenFor === e.id && row && (
+                            <div className="mt-2 mb-2 -ml-[26px]">
+                              <SlotSwapPanel
+                                planned={row}
+                                program={program}
+                                dayId={d.id}
+                                sessions={history}
+                                initialLimit={5}
+                                onPick={(o) => {
+                                  onSwap(d.id, e.id, o)
+                                  setSwapOpenFor(null)
+                                }}
+                                onCancel={() => setSwapOpenFor(null)}
+                              />
+                            </div>
                           )}
-                        </span>
-                        <span className="text-text-light shrink-0 ml-auto tabular-nums">
-                          {e.sets} × {e.repRange.low}–{e.repRange.high}
-                        </span>
-                      </li>
-                    ))}
+                        </li>
+                      )
+                    })}
                   </ul>
                   </>
                 )}
@@ -571,6 +648,24 @@ function Preview({ built, name, setName, onCreate, client }) {
           </div>
         ))}
       </div>
+
+      {/* Swaps are the user's edits on a proposal that is still being shaped
+          by the answers above — said once, beside the way back. */}
+      {swapped > 0 && (
+        <div className="flex items-start gap-3 -mt-4 mb-7">
+          <p className="min-w-0 flex-1 text-[12px] text-text-light leading-relaxed">
+            {swapped} movement{swapped === 1 ? '' : 's'} changed. Changing an answer above plans the week again and
+            clears {swapped === 1 ? 'it' : 'them'}.
+          </p>
+          <button
+            type="button"
+            onClick={onUndoSwaps}
+            className="shrink-0 inline-flex items-center gap-1 min-h-8 -mt-1.5 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
+          >
+            <Undo2 className="w-3.5 h-3.5" /> Undo all
+          </button>
+        </div>
+      )}
 
       {/* The week as one picture, before the per-muscle detail below it. A
           rotation whose cycle is not 7 days long is an AVERAGE, and it says so:
@@ -706,12 +801,13 @@ function Preview({ built, name, setName, onCreate, client }) {
         <FileText className="w-4 h-4" /> Export as text or Excel
       </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
-        Nothing is saved until you tap {client ? 'Save' : 'Create'} — and every day, movement, set and rep range is editable
-        afterwards.
+        Nothing is saved until you tap {client ? 'Save' : 'Create'}. Swap any movement above first with{' '}
+        <Repeat className="inline w-3 h-3 align-[-2px]" aria-label="the swap button" /> — and every day, movement, set and
+        rep range stays editable afterwards.
       </p>
       {exporting && (
         <ExportModal
-          program={name.trim() ? setProgramName(built.program, name.trim()) : built.program}
+          program={name.trim() ? setProgramName(program, name.trim()) : program}
           client={client}
           onClose={() => setExporting(false)}
         />
