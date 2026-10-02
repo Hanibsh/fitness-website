@@ -25,6 +25,7 @@ const AuthContext = createContext({
   nickname: '',
   setNickname: () => {},
   refreshProfile: async () => {},
+  mergeProfile: () => {},
   signOut: async () => {},
 })
 
@@ -129,6 +130,12 @@ export function AuthProvider({ children }) {
     }
   }, [user])
 
+  // For settings saved on their own (the dashboard layout), outside the profile
+  // form: puts the saved fields into the shared row without re-reading it.
+  const mergeProfile = useCallback((fields) => {
+    setProfile((p) => ({ ...(p || {}), ...fields }))
+  }, [])
+
   const profileLoading = !!user && profileSettledFor !== user.id
 
   async function signOut() {
@@ -136,7 +143,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, profile, profileLoading, nickname, setNickname, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, loading, profile, profileLoading, nickname, setNickname, refreshProfile, mergeProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   )

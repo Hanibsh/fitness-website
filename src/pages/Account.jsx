@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ArrowLeft, LogOut, Check, Users, Upload } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
@@ -14,6 +14,7 @@ import { convertMassText, convertLengthText } from '../lib/units'
 import { asset } from '../lib/assets'
 import { trainingYearsFromStart } from '../lib/profilePrefill'
 import FocusPicker from '../components/FocusPicker'
+import DashboardSettings from '../components/DashboardSettings'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
@@ -77,6 +78,14 @@ export default function Account() {
   // of how you train rather than of your account, so it lives on the device
   // next to the unit picker and the theme, and works logged out.
   const [restTimerOn, setRestTimerOn] = useState(() => getRestTimer().enabled)
+
+  // The dashboard's "Customize" link arrives with #dashboard; the router doesn't
+  // scroll to a hash by itself, and the section only exists once loading ends.
+  const location = useLocation()
+  useEffect(() => {
+    if (location.hash !== '#dashboard' || (user && loading)) return
+    document.getElementById('dashboard')?.scrollIntoView({ block: 'start' })
+  }, [location.hash, loading, user])
 
   function toggleRestTimer(enabled) {
     setRestTimerOn(enabled)
@@ -261,6 +270,16 @@ export default function Account() {
     </section>
   )
 
+  // Also in both branches: signed out it lives on this device only. The
+  // dashboard's "Customize" link lands here (#dashboard).
+  const dashboardSection = (
+    <section id="dashboard" style={{ scrollMarginTop: 'calc(5rem + env(safe-area-inset-top, 0px))' }}>
+      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Dashboard</h2>
+      <p className="text-[13px] text-text-muted mb-4">Pick your cards and their order.</p>
+      <DashboardSettings />
+    </section>
+  )
+
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
@@ -277,7 +296,10 @@ export default function Account() {
               <p className="text-text-muted text-[15px] mt-6 mb-10">
                 You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
               </p>
-              {loggingSection}
+              <div className="space-y-10">
+                {dashboardSection}
+                {loggingSection}
+              </div>
             </>
           ) : loading ? (
             <p className="text-text-muted text-[13px] mt-6">Loading…</p>
@@ -517,6 +539,9 @@ export default function Account() {
                     </div>
                   </div>
                 </section>
+
+                {/* ---- Dashboard --------------------------------------------------- */}
+                {dashboardSection}
 
                 {/* ---- Logging ----------------------------------------------------- */}
                 {loggingSection}

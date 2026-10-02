@@ -181,7 +181,7 @@ export function usePlanPerson(clientProfile = null) {
 // want is really known, because a guessed body fat or a missing step count
 // moves the answer by hundreds of calories. Training hours count as known when
 // the log could work them out.
-function tdeeFromPrefill(p, hours) {
+export function tdeeFromPrefill(p, hours) {
   if (!p.sex || p.age == null || p.weight == null || p.height == null) return null
   if (p.bodyFat == null || p.steps == null || hours == null) return null
   const metric = p.unitSystem !== 'imperial'
