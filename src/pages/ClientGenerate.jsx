@@ -6,7 +6,7 @@ import { withProgram } from '../lib/clients'
 import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
 
 // The split generator, writing for a client — /coach/:clientId/generate. Same
-// wizard as /split/generate; the client's profile seeds it, and the program it
+// wizard as the Programs page's; the client's profile seeds it, and the program it
 // saves goes into the client's record, not your own splits. Scoped so your
 // injuries don't steer someone else's program.
 export default function ClientGenerate() {

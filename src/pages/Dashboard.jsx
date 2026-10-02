@@ -285,7 +285,7 @@ function BuildSplitNudge({ count, onDismiss }) {
             Turn what you've been doing into a split — the log will then pre-fill your sets and know which day is up.
           </p>
           <Link
-            to="/log/split"
+            to="/programs"
             state={{ buildFromHistory: true }}
             className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-3 py-1.5 no-underline cursor-pointer transition-colors"
           >
@@ -765,7 +765,7 @@ export default function Dashboard() {
                   <CalendarDays className="w-3.5 h-3.5" /> Full calendar
                 </Link>
                 <Link
-                  to={program ? `/split/${program.id}` : '/log/split'}
+                  to={program ? `/split/${program.id}` : '/programs'}
                   className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
                 >
                   <CalendarRange className="w-3.5 h-3.5" /> Edit split

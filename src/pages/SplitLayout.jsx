@@ -67,8 +67,8 @@ export default function SplitLayout() {
   const highlightIndex = isWeekly ? todayWeekdayIndex : pointerIndex
 
   const backLink = (
-    <Link to="/log/split" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
-      <ArrowLeft className="w-3.5 h-3.5" /> Back to your splits
+    <Link to="/programs" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+      <ArrowLeft className="w-3.5 h-3.5" /> Back to programs
     </Link>
   )
 

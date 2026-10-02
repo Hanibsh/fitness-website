@@ -15,7 +15,6 @@ import { DAY_REASONS, reasonLabel, daySummary, currentBreak, annotationForDate }
 import { useInjuries } from '../lib/useInjuries'
 import { openInjuries } from '../lib/injuries'
 import WorkoutCalendar from '../components/WorkoutCalendar'
-import LogTabs from '../components/LogTabs'
 import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
 import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR, INJURY_BAND } from '../lib/calendarMarkers'
@@ -211,8 +210,6 @@ export default function CalendarPage() {
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-3xl mx-auto">
-        <LogTabs active="/calendar" />
-
         <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-6 transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to dashboard
         </Link>

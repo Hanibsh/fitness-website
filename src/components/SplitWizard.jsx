@@ -30,10 +30,10 @@ import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, cleanFocus } from '../lib/profile
 // The split generator's questions and its preview, with no page around them.
 //
 // Lives as a component rather than a page because it has two homes: the
-// training-split editor reaches it at /split/generate, and it is also what the
-// public Programs page offers. Those two want different framing around it — one
-// is a tool inside the log, the other is the shop window — but neither should
-// own a second copy of the wizard.
+// Programs page ("Build me a split", /programs?start=build) and the coach's
+// client area (/coach/:clientId/generate). Those want different framing around
+// it — your own split, or someone else's — but neither should own a second copy
+// of the wizard.
 //
 // It owns no training logic at all. It collects answers, hands them to
 // generateProgram (src/lib/generator.js) and renders what comes back. Nothing is

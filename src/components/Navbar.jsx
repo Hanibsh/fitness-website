@@ -9,14 +9,22 @@ import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
 import ThemeToggle from './ThemeToggle'
 
+// `match` is every path a link stands for, so it stays lit across its whole
+// section: Log over the log and injuries (its two tabs), Programs over your
+// splits, their days and Import — not only on its own address.
 const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/tools', label: 'Tools' },
-  { to: '/exercises', label: 'Exercises' },
-  { to: '/log', label: 'Log' },
-  { to: '/programs', label: 'Programs' },
-  { to: '/contact', label: 'Contact' },
+  { to: '/', label: 'Home', match: ['/', '/dashboard'], exact: true },
+  { to: '/tools', label: 'Tools', match: ['/tools'] },
+  { to: '/exercises', label: 'Exercises', match: ['/exercises'] },
+  { to: '/log', label: 'Log', match: ['/log', '/injuries'] },
+  { to: '/calendar', label: 'Calendar', match: ['/calendar'] },
+  { to: '/programs', label: 'Programs', match: ['/programs', '/split', '/import'] },
+  { to: '/contact', label: 'Contact', match: ['/contact'] },
 ]
+
+function isCurrent(link, pathname) {
+  return link.match.some((p) => pathname === p || (!link.exact && pathname.startsWith(`${p}/`)))
+}
 
 // The account link's label: the nickname if set, otherwise the name part of
 // the email.
@@ -49,28 +57,32 @@ export default function Navbar() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
 
-          {/* Tighter between md and lg: signed in, "Dashboard", your name and
-              (for the coach) Clients only just fit at 768px. */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
-          {navLinks.map(({ to, label }) => (
+          {/* The full row from 1024px; the menu below that. Seven links plus a
+              signed-in name and (for the coach) Clients don't fit a 768px bar —
+              six only just did. gap-6 at every width: measured with the widest
+              signed-in bar (coach, "Clients" spelled out, a full 150px name),
+              gap-8 left 14px at 1280px and gap-6 leaves ~70px. */}
+          <div className="hidden lg:flex items-center gap-6">
+          {navLinks.map((link) => (
             <Link
-              key={to}
-              to={to}
+              key={link.to}
+              to={link.to}
+              aria-current={isCurrent(link, location.pathname) ? 'page' : undefined}
               className={`text-[13px] tracking-wide no-underline transition-colors ${
-                location.pathname === to
+                isCurrent(link, location.pathname)
                   ? 'text-text-primary font-medium'
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              {to === '/' && user ? 'Dashboard' : label}
+              {link.to === '/' && user ? 'Dashboard' : link.label}
             </Link>
           ))}
 
           {supabase && (
             user ? (
               <div className="flex items-center gap-3">
-                {/* Icon only until lg: at 768px the bar has ~35px to spare once
-                    you're signed in, and the word would push it over. */}
+                {/* Icon only until xl: at 1024px the row is full once you're
+                    signed in, and the word would push it over. */}
                 {isCoach && (
                   <Link
                     to="/coach"
@@ -80,8 +92,8 @@ export default function Navbar() {
                       onCoach ? 'text-text-primary font-medium' : 'text-text-muted hover:text-text-primary'
                     }`}
                   >
-                    <Users className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-                    <span className="hidden lg:inline">Clients</span>
+                    <Users className="w-4 h-4 xl:w-3.5 xl:h-3.5" />
+                    <span className="hidden xl:inline">Clients</span>
                   </Link>
                 )}
                 <Link
@@ -116,7 +128,7 @@ export default function Navbar() {
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={isOpen}
-          className="md:hidden text-text-primary bg-transparent border-none cursor-pointer"
+          className="lg:hidden text-text-primary bg-transparent border-none cursor-pointer"
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -129,19 +141,20 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-cream-dark border-b border-border overflow-hidden"
+            className="lg:hidden bg-cream-dark border-b border-border overflow-hidden"
           >
             <div className="px-6 py-4 flex flex-col gap-4">
-              {navLinks.map(({ to, label }) => (
+              {navLinks.map((link) => (
                 <Link
-                  key={to}
-                  to={to}
+                  key={link.to}
+                  to={link.to}
                   onClick={() => setIsOpen(false)}
+                  aria-current={isCurrent(link, location.pathname) ? 'page' : undefined}
                   className={`text-sm no-underline ${
-                    location.pathname === to ? 'text-text-primary font-medium' : 'text-text-muted'
+                    isCurrent(link, location.pathname) ? 'text-text-primary font-medium' : 'text-text-muted'
                   }`}
                 >
-                  {to === '/' && user ? 'Dashboard' : label}
+                  {link.to === '/' && user ? 'Dashboard' : link.label}
                 </Link>
               ))}
 

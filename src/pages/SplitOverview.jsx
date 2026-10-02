@@ -26,7 +26,7 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function SplitOverview() {
   const {
     program, update, isActive, setActiveRoutine, deleteRoutine, isWeekly, todayWeekdayIndex, pointerIndex, highlightIndex,
-    mode = 'own', client = null, basePath = `/split/${program.id}`, listPath = '/log/split', listLabel = 'Back to your splits',
+    mode = 'own', client = null, basePath = `/split/${program.id}`, listPath = '/programs', listLabel = 'Back to programs',
   } = useOutletContext()
   const own = mode !== 'client'
   const navigate = useNavigate()

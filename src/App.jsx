@@ -21,11 +21,9 @@ const CalorieDeficit = lazy(() => import('./pages/tools/CalorieDeficit'))
 const FFMICalculator = lazy(() => import('./pages/tools/FFMICalculator'))
 const MuscleGainPotential = lazy(() => import('./pages/tools/MuscleGainPotential'))
 const WorkoutTracker = lazy(() => import('./pages/WorkoutTracker'))
-const TrainingSplit = lazy(() => import('./pages/TrainingSplit'))
 const SplitLayout = lazy(() => import('./pages/SplitLayout'))
 const SplitOverview = lazy(() => import('./pages/SplitOverview'))
 const SplitDay = lazy(() => import('./pages/SplitDay'))
-const GenerateSplit = lazy(() => import('./pages/GenerateSplit'))
 const ImportSplit = lazy(() => import('./pages/ImportSplit'))
 // The coach's client area — only reachable on the coach's account (CoachLayout).
 const CoachLayout = lazy(() => import('./pages/CoachLayout'))
@@ -70,17 +68,19 @@ function App() {
         <Route path="/exercises/group/:cat/:sub" element={<ExerciseCategory />} />
         <Route path="/exercises/:id" element={<ExerciseDetail />} />
         <Route path="/log" element={<WorkoutTracker />} />
-        <Route path="/log/split" element={<TrainingSplit />} />
+        {/* The split list and the generator live on Programs now (the log is
+            sessions and injuries); their old addresses still land there. */}
+        <Route path="/log/split" element={<Navigate to="/programs" replace />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/injuries" element={<Injuries />} />
         <Route path="/injuries/:id" element={<Injuries />} />
-        {/* One split, three levels: the list at /log/split, this split's days as
+        {/* One split, three levels: the list on /programs, this split's days as
             cards, then one day's exercises. Nested so SplitLayout holds the
             split's data across the transition instead of refetching per page. */}
         {/* Ahead of /split/:id on purpose — a static segment out-ranks the
             dynamic one, so "generate" never reaches SplitLayout the way "new"
             deliberately does. */}
-        <Route path="/split/generate" element={<GenerateSplit />} />
+        <Route path="/split/generate" element={<Navigate to="/programs?start=build" replace />} />
         <Route path="/import" element={<ImportSplit />} />
         <Route path="/split/:id" element={<SplitLayout />}>
           <Route index element={<SplitOverview />} />
@@ -97,7 +97,7 @@ function App() {
             <Route path="day/:dayId" element={<SplitDay />} />
           </Route>
         </Route>
-        <Route path="/routine" element={<Navigate to="/log/split" replace />} />
+        <Route path="/routine" element={<Navigate to="/programs" replace />} />
         <Route path="/routine/:id" element={<LegacyRoutineRedirect />} />
         <Route path="/account" element={<Account />} />
         <Route path="/profile" element={<Account />} />

@@ -77,8 +77,6 @@ function labelFor(path, signedIn) {
   const p = path.split('?')[0]
   if (p === '/' || p === '/dashboard') return signedIn ? 'dashboard' : 'home'
   if (p === '/log') return 'workout log'
-  if (p === '/log/split') return 'training splits'
-  if (p.startsWith('/split/generate')) return 'the split generator'
   if (p.startsWith('/split/')) return 'your split'
   if (p === '/calendar') return 'calendar'
   if (p.startsWith('/injuries')) return 'injuries'

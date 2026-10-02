@@ -17,8 +17,8 @@ export default function ImportSplit() {
   const { addRoutine, setActiveRoutine, loading } = useProgramsState()
   const [makeActive, setMakeActive] = useState(true)
   const [error, setError] = useState('')
-  // Linked from the split list and the profile — back goes to whichever.
-  const back = useReturnLink('import', { to: '/log/split', label: 'Back to training splits' })
+  // Linked from Programs and the profile — back goes to whichever.
+  const back = useReturnLink('import', { to: '/programs', label: 'Back to programs' })
 
   async function importIt({ program, profile: patch }) {
     setError('')

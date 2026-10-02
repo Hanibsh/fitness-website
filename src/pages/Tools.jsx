@@ -10,7 +10,7 @@ const tools = [
     desc: 'Track every session set by set — reps, weight, and your training history.',
   },
   {
-    to: '/log/split',
+    to: '/programs',
     icon: CalendarRange,
     title: 'Training split',
     desc: 'Plan the split your log follows — days, exercises and rep targets, fixed week or rotating.',
