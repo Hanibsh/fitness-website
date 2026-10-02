@@ -51,9 +51,9 @@ export default function ImportSplit() {
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Import a split</h1>
           <p className="text-text-muted text-[15px] mb-10 leading-relaxed">
-            Paste a split that was exported as text — from this site, or sent to you by your coach. You&apos;ll see
-            every day and every profile detail it holds before anything is saved, and you choose which profile
-            details to keep.
+            Open the .txt file you were sent, or paste its text — a program from your coach, or one exported from
+            this site. You&apos;ll see every day and every profile detail it holds before anything is saved, and
+            you choose which profile details to keep.
           </p>
 
           <div className="bg-white border border-border p-5 sm:p-7">

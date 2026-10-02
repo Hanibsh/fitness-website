@@ -8,6 +8,7 @@ import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { canBuildFromHistory } from '../lib/splitFromHistory'
 import ConfirmModal from '../components/ConfirmModal'
 import BuildSplitModal from '../components/BuildSplitModal'
+import StartSplitChoices from '../components/StartSplitChoices'
 import LogTabs from '../components/LogTabs'
 import { useCoachAccess } from '../lib/useClientsState'
 
@@ -112,39 +113,25 @@ export default function TrainingSplit() {
           {loading ? (
             <p className="text-[13px] text-text-muted">Loading…</p>
           ) : programsState.programs.length === 0 ? (
-            <div className="bg-white border border-border p-7 text-center">
+            <div>
               <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Start a split</h2>
-              <p className="text-[13px] text-text-muted mb-6">
-                Answer a few questions and we&apos;ll build one around your week — or lay it out yourself.
+              <p className="text-[13px] text-text-muted mb-5">
+                Have one built around your week, bring in the program you were sent, or lay it out yourself.
               </p>
-              <button
-                onClick={() => navigate('/split/generate')}
-                className="inline-flex items-center gap-2 bg-text-primary text-cream font-medium px-6 py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
-              >
-                <Sparkles className="w-4 h-4" /> Generate a split for me
-              </button>
-              <div className="mt-4 flex items-center justify-center gap-x-4 gap-y-2 flex-wrap">
+              {/* The same three ways in as the Programs page. */}
+              <StartSplitChoices
+                onBuild={() => navigate('/split/generate')}
+                onImport={() => navigate('/import')}
+                onManual={createSplit}
+              />
+              {canBuild && (
                 <button
-                  onClick={createSplit}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                  onClick={() => setBuilding(true)}
+                  className="inline-flex items-center gap-1.5 mt-4 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Start one from scratch
+                  <Wand2 className="w-3.5 h-3.5" /> Or build one from my recent workouts
                 </button>
-                <button
-                  onClick={() => navigate('/import')}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
-                >
-                  <Upload className="w-3.5 h-3.5" /> Import one from text
-                </button>
-                {canBuild && (
-                  <button
-                    onClick={() => setBuilding(true)}
-                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
-                  >
-                    <Wand2 className="w-3.5 h-3.5" /> Build one from my recent workouts
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           ) : (
             <>
