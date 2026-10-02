@@ -11,7 +11,7 @@ import ImportReview from '../components/ImportReview'
 import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, CLIENT_NAME_MAX } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
-import { convertWeight } from '../lib/workoutStats'
+import { convertMassText, convertLengthText } from '../lib/units'
 
 // One client: the programs written for them, and everything about them the
 // generator and the export read. Every field is optional except the name, and
@@ -76,15 +76,14 @@ export default function ClientDetail() {
   // implies, so switching unit CONVERTS them rather than relabelling them.
   function switchUnit(next) {
     if (next === unit) return
-    const valid = (v) => v !== '' && v != null && Number.isFinite(Number(v))
-    const round1 = (n) => Math.round(n * 10) / 10
-    const length = (v) => (valid(v) ? String(next === 'lbs' ? Math.round((Number(v) / 2.54) * 100) / 100 : round1(Number(v) * 2.54)) : v)
+    const toImperial = next === 'lbs'
+    const length = (v) => convertLengthText(v, toImperial)
     edit((c) => ({
       ...c,
       profile: {
         ...c.profile,
         unit: next,
-        bodyweight: valid(c.profile.bodyweight) ? String(round1(convertWeight(Number(c.profile.bodyweight), unit, next))) : c.profile.bodyweight,
+        bodyweight: convertMassText(c.profile.bodyweight, toImperial),
         height: length(c.profile.height),
         wrist: length(c.profile.wrist),
         ankle: length(c.profile.ankle),

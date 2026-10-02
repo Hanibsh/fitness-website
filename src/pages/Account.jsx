@@ -10,7 +10,7 @@ import {
   WRIST_BOUNDS, ANKLE_BOUNDS, BODY_FAT_BOUNDS, STEPS_BOUNDS, DIETS, MAX_TRAINING_YEARS,
 } from '../lib/profileFields'
 import { nearestBodyFatLabel } from '../lib/bodyFat'
-import { convertWeight } from '../lib/workoutStats'
+import { convertMassText, convertLengthText } from '../lib/units'
 import { asset } from '../lib/assets'
 import { trainingYearsFromStart } from '../lib/profilePrefill'
 import FocusPicker from '../components/FocusPicker'
@@ -25,7 +25,6 @@ const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
 const MAX_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.min
 const MIN_START_YEAR = NOW_YEAR - MAX_TRAINING_YEARS
 
-const round1 = (n) => Math.round(n * 10) / 10
 
 // Whether an optional field's typed value is unusable: blank is fine, anything
 // else has to be a number within the bounds.
@@ -131,11 +130,9 @@ export default function Account() {
   // them — otherwise a saved 80 kg would quietly turn into 80 lbs.
   function switchUnit(next) {
     if (next === unit) return
-    const valid = (v) => v !== '' && Number.isFinite(Number(v))
-    // Inches keep two decimals so switching back lands on the same cm (180 →
-    // 70.87 → 180, where one decimal would come back as 180.1).
-    const length = (v) => (valid(v) ? String(next === 'lbs' ? Math.round((Number(v) / 2.54) * 100) / 100 : round1(Number(v) * 2.54)) : v)
-    setBodyweight((v) => (valid(v) ? String(round1(convertWeight(Number(v), unit, next))) : v))
+    const toImperial = next === 'lbs'
+    const length = (v) => convertLengthText(v, toImperial)
+    setBodyweight((v) => convertMassText(v, toImperial))
     setHeight(length)
     setWrist(length)
     setAnkle(length)

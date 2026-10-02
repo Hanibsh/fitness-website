@@ -6,6 +6,7 @@ import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import SearchField from '../../components/SearchField'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { convertMassText } from '../../lib/units'
 import { lifts, CATEGORY_ORDER, zoneColors5, zoneColors6, matchTier } from '../../lib/strengthStandards'
 
 const inputBounds = {
@@ -31,6 +32,19 @@ export default function StrengthStandards() {
     if (p.sex) setSex(p.sex)
     if (p.weight != null) setBodyweight((v) => (v === '' ? String(p.weight) : v))
   })
+
+  // Switching unit converts what's typed rather than relabelling it — 80 kg
+  // is 176.4 lbs, not 80 lbs.
+  // The result on screen is written in the old unit, so it goes until recalculated.
+  function switchUnit(next) {
+    prefill.touch()
+    if (next === unit) return
+    const toImperial = next === 'imperial'
+    setBodyweight((v) => convertMassText(v, toImperial))
+    setLifted((v) => convertMassText(v, toImperial))
+    setUnit(next)
+    setResult(null)
+  }
 
   function calculate() {
     const bw = parseFloat(bodyweight), w = parseFloat(lifted), r = parseInt(reps)
@@ -99,8 +113,8 @@ export default function StrengthStandards() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg)')}
-              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs)')}
+              {toggle(unit === 'metric', () => switchUnit('metric'), 'Metric (kg)')}
+              {toggle(unit === 'imperial', () => switchUnit('imperial'), 'Imperial (lbs)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">

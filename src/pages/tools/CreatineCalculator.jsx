@@ -6,6 +6,7 @@ import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { convertMassText } from '../../lib/units'
 import { asset } from '../../lib/assets'
 
 const inputBounds = {
@@ -28,6 +29,16 @@ export default function CreatineCalculator() {
     if (p.bodyFat != null) setBodyFat(p.bodyFat)
     if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
   })
+
+  // Switching unit converts what's typed rather than relabelling it — 80 kg
+  // is 176.4 lbs, not 80 lbs.
+  function switchUnit(next) {
+    prefill.touch()
+    if (next === unit) return
+    const toImperial = next === 'imperial'
+    setWeight((v) => convertMassText(v, toImperial))
+    setUnit(next)
+  }
 
   function calculate() {
     const w = parseFloat(weight)
@@ -69,8 +80,8 @@ export default function CreatineCalculator() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg)')}
-              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs)')}
+              {toggle(unit === 'metric', () => switchUnit('metric'), 'Metric (kg)')}
+              {toggle(unit === 'imperial', () => switchUnit('imperial'), 'Imperial (lbs)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">

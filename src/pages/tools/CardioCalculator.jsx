@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { convertMassText } from '../../lib/units'
 import {
   CARDIO_ACTIVITIES, activityById, netKcalPerMin, netKcalPerMinFromHR, HR_BOUNDS, OUTDOOR_RUN_FROM_KMH,
   stairLevelToSpm, stairSpmToLevel, strokeById, splitToWatts, wattsToSplit,
@@ -108,7 +109,9 @@ export default function CardioCalculator() {
   function pickUnit(next) {
     prefill.touch()
     if (next === unit) return
-    // Carry the typed speed across so the walk itself doesn't change.
+    // Carry the typed weight and speed across, so neither the person nor the
+    // walk changes — 80 kg is 176.4 lbs, not 80 lbs.
+    setWeight((v) => convertMassText(v, next === 'imperial'))
     const s = parseFloat(speed)
     if (s) setSpeed(String(round1(next === 'imperial' ? kmhToMph(s) : mphToKmh(s))))
     setUnit(next)

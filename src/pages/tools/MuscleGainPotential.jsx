@@ -6,6 +6,7 @@ import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { convertLengthText } from '../../lib/units'
 import { MAX_TRAINING_YEARS } from '../../lib/profileFields'
 import { asset } from '../../lib/assets'
 
@@ -47,6 +48,20 @@ export default function MuscleGainPotential() {
     if (p.ankle != null) setAnkle((v) => (v === '' ? String(p.ankle) : v))
     if (p.years != null) setYears((v) => (v === '' ? String(p.years) : v))
   })
+
+  // Switching unit converts what's typed rather than relabelling it — 80 kg
+  // is 176.4 lbs, not 80 lbs.
+  // The result on screen is written in the old unit, so it goes until recalculated.
+  function switchUnit(next) {
+    prefill.touch()
+    if (next === unit) return
+    const toImperial = next === 'imperial'
+    setHeight((v) => convertLengthText(v, toImperial))
+    setWrist((v) => convertLengthText(v, toImperial))
+    setAnkle((v) => convertLengthText(v, toImperial))
+    setUnit(next)
+    setResult(null)
+  }
 
   function calculate() {
     const h = parseFloat(height), w = parseFloat(wrist), a = parseFloat(ankle), y = parseFloat(years)
@@ -114,8 +129,8 @@ export default function MuscleGainPotential() {
 
           <div className="bg-white border border-border p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (cm)')}
-              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (in)')}
+              {toggle(unit === 'metric', () => switchUnit('metric'), 'Metric (cm)')}
+              {toggle(unit === 'imperial', () => switchUnit('imperial'), 'Imperial (in)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">

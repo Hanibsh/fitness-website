@@ -6,6 +6,7 @@ import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { convertMassText, convertLengthText } from '../../lib/units'
 import { asset } from '../../lib/assets'
 import { proteinRange, macroSplit, macroLimits, shiftMacro, MACRO_STEP_PCT, FAT_CEILING_PCT, CARB_NOTE_BELOW_G } from '../../lib/macros'
 import { macroFoods, foodKcal } from '../../data/macroFoods'
@@ -118,6 +119,17 @@ export default function TDEECalculator() {
   }, (log) => {
     if (log.trainingHours != null) setWorkoutHours((v) => (v === '' ? String(log.trainingHours) : v))
   })
+
+  // Switching unit converts what's typed rather than relabelling it — 80 kg
+  // is 176.4 lbs, not 80 lbs.
+  function switchUnit(next) {
+    prefill.touch()
+    if (next === unit) return
+    const toImperial = next === 'imperial'
+    setWeight((v) => convertMassText(v, toImperial))
+    setHeight((v) => convertLengthText(v, toImperial))
+    setUnit(next)
+  }
 
   function calculate() {
     const w = parseFloat(weight), h = parseFloat(height), a = parseInt(age)
@@ -311,8 +323,8 @@ export default function TDEECalculator() {
 
           <div className="bg-white border border-border p-5 sm:p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle(unit === 'metric', () => { prefill.touch(); setUnit('metric') }, 'Metric (kg/cm)')}
-              {toggle(unit === 'imperial', () => { prefill.touch(); setUnit('imperial') }, 'Imperial (lbs/in)')}
+              {toggle(unit === 'metric', () => switchUnit('metric'), 'Metric (kg/cm)')}
+              {toggle(unit === 'imperial', () => switchUnit('imperial'), 'Imperial (lbs/in)')}
               <UnitHelp />
             </div>
             <div className="flex gap-3">
