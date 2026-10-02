@@ -87,6 +87,7 @@ export default function FFMICalculator() {
   const prefill = usePrefillEffect((p) => {
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setBodyFat(bodyFatBounds[p.sex].default) }
+    if (p.bodyFat != null) setBodyFat(p.bodyFat)
     if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
     if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
   })
@@ -172,7 +173,7 @@ export default function FFMICalculator() {
                 max={bodyFatBounds[sex].max}
                 step={1}
                 value={bodyFat}
-                onChange={e => setBodyFat(Number(e.target.value))}
+                onChange={e => { prefill.touch(); setBodyFat(Number(e.target.value)) }}
                 style={{ backgroundImage: `linear-gradient(to right, var(--color-text-primary) ${((bodyFat - bodyFatBounds[sex].min) / (bodyFatBounds[sex].max - bodyFatBounds[sex].min)) * 100}%, var(--color-cream) 0%)` }}
                 className="w-full h-2 border border-border appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-text-primary [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-text-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-text-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
               />

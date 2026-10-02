@@ -32,6 +32,9 @@ export default function CalorieDeficit() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  // TDEE isn't asked for on the profile: it's worked out from it (and the
+  // training hours in the log) with the TDEE calculator's own formula, once
+  // everything that formula needs is known.
   const prefill = usePrefillEffect((p) => {
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) {
@@ -39,8 +42,15 @@ export default function CalorieDeficit() {
       setBodyFat(bodyFatBounds[p.sex].default)
       setTargetBodyFat(bodyFatBounds[p.sex].default - 5)
     }
+    if (p.bodyFat != null) {
+      setBodyFat(p.bodyFat)
+      setTargetBodyFat(Math.max(bodyFatBounds[p.sex || 'male'].min, p.bodyFat - 5))
+    }
     if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
+  }, (log) => {
+    if (log.tdee != null) setTdee((v) => (v === '' ? String(log.tdee) : v))
   })
+  const tdeeFromProfile = prefill.logTdee != null && tdee === String(prefill.logTdee)
 
   function calculate() {
     const w = parseFloat(weight), t = parseFloat(tdee)
@@ -129,7 +139,7 @@ export default function CalorieDeficit() {
               {toggle(sex === 'male', () => { prefill.touch(); setSex('male'); setBodyFat(bodyFatBounds.male.default); setTargetBodyFat(bodyFatBounds.male.default - 5) }, 'Male')}
               {toggle(sex === 'female', () => { prefill.touch(); setSex('female'); setBodyFat(bodyFatBounds.female.default); setTargetBodyFat(bodyFatBounds.female.default - 5) }, 'Female')}
             </div>
-            <PrefillNote from={prefill.from} />
+            <PrefillNote from={prefill.from} log={prefill.logTdee != null} />
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Your current body fat %</label>
@@ -138,7 +148,7 @@ export default function CalorieDeficit() {
                 <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex, bodyFat)}</span>
                 <span className="text-2xl font-medium text-text-primary">{bodyFat}%</span>
               </div>
-              {bfSlider(bodyFat, e => setBodyFat(Number(e.target.value)), 'Current body fat percentage')}
+              {bfSlider(bodyFat, e => { prefill.touch(); setBodyFat(Number(e.target.value)) }, 'Current body fat percentage')}
               <div className="flex justify-between text-[11px] text-text-light mt-2">
                 <span>{bodyFatBounds[sex].min}%</span>
                 <span>{bodyFatBounds[sex].max}%</span>
@@ -151,7 +161,7 @@ export default function CalorieDeficit() {
                 <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex, targetBodyFat)}</span>
                 <span className="text-2xl font-medium text-text-primary">{targetBodyFat}%</span>
               </div>
-              {bfSlider(targetBodyFat, e => setTargetBodyFat(Number(e.target.value)), 'Target body fat percentage')}
+              {bfSlider(targetBodyFat, e => { prefill.touch(); setTargetBodyFat(Number(e.target.value)) }, 'Target body fat percentage')}
               <div className="flex justify-between text-[11px] text-text-light mt-2">
                 <span>{bodyFatBounds[sex].min}%</span>
                 <span>{bodyFatBounds[sex].max}%</span>
@@ -168,7 +178,11 @@ export default function CalorieDeficit() {
                 <input type="number" min={inputBounds.tdee.min} max={inputBounds.tdee.max} value={tdee} onChange={e => setTdee(e.target.value)} placeholder="2500" className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
             </div>
-            <p className="text-[12px] text-text-light -mt-4">Don't know your TDEE? Use the <Link to="/tools/tdee" className="text-text-primary no-underline hover:text-accent-hover">TDEE calculator</Link> first.</p>
+            {tdeeFromProfile ? (
+              <p className="text-[12px] text-text-light -mt-4">TDEE worked out from your profile and logged sessions. See the breakdown in the <Link to="/tools/tdee" className="text-text-primary no-underline hover:text-accent-hover">TDEE calculator</Link>.</p>
+            ) : (
+              <p className="text-[12px] text-text-light -mt-4">Don't know your TDEE? Use the <Link to="/tools/tdee" className="text-text-primary no-underline hover:text-accent-hover">TDEE calculator</Link> first.</p>
+            )}
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">How fast do you want to do this?</label>

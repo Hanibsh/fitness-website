@@ -61,6 +61,35 @@ export const HEIGHT_BOUNDS = {
 // Age bounds (matched to the calculators); birth-year range is derived from these.
 export const AGE_BOUNDS = { min: 10, max: 100 }
 
+// Frame measurements for the muscle-potential calculator, keyed like
+// HEIGHT_BOUNDS (cm with kg, inches with lbs) and matched to its bounds.
+export const WRIST_BOUNDS = {
+  kg: { min: 10, max: 25, label: 'cm' },
+  lbs: { min: 4, max: 10, label: 'in' },
+}
+export const ANKLE_BOUNDS = {
+  kg: { min: 15, max: 30, label: 'cm' },
+  lbs: { min: 6, max: 12, label: 'in' },
+}
+
+// Body fat is the same range for both sexes (lib/bodyFat), so one pair does.
+export const BODY_FAT_BOUNDS = { min: 4, max: 65 }
+
+// Matched to the TDEE calculator's steps field.
+export const STEPS_BOUNDS = { min: 0, max: 50000 }
+
+// What the protein calculator distinguishes, and nothing finer — vegetarian
+// would need its own protein-quality model before it could mean anything.
+export const DIETS = [
+  { value: 'omnivore', label: 'Omnivore' },
+  { value: 'vegan', label: 'Vegan' },
+]
+export const DIET_VALUES = DIETS.map((d) => d.value)
+
+// How far back "Started training" can go. Matched to the muscle-potential
+// calculator's years-trained bounds, so a saved year is always a valid input.
+export const MAX_TRAINING_YEARS = 60
+
 // Muscles to bring up (`profiles.focus_muscles`): the split generator's focus,
 // kept on the profile so every new split starts from it. Offered over the
 // muscles a split actually programs first, then anything else the engine

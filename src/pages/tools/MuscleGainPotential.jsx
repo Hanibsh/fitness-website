@@ -6,13 +6,14 @@ import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
+import { MAX_TRAINING_YEARS } from '../../lib/profileFields'
 import { asset } from '../../lib/assets'
 
 const inputBounds = {
   height: { metric: { min: 100, max: 250 }, imperial: { min: 39, max: 98 } },
   wrist: { metric: { min: 10, max: 25 }, imperial: { min: 4, max: 10 } },
   ankle: { metric: { min: 15, max: 30 }, imperial: { min: 6, max: 12 } },
-  years: { min: 0, max: 30 },
+  years: { min: 0, max: MAX_TRAINING_YEARS },
 }
 
 const targetBfDefault = { male: 10, female: 18 }
@@ -36,12 +37,15 @@ export default function MuscleGainPotential() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
-  // Unit first — a cm height would fail the imperial bounds. Wrist, ankle and
-  // years trained aren't on the profile, so they stay manual.
+  // Unit first — a cm height (or wrist, or ankle) would fail the imperial
+  // bounds. Years trained come from the profile's "Started training" year.
   const prefill = usePrefillEffect((p) => {
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setTargetBf(targetBfDefault[p.sex]) }
     if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
+    if (p.wrist != null) setWrist((v) => (v === '' ? String(p.wrist) : v))
+    if (p.ankle != null) setAnkle((v) => (v === '' ? String(p.ankle) : v))
+    if (p.years != null) setYears((v) => (v === '' ? String(p.years) : v))
   })
 
   function calculate() {

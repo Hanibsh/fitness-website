@@ -44,6 +44,16 @@ create table if not exists public.profiles (
   -- focus, so every new split starts from it. Validated by the app
   -- (profileFields.js cleanFocus); unknown names are ignored on read.
   focus_muscles text[],
+  -- Calculator inputs, kept here so they're entered once instead of on every
+  -- tool (profilePrefill.js hands them out). Wrist and ankle are stored in the
+  -- `unit` system like height; body fat is a whole percent. Training start is a
+  -- year so "years trained" keeps counting by itself, the way birth_year does.
+  body_fat numeric,
+  wrist numeric,
+  ankle numeric,
+  daily_steps int,
+  diet text check (diet in ('omnivore', 'vegan')),
+  training_start_year int,
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.
   coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
@@ -62,6 +72,12 @@ alter table public.profiles add column if not exists days_per_week int;
 alter table public.profiles add column if not exists session_minutes int;
 alter table public.profiles add column if not exists equipment text;
 alter table public.profiles add column if not exists focus_muscles text[];
+alter table public.profiles add column if not exists body_fat numeric;
+alter table public.profiles add column if not exists wrist numeric;
+alter table public.profiles add column if not exists ankle numeric;
+alter table public.profiles add column if not exists daily_steps int;
+alter table public.profiles add column if not exists diet text;
+alter table public.profiles add column if not exists training_start_year int;
 
 alter table public.profiles enable row level security;
 

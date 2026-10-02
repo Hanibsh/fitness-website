@@ -7,7 +7,12 @@ import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
 import {
   GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS, cleanFocus,
+  WRIST_BOUNDS, ANKLE_BOUNDS, BODY_FAT_BOUNDS, STEPS_BOUNDS, DIETS, MAX_TRAINING_YEARS,
 } from '../lib/profileFields'
+import { nearestBodyFatLabel } from '../lib/bodyFat'
+import { convertWeight } from '../lib/workoutStats'
+import { asset } from '../lib/assets'
+import { trainingYearsFromStart } from '../lib/profilePrefill'
 import FocusPicker from '../components/FocusPicker'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
@@ -16,6 +21,13 @@ import NumberField from '../components/NumberField'
 const NOW_YEAR = new Date().getFullYear()
 const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
 const MAX_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.min
+const MIN_START_YEAR = NOW_YEAR - MAX_TRAINING_YEARS
+
+const round1 = (n) => Math.round(n * 10) / 10
+
+// Whether an optional field's typed value is unusable: blank is fine, anything
+// else has to be a number within the bounds.
+const outOfBounds = (v, b) => v !== '' && !(Number.isFinite(Number(v)) && Number(v) >= b.min && Number(v) <= b.max)
 
 export default function Account() {
   const { user, signOut, setNickname: setAuthNickname, refreshProfile } = useAuth()
@@ -37,10 +49,19 @@ export default function Account() {
   const [unit, setUnit] = useState('kg')
   const [bodyweight, setBodyweight] = useState('')
   const [height, setHeight] = useState('')
+  const [bodyFat, setBodyFat] = useState('')
+  const [wrist, setWrist] = useState('')
+  const [ankle, setAnkle] = useState('')
+  const [showBfChart, setShowBfChart] = useState(false)
+
+  // Activity & diet
+  const [dailySteps, setDailySteps] = useState('')
+  const [diet, setDiet] = useState('')
 
   // Your training
   const [goal, setGoal] = useState('')
   const [experience, setExperience] = useState('')
+  const [trainingStart, setTrainingStart] = useState('')
   const [equipment, setEquipment] = useState('')
   const [focusMuscles, setFocusMuscles] = useState([])
 
@@ -74,8 +95,14 @@ export default function Account() {
           setUnit(p.unit || 'kg')
           setBodyweight(p.bodyweight != null ? String(p.bodyweight) : '')
           setHeight(p.height != null ? String(p.height) : '')
+          setBodyFat(p.body_fat != null ? String(p.body_fat) : '')
+          setWrist(p.wrist != null ? String(p.wrist) : '')
+          setAnkle(p.ankle != null ? String(p.ankle) : '')
+          setDailySteps(p.daily_steps != null ? String(p.daily_steps) : '')
+          setDiet(p.diet || '')
           setGoal(p.goal || '')
           setExperience(p.experience_level || '')
+          setTrainingStart(p.training_start_year != null ? String(p.training_start_year) : '')
           setEquipment(p.equipment || '')
           setFocusMuscles(cleanFocus(p.focus_muscles))
           setShareData(!!p.share_data)
@@ -94,6 +121,22 @@ export default function Account() {
   }, [user, reloadKey])
 
   function edited() { if (saved) setSaved(false) }
+
+  // Every number on this page is stored in the system the unit implies (kg + cm,
+  // or lbs + inches), so switching unit converts them rather than relabelling
+  // them — otherwise a saved 80 kg would quietly turn into 80 lbs.
+  function switchUnit(next) {
+    if (next === unit) return
+    const valid = (v) => v !== '' && Number.isFinite(Number(v))
+    // Inches keep two decimals so switching back lands on the same cm (180 →
+    // 70.87 → 180, where one decimal would come back as 180.1).
+    const length = (v) => (valid(v) ? String(next === 'lbs' ? Math.round((Number(v) / 2.54) * 100) / 100 : round1(Number(v) * 2.54)) : v)
+    setBodyweight((v) => (valid(v) ? String(round1(convertWeight(Number(v), unit, next))) : v))
+    setHeight(length)
+    setWrist(length)
+    setAnkle(length)
+    setUnit(next)
+  }
 
   async function save() {
     setError('')
@@ -116,6 +159,25 @@ export default function Account() {
         setError(`Height should be between ${b.min} and ${b.max} ${b.label}.`); return
       }
     }
+    if (outOfBounds(bodyFat, BODY_FAT_BOUNDS)) {
+      setError(`Body fat should be between ${BODY_FAT_BOUNDS.min} and ${BODY_FAT_BOUNDS.max}%.`); return
+    }
+    for (const [label, v, bounds] of [['Wrist', wrist, WRIST_BOUNDS], ['Ankle', ankle, ANKLE_BOUNDS]]) {
+      const b = bounds[unit] || bounds.kg
+      if (outOfBounds(v, b)) { setError(`${label} should be between ${b.min} and ${b.max} ${b.label}.`); return }
+    }
+    if (outOfBounds(dailySteps, STEPS_BOUNDS)) {
+      setError(`Daily steps should be between ${STEPS_BOUNDS.min} and ${STEPS_BOUNDS.max.toLocaleString()}.`); return
+    }
+    if (trainingStart !== '') {
+      const y = Number(trainingStart)
+      if (!Number.isInteger(y) || y < MIN_START_YEAR || y > NOW_YEAR) {
+        setError(`The year you started training should be between ${MIN_START_YEAR} and ${NOW_YEAR}.`); return
+      }
+      if (birthYear !== '' && y < Number(birthYear)) {
+        setError('The year you started training is before your birth year.'); return
+      }
+    }
     setSaving(true)
     try {
       await saveProfile(user.id, {
@@ -125,8 +187,14 @@ export default function Account() {
         unit,
         bodyweight: bodyweight === '' ? null : Number(bodyweight),
         height: height === '' ? null : Number(height),
+        body_fat: bodyFat === '' ? null : Number(bodyFat),
+        wrist: wrist === '' ? null : Number(wrist),
+        ankle: ankle === '' ? null : Number(ankle),
+        daily_steps: dailySteps === '' ? null : Number(dailySteps),
+        diet: diet || null,
         goal: goal || null,
         experience_level: experience || null,
+        training_start_year: trainingStart === '' ? null : Number(trainingStart),
         equipment: equipment || null,
         focus_muscles: focusMuscles.length ? focusMuscles : null,
         share_data: shareData,
@@ -158,6 +226,9 @@ export default function Account() {
       {sub && <span className={`block text-[10px] font-normal mt-0.5 ${active ? 'text-cream-60' : 'text-text-light'}`}>{sub}</span>}
     </button>
   )
+
+  // Shown beside "Started training" — also blank while a year is half-typed.
+  const startYears = trainingYearsFromStart(trainingStart)
 
   const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
   const inputCls = 'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
@@ -261,11 +332,20 @@ export default function Account() {
                     <div>
                       <label className="text-[11px] text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">Preferred unit <UnitHelp /></label>
                       <div className="grid grid-cols-2 gap-3">
-                        {choice(unit === 'kg', () => setUnit('kg'), 'Metric (kg)')}
-                        {choice(unit === 'lbs', () => setUnit('lbs'), 'Imperial (lbs)')}
+                        {choice(unit === 'kg', () => switchUnit('kg'), 'Metric (kg/cm)')}
+                        {choice(unit === 'lbs', () => switchUnit('lbs'), 'Imperial (lbs/in)')}
                       </div>
                     </div>
+                  </div>
+                </section>
 
+                {/* ---- Your body ---------------------------------------------------- */}
+                <section>
+                  <h2 className={sectionHeadCls}>Your body</h2>
+                  <p className="text-[13px] text-text-muted -mt-2 mb-4 leading-relaxed">
+                    The calculators fill these in for you, so you only measure once. Update them as they change.
+                  </p>
+                  <div className={cardCls}>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Bodyweight ({unit})</label>
@@ -284,6 +364,84 @@ export default function Account() {
                           placeholder={unit === 'kg' ? '180' : '71'}
                           className={inputCls}
                         />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Body fat (%)</label>
+                      <div className="flex items-center gap-3">
+                        <NumberField
+                          decimal={false}
+                          value={bodyFat}
+                          onValueChange={(v) => { setBodyFat(v); edited() }}
+                          placeholder={sex === 'female' ? '24' : '20'}
+                          className={`${inputCls} max-w-[140px]`}
+                        />
+                        {bodyFat !== '' && !outOfBounds(bodyFat, BODY_FAT_BOUNDS) && (
+                          <span className="text-[13px] text-text-muted">≈ {nearestBodyFatLabel(sex || 'male', Number(bodyFat))}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowBfChart((v) => !v)}
+                        aria-expanded={showBfChart}
+                        className="mt-2 text-[12px] text-text-muted underline underline-offset-2 hover:text-text-primary bg-transparent border-none p-0 cursor-pointer"
+                      >
+                        {showBfChart ? 'Hide the reference chart' : 'Not sure? Compare with the reference chart'}
+                      </button>
+                      {showBfChart && (
+                        <img src={asset('images/bodyfat-chart.jpeg')} alt="Body fat percentage reference chart" className="w-full border border-border mt-3" />
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className={labelCls}>Wrist ({(WRIST_BOUNDS[unit] || WRIST_BOUNDS.kg).label})</label>
+                          <NumberField
+                            value={wrist}
+                            onValueChange={(v) => { setWrist(v); edited() }}
+                            placeholder={unit === 'kg' ? '17' : '6.7'}
+                            className={inputCls}
+                          />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Ankle ({(ANKLE_BOUNDS[unit] || ANKLE_BOUNDS.kg).label})</label>
+                          <NumberField
+                            value={ankle}
+                            onValueChange={(v) => { setAnkle(v); edited() }}
+                            placeholder={unit === 'kg' ? '22' : '8.7'}
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-text-light mt-1.5 leading-relaxed">
+                        For the muscle potential calculator. Wrist just past the bony bump on the outside, ankle at its narrowest point, tape snug but not tight.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* ---- Activity & diet --------------------------------------------- */}
+                <section>
+                  <h2 className={sectionHeadCls}>Activity &amp; diet</h2>
+                  <div className={cardCls}>
+                    <div>
+                      <label className={labelCls}>Daily steps</label>
+                      <NumberField
+                        decimal={false}
+                        value={dailySteps}
+                        onValueChange={(v) => { setDailySteps(v); edited() }}
+                        placeholder="8000"
+                        className={`${inputCls} max-w-[140px]`}
+                      />
+                      <p className="text-[11px] text-text-light mt-1.5">Your usual day. Your phone or watch has a good average. Training hours come from the sessions you log.</p>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Diet</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {DIETS.map((d) => choice(diet === d.value, () => setDiet(diet === d.value ? '' : d.value), d.label))}
                       </div>
                     </div>
                   </div>
@@ -308,6 +466,23 @@ export default function Account() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {EXPERIENCE_LEVELS.map((e) => choice(experience === e.value, () => setExperience(experience === e.value ? '' : e.value), e.label, e.sub))}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Started training</label>
+                      <div className="flex items-center gap-3">
+                        <NumberField
+                          decimal={false}
+                          value={trainingStart}
+                          onValueChange={(v) => { setTrainingStart(v); edited() }}
+                          placeholder={String(NOW_YEAR - 3)}
+                          className={`${inputCls} max-w-[140px]`}
+                        />
+                        {startYears != null && (
+                          <span className="text-[13px] text-text-muted">{startYears === 0 ? 'This year' : `${startYears} year${startYears === 1 ? '' : 's'}`}</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-text-light mt-1.5">The year you started training consistently. Gives the muscle potential calculator your years trained, and keeps counting by itself.</p>
                     </div>
 
                     <div>

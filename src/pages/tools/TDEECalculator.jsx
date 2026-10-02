@@ -9,7 +9,8 @@ import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
 import { proteinRange, macroSplit, macroLimits, shiftMacro, MACRO_STEP_PCT, FAT_CEILING_PCT, CARB_NOTE_BELOW_G } from '../../lib/macros'
 import { macroFoods, foodKcal } from '../../data/macroFoods'
-import { CARDIO_PRESETS, netKcalPerMin, netKcalPerStep, kmhToMph } from '../../lib/cardio'
+import { CARDIO_PRESETS, netKcalPerMin, kmhToMph } from '../../lib/cardio'
+import { estimateTdee } from '../../lib/tdee'
 
 const loseSpeeds = [
   { id: 'lose-slow', label: 'Slow', percent: 0.25 },
@@ -40,11 +41,6 @@ const deficitKcal = (weightKg, percent) => Math.round((weightKg * (percent / 100
 // get genuinely hard to cover; past this point a faster pace has to come from
 // moving more, not eating less.
 const CALORIE_FLOOR = { male: 1500, female: 1400 }
-
-// Lifting's cost as a gross MET (moderate-to-vigorous resistance training).
-// One of those METs is just resting, which BMR already counts, so only the
-// rest goes into the exercise slice — the same net rule as steps and cardio.
-const WORKOUT_MET = 6.3
 
 // A deficit target held at the floor. `moveKcal` is the part of the deficit the
 // floor stops eating from covering, which has to be burned with extra movement.
@@ -107,14 +103,18 @@ export default function TDEECalculator() {
 
   // Seed from the profile. Unit goes first: a height in cm would fail the
   // imperial bounds. Text fields only fill while still empty, so a value typed
-  // before the profile arrived survives.
+  // before the profile arrived survives. Workout hours come from the log.
   const prefill = usePrefillEffect((p) => {
     if (p.goal) setTargetId((v) => v ?? GOAL_DEFAULT_TARGET[p.goal])
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setBodyFat(bodyFatBounds[p.sex].default) }
+    if (p.bodyFat != null) setBodyFat(p.bodyFat)
     if (p.age != null) setAge((v) => (v === '' ? String(p.age) : v))
     if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
     if (p.height != null) setHeight((v) => (v === '' ? String(p.height) : v))
+    if (p.steps != null) setStepsPerDay((v) => (v === '' ? String(p.steps) : v))
+  }, (log) => {
+    if (log.trainingHours != null) setWorkoutHours((v) => (v === '' ? String(log.trainingHours) : v))
   })
 
   function calculate() {
@@ -161,19 +161,9 @@ export default function TDEECalculator() {
     setAdjust({ target: null, kcal: null })
 
     const weightKg = unit === 'imperial' ? w * 0.453592 : w
-
-    const lbm = weightKg * (1 - bodyFat / 100)
-    const sexConstant = sex === 'male' ? 5 : -161
-    const bmrRaw = 370 + 21.6 * lbm + sexConstant
-    const ageDecline = a > 60 ? 0.007 * (a - 60) : 0
-    const bmr = bmrRaw * (1 - ageDecline)
-
     const heightCm = unit === 'imperial' ? h * 2.54 : h
-    const kcalPerStep = netKcalPerStep(weightKg, heightCm, sex)
-    const neat = steps * kcalPerStep
-    const exercise = (hours / 7) * (WORKOUT_MET - 1) * weightKg
-    const tef = 0.1 * (bmr + neat + exercise)
-    const tdee = bmr + neat + exercise + tef
+    const { lbm, bmrRaw, bmr, kcalPerStep, neat, exercise, tef, tdee } =
+      estimateTdee({ weightKg, heightCm, age: a, sex, bodyFat, workoutHours: hours, steps })
 
     setResult({
       lbm: Math.round(lbm),
@@ -320,7 +310,7 @@ export default function TDEECalculator() {
               {toggle(sex === 'male', () => { prefill.touch(); setSex('male'); setBodyFat(bodyFatBounds.male.default) }, 'Male')}
               {toggle(sex === 'female', () => { prefill.touch(); setSex('female'); setBodyFat(bodyFatBounds.female.default) }, 'Female')}
             </div>
-            <PrefillNote from={prefill.from} />
+            <PrefillNote from={prefill.from} log={prefill.fromLog} />
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Estimate your body fat %</label>
@@ -336,7 +326,7 @@ export default function TDEECalculator() {
                 max={bodyFatBounds[sex].max}
                 step={1}
                 value={bodyFat}
-                onChange={e => setBodyFat(Number(e.target.value))}
+                onChange={e => { prefill.touch(); setBodyFat(Number(e.target.value)) }}
                 style={{ backgroundImage: `linear-gradient(to right, var(--color-text-primary) ${((bodyFat - bodyFatBounds[sex].min) / (bodyFatBounds[sex].max - bodyFatBounds[sex].min)) * 100}%, var(--color-cream) 0%)` }}
                 className="w-full h-2 border border-border appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-text-primary [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-text-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-text-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
               />

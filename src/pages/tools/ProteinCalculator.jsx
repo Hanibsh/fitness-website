@@ -64,8 +64,12 @@ export default function ProteinCalculator() {
   const prefill = usePrefillEffect((p) => {
     if (p.unitSystem) setUnit(p.unitSystem)
     if (p.sex) { setSex(p.sex); setBodyFat(bodyFatBounds[p.sex].default) }
+    if (p.bodyFat != null) setBodyFat(p.bodyFat)
     if (p.age != null) setAge((v) => (v === '' ? String(p.age) : v))
     if (p.weight != null) setWeight((v) => (v === '' ? String(p.weight) : v))
+    if (p.vegan != null) setVegan(p.vegan)
+  }, (log) => {
+    if (log.trainingHours != null) setTrainingHours((v) => (v === '' ? String(log.trainingHours) : v))
   })
 
   function calculate() {
@@ -140,7 +144,7 @@ export default function ProteinCalculator() {
               {toggle(sex === 'male', () => { prefill.touch(); setSex('male'); setBodyFat(bodyFatBounds.male.default) }, 'Male')}
               {toggle(sex === 'female', () => { prefill.touch(); setSex('female'); setBodyFat(bodyFatBounds.female.default) }, 'Female')}
             </div>
-            <PrefillNote from={prefill.from} />
+            <PrefillNote from={prefill.from} log={prefill.fromLog} />
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-3">Estimate your body fat %</label>
@@ -156,7 +160,7 @@ export default function ProteinCalculator() {
                 max={bodyFatBounds[sex].max}
                 step={1}
                 value={bodyFat}
-                onChange={e => setBodyFat(Number(e.target.value))}
+                onChange={e => { prefill.touch(); setBodyFat(Number(e.target.value)) }}
                 style={{ backgroundImage: `linear-gradient(to right, var(--color-text-primary) ${((bodyFat - bodyFatBounds[sex].min) / (bodyFatBounds[sex].max - bodyFatBounds[sex].min)) * 100}%, var(--color-cream) 0%)` }}
                 className="w-full h-2 border border-border appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-text-primary [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-text-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-text-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
               />
@@ -183,8 +187,8 @@ export default function ProteinCalculator() {
             </div>
 
             <div className="flex gap-3">
-              {toggle(!vegan, () => setVegan(false), 'Omnivore')}
-              {toggle(vegan, () => setVegan(true), 'Vegan')}
+              {toggle(!vegan, () => { prefill.touch(); setVegan(false) }, 'Omnivore')}
+              {toggle(vegan, () => { prefill.touch(); setVegan(true) }, 'Vegan')}
             </div>
 
             {error && <p className="text-[13px] text-red-600">{error}</p>}
