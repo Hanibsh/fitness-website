@@ -3286,7 +3286,7 @@ export default function WorkoutTracker() {
                   const avgRest = formatRest(sessionAvgRest(session))
                   const duration = formatDuration(session.durationMs)
                   return (
-                    <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border scroll-mt-28">
+                    <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border" style={{ scrollMarginTop: 'calc(7rem + env(safe-area-inset-top, 0px))' }}>
                       <button
                         onClick={() => setOpenSession(session.id)}
                         className="w-full flex items-center justify-between px-6 py-4 bg-transparent border-none cursor-pointer text-left"

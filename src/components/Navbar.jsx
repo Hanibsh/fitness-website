@@ -37,6 +37,7 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-nav backdrop-blur-md border-b border-border">
+      <div className="status-strip" aria-hidden="true" />
       <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link to="/" className="font-heading text-lg font-semibold text-text-primary tracking-tight no-underline">

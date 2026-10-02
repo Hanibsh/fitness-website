@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Free fitness calculators — TDEE, one rep max, protein, strength standards — plus a workout log and 1:1 online coaching with Leon." />
     <meta name="theme-color" content="#FAF9F6" />
+    <!-- iPhone home-screen app: draw the page under the status bar. iOS locks a
+         home-screen app's status-bar colour when it opens and ignores
+         theme-color changes after that, so the theme toggle could never reach
+         it. Translucent, the strip behind the clock is ours (.status-strip in
+         index.css). iOS always draws the clock and battery WHITE in this mode,
+         so that strip stays dark in both themes. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta property="og:title" content="Leon | 1:1 Coaching & Fitness Tools" />
     <meta property="og:description" content="Free fitness calculators and a workout log, plus 1:1 coaching with Leon." />
     <meta property="og:type" content="website" />

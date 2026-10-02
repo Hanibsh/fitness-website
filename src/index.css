@@ -159,6 +159,20 @@ body {
   background-color: var(--color-cream);
   color: var(--color-text-secondary);
   overflow-x: hidden;
+  /* Room for the status bar the iPhone home-screen app draws over the page
+     (black-translucent, see index.html). Zero everywhere else. */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* The strip behind the iPhone status bar in the home-screen app, at the top of
+   the navbar. Dark in BOTH themes on purpose: iOS draws the clock and battery
+   white in translucent mode and won't change that, so a cream strip in light
+   mode would hide them. The same colour as the dark page, so in dark mode it
+   reads as one surface. A fixed hex, not a token — it mustn't flip. Zero
+   height in a browser tab, where the browser owns that space. */
+.status-strip {
+  height: env(safe-area-inset-top, 0px);
+  background-color: #15161a;
 }
 
 ::-webkit-scrollbar {
