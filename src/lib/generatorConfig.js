@@ -382,17 +382,17 @@ export const VOLUME_PREFERENCES = [
   {
     value: 'lower', label: 'Lower', sub: '≤ 12 sets/day', setCap: 12, targetMult: 0.75, rirShift: 0,
     failureSetsPerDay: 2,
-    note: 'Fewer sets, and up to two finishing sets a day taken to failure. The least fatigue to carry, and every set is in the best-return range.',
+    note: 'Fewer sets, up to two last sets a day to failure. The least fatigue.',
   },
   {
     value: 'standard', label: 'Standard', sub: '≤ 16 sets/day', setCap: 16, targetMult: 1, rirShift: 0,
     failureSetsPerDay: 1,
-    note: 'Enough work for steady growth without any one day turning into a slog. One finishing set a day goes to failure.',
+    note: 'Steady growth, no slog days. One last set a day to failure.',
   },
   {
     value: 'higher', label: 'Higher', sub: '≤ 20 sets/day', setCap: 20, targetMult: 1.25, rirShift: 1,
     failureSetsPerDay: 0,
-    note: 'More sets, stopping a little further from failure. A bit more growth at the top end, and noticeably more fatigue.',
+    note: 'More sets, further from failure. A bit more growth, noticeably more fatigue.',
   },
 ]
 export const DEFAULT_VOLUME_PREFERENCE = 'standard'

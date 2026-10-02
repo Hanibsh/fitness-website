@@ -379,10 +379,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
                 </p>
               </>
             ) : (
-              <p className="text-[12px] text-text-light">
-                A rotating cycle: your workouts wait for you, so a missed day moves the plan forward rather
-                than skipping a session.
-              </p>
+              <p className="text-[12px] text-text-light">Miss a day and your workouts wait for you.</p>
             )}
           </section>
 
@@ -390,11 +387,9 @@ export default function SplitWizard({ client = null, onCreate = null }) {
           <section className={cardCls}>
             <h2 className={headCls}>Anything you want to bring up?</h2>
             <p className="text-[12px] text-text-light mb-5">
-              Up to {MAX_FOCUS_MUSCLES}. A muscle you bring up is trained first in the day, while you&apos;re
-              fresh, and on more days of the week — not with more sets piled onto one session. The week&apos;s
-              total stays the same: the other muscles give back what it gains.
-              {client ? ` Saved to ${client.name || 'their'} profile when you save the split.` : user ? ' Saved to your profile when you create the split.' : ''} Leave it empty for a balanced
-              split.
+              Up to {MAX_FOCUS_MUSCLES}. Trained first and more often, without adding to the week. Leave empty
+              for a balanced split.
+              {client ? ` Saved to ${client.name || 'their'} profile.` : user ? ' Saved to your profile.' : ''}
             </p>
             <FocusPicker value={focus} onChange={chooseFocus} />
           </section>
@@ -404,8 +399,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
             <h2 className={headCls}>You and your gym</h2>
             <p className="text-[12px] text-text-light mb-5">
               {profile?.experience_level || profile?.equipment
-                ? `Filled in from ${client ? `${client.name || 'their'}'s` : 'your'} profile — change either just for this split.`
-                : 'Used to filter the exercise pool and set how much volume to start you on.'}
+                ? `From ${client ? `${client.name || 'their'}'s` : 'your'} profile — change it just for this split.`
+                : 'Decides the exercises and how much volume to start with.'}
             </p>
 
             <label className={labelCls}>Training age</label>
@@ -437,7 +432,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
               {CORE_PLACEMENTS.map((p) => choice(core === p.value, () => chooseCore(p.value), p.label, p.sub))}
             </div>
             <p className="text-[12px] text-text-light mb-6 leading-relaxed">
-              Ab sets don&apos;t count toward the day&apos;s sets — they cost next to nothing in fatigue.
+              Ab sets don&apos;t count toward the day&apos;s sets.
             </p>
 
             <label className={labelCls}>Equipment</label>
@@ -446,8 +441,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
             </div>
             <p className="text-[12px] text-text-light leading-relaxed">
               {(equipment || 'gym') === 'gym'
-                ? 'At a full gym the picks lean on stimulus-to-fatigue, loadability and stability — the things a rack, a machine and a cable actually give you. Bands and movements you can’t add weight to are left out.'
-                : 'Bodyweight and bands only. Nothing that needs a gym will appear.'}
+                ? 'Machines, cables and free weights — movements you can keep adding weight to.'
+                : 'Bodyweight and bands only.'}
             </p>
 
             {/* Whether the split names a movement or names the JOB. Either way
@@ -460,8 +455,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
             </div>
             <p className="text-[12px] text-text-light leading-relaxed">
               {openSlots
-                ? 'Every row prescribes a movement path and a set target — “any vertical pull, 3 × 6–10” — and you pick the movement when you get there. The volume is planned the same either way; only the machine is left undecided.'
-                : 'Every row names a movement. Swap any of them in the preview below before you save, or later — before or during a session.'}
+                ? 'Each row names the job — “any vertical pull, 3 × 6–10” — and you pick the machine at the gym.'
+                : 'Swap any movement below before you save, or later.'}
             </p>
           </section>
 
@@ -537,13 +532,13 @@ const CARDIO_HALVES = [
     title: 'On lifting days',
     hint: (some) =>
       some
-        ? 'Last thing after the weights, on the days with the least leg work — walking, stairs, bikes and rowers are leg work too, so this keeps them off leg day.'
-        : 'Last thing after the weights, every lifting day.',
+        ? 'After the weights, on the days with the least leg work.'
+        : 'After the weights, every lifting day.',
   },
   {
     kind: 'rest',
     title: 'On rest days',
-    hint: () => 'Optional on the day: skip it and nothing moves — the rest day still passes on its own.',
+    hint: () => 'Optional on the day — skip it and nothing moves.',
   },
 ]
 
@@ -568,8 +563,7 @@ function CardioSection({ plan, onChange, program, person, client, signedIn }) {
     <section className="bg-white border border-border p-6 sm:p-8">
       <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Cardio</h2>
       <p className="text-[12px] text-text-light mb-5 leading-relaxed">
-        Optional. Set it per session, in minutes or calories — after lifting, on rest days, or both, with more on one
-        than the other if you like. Walking and cycling cost your lifting the least.
+        Optional. Walking and cycling cost your lifting the least.
       </p>
       <div className="space-y-3">
         {CARDIO_HALVES.map(({ kind, title, hint }) => {
@@ -940,8 +934,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
       {edited && (
         <div className="flex items-start gap-3 -mt-4 mb-7">
           <p className="min-w-0 flex-1 text-[12px] text-text-light leading-relaxed">
-            You&apos;ve edited this split. Changing an answer above shows a new week — switch it back and your
-            edits return.
+            Edited. Changing an answer shows a new week; change it back to get your edits.
           </p>
           <button
             type="button"
@@ -1010,10 +1003,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
               </li>
             ))}
           </ul>
-          <p className="text-[11px] text-text-light mb-6 leading-relaxed">
-            Weekly sets down each resistance path. Every one of these is a choice you can change — a slot asks
-            for the path, not the machine.
-          </p>
+          <p className="text-[11px] text-text-light mb-6 leading-relaxed">Weekly sets per movement path.</p>
         </>
       )}
 
@@ -1039,8 +1029,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
       )}
 
       <p className="text-[11px] text-text-light mb-6 leading-relaxed">
-        Graded on the same curve as your dashboard: green is a productive dose, amber is under the useful
-        minimum or past the point it pays for itself.
+        Green is a productive dose; amber is too little or too much.
         {unavailable.length > 0 && (
           <>
             {' '}
@@ -1087,9 +1076,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
         <FileText className="w-4 h-4" /> Export as text or Excel
       </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
-        Nothing is saved until you tap {client ? 'Save' : 'Create'}. Swap any movement above first with{' '}
-        <Repeat className="inline w-3 h-3 align-[-2px]" aria-label="the swap button" /> — and every day, movement, set and
-        rep range stays editable afterwards.
+        Nothing is saved until you tap {client ? 'Save' : 'Create'}, and everything stays editable afterwards.
       </p>
       {exporting && (
         <ExportModal

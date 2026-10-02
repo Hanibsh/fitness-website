@@ -120,10 +120,7 @@ export default function Programs() {
             <>
               <h1 className="font-heading text-4xl md:text-5xl font-medium text-text-primary mb-8 tracking-tight">Your splits</h1>
               <SplitList programs={programs} />
-              <h2 className="font-heading text-2xl font-medium text-text-primary mt-12 mb-2">Start a new split</h2>
-              <p className="text-text-muted text-[14px] mb-6 leading-relaxed">
-                Have one built around your week, bring in the program you were sent, or lay one out yourself.
-              </p>
+              <h2 className="font-heading text-2xl font-medium text-text-primary mt-12 mb-6">Start a new split</h2>
               {choices}
             </>
           ) : (
@@ -132,8 +129,7 @@ export default function Programs() {
                 Your program, three ways.
               </h1>
               <p className="text-text-muted text-[15px] mb-8 leading-relaxed">
-                Have one built around your week, bring in the program you were sent, or lay one out yourself. Free,
-                no account needed, and yours to edit afterwards — every day, movement, set and rep range.
+                Free, no account needed, and yours to edit afterwards.
               </p>
               {choices}
             </>
@@ -142,20 +138,12 @@ export default function Programs() {
           {building && (
             <div ref={wizardRef} className="mt-12" style={{ scrollMarginTop: 'calc(5rem + env(safe-area-inset-top, 0px))' }}>
               <h2 className="font-heading text-2xl font-medium text-text-primary mb-3">Build me a split</h2>
-              <p className="text-text-muted text-[14px] mb-4 leading-relaxed">
-                Tell it how often you train, what you want to bring up and what equipment you have, and it writes
-                the whole thing: which days, which movements, how many sets and what rep range to chase. Every
-                muscle lands on two to three sessions a week, whatever you&apos;re bringing up gets trained more
-                often and while you&apos;re still fresh, and no single day is asked to carry more fatigue than the
-                days around it can absorb.
-              </p>
               <p className="text-text-muted text-[14px] mb-8 leading-relaxed">
-                It&apos;s built on the same exercise database as the rest of the site —{' '}
+                A few questions, then the whole week: days, movements, sets and reps, picked from the{' '}
                 <Link to="/exercises" className="text-text-secondary underline hover:text-text-primary">
-                  every movement in it
-                </Link>{' '}
-                is rated for what it trains, what it costs to recover from and how much growth it buys for that
-                cost.
+                  exercise library
+                </Link>
+                .
               </p>
               <SplitWizard />
             </div>
@@ -166,9 +154,7 @@ export default function Programs() {
           <div className="mt-14 pt-10 border-t border-border text-center">
             <h2 className="font-heading text-2xl font-medium text-text-primary mb-3">Want a person instead?</h2>
             <p className="text-text-muted text-[14px] mb-7 leading-relaxed max-w-md mx-auto">
-              A generated split is a good program. It isn&apos;t someone watching your technique, adjusting when
-              life gets in the way, or telling you the honest thing about your diet. That&apos;s what the 1:1
-              coaching is for.
+              A program can&apos;t watch your technique or adjust when life gets in the way. A coach can.
             </p>
             <Link
               to="/contact"
