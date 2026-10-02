@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Search } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
+import SearchField from '../../components/SearchField'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { lifts, CATEGORY_ORDER, zoneColors5, zoneColors6, matchTier } from '../../lib/strengthStandards'
 
@@ -110,15 +111,7 @@ export default function StrengthStandards() {
 
             <div>
               <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Lift</label>
-              <div className="flex items-center gap-2 bg-cream border border-border px-3 mb-3 focus-within:border-text-primary transition-colors">
-                <Search className="w-4 h-4 text-text-light shrink-0" />
-                <input
-                  value={liftQuery}
-                  onChange={(e) => setLiftQuery(e.target.value)}
-                  placeholder="Search lifts…"
-                  className="flex-1 min-w-0 bg-transparent py-2.5 text-text-primary text-[13px] outline-none"
-                />
-              </div>
+              <SearchField value={liftQuery} onChange={setLiftQuery} placeholder="Search lifts…" className="mb-3" />
               <div className="border border-border max-h-60 overflow-y-auto">
                 {groups.length === 0 ? (
                   <p className="px-3 py-4 text-[12px] text-text-light">No lifts match “{liftQuery.trim()}”.</p>

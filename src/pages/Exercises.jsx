@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Search, X, Home, Dumbbell } from 'lucide-react'
+import { Home, Dumbbell } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
+import { useSearchQuery } from '../lib/useSearchQuery'
 import {
   allByCategory,
   bankCategories,
@@ -14,6 +15,7 @@ import {
 import { AT_HOME_EQUIPMENT, GYM_EQUIPMENT, ALL_EQUIPMENT } from '../data/equipmentGroups'
 import ExerciseCard from '../components/ExerciseCard'
 import InteractiveAnatomy from '../components/InteractiveAnatomy'
+import SearchField from '../components/SearchField'
 
 // "At home" and "Full gym" are macros over the same equipment Set the gear chips
 // write to, so one predicate still filters everything. Full gym selects all five
@@ -52,7 +54,9 @@ function CategoryPill({ cat }) {
 }
 
 export default function Exercises() {
-  const [query, setQuery] = useState('')
+  // In the URL, so back from an exercise lands on the same results — and so a
+  // muscle hub's "search the whole bank" link can hand its query over.
+  const [query, setQuery] = useSearchQuery()
   const [equip, setEquip] = useState(() => new Set())
   const [types, setTypes] = useState(() => new Set())
 
@@ -120,25 +124,13 @@ export default function Exercises() {
         </motion.div>
 
         {/* Search */}
-        <div className="relative max-w-md mx-auto mb-4">
-          <Search className="w-4 h-4 text-text-light absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search exercises, muscles…"
-            className="w-full bg-white border border-border rounded-full pl-10 pr-9 py-2.5 text-[14px] text-text-primary placeholder:text-text-light focus:outline-none focus:border-border-hover"
-          />
-          {hasQuery && (
-            <button
-              onClick={() => setQuery('')}
-              aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <SearchField
+          variant="pill"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search exercises, muscles…"
+          className="max-w-md mx-auto mb-4"
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-2">

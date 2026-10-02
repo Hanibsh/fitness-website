@@ -96,13 +96,28 @@ function isBodyweight(equipment, name) {
 
 // ---- Build the pool --------------------------------------------------------
 
-// Normalise a string for searching: lowercase and treat hyphens as spaces, so
-// "push-down" and "push down" both match. We also append a compacted copy (all
-// non-alphanumerics stripped) so a one-word query like "pushdown" still hits.
+// Normalise a string for searching: its words, lowercased, split on anything
+// that isn't a letter or digit — so "Push-Down (Rope)" is push / down / rope.
 function buildHaystack(parts) {
-  const base = parts.filter(Boolean).join(' ').toLowerCase().replace(/-/g, ' ')
-  const compact = base.replace(/[^a-z0-9]/g, '')
-  return `${base} ${compact}`
+  return parts.filter(Boolean).join(' ').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+}
+
+// Does a query word match? It has to START a word — "row" finds rows, not
+// nar-ROW grip; "chin" finds chin-ups, not ma-CHIN-e — but it may run across
+// the gaps between words, so "pushdown" still finds "Push-Down" and "pullup"
+// finds "Pull-Up". (Matching anywhere inside a word made "chin" return 60
+// exercises and "lat" 178.)
+function hasWord(words, t) {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]
+    if (w.startsWith(t)) return true
+    if (t.startsWith(w)) {
+      let joined = w
+      for (let j = i + 1; j < words.length && joined.length < t.length; j++) joined += words[j]
+      if (joined.startsWith(t)) return true
+    }
+  }
+  return false
 }
 
 // Library entries from the DB — the real, ID'd movements. Compounds sort ahead
@@ -191,7 +206,8 @@ function tokenize(q) {
     .map((t) => ABBREVIATIONS[t] || t)
     .join(' ')
     .split(/\s+/)
-    .map((t) => t.replace(/-/g, ''))
+    // Same alphabet as the haystack: "farmer's" → farmers, "z-bar" → zbar.
+    .map((t) => t.replace(/[^a-z0-9]/g, ''))
     .filter(Boolean)
 }
 
@@ -259,8 +275,9 @@ function relevance(item, q, qCompact, tokens, isRecent) {
   if (name === q) s += 1000
   else if (name.startsWith(q)) s += 600
   else if (name.includes(q) || (qCompact && nameCompact.includes(qCompact))) s += 300
+  const nameWords = buildHaystack([item.name])
   let inName = 0
-  for (const t of tokens) if (name.includes(t) || nameCompact.includes(t)) inName += 1
+  for (const t of tokens) if (hasWord(nameWords, t)) inName += 1
   s += inName * 40
   if (inName === tokens.length) s += 120 // every query word is in the name itself
   if (isRecent) s += 250 // the user's own logged exercises come first
@@ -284,8 +301,45 @@ export function searchExercises(query, recentNames = []) {
   const qCompact = q.replace(/[^a-z0-9]/g, '')
   const tokens = tokenize(q)
   return pool
-    .filter((m) => tokens.every((t) => m._hay.includes(t)))
+    .filter((m) => tokens.every((t) => hasWord(m._hay, t)))
     .map((m) => ({ m, score: relevance(m, q, qCompact, tokens, recentSet.has(m.name.toLowerCase())) }))
     .sort((a, b) => b.score - a.score)
     .map((x) => x.m)
+}
+
+// ---- Search within a list --------------------------------------------------
+//
+// The same matching and ranking as searchExercises, but over a list the page
+// already has (a muscle hub's rows, an injury's implicated movements, the
+// names someone has logged) instead of the whole pool — so "rdl" or "db"
+// means the same thing in every search box on the site.
+
+function searchWithin(list, query, itemOf, { ranked = true } = {}) {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return list
+  const qCompact = q.replace(/[^a-z0-9]/g, '')
+  const tokens = tokenize(q)
+  const hits = []
+  list.forEach((x, i) => {
+    const item = itemOf(x)
+    if (item && tokens.every((t) => hasWord(item._hay, t))) hits.push({ x, i, score: relevance(item, q, qCompact, tokens, false) })
+  })
+  // Unranked keeps the caller's order — for lists whose order means something
+  // on its own (an injury's movements run worst-first).
+  if (ranked) hits.sort((a, b) => b.score - a.score || a.i - b.i)
+  return hits.map((h) => h.x)
+}
+
+// DB rows (anything carrying an exercise id, via `getId`), best match first.
+export function filterExercises(rows, query, { getId = (r) => r.id, ranked = true } = {}) {
+  return searchWithin(rows, query, (r) => BY_ID.get(getId(r)), { ranked })
+}
+
+// Plain exercise names — e.g. everything in someone's log. A name the library
+// no longer knows (an old custom entry) still matches on its own words.
+export function searchNames(names, query) {
+  return searchWithin(names, query, (n) => {
+    const known = BY_NAME.get(n.trim().toLowerCase())
+    return known || { id: null, name: n, _hay: buildHaystack([n]) }
+  })
 }

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, SearchX } from 'lucide-react'
+import { SearchX } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
 import { useInjuryRisk } from '../lib/useInjuries'
 import InjuryBadge from './InjuryBadge'
+import SearchField from './SearchField'
 
 // Searchable exercise picker: filters the exercise library (plus the user's
 // own previously-logged exercises, surfaced first) as you type. Picking is
@@ -38,18 +39,18 @@ export default function ExercisePicker({ onSelect, recentNames = [], onlyCategor
 
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex items-center gap-2 bg-cream border border-border px-3 focus-within:border-text-primary transition-colors">
-        <Search className="w-4 h-4 text-text-light shrink-0" />
-        <input
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { e.preventDefault(); pick(matches[0]) } }}
-          maxLength={60}
-          placeholder={placeholder}
-          className="flex-1 min-w-0 bg-transparent py-3 text-text-primary text-[13px] outline-none"
-        />
-      </div>
+      <SearchField
+        value={query}
+        onChange={(v) => { setQuery(v); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && matches[0]) { e.preventDefault(); pick(matches[0]) }
+          else if (e.key === 'Escape') setOpen(false)
+        }}
+        maxLength={60}
+        placeholder={placeholder}
+        padY="py-3"
+      />
 
       {open && (
         <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-border max-h-64 overflow-y-auto shadow-lg">

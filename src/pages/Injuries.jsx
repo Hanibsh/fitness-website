@@ -11,6 +11,8 @@ import {
 } from '../lib/injuries'
 import { REHAB_KINDS, REHAB_RECENT_DAYS } from '../lib/injuryConfig'
 import { setVerdict, setInjuryStatus } from '../lib/workoutStore'
+import { filterExercises } from '../lib/exerciseLibrary'
+import { useSearchQuery } from '../lib/useSearchQuery'
 import LogTabs from '../components/LogTabs'
 import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
@@ -20,12 +22,17 @@ import StatusChip from '../components/StatusChip'
 import ProgressChart from '../components/ProgressChart'
 import InjuryForm from '../components/InjuryForm'
 import ConfirmModal from '../components/ConfirmModal'
+import SearchField from '../components/SearchField'
 
 const POOL = exercisesDb.exercises
 
 // How many implicated movements to show before "see all". Enough to cover what
 // you'd actually reach for on a training day, short enough to read.
 const MOVEMENT_PREVIEW = 18
+
+// Below this many movements the whole list fits on screen, so a search box
+// would only be in the way.
+const MOVEMENT_SEARCH_MIN = 8
 
 const TIER_TONE = { high: 'red', moderate: 'amber', low: 'muted' }
 
@@ -329,10 +336,18 @@ function RehabCard({ injury, onLog, onRemove }) {
 // the return-to-training checklist you want anyway.
 function Movements({ injury, onVerdict }) {
   const [expanded, setExpanded] = useState(false)
+  // In the URL so marking a movement after checking its page (back button)
+  // doesn't make you type the search again.
+  const [query, setQuery] = useSearchQuery()
   const rows = useMemo(() => implicatedExercises(injury, POOL), [injury])
-  const judged = rows.filter((r) => r.verdict)
-  const unjudged = rows.filter((r) => !r.verdict)
-  const shown = expanded ? unjudged : unjudged.slice(0, MOVEMENT_PREVIEW)
+  const searching = query.trim().length > 0
+  // Filtered in place, not re-ranked: the list runs worst-first and that order
+  // still matters among the matches. Searching also lifts the preview cap —
+  // you're looking for one movement, and it may well be number 40.
+  const visible = searching ? filterExercises(rows, query, { getId: (r) => r.db.id, ranked: false }) : rows
+  const judged = visible.filter((r) => r.verdict)
+  const unjudged = visible.filter((r) => !r.verdict)
+  const shown = expanded || searching ? unjudged : unjudged.slice(0, MOVEMENT_PREVIEW)
 
   if (!rows.length) {
     return <p className="text-[13px] text-text-muted">Nothing in the exercise database loads this area hard enough to flag.</p>
@@ -390,6 +405,19 @@ function Movements({ injury, onVerdict }) {
         Our estimate of what loads this area, worst first. It’s inferred from which muscles each
         movement trains, so it will get some wrong — mark them and the guess stops applying.
       </p>
+      {rows.length >= MOVEMENT_SEARCH_MIN && (
+        <SearchField
+          value={query}
+          onChange={setQuery}
+          placeholder="Search movements…"
+          className="mb-3"
+        />
+      )}
+      {searching && !visible.length && (
+        <p className="text-[13px] text-text-muted py-2">
+          No movement on this list matches “{query.trim()}”. Anything not listed isn’t flagged for this injury.
+        </p>
+      )}
       {judged.length > 0 && (
         <div className="mb-4">
           <p className="text-[10px] uppercase tracking-wider text-text-light mb-1">You’ve judged these</p>
@@ -397,7 +425,7 @@ function Movements({ injury, onVerdict }) {
         </div>
       )}
       {shown.map((row) => <Row key={row.db.id} row={row} />)}
-      {unjudged.length > MOVEMENT_PREVIEW && (
+      {!searching && unjudged.length > MOVEMENT_PREVIEW && (
         <button
           onClick={() => setExpanded((v) => !v)}
           className="mt-3 bg-transparent border-none p-0 text-[12px] text-text-muted hover:text-text-primary cursor-pointer underline"

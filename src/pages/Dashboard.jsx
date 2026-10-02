@@ -37,6 +37,7 @@ import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
+import ExerciseSelect from '../components/ExerciseSelect'
 import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
 import NicknameModal from '../components/NicknameModal'
@@ -1138,16 +1139,12 @@ export default function Dashboard() {
         <Card>
           <SectionHeading icon={TrendingUp}>Exercise progress</SectionHeading>
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <select
+            <ExerciseSelect
               value={selectedExercise}
-              onChange={(e) => setSelectedExercise(e.target.value)}
-              aria-label="Select exercise"
-              className="bg-cream border border-border px-3 py-2 text-[13px] text-text-primary outline-none focus:border-text-primary cursor-pointer max-w-full"
-            >
-              {exerciseNames.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+              options={exerciseNames}
+              onChange={setSelectedExercise}
+              className="w-full sm:w-80"
+            />
           </div>
           {selectedExercise && (
             <div className="-mx-1">
