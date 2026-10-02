@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, LogOut, Check } from 'lucide-react'
+import { ArrowLeft, LogOut, Check, Users } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
@@ -17,6 +17,7 @@ import FocusPicker from '../components/FocusPicker'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
+import { useCoachAccess } from '../lib/useClientsState'
 
 const NOW_YEAR = new Date().getFullYear()
 const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
@@ -31,6 +32,7 @@ const outOfBounds = (v, b) => v !== '' && !(Number.isFinite(Number(v)) && Number
 
 export default function Account() {
   const { user, signOut, setNickname: setAuthNickname, refreshProfile } = useAuth()
+  const { isCoach } = useCoachAccess()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -287,6 +289,12 @@ export default function Account() {
                   <span className="text-[11px] font-medium text-cream bg-text-primary px-2 py-0.5">Coaching client</span>
                 )}
               </div>
+              {/* The coach's own account only (profiles.is_coach). */}
+              {isCoach && (
+                <Link to="/coach" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline mb-3 transition-colors">
+                  <Users className="w-4 h-4" /> Your clients
+                </Link>
+              )}
 
               <p className="text-[13px] text-text-muted mb-10 leading-relaxed">
                 Everything here is optional — fill in whatever helps us tailor your training, and skip or clear the rest anytime. Tap a selected option again to clear it.

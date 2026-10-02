@@ -11,7 +11,7 @@
 // broken table degrades to a working local-only feature instead of a dead page.
 // `useAuth` is the same source the other pages read.
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from 'react'
 import exercisesDb from '../data/exercises.json'
 import { useAuth } from './auth'
 import {
@@ -21,8 +21,18 @@ import {
 import { injuryRiskMap } from './injuries'
 import { fetchRemoteInjuries, upsertRemoteInjury, deleteRemoteInjury } from './workoutRemote'
 
+// Whose injuries a screen is about. Unset everywhere except the coach's client
+// pages, which wrap themselves in it with the CLIENT's list (none, for now —
+// a client's injuries are free text, see lib/clients.js) so the swap panels,
+// the path picker, the exercise picker's badges and the generator steer around
+// the client's body, never the coach's. Inside a scope nothing is loaded or
+// written: the save surface is inert.
+export const InjuryScope = createContext(null)
+export const NO_INJURIES = []
+
 export function useInjuries() {
   const { user } = useAuth()
+  const scoped = useContext(InjuryScope)
   const [injuries, setInjuries] = useState([])
   const [loading, setLoading] = useState(true)
   const [remoteOk, setRemoteOk] = useState(!!user)
@@ -32,6 +42,7 @@ export function useInjuries() {
   remoteOkRef.current = remoteOk
 
   useEffect(() => {
+    if (scoped) return
     let cancelled = false
     async function load() {
       setLoading(true)
@@ -49,7 +60,7 @@ export function useInjuries() {
     }
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [user, scoped])
 
   // Upsert. Returns the saved injury so a caller can chain on it (create then
   // navigate to it, log a check-in then show the new pain).
@@ -92,6 +103,10 @@ export function useInjuries() {
   const unlogRehab = useCallback((injury, entryId) =>
     save(removeRehab(injury, entryId)), [save])
 
+  if (scoped) {
+    const inert = async (x) => x
+    return { injuries: scoped, loading: false, save: inert, remove: inert, checkin: inert, logRehab: inert, unlogRehab: inert, syncedRemotely: false }
+  }
   return { injuries, loading, save, remove, checkin, logRehab, unlogRehab, syncedRemotely: !!user && remoteOk }
 }
 

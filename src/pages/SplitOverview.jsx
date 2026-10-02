@@ -17,8 +17,17 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 // SUMMARISES its day — how much work, how taxing, which muscles — and tapping it
 // opens that day on its own page with room to edit. This page edits the split;
 // the day page edits the day.
+//
+// The same page edits a coach's CLIENT split (ClientSplitLayout): `mode` is
+// 'client' there, and everything about running a split yourself — Active, Set
+// as today, Up next — is left out, since a client's split is never yours to
+// follow. `basePath`/`listPath` say where this split and its list live.
 export default function SplitOverview() {
-  const { program, update, isActive, setActiveRoutine, deleteRoutine, isWeekly, todayWeekdayIndex, pointerIndex, highlightIndex } = useOutletContext()
+  const {
+    program, update, isActive, setActiveRoutine, deleteRoutine, isWeekly, todayWeekdayIndex, pointerIndex, highlightIndex,
+    mode = 'own', client = null, basePath = `/split/${program.id}`, listPath = '/log/split', listLabel = 'Back to your splits',
+  } = useOutletContext()
+  const own = mode !== 'client'
   const navigate = useNavigate()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -30,18 +39,18 @@ export default function SplitOverview() {
   function addDay(kind) {
     const day = createDay(kind)
     update((p) => appendDay(p, day))
-    if (kind === 'train') navigate(`/split/${program.id}/day/${day.id}`)
+    if (kind === 'train') navigate(`${basePath}/day/${day.id}`)
   }
 
   function handleDelete() {
     deleteRoutine(program.id)
-    navigate('/log/split')
+    navigate(listPath)
   }
 
   return (
     <>
-      <Link to="/log/split" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to your splits
+      <Link to={listPath} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" /> {listLabel}
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
@@ -49,7 +58,9 @@ export default function SplitOverview() {
         <div className="bg-white border border-border p-5 sm:p-6 mb-6">
           <div className="flex items-center justify-between gap-3 mb-2">
             <label className="text-[11px] uppercase tracking-wider text-text-light">Split name</label>
-            {isActive ? (
+            {!own ? (
+              client && <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5 truncate max-w-[50%]">For {client.name}</span>
+            ) : isActive ? (
               <span className="text-[10px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Active split</span>
             ) : (
               <button
@@ -90,7 +101,7 @@ export default function SplitOverview() {
         <AnimatePresence initial={false}>
           {program.days.map((day, dayIndex) => {
             const stats = day.kind === 'rest' ? null : dayStats(day)
-            const dayHref = `/split/${program.id}/day/${day.id}`
+            const dayHref = `${basePath}/day/${day.id}`
             return (
               <motion.div
                 key={day.id}
@@ -136,7 +147,7 @@ export default function SplitOverview() {
                         )
                       ) : dayIndex === pointerIndex ? (
                         <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Up next</span>
-                      ) : (
+                      ) : !own ? null : (
                         <button
                           onClick={() => update((p) => setPointerToDay(p, day.id))}
                           aria-label={`Set ${day.name || 'this day'} as today`}
@@ -180,7 +191,7 @@ export default function SplitOverview() {
         </button>
       </motion.div>
 
-      {exporting && <ExportModal program={program} onClose={() => setExporting(false)} />}
+      {exporting && <ExportModal program={program} client={client} onClose={() => setExporting(false)} />}
 
       {confirmDelete && (
         <ConfirmModal

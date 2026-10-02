@@ -427,6 +427,21 @@ export function saveExportPrefs(prefs) {
   write(EXPORT_PREFS_KEY, prefs)
 }
 
+// ---- Coach: client list ----------------------------------------------------
+// The coach's clients (lib/clients.js shape), one array. This device's copy of
+// what the `clients` table holds for the signed-in coach — see useClientsState.
+const CLIENTS_KEY = 'leon_clients'
+
+export function getClients() {
+  const c = read(CLIENTS_KEY, [])
+  return Array.isArray(c) ? c : []
+}
+
+export function saveClients(clients) {
+  write(CLIENTS_KEY, clients)
+  return clients
+}
+
 // ---- Specialization blocks -------------------------------------------------
 // A list of muscle-group specialization phases, stored as one JSON array (the
 // block logic lives in blocks.js; the per-muscle summary in dashboard.js).

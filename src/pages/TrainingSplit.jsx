@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2, Sparkles } from 'lucide-react'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2, Sparkles, Users } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
@@ -9,6 +9,7 @@ import { canBuildFromHistory } from '../lib/splitFromHistory'
 import ConfirmModal from '../components/ConfirmModal'
 import BuildSplitModal from '../components/BuildSplitModal'
 import LogTabs from '../components/LogTabs'
+import { useCoachAccess } from '../lib/useClientsState'
 
 // The training-split list: every saved split, reorderable, with Set active /
 // Duplicate / Delete, and a tap-through to the full-page editor. Creating or
@@ -24,6 +25,7 @@ export default function TrainingSplit() {
   // falling back to this device's copy.
   const [history, setHistory] = useState([])
   const [building, setBuilding] = useState(false)
+  const { isCoach } = useCoachAccess()
 
   useEffect(() => {
     let cancelled = false
@@ -96,9 +98,16 @@ export default function TrainingSplit() {
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-3">Training split</h1>
-          <p className="text-text-muted text-[15px] mb-10">
+          <p className={`text-text-muted text-[15px] ${isCoach ? 'mb-4' : 'mb-10'}`}>
             The split your log follows — days, exercises and rep targets, as a fixed week or a rotating cycle. The log surfaces today’s session and pre-fills what you planned.
           </p>
+          {/* Programs for other people live apart from yours — the coach's own
+              account only (profiles.is_coach). */}
+          {isCoach && (
+            <Link to="/coach" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline mb-10 transition-colors">
+              <Users className="w-4 h-4" /> Programs for your clients
+            </Link>
+          )}
 
           {loading ? (
             <p className="text-[13px] text-text-muted">Loading…</p>

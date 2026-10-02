@@ -1,0 +1,353 @@
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { ArrowLeft, Plus, Sparkles, FileText, Trash2, X } from 'lucide-react'
+import NumberField from '../components/NumberField'
+import FocusPicker from '../components/FocusPicker'
+import ConfirmModal from '../components/ConfirmModal'
+import ExportModal from '../components/ExportModal'
+import { blankClientProgram, withProgram, withoutProgram, CLIENT_NAME_MAX } from '../lib/clients'
+import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
+import { convertWeight } from '../lib/workoutStats'
+
+// One client: the programs written for them, and everything about them the
+// generator and the export read. Every field is optional except the name, and
+// everything saves as you type — a blank field is simply left out of the
+// export, never printed empty.
+export default function ClientDetail() {
+  const { clientId } = useParams()
+  const { clients, updateClient, deleteClient } = useOutletContext()
+  const navigate = useNavigate()
+  const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
+  const [exporting, setExporting] = useState(null) // program | null
+  const client = clients.find((c) => c.id === clientId) || null
+
+  if (!client) {
+    return (
+      <>
+        <BackLink to="/coach" label="All clients" />
+        <p className="text-[13px] text-text-muted">That client couldn’t be found — they may have been deleted.</p>
+      </>
+    )
+  }
+
+  const edit = (mutator) => updateClient(client.id, mutator)
+  const setField = (key, value) => edit((c) => ({ ...c, profile: { ...c.profile, [key]: value } }))
+  const p = client.profile || {}
+  const unit = p.unit === 'lbs' ? 'lbs' : 'kg'
+
+  function newBlank() {
+    const program = blankClientProgram(client)
+    updateClient(client.id, (c) => withProgram(c, program), { now: true })
+    navigate(`/coach/${client.id}/split/${program.id}`)
+  }
+
+  // Same rule as the profile page: numbers are stored in the system the unit
+  // implies, so switching unit CONVERTS them rather than relabelling them.
+  function switchUnit(next) {
+    if (next === unit) return
+    const valid = (v) => v !== '' && v != null && Number.isFinite(Number(v))
+    const round1 = (n) => Math.round(n * 10) / 10
+    const length = (v) => (valid(v) ? String(next === 'lbs' ? Math.round((Number(v) / 2.54) * 100) / 100 : round1(Number(v) * 2.54)) : v)
+    edit((c) => ({
+      ...c,
+      profile: {
+        ...c.profile,
+        unit: next,
+        bodyweight: valid(c.profile.bodyweight) ? String(round1(convertWeight(Number(c.profile.bodyweight), unit, next))) : c.profile.bodyweight,
+        height: length(c.profile.height),
+        wrist: length(c.profile.wrist),
+        ankle: length(c.profile.ankle),
+      },
+    }))
+  }
+
+  const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
+  const fieldCls = 'bg-cream border border-border px-3 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
+  const inputCls = `w-full ${fieldCls}`
+  const cardCls = 'bg-white border border-border p-5 sm:p-7'
+  const headCls = 'font-heading text-xl font-medium text-text-primary mb-1'
+  // Tap a picked option again to clear it — the same convention as the profile.
+  const choices = (key, options) => (
+    // Same grids as the profile page: three across only from sm up ("Intermediate"
+    // doesn't fit a third of a phone), four across for the four goals.
+    <div className={`grid gap-2 ${options.length === 3 ? 'grid-cols-1 sm:grid-cols-3' : options.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
+      {options.map((o) => {
+        const on = p[key] === o.value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => setField(key, on ? '' : o.value)}
+            aria-pressed={on}
+            className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors text-center leading-tight ${
+              on ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+  const number = (key, label, opts = {}) => (
+    <div>
+      <label className={labelCls} htmlFor={`client-${key}`}>{label}</label>
+      <NumberField
+        id={`client-${key}`}
+        decimal={opts.decimal !== false}
+        value={p[key] ?? ''}
+        onValueChange={(v) => setField(key, v)}
+        placeholder={opts.placeholder}
+        className={inputCls}
+      />
+    </div>
+  )
+  const lengthUnit = HEIGHT_BOUNDS[unit].label
+  const fmt = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const shapeLabel = (prog) => {
+    const train = prog.days.filter((d) => d.kind !== 'rest').length
+    if (!prog.days.length) return 'Empty — add days'
+    const days = `${train} training day${train !== 1 ? 's' : ''}`
+    return prog.days.length === 7 ? `Fixed week · ${days}` : `${prog.days.length}-day rotation · ${days}`
+  }
+
+  return (
+    <>
+      <BackLink to="/coach" label="All clients" />
+
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        {/* ---- Who ----------------------------------------------------------- */}
+        <div className={cardCls}>
+          <label className={labelCls} htmlFor="client-name">Client</label>
+          <input
+            id="client-name"
+            value={client.name}
+            maxLength={CLIENT_NAME_MAX}
+            onChange={(e) => edit((c) => ({ ...c, name: e.target.value }))}
+            placeholder="Their name"
+            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+          />
+          <p className="text-[11px] text-text-light mt-2">Added {fmt(client.createdAt)} · their name heads every export.</p>
+        </div>
+
+        {/* ---- Programs ------------------------------------------------------ */}
+        <section className={cardCls}>
+          <h2 className={headCls}>Programs</h2>
+          <p className="text-[12px] text-text-light mb-4">
+            Built from {client.name ? `${client.name}'s` : 'their'} profile below — never your log, injuries or notes.
+          </p>
+          {client.programs.length > 0 && (
+            <div className="border border-border divide-y divide-border mb-4">
+              {client.programs.map((prog) => (
+                <div key={prog.id} className="flex items-center gap-2 px-3 py-2.5">
+                  <Link to={`/coach/${client.id}/split/${prog.id}`} className="flex-1 min-w-0 no-underline group">
+                    <span className="block text-[13px] font-medium text-text-primary break-words group-hover:text-accent-hover transition-colors">{prog.name}</span>
+                    <span className="block text-[11px] text-text-light mt-0.5 truncate">{shapeLabel(prog)}</span>
+                  </Link>
+                  <button
+                    onClick={() => setExporting(prog)}
+                    disabled={!prog.days.some((d) => d.kind !== 'rest')}
+                    aria-label={`Export ${prog.name}`}
+                    title="Export as text or Excel"
+                    className="shrink-0 text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setConfirm({ kind: 'program', program: prog })}
+                    aria-label={`Delete ${prog.name}`}
+                    title="Delete"
+                    className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/coach/${client.id}/generate`}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2.5 no-underline text-[13px] hover:bg-accent-hover transition-colors"
+            >
+              <Sparkles className="w-4 h-4" /> Generate a program
+            </Link>
+            <button
+              onClick={newBlank}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Blank program
+            </button>
+          </div>
+        </section>
+
+        {/* ---- Profile ------------------------------------------------------- */}
+        <section className={cardCls}>
+          <h2 className={headCls}>Profile</h2>
+          <p className="text-[12px] text-text-light mb-6">
+            All optional. What&apos;s filled in seeds the generator and heads the export; what&apos;s blank is left out.
+          </p>
+          <div className="space-y-6">
+            <div>
+              <span className={labelCls}>Units</span>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ value: 'kg', label: 'kg · cm' }, { value: 'lbs', label: 'lbs · in' }].map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => switchUnit(o.value)}
+                    aria-pressed={unit === o.value}
+                    className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${
+                      unit === o.value ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className={labelCls}>Sex</span>
+              {choices('sex', [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }])}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {number('birth_year', 'Birth year', { decimal: false, placeholder: '1998' })}
+              {number('training_start_year', 'Training since', { decimal: false, placeholder: '2021' })}
+              {number('height', `Height (${lengthUnit})`)}
+              {number('bodyweight', `Bodyweight (${unit})`)}
+              {number('body_fat', 'Body fat (%)')}
+              {number('daily_steps', 'Steps a day', { decimal: false })}
+              {number('wrist', `Wrist (${WRIST_BOUNDS[unit].label})`)}
+              {number('ankle', `Ankle (${WRIST_BOUNDS[unit].label})`)}
+            </div>
+            <div>
+              <span className={labelCls}>Goal</span>
+              {choices('goal', GOALS)}
+            </div>
+            <div>
+              <span className={labelCls}>Training age</span>
+              {choices('experience_level', EXPERIENCE_LEVELS)}
+            </div>
+            <div>
+              <span className={labelCls}>Equipment</span>
+              {choices('equipment', EQUIPMENT_PRESETS)}
+            </div>
+            <div>
+              <span className={labelCls}>Diet</span>
+              {choices('diet', DIETS)}
+            </div>
+            <div>
+              <span className={labelCls}>Muscles to bring up</span>
+              <FocusPicker value={cleanFocus(p.focus_muscles)} onChange={(next) => setField('focus_muscles', next)} />
+            </div>
+          </div>
+        </section>
+
+        {/* ---- For the export --------------------------------------------- */}
+        <section className={cardCls}>
+          <h2 className={headCls}>In the export</h2>
+          <p className="text-[12px] text-text-light mb-6">
+            Said in the text and Excel files, under their profile — anything the fields above don&apos;t cover.
+          </p>
+          <div className="space-y-6">
+            <div>
+              <label className={labelCls} htmlFor="client-injuries">Injuries / limitations</label>
+              <input
+                id="client-injuries"
+                value={client.injuries}
+                onChange={(e) => edit((c) => ({ ...c, injuries: e.target.value.slice(0, 200) }))}
+                placeholder="Left knee — no deep knee flexion"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <span className={labelCls}>Your own lines</span>
+              <div className="space-y-2">
+                {client.extra.map((x, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      value={x.label}
+                      onChange={(e) => edit((c) => ({ ...c, extra: c.extra.map((y, j) => (j === i ? { ...y, label: e.target.value.slice(0, 40) } : y)) }))}
+                      placeholder="Sleep"
+                      aria-label="Line label"
+                      className={`${fieldCls} w-[38%] min-w-0 shrink-0`}
+                    />
+                    <input
+                      value={x.value}
+                      onChange={(e) => edit((c) => ({ ...c, extra: c.extra.map((y, j) => (j === i ? { ...y, value: e.target.value.slice(0, 200) } : y)) }))}
+                      placeholder="7 hours"
+                      aria-label="Line value"
+                      className={`${fieldCls} flex-1 min-w-0`}
+                    />
+                    <button
+                      onClick={() => edit((c) => ({ ...c, extra: c.extra.filter((_, j) => j !== i) }))}
+                      aria-label="Remove line"
+                      className="shrink-0 text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => edit((c) => ({ ...c, extra: [...c.extra, { label: '', value: '' }] }))}
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer p-0 mt-3 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add a line
+              </button>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="client-notes">Notes from Leon</label>
+              <textarea
+                id="client-notes"
+                value={client.notes}
+                onChange={(e) => edit((c) => ({ ...c, notes: e.target.value.slice(0, 2000) }))}
+                rows={4}
+                placeholder="Anything else they should know — how to progress, when to check in…"
+                className={`${inputCls} resize-y`}
+              />
+            </div>
+          </div>
+        </section>
+
+        <button
+          onClick={() => setConfirm({ kind: 'client' })}
+          className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Delete this client
+        </button>
+      </motion.div>
+
+      {exporting && <ExportModal program={exporting} client={client} onClose={() => setExporting(null)} />}
+
+      {confirm?.kind === 'client' && (
+        <ConfirmModal
+          title={`Delete ${client.name || 'this client'}?`}
+          message="This removes their profile and every program written for them. This can't be undone."
+          onConfirm={() => {
+            deleteClient(client.id)
+            navigate('/coach')
+          }}
+          onClose={() => setConfirm(null)}
+        />
+      )}
+      {confirm?.kind === 'program' && (
+        <ConfirmModal
+          title={`Delete "${confirm.program.name}"?`}
+          message="This removes all its days and exercises. This can't be undone."
+          onConfirm={() => updateClient(client.id, (c) => withoutProgram(c, confirm.program.id), { now: true })}
+          onClose={() => setConfirm(null)}
+        />
+      )}
+    </>
+  )
+}
+
+function BackLink({ to, label }) {
+  return (
+    <Link to={to} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+      <ArrowLeft className="w-3.5 h-3.5" /> {label}
+    </Link>
+  )
+}

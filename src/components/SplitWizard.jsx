@@ -49,7 +49,14 @@ const TIER_BAR = {
 const LOAD_DOT = { fresh: 'bg-green-500', moderate: 'bg-amber-400', high: 'bg-red-500' }
 
 
-export default function SplitWizard() {
+//
+// It also writes programs for the coach's clients (`client` + `onCreate`, from
+// the coach area). Then the client is the person: their profile seeds the
+// answers, there's no log history to read (theirs isn't here) and no injuries
+// of yours (the page scopes them away — InjuryScope), your active split never
+// reopens anything, and Create hands the program to `onCreate` instead of
+// adding it to your own splits.
+export default function SplitWizard({ client = null, onCreate = null }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { addRoutine, programsState, loading: programsLoading } = useProgramsState()
@@ -94,9 +101,19 @@ export default function SplitWizard() {
   const { injuries } = useInjuries()
 
   // History and profile, loaded the way every other surface loads them: remote
-  // when signed in, this device's copy otherwise.
+  // when signed in, this device's copy otherwise. A client brings their own
+  // profile and has no history here.
+  const clientProfile = client?.profile || null
   useEffect(() => {
     let cancelled = false
+    if (client) {
+      setHistory([])
+      setProfile(clientProfile)
+      if (clientProfile?.experience_level) setExperience(clientProfile.experience_level)
+      if (clientProfile?.equipment) setEquipment(clientProfile.equipment)
+      setLoading(false)
+      return
+    }
     async function load() {
       let sessions = getHistory()
       let p = null
@@ -121,13 +138,13 @@ export default function SplitWizard() {
     }
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [user, client, clientProfile])
 
   // The split the log follows now, and — once it has run the months it was
   // built for — how long it's been going and what it brought up.
   const active = useMemo(
-    () => programsState?.programs?.find((p) => p.id === programsState.activeId) || null,
-    [programsState]
+    () => (client ? null : programsState?.programs?.find((p) => p.id === programsState.activeId) || null),
+    [client, programsState]
   )
   const refresh = useMemo(() => splitRefresh(active), [active])
 
@@ -199,6 +216,7 @@ export default function SplitWizard() {
   function create() {
     if (!built) return
     const program = name.trim() ? setProgramName(built.program, name.trim()) : built.program
+    if (onCreate) return onCreate(program, { focus })
     addRoutine(program)
     // The muscles they're bringing up live on the profile, so the next split
     // starts from them. Best effort: the split is what they asked for, and a
@@ -291,7 +309,7 @@ export default function SplitWizard() {
               Up to {MAX_FOCUS_MUSCLES}. A muscle you bring up is trained first in the day, while you&apos;re
               fresh, and on more days of the week — not with more sets piled onto one session. The week&apos;s
               total stays the same: the other muscles give back what it gains.
-              {user ? ' Saved to your profile when you create the split.' : ''} Leave it empty for a balanced
+              {client ? ` Saved to ${client.name || 'their'} profile when you save the split.` : user ? ' Saved to your profile when you create the split.' : ''} Leave it empty for a balanced
               split.
             </p>
             <FocusPicker value={focus} onChange={chooseFocus} />
@@ -302,7 +320,7 @@ export default function SplitWizard() {
             <h2 className={headCls}>You and your gym</h2>
             <p className="text-[12px] text-text-light mb-5">
               {profile?.experience_level || profile?.equipment
-                ? 'Filled in from your profile — change either just for this split.'
+                ? `Filled in from ${client ? `${client.name || 'their'}'s` : 'your'} profile — change either just for this split.`
                 : 'Used to filter the exercise pool and set how much volume to start you on.'}
             </p>
 
@@ -364,7 +382,7 @@ export default function SplitWizard() {
           </section>
 
           {/* ---- 4. The proposal ----------------------------------------- */}
-          {built && <Preview built={built} name={name} setName={setName} onCreate={create} />}
+          {built && <Preview built={built} name={name} setName={setName} onCreate={create} client={client} />}
         </div>
       )}
     </>
@@ -445,7 +463,7 @@ function FocusTrade({ trade }) {
   )
 }
 
-function Preview({ built, name, setName, onCreate }) {
+function Preview({ built, name, setName, onCreate, client }) {
   const { summary } = built
   const [exporting, setExporting] = useState(false)
   const cardCls = 'bg-white border border-border p-6 sm:p-8'
@@ -465,7 +483,7 @@ function Preview({ built, name, setName, onCreate }) {
 
   return (
     <section className={cardCls}>
-      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Your split</h2>
+      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">{client?.name ? `${client.name}'s split` : 'Your split'}</h2>
       <p className="text-[12px] text-text-light mb-6">
         {summary.shape ? `${summary.shape.name} · ` : ''}
         {summary.shapeLabel}
@@ -677,7 +695,7 @@ function Preview({ built, name, setName, onCreate }) {
         onClick={onCreate}
         className="w-full inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors"
       >
-        <Wand2 className="w-4 h-4" /> Create this split
+        <Wand2 className="w-4 h-4" /> {client ? `Save to ${client.name || 'this client'}` : 'Create this split'}
       </button>
       {/* The proposal exports as it stands, name and all — no need to save a
           split just to send it to someone. */}
@@ -688,12 +706,13 @@ function Preview({ built, name, setName, onCreate }) {
         <FileText className="w-4 h-4" /> Export as text or Excel
       </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
-        Nothing is saved until you tap Create — and every day, movement, set and rep range is editable
+        Nothing is saved until you tap {client ? 'Save' : 'Create'} — and every day, movement, set and rep range is editable
         afterwards.
       </p>
       {exporting && (
         <ExportModal
           program={name.trim() ? setProgramName(built.program, name.trim()) : built.program}
+          client={client}
           onClose={() => setExporting(false)}
         />
       )}

@@ -26,6 +26,7 @@ import {
   splitSetCap,
   toggleExerciseUnilateral,
   setExerciseNote,
+  setRowNote,
   substituteExercise,
   setSlotPinned,
   isOpenSlot,
@@ -47,7 +48,11 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function SplitDay() {
   const { dayId } = useParams()
   const { pathname, state } = useLocation()
-  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex } = useOutletContext()
+  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex, mode = 'own', basePath = `/split/${program.id}` } = useOutletContext()
+  // A client's split (ClientSplitLayout) keeps its notes on its own rows and
+  // never reads your log: the shared per-movement notes and your history are
+  // yours, and neither belongs on — or should steer — someone else's plan.
+  const sharedNotes = mode !== 'client'
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [swapOpenFor, setSwapOpenFor] = useState(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
@@ -55,7 +60,7 @@ export default function SplitDay() {
   // mount: the suggestions read it to favour movements you already train and to
   // spot ones you've drifted away from, and everyone who never opens a swap
   // shouldn't pay for the fetch.
-  const [history, setHistory] = useState(null)
+  const [history, setHistory] = useState(() => (sharedNotes ? null : []))
 
   useEffect(() => {
     if (swapOpenFor === null || history !== null) return
@@ -84,7 +89,7 @@ export default function SplitDay() {
   // or the calendar, that page hands over its own address, because otherwise the
   // one tap in cost four taps back out through Splits → Log → Tools. A URL
   // opened cold carries no state — hence the fallback.
-  const backTo = state?.backTo || `/split/${program.id}`
+  const backTo = state?.backTo || basePath
   const backLabel = state?.backLabel || program.name
   const backLink = (
     <Link to={backTo} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-8 transition-colors">
@@ -105,7 +110,7 @@ export default function SplitDay() {
   // network call per character would be wasteful and racy. Best-effort: a
   // failed push just leaves the account slightly behind until the next one.
   function syncNotesToRemote() {
-    if (!user) return
+    if (!user || !sharedNotes) return
     upsertRemoteExerciseNotes(user.id, getExerciseNotesMap()).catch(() => {})
   }
   const toggleNote = (exId) =>
@@ -229,7 +234,7 @@ export default function SplitDay() {
                 // The shared store wins over this row's copy, so a note written
                 // against this movement in another split (or in the logger)
                 // shows up here too.
-                const note = getExerciseNote(ex) || ex.note || ''
+                const note = (sharedNotes && getExerciseNote(ex)) || ex.note || ''
                 const noteOpen = noteOpenFor.has(ex.id) || !!note
                 const bankId = bankIdFor(ex)
                 const openSlot = isOpenSlot(ex)
@@ -422,7 +427,7 @@ export default function SplitDay() {
                       )}
                       {canChooseLaterality(ex) && (
                         <button
-                          onClick={() => update((p) => toggleExerciseUnilateral(p, day.id, ex.id))}
+                          onClick={() => update((p) => toggleExerciseUnilateral(p, day.id, ex.id, { sharedNotes }))}
                           aria-pressed={!!ex.unilateral}
                           aria-label={`${ex.name} — ${ex.unilateral ? 'logged one limb at a time' : 'logged both limbs together'}`}
                           title={ex.unilateral ? 'Logged one limb at a time' : 'Logged both limbs together'}
@@ -459,7 +464,7 @@ export default function SplitDay() {
                     {noteOpen && (
                       <textarea
                         value={note}
-                        onChange={(e) => update((p) => setExerciseNote(p, day.id, ex.id, e.target.value))}
+                        onChange={(e) => update((p) => (sharedNotes ? setExerciseNote : setRowNote)(p, day.id, ex.id, e.target.value))}
                         onBlur={syncNotesToRemote}
                         placeholder="Note — form cue, machine setting, anything worth remembering…"
                         aria-label={`Note for ${ex.name}`}
@@ -544,7 +549,7 @@ export default function SplitDay() {
             </div>
 
             <ExercisePicker
-              onSelect={(name, category, id) => update((p) => addExercise(p, day.id, { name, category, exerciseId: id }))}
+              onSelect={(name, category, id) => update((p) => addExercise(p, day.id, { name, category, exerciseId: id }, { sharedNotes }))}
               placeholder="Add an exercise…"
             />
           </>

@@ -21,6 +21,7 @@ const AuthContext = createContext({
   user: null,
   loading: true,
   profile: null,
+  profileLoading: false,
   nickname: '',
   setNickname: () => {},
   refreshProfile: async () => {},
@@ -31,6 +32,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
+  // Which account the profile (or its failure) has come back for. A page that
+  // depends on a profile flag — the coach area — waits while this lags the
+  // signed-in user, rather than reading "no profile yet" as "not allowed".
+  // Derived, not set at fetch time, so there's no render in between where the
+  // user is known and the fetch hasn't started.
+  const [profileSettledFor, setProfileSettledFor] = useState(null)
   const [nickname, setNicknameState] = useState('')
 
   useEffect(() => {
@@ -63,6 +70,7 @@ export function AuthProvider({ children }) {
       .then((p) => {
         if (cancelled) return
         setProfile(p || null)
+        setProfileSettledFor(user.id)
         // A missing row (p === null) means the profile has never been saved, so
         // there's nothing to reconcile against — keep what the device knows.
         if (!p) return
@@ -74,6 +82,7 @@ export function AuthProvider({ children }) {
         // Deliberately keep the cached name rather than blanking the greeting:
         // an unreachable profile row is not the same as an empty one.
         console.warn('Profile load failed; keeping the cached nickname:', e?.message || e)
+        if (!cancelled) setProfileSettledFor(user.id)
       })
     return () => { cancelled = true }
   }, [user])
@@ -120,12 +129,14 @@ export function AuthProvider({ children }) {
     }
   }, [user])
 
+  const profileLoading = !!user && profileSettledFor !== user.id
+
   async function signOut() {
     if (supabase) await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, profile, nickname, setNickname, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, loading, profile, profileLoading, nickname, setNickname, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   )

@@ -194,13 +194,15 @@ export function setDayName(program, dayId, name) {
   return withDay(program, dayId, (d) => ({ ...d, name: name.slice(0, 40) }))
 }
 
-export function addExercise(program, dayId, { name, category, exerciseId }) {
+// `sharedNotes: false` is for a split that isn't yours (a client's): its rows
+// keep their own notes and never read the per-movement store, which is yours.
+export function addExercise(program, dayId, { name, category, exerciseId }, { sharedNotes = true } = {}) {
   const planned = createPlannedExercise(name, {
     exerciseId,
     kind: category === 'Cardio' ? 'cardio' : 'strength',
     // Whatever this movement's note already says, wherever it was written —
     // notes belong to the movement, not to the slot.
-    note: getExerciseNote({ exerciseId, name }),
+    note: sharedNotes ? getExerciseNote({ exerciseId, name }) : '',
   })
   return withDay(program, dayId, (d) => ({ ...d, exercises: [...d.exercises, planned] }))
 }
@@ -253,14 +255,15 @@ export function setExerciseLastSetFailure(program, dayId, exId, on) {
 // movement the DB leaves open, "no opinion" and "bilateral" look the same in the
 // logger, so a third state would have nothing to say. Toggling just makes the
 // row explicit — which is what a session syncing back writes anyway.
-export function toggleExerciseUnilateral(program, dayId, exId) {
+export function toggleExerciseUnilateral(program, dayId, exId, { sharedNotes = true } = {}) {
   return withExercise(program, dayId, exId, (e) => {
     const next = { ...e, unilateral: !e.unilateral }
     // Notes are keyed by laterality too, so flipping the form flips which note
     // this row is showing. Read the new one rather than carrying the old text
     // across — carrying it would copy a one-arm cue onto the bilateral form
-    // (or the reverse) the moment the field next blurs.
-    return { ...next, note: getExerciseNote(next) }
+    // (or the reverse) the moment the field next blurs. A row that keeps its
+    // own note (sharedNotes: false) just keeps it.
+    return sharedNotes ? { ...next, note: getExerciseNote(next) } : next
   })
 }
 
@@ -289,6 +292,13 @@ export function setExerciseNote(program, dayId, exId, note) {
       ),
     })),
   }
+}
+
+// A note that belongs to this ROW only — for a split that isn't yours (a
+// client's), where writing to the shared per-movement store would put your
+// client's cue on every split of your own that has the movement.
+export function setRowNote(program, dayId, exId, note) {
+  return withExercise(program, dayId, exId, (e) => ({ ...e, note: note.slice(0, 300) }))
 }
 
 // Swap a planned exercise's identity (name/DB link/kind) in place — sets, rep

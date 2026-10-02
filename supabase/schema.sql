@@ -57,6 +57,10 @@ create table if not exists public.profiles (
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.
   coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
+  -- The coach's own account: shows the client list (/coach). Set by hand in the
+  -- SQL editor, never by the app. Setting it on yourself only reveals an empty
+  -- client list of your own — the clients table below is per-user under RLS.
+  is_coach boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -78,6 +82,7 @@ alter table public.profiles add column if not exists ankle numeric;
 alter table public.profiles add column if not exists daily_steps int;
 alter table public.profiles add column if not exists diet text;
 alter table public.profiles add column if not exists training_start_year int;
+alter table public.profiles add column if not exists is_coach boolean not null default false;
 
 alter table public.profiles enable row level security;
 
@@ -362,6 +367,33 @@ create policy "Users can update their own exercise notes"
 drop policy if exists "Users can delete their own exercise notes" on public.exercise_notes;
 create policy "Users can delete their own exercise notes"
   on public.exercise_notes for delete using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- 2h) CLIENTS — the coach's client list: each client's name, profile, notes and
+--     the programs written for them. One row per coach; the whole list is a
+--     single JSON array, same pattern as PROGRAMS/EXERCISE_NOTES. Only ever
+--     read and written by the account that owns it.
+-- ---------------------------------------------------------------------------
+create table if not exists public.clients (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.clients enable row level security;
+
+drop policy if exists "Users can view their own clients" on public.clients;
+create policy "Users can view their own clients"
+  on public.clients for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert their own clients" on public.clients;
+create policy "Users can insert their own clients"
+  on public.clients for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own clients" on public.clients;
+create policy "Users can update their own clients"
+  on public.clients for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own clients" on public.clients;
+create policy "Users can delete their own clients"
+  on public.clients for delete using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.

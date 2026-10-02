@@ -25,6 +25,12 @@ const SplitLayout = lazy(() => import('./pages/SplitLayout'))
 const SplitOverview = lazy(() => import('./pages/SplitOverview'))
 const SplitDay = lazy(() => import('./pages/SplitDay'))
 const GenerateSplit = lazy(() => import('./pages/GenerateSplit'))
+// The coach's client area — only reachable on the coach's account (CoachLayout).
+const CoachLayout = lazy(() => import('./pages/CoachLayout'))
+const Clients = lazy(() => import('./pages/Clients'))
+const ClientDetail = lazy(() => import('./pages/ClientDetail'))
+const ClientGenerate = lazy(() => import('./pages/ClientGenerate'))
+const ClientSplitLayout = lazy(() => import('./pages/ClientSplitLayout'))
 
 // The routine builder became the "Training split" tab of the log (2026-07).
 // Old /routine URLs (bookmarks, synced devices mid-deploy) land on the new ones.
@@ -73,6 +79,17 @@ function App() {
         <Route path="/split/:id" element={<SplitLayout />}>
           <Route index element={<SplitOverview />} />
           <Route path="day/:dayId" element={<SplitDay />} />
+        </Route>
+        {/* The coach's clients: the list, one client, a program for them in the
+            same split editor. CoachLayout gates it and holds the list. */}
+        <Route path="/coach" element={<CoachLayout />}>
+          <Route index element={<Clients />} />
+          <Route path=":clientId" element={<ClientDetail />} />
+          <Route path=":clientId/generate" element={<ClientGenerate />} />
+          <Route path=":clientId/split/:id" element={<ClientSplitLayout />}>
+            <Route index element={<SplitOverview />} />
+            <Route path="day/:dayId" element={<SplitDay />} />
+          </Route>
         </Route>
         <Route path="/routine" element={<Navigate to="/log/split" replace />} />
         <Route path="/routine/:id" element={<LegacyRoutineRedirect />} />

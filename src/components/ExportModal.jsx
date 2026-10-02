@@ -6,7 +6,7 @@ import { useInjuries } from '../lib/useInjuries'
 import { openInjuries, injuryTitle } from '../lib/injuries'
 import { getHistory, getUnit, getExerciseNote, getExportPrefs, saveExportPrefs } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
-import { buildExportModel, exportText, exportFileName, DEFAULT_EXPORT_PREFS } from '../lib/programExport'
+import { buildExportModel, exportText, exportFileName, DEFAULT_EXPORT_PREFS, COACH_NOTES_HEADING } from '../lib/programExport'
 import { copyText, canShareText, shareText, downloadText, downloadBlob } from '../lib/download'
 import { workbookBlob } from '../lib/excelExport'
 
@@ -118,10 +118,10 @@ export default function ExportModal({ program, client = null, onClose }) {
     model.programLine && { key: 'program', label: 'Split shape' },
     parts.some((p) => p.rir) && { key: 'rir', label: 'RIR' },
     parts.some((p) => p.rest) && { key: 'rest', label: 'Rest times' },
-    parts.some((p) => p.note) && { key: 'notes', label: 'Notes' },
+    parts.some((p) => p.note) && { key: 'notes', label: 'Exercise notes' },
     parts.some((p) => p.weight) && { key: 'weights', label: 'Last weights' },
     model.weeklySets.length > 0 && { key: 'weeklySets', label: 'Weekly sets' },
-    model.coachNotes && { key: 'coachNotes', label: 'Your notes' },
+    model.coachNotes && { key: 'coachNotes', label: COACH_NOTES_HEADING },
   ].filter(Boolean)
   const hidden = new Set(prefs.hidden || [])
 

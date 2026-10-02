@@ -239,6 +239,31 @@ export async function upsertRemoteExerciseNotes(userId, notes) {
   return notes
 }
 
+// ---- Coach: client list -----------------------------------------------------
+// One row per coach, the whole client list as a jsonb array — same pattern as
+// `exercise_notes`. Null when there's no row yet OR the `clients` table hasn't
+// been created: either way this device's copy is all there is, and the caller
+// seeds the account from it.
+function missingClientsTable(error) {
+  if (!error) return false
+  return error.code === '42P01' || error.code === 'PGRST205' || (typeof error.message === 'string' && /(relation|table) .*clients.* (does not exist|schema cache)/i.test(error.message))
+}
+
+export async function fetchRemoteClients(userId) {
+  const { data, error } = await supabase.from('clients').select('data').eq('user_id', userId).maybeSingle()
+  if (error) {
+    if (error.code === 'PGRST116' || missingClientsTable(error)) return null
+    throw error
+  }
+  return Array.isArray(data?.data) ? data.data : null
+}
+
+export async function upsertRemoteClients(userId, clients) {
+  const { error } = await supabase.from('clients').upsert({ user_id: userId, data: clients, updated_at: new Date().toISOString() })
+  if (error && !missingClientsTable(error)) throw error
+  return clients
+}
+
 // ---- Bodyweight log --------------------------------------------------------
 // Mirrors the localStorage bodyweight functions but talks to the
 // `bodyweight_log` table. RLS keeps each user to their own rows.
