@@ -417,6 +417,9 @@ export const CORE_CATEGORY = 'Core'
 // multi-muscle credit — a Copenhagen adduction, a weighted chin-up on leg day.
 // Without the second, toes-to-bar got picked for the lats.
 export const CORE_MUSCLES = ['Abs', 'Obliques']
+// The heaviest compound an ab movement may be supersetted with (supersetPartnerOk
+// in generator.js): below this fatigue score, and never axially loaded.
+export const SUPERSET_MAX_COMPOUND_FATIGUE = 3
 export const CORE_PLACEMENTS = [
   { value: 'superset', label: 'Superset', sub: 'With the lightest movement' },
   { value: 'end', label: 'At the end', sub: 'After everything else' },
@@ -711,15 +714,18 @@ export const DAY_LOAD_TARGET = 0.6
 export const DAY_LOAD_MAX = 0.8
 
 // ---- Rep ranges -------------------------------------------------------------
-// Double-progression targets by movement shape. A returning user's own logged
-// range for a movement wins over these (see repRangeFor in splitFromHistory.js).
+// Double-progression targets by movement shape. Hani's rule (2026-10-02): never
+// suggest more than 12 reps, and keep most of the week within 6–10 — so the
+// compounds, which are most of a week, sit there, and every isolation (calves
+// and abs included) gets 8–12. A returning user's own logged range for a
+// movement wins over these (see repRangeFor in splitFromHistory.js), held under
+// the same ceiling.
 export const REP_RANGES = {
-  heavyCompound: { low: 5, high: 8 }, // fatigueScore ≥ 4 — the big axial lifts
+  heavyCompound: { low: 6, high: 8 }, // fatigueScore ≥ 4 — the big axial lifts
   compound: { low: 6, high: 10 },
-  lengthened: { low: 8, high: 12 }, // stretch-mediated / lengthened-biased isolation
-  isolation: { low: 10, high: 15 },
-  shortened: { low: 12, high: 18 }, // peak-contraction work wants the higher end
+  isolation: { low: 8, high: 12 },
 }
-
-// Muscles that read better at higher reps regardless of the movement's profile.
-export const HIGH_REP_MUSCLES = new Set(['Calves', 'Abs', 'Obliques', 'Forearms', 'Tibialis'])
+export const MAX_REPS = 12
+// A range needs room to progress into (see repRangeFor): at least this many reps
+// between its ends after it's been brought under MAX_REPS.
+export const MIN_REP_SPAN = 2

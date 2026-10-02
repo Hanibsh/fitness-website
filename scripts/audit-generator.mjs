@@ -22,10 +22,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VERBOSE = process.argv.includes('--verbose')
 
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, setLoad } = await server.ssrLoadModule('/src/lib/generator.js')
+const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, supersetPartnerOk } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -160,7 +160,8 @@ function audit(label, program, summary, inputs, opts) {
 
   // ---- abs (Hani, 2026-10-02): one ab movement a day at most, outside the set
   // cap and the movement count (checked below), and where the user asked for
-  // it — supersetted with the day's least fatiguing movement, or last. An ab
+  // it — supersetted with a light movement doing the SAME number of sets, or
+  // last. A day with nothing light to pair with puts it last either way. An ab
   // movement that is itself a focus leads instead, like any focus.
   for (const day of training) {
     const core = day.exercises.filter(isCoreRow)
@@ -168,7 +169,8 @@ function audit(label, program, summary, inputs, opts) {
     const row = core[0]
     if (!row || opts.focus.includes(row.slot?.muscle)) continue
     const at = day.exercises.indexOf(row)
-    if (opts.core === 'end') {
+    const canPair = day.exercises.some((e) => e !== row && supersetPartnerOk(getFullExercise(e.exerciseId)))
+    if (opts.core === 'end' || !canPair) {
       check(label, at === day.exercises.length - 1 && !row.supersetId, `"${day.name}" has its ab movement at ${at + 1} of ${day.exercises.length}, not last`)
       continue
     }
@@ -176,9 +178,16 @@ function audit(label, program, summary, inputs, opts) {
     const pair = day.exercises.filter((e) => row.supersetId && e.supersetId === row.supersetId)
     check(label, !!partner && pair.length === 2 && partner.supersetId === row.supersetId, `"${day.name}" ab movement isn't supersetted with the movement before it`)
     if (!partner) continue
-    const cost = (e) => setLoad(getFullExercise(e.exerciseId))
-    const lightest = Math.min(...day.exercises.filter((e) => e !== row).map(cost))
-    check(label, cost(partner) <= lightest, `"${day.name}" pairs its abs with ${partner.name}, not its lightest movement`)
+    check(label, supersetPartnerOk(getFullExercise(partner.exerciseId)), `"${day.name}" pairs its abs with ${partner.name}, which is too heavy to superset`)
+    check(label, partner.sets === row.sets, `"${day.name}" supersets ${partner.sets} sets of ${partner.name} with ${row.sets} of ${row.name}`)
+  }
+
+  // ---- reps (Hani, 2026-10-02): never above 12. With no history to borrow a
+  // range from, nothing below 6 either.
+  for (const day of training) {
+    for (const e of day.exercises) {
+      check(label, e.repRange.high <= MAX_REPS && e.repRange.low >= 6, `"${e.name}" rep range ${e.repRange.low}–${e.repRange.high}`)
+    }
   }
 
   // ---- what limits a day: fatigue and the movement count, never the clock

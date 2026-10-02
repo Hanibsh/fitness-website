@@ -50,9 +50,9 @@ import {
   HP_SCORE, SFR_SCORE, STRETCH_SCORE, PROFILE_SCORE, OVERLOAD_SCORE, STABILITY_SCORE, SIMPLICITY_SCORE,
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD, LIMITER_PENALTY, LIMITER_EXCLUDED,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
-  REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
+  REP_RANGES, MAX_REPS, MIN_REP_SPAN, SWAP_MIN_CONTRIBUTION_RATIO,
   PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
-  corePlacement, CORE_MUSCLES,
+  corePlacement, CORE_MUSCLES, SUPERSET_MAX_COMPOUND_FATIGUE,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -932,7 +932,7 @@ function plannedRow(db, sets, muscle, rirTarget, ctx) {
     exerciseId: open ? null : db.id,
     kind: 'strength',
     sets,
-    repRange: repRangeForExercise(db, muscle, ctx.history),
+    repRange: repRangeForExercise(db, ctx.history),
     rirTarget,
     slot,
   })
@@ -1027,17 +1027,19 @@ function markFailureSets(rows, count) {
   }
 }
 
-// Rep target: their own logged range for this movement when they have one,
-// else the shape of the movement decides.
-function repRangeForExercise(db, muscle, history) {
+// Rep target: their own logged range for this movement when they have one —
+// brought under MAX_REPS, keeping room to progress — else the shape of the
+// movement decides.
+function repRangeForExercise(db, history) {
   const rec = history?.familiar.get(db.id)
-  if (rec && rec.reps.length >= 2) return repRangeFor(rec.reps)
-  if (HIGH_REP_MUSCLES.has(muscle) && db.type !== 'compound') return { ...REP_RANGES.shortened }
+  if (rec && rec.reps.length >= 2) {
+    const own = repRangeFor(rec.reps)
+    const high = Math.min(own.high, MAX_REPS)
+    return { low: Math.max(1, Math.min(own.low, high - MIN_REP_SPAN)), high }
+  }
   if (db.type === 'compound') {
     return { ...((db.fatigueScore ?? 0) >= 4 ? REP_RANGES.heavyCompound : REP_RANGES.compound) }
   }
-  if (db.stretchMediated === 'yes' || db.resistanceProfile === 'lengthened') return { ...REP_RANGES.lengthened }
-  if (db.resistanceProfile === 'shortened') return { ...REP_RANGES.shortened }
   return { ...REP_RANGES.isolation }
 }
 
@@ -1831,8 +1833,8 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
 // wizard's preview. The sets stay — they're the volume setting's, and the week
 // was sized around them — but the rep range and the effort target are the
 // generator's own numbers for the NEW movement, since nothing about this row is
-// the user's yet: an adduction machine gets machine reps, not the lengthened
-// range that suited a Copenhagen. The last set to failure stays only where the
+// the user's yet: a press swapped in for a fly gets compound reps, not the
+// isolation range. The last set to failure stays only where the
 // generator put one AND the new movement can take it (failureSafe). The slot,
 // the superset pairing and the row id all survive, through substituteExercise —
 // except the slot's muscle when the new movement doesn't train it at all (an
@@ -1861,7 +1863,7 @@ export function swapProposedRow(built, program, dayId, rowId, { id, name, catego
         return {
           ...e,
           slot: e.slot && muscle && muscle !== e.slot.muscle ? { ...e.slot, muscle } : e.slot,
-          repRange: repRangeForExercise(db, muscle, history),
+          repRange: repRangeForExercise(db, history),
           rirTarget,
         }
       }),
@@ -1928,11 +1930,17 @@ function isCoreRow(planned) {
 }
 
 // Where each day's ab movement goes, as the user asked (CORE_PLACEMENTS):
-// paired as a superset with the day's least fatiguing movement — the lowest
-// per-set systemic cost, ties to the later one, where the day's heavy work is
-// already done — or after everything else. Run on the finished week, so nothing
-// a later pass adds can land between a pair. An ab movement that is itself a
-// focus stays at the front, where the focus put it.
+// paired as a superset with a light movement, or after everything else. Run on
+// the finished week, so nothing a later pass adds can land between a pair. An
+// ab movement that is itself a focus stays at the front, where the focus put it.
+//
+// Partners in a superset do the same number of sets — you go back and forth
+// between them, so 2 sets can't pair with 4 (Hani). The partner is the light
+// movement (supersetPartnerOk) whose set count is closest to the ab row's, ties
+// to the lowest per-set systemic cost and then the later one, where the day's
+// heavy work is already done; the ab row then takes the partner's count. Ab
+// sets sit outside the day's cap, so matching them moves nothing else. A day
+// with nothing light to pair with puts its abs last.
 function placeCore(trainingDays, placement, focus) {
   for (const day of trainingDays) {
     const core = day.exercises.find(isCoreRow)
@@ -1940,17 +1948,21 @@ function placeCore(trainingDays, placement, focus) {
     const rest = day.exercises.filter((e) => e !== core)
     let partner = null
     let lightest = Infinity
+    let closest = Infinity
     if (placement === 'superset') {
       for (const e of rest) {
         const db = DB_BY_ID.get(plannedExerciseDbId(e) || '')
-        if (!db) continue
+        if (!supersetPartnerOk(db)) continue
         const cost = setLoad(db)
-        if (cost <= lightest) {
+        const gap = Math.abs((Number(e.sets) || 0) - (Number(core.sets) || 0))
+        if (gap < closest || (gap === closest && cost <= lightest)) {
           partner = e
           lightest = cost
+          closest = gap
         }
       }
     }
+    if (partner) core.sets = partner.sets
     if (!partner) {
       day.exercises = [...rest, core]
       continue
@@ -1961,6 +1973,14 @@ function placeCore(trainingDays, placement, focus) {
     rest.splice(rest.indexOf(partner) + 1, 0, core)
     day.exercises = rest
   }
+}
+
+// Light enough to superset abs with: nothing that loads the spine, and no
+// compound at SUPERSET_MAX_COMPOUND_FATIGUE or above — bracing for an RDL or a
+// hack squat between sets of crunches defeats both.
+export function supersetPartnerOk(db) {
+  if (!db || db.axialLoading) return false
+  return db.type !== 'compound' || (db.fatigueScore ?? DEFAULT_FATIGUE_SCORE) < SUPERSET_MAX_COMPOUND_FATIGUE
 }
 
 function programSets(program) {
