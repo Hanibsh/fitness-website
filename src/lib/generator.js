@@ -28,6 +28,7 @@ import { withAliases } from '../data/exerciseAliases'
 import { createDay, createPlannedExercise, emptyProgram, substituteExercise } from './program'
 import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId, donutRows, isCoreMovement } from './planStats'
 import { newSupersetId } from './workoutStats'
+import { cardioOf } from './cardio'
 import { injuryRiskMap } from './injuries'
 import { effectiveWeeklyVolume } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
@@ -1173,6 +1174,22 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
   const days = []
   const perWeek = 7 / cycle.length
 
+  // One row as the preview lists it. A cardio row carries its prescription
+  // instead of a rep target.
+  const rowSummary = (e) => ({
+    id: e.id,
+    name: e.name,
+    kind: e.kind === 'cardio' ? 'cardio' : 'strength',
+    cardio: e.kind === 'cardio' ? cardioOf(e) : null,
+    sets: e.sets,
+    repRange: e.repRange,
+    rirTarget: e.rirTarget || null,
+    pattern: e.slot?.pattern || null,
+    open: !!e.slot && !e.exerciseId,
+    core: e.kind !== 'cardio' && isCoreRow(e),
+    supersetId: e.supersetId || null,
+  })
+
   program.days.forEach((day, i) => {
     if (day.kind === 'rest') {
       days.push({
@@ -1180,7 +1197,8 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
         kind: 'rest',
         name: 'Rest',
         weekday: schedule === 'weekly' ? WEEKDAY_NAMES[i] : null,
-        exercises: [],
+        // A rest day can hold optional cardio, and nothing else.
+        exercises: (day.exercises || []).map(rowSummary),
       })
       return
     }
@@ -1199,17 +1217,7 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
       // What this day trains, rolled up for the day's donut. Same weighted rows
       // the muscle bars use, so the chart and the numbers can never disagree.
       donut: donutRows(stats.muscles),
-      exercises: day.exercises.map((e) => ({
-        id: e.id,
-        name: e.name,
-        sets: e.sets,
-        repRange: e.repRange,
-        rirTarget: e.rirTarget || null,
-        pattern: e.slot?.pattern || null,
-        open: !!e.slot && !e.exerciseId,
-        core: isCoreRow(e),
-        supersetId: e.supersetId || null,
-      })),
+      exercises: day.exercises.map(rowSummary),
     })
   })
 
@@ -1917,12 +1925,13 @@ function focusTrade(program, summary, baseline, focus, sessionCap) {
 // movement, which doesn't count (CORE_CATEGORY). Everything that measures a day
 // or a week against the setting goes through here, so they all agree.
 function daySets(day) {
-  return day.exercises.reduce((sum, e) => sum + (isCoreRow(e) ? 0 : Number(e.sets) || 0), 0)
+  return day.exercises.reduce((sum, e) => sum + (e.kind === 'cardio' || isCoreRow(e) ? 0 : Number(e.sets) || 0), 0)
 }
 
 // ...and the movements it spends of the posture's exercise cap, likewise.
+// Cardio spends neither: it's planned on top of the lifting, not inside it.
 function countedRows(day) {
-  return day.exercises.filter((e) => !isCoreRow(e)).length
+  return day.exercises.filter((e) => e.kind !== 'cardio' && !isCoreRow(e)).length
 }
 
 function isCoreRow(planned) {

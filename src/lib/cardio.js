@@ -118,7 +118,7 @@ export const strokeById = (a, id) => a.strokes.find(s => s.id === id) ?? a.strok
 //   speed:  { speedKmh, gradePct, outdoors }
 //   watts:  { watts }
 //   row:    { watts }
-//   steps:  { spm }
+//   steps:  { spm }, or { level } — the machine level, read as steps/min
 //   level:  { level } — index into the activity's levels
 //   stroke: { stroke, level } — a stroke id, then an index into its levels
 export function netKcalPerMin(activityId, params, weightKg) {
@@ -133,7 +133,7 @@ export function netKcalPerMin(activityId, params, weightKg) {
   } else if (a.kind === 'watts') {
     netVO2 = bikeNetVO2(params.watts, weightKg)
   } else if (a.kind === 'steps') {
-    netVO2 = stairNetVO2(params.spm, a.stepM)
+    netVO2 = stairNetVO2(params.spm ?? stairLevelToSpm(params.level), a.stepM)
   } else {
     const levels = a.kind === 'stroke' ? strokeById(a, params.stroke).levels : a.levels
     netVO2 = (levels[params.level ?? 0].met - 1) * ML_O2_PER_MET
@@ -163,6 +163,157 @@ export function durationParts(minutes) {
 export const formatDuration = (minutes) => {
   const d = durationParts(minutes)
   return `${d.value} ${d.unit}`
+}
+
+// ---- Cardio in a split ----------------------------------------------------------
+//
+// A cardio row in a split says what to do and how much of it, per session:
+//
+//   cardio: { activity: 'walk', params: { speedKmh: 5, gradePct: 10 }, target: { by: 'minutes', value: 20 } }
+//
+// `params` are metric, in the shape netKcalPerMin takes — except that a stair
+// climber keeps its machine LEVEL, since that's what people set. `target.by` is
+// 'minutes' or 'kcal'; the other number is worked out from bodyweight wherever
+// that's known. The generator's planner also stamps `plan: 'lifting' | 'rest'`
+// on the rows it writes, so planning again replaces exactly those.
+
+// The movement a split row names for each activity: the cardio entries in
+// movements.js, so the picker, the logger and an imported text all agree.
+const MOVEMENT_FOR = {
+  walk: 'Walking', run: 'Running', bike: 'Cycling', row: 'Rowing',
+  elliptical: 'Elliptical', stairs: 'Stair Climber', swim: 'Swimming', rope: 'Jump Rope',
+}
+const ACTIVITY_FOR = Object.fromEntries([
+  ...Object.entries(MOVEMENT_FOR).map(([id, name]) => [name.toLowerCase(), id]),
+  ['incline walk', 'walk'],
+])
+
+export const activityForMovement = (name) => ACTIVITY_FOR[(name || '').trim().toLowerCase()] || null
+
+// Walking uphill is its own entry ("Incline Walk"), so the name follows the incline.
+export function movementForCardio(activity, params = {}) {
+  if (activity === 'walk' && Number(params.gradePct) > 0) return 'Incline Walk'
+  return MOVEMENT_FOR[activity] || null
+}
+
+// Where a new row starts: the calculator's typical setting for the activity.
+export function defaultCardioParams(activity, name = '') {
+  const a = activityById[activity]
+  if (!a) return {}
+  switch (a.kind) {
+    case 'speed':
+      if (activity === 'run') return { speedKmh: a.speedKmh.default, gradePct: 0, outdoors: false }
+      return /incline/i.test(name) ? { speedKmh: 5, gradePct: 10 } : { speedKmh: a.speedKmh.default, gradePct: 0 }
+    case 'watts':
+    case 'row': return { watts: a.watts.default }
+    case 'steps': return { level: a.level.default }
+    case 'stroke': return { stroke: a.strokes[0].id, level: 0 }
+    default: return { level: 0 }
+  }
+}
+
+export const DEFAULT_CARDIO_TARGET = { by: 'minutes', value: 20 }
+
+// A row's prescription: its own, or the defaults its movement implies, so a
+// cardio row added before rows carried one still reads (and edits) as one.
+// Null for a cardio movement no activity covers.
+export function cardioOf(row) {
+  if (row?.cardio?.activity && activityById[row.cardio.activity]) return row.cardio
+  const activity = activityForMovement(row?.name)
+  if (!activity) return null
+  return { activity, params: defaultCardioParams(activity, row.name), target: { ...(row?.cardio?.target || DEFAULT_CARDIO_TARGET) } }
+}
+
+// The same row re-pointed at another movement: the activity follows the name
+// and its settings start over (a stair level means nothing on a rower), while
+// how much to do stays. Null when the new movement has no activity.
+export function retargetCardio(prev, name) {
+  const activity = activityForMovement(name)
+  if (!activity) return null
+  if (prev?.activity === activity) return prev
+  return {
+    activity,
+    params: defaultCardioParams(activity, name),
+    target: { ...(prev?.target || DEFAULT_CARDIO_TARGET) },
+    ...(prev?.plan ? { plan: prev.plan } : {}),
+  }
+}
+
+// Net calories a minute for a prescription at this bodyweight; null when
+// either is unknown.
+export function cardioRate(c, weightKg) {
+  if (!c?.activity || !activityById[c.activity] || !(weightKg > 0)) return null
+  const rate = netKcalPerMin(c.activity, c.params || {}, weightKg)
+  return Number.isFinite(rate) && rate > 0 ? rate : null
+}
+
+// One session's minutes and net calories — the one the target names, and the
+// other worked out from bodyweight (null without it).
+export function sessionMinutes(c, weightKg) {
+  const v = Number(c?.target?.value)
+  if (!(v > 0)) return null
+  if (c.target.by !== 'kcal') return v
+  const rate = cardioRate(c, weightKg)
+  return rate ? v / rate : null
+}
+
+export function sessionKcal(c, weightKg) {
+  const v = Number(c?.target?.value)
+  if (!(v > 0)) return null
+  if (c.target.by === 'kcal') return v
+  const rate = cardioRate(c, weightKg)
+  return rate ? v * rate : null
+}
+
+const isImperial = (unit) => unit === 'lbs' || unit === 'imperial'
+const trimNum = (n) => String(Math.round(Number(n) * 10) / 10)
+// Estimates are planning numbers, so calories go to the nearest 5.
+const roundKcal = (k) => Math.round(k / 5) * 5
+
+// The machine settings as they'd be written down: "5 km/h, 10% incline",
+// "100 W", "level 8", "freestyle, hard". Speed in the unit's own system.
+export function cardioSettingsText(c, unit = 'kg') {
+  const a = activityById[c?.activity]
+  if (!a) return ''
+  const p = c.params || {}
+  switch (a.kind) {
+    case 'speed': {
+      const bits = []
+      if (Number(p.speedKmh) > 0) bits.push(isImperial(unit) ? `${trimNum(kmhToMph(p.speedKmh))} mph` : `${trimNum(p.speedKmh)} km/h`)
+      if (Number(p.gradePct) > 0) bits.push(`${trimNum(p.gradePct)}% incline`)
+      if (p.outdoors) bits.push('outdoors')
+      return bits.join(', ')
+    }
+    case 'watts':
+    case 'row': return Number(p.watts) > 0 ? `${Math.round(p.watts)} W` : ''
+    case 'steps': return p.level != null && p.level !== '' ? `level ${trimNum(p.level)}` : Number(p.spm) > 0 ? `${Math.round(p.spm)} steps/min` : ''
+    case 'stroke': {
+      const s = strokeById(a, p.stroke)
+      const l = s.levels[p.level ?? 0] || s.levels[0]
+      return s.levels.length > 1 ? `${s.label.toLowerCase()}, ${l.label.toLowerCase()}` : s.label.toLowerCase()
+    }
+    default: return (a.levels[p.level ?? 0] || a.levels[0]).label.toLowerCase()
+  }
+}
+
+// "20 min" or "250 cal".
+export const cardioTargetText = (t) => `${trimNum(t.value)} ${t.by === 'kcal' ? 'cal' : 'min'}`
+
+// The half the target doesn't name: "about 180 cal" for a time, "about 23 min"
+// for calories. Empty without a bodyweight to work it out from.
+export function cardioCounterpartText(c, weightKg) {
+  if (c?.target?.by === 'kcal') {
+    const m = sessionMinutes(c, weightKg)
+    return m ? `about ${Math.round(m)} min` : ''
+  }
+  const k = sessionKcal(c, weightKg)
+  return k ? `about ${roundKcal(k)} cal` : ''
+}
+
+// "20 min · 5 km/h, 10% incline · about 180 cal"
+export function cardioLabel(c, unit, weightKg) {
+  if (!c?.target) return ''
+  return [cardioTargetText(c.target), cardioSettingsText(c, unit), cardioCounterpartText(c, weightKg)].filter(Boolean).join(' · ')
 }
 
 // Steps. Flat walking's net cost per metre doesn't depend on speed (the ACSM

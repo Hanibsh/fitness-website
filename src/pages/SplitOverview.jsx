@@ -5,7 +5,8 @@ import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Loc
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
-import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay, splitSetCap } from '../lib/program'
+import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork } from '../lib/program'
+import { cardioOf, cardioTargetText } from '../lib/cardio'
 import { dayStats } from '../lib/planStats'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -100,7 +101,8 @@ export default function SplitOverview() {
         {/* Day cards */}
         <AnimatePresence initial={false}>
           {program.days.map((day, dayIndex) => {
-            const stats = day.kind === 'rest' ? null : dayStats(day)
+            const rest = day.kind === 'rest'
+            const stats = hasPlannedWork(day) ? dayStats(day) : null
             const dayHref = `${basePath}/day/${day.id}`
             return (
               <motion.div
@@ -112,16 +114,20 @@ export default function SplitOverview() {
               >
                 <DayCard
                   highlight={dayIndex === highlightIndex}
-                  to={day.kind === 'rest' ? undefined : dayHref}
+                  to={dayHref}
                   linkLabel={`Open ${day.name || 'this day'}`}
                   stats={stats}
-                  setCap={day.kind === 'rest' ? null : splitSetCap(program)}
-                  chips={day.exercises.map((ex) => ({ key: ex.id, label: ex.name, suffix: `${ex.sets}×` }))}
+                  setCap={rest ? null : splitSetCap(program)}
+                  chips={day.exercises.map((ex) => {
+                    const cardio = ex.kind === 'cardio' ? cardioOf(ex) : null
+                    return { key: ex.id, label: ex.name, suffix: cardio ? cardioTargetText(cardio.target) : ex.kind === 'cardio' ? null : `${ex.sets}×` }
+                  })}
+                  cta={rest ? 'Open rest day' : undefined}
                   note={
-                    day.kind === 'rest'
-                      ? isWeekly
-                        ? 'A rest day — no exercises.'
-                        : 'A rest slot in the rotation — no exercises.'
+                    rest
+                      ? day.exercises.length
+                        ? `${isWeekly ? 'A rest day' : 'A rest slot'} with optional cardio.`
+                        : `${isWeekly ? 'A rest day' : 'A rest slot in the rotation'} — tap to add optional cardio.`
                       : stats.exercises === 0
                         ? 'No exercises yet — tap to add some.'
                         : null

@@ -23,7 +23,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './auth'
-import { getBodyweightLog, getHistory } from './workoutStore'
+import { getBodyweightLog, getHistory, getUnit } from './workoutStore'
 import { fetchRemoteHistory } from './workoutRemote'
 import { convertWeight } from './workoutStats'
 import { estimateTdee } from './tdee'
@@ -154,6 +154,27 @@ export function usePrefill() {
       years,
     }
   }, [user, profile])
+}
+
+// Whose bodyweight and weight unit a split's cardio is planned with: a client's
+// own profile when it's their split, else yours — your profile, then your
+// latest weigh-in, then the logger's unit. `weightKg` is null when nobody's
+// weight is known, and the cardio rows then say only what they ask for.
+export function usePlanPerson(clientProfile = null) {
+  const prefill = usePrefill()
+  return useMemo(() => {
+    if (clientProfile) {
+      const unit = clientProfile.unit === 'lbs' ? 'lbs' : 'kg'
+      const w = num(clientProfile.bodyweight)
+      return { unit, weightKg: w == null ? null : convertWeight(w, unit, 'kg') }
+    }
+    const unit = prefill.unitSystem ? weightUnitFor(prefill.unitSystem) : getUnit()
+    // The profile's weight comes in the profile's system — kg when it has none.
+    const kg = prefill.weight != null
+      ? convertWeight(prefill.weight, prefill.unitSystem ? unit : 'kg', 'kg')
+      : bodyweightIn(null, 'kg')
+    return { unit, weightKg: kg }
+  }, [clientProfile, prefill])
 }
 
 // TDEE from the profile alone — only when every input the TDEE calculator would

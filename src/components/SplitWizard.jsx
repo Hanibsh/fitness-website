@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Check, Dumbbell, FileText, Moon, Pencil, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
+import { Check, Dumbbell, FileText, Moon, Pencil, Plus, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -9,6 +9,7 @@ import MuscleDonut from './MuscleDonut'
 import ExportModal from './ExportModal'
 import SlotSwapPanel from './SlotSwapPanel'
 import DayEditor from './DayEditor'
+import CardioFields from './CardioFields'
 import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
 import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
@@ -16,6 +17,9 @@ import { getHistory, saveExerciseNote, getExerciseNotesMap } from '../lib/workou
 import { fetchRemoteHistory, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { donutRows } from '../lib/planStats'
 import { supersetLabels } from '../lib/workoutStats'
+import { usePlanPerson } from '../lib/profilePrefill'
+import { applyCardioPlan, cardioPlanFrom, cardioPlanOn, weeklyCardio, plannedDayCount, DEFAULT_CARDIO_PLAN } from '../lib/cardioPlan'
+import { cardioTargetText, cardioSettingsText, cardioCounterpartText } from '../lib/cardio'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
   DEFAULT_EXPERIENCE, shapesFor,
@@ -49,6 +53,9 @@ const TIER_BAR = {
 }
 
 const LOAD_DOT = { fresh: 'bg-green-500', moderate: 'bg-amber-400', high: 'bg-red-500' }
+
+// A client with no profile yet still plans with THEIR (unknown) weight, never yours.
+const NO_PROFILE = {}
 
 
 //
@@ -92,6 +99,15 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   function chooseCore(v) {
     coreTouched.current = true
     setCore(v)
+  }
+  // Cardio on lifting days and on rest days, each its own amount. Laid over
+  // the generated week rather than fed into it (applyCardioPlan): it changes no
+  // lifting, so changing it never plans a new week. Same reopen rule as volume.
+  const [cardio, setCardio] = useState(DEFAULT_CARDIO_PLAN)
+  const cardioTouched = useRef(false)
+  function chooseCardio(kind, patch) {
+    cardioTouched.current = true
+    setCardio((c) => ({ ...c, [kind]: { ...c[kind], ...patch } }))
   }
   const [equipment, setEquipment] = useState('')
   const [openSlots, setOpenSlots] = useState(false)
@@ -169,6 +185,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     if (!settings) return
     if (settings.volume && !volumeTouched.current) setVolume(settings.volume)
     if (settings.core && !coreTouched.current) setCore(corePlacement(settings.core))
+    if (settings.cardio && !cardioTouched.current) setCardio(cardioPlanFrom(settings.cardio))
     if (settings.experience && !profile?.experience_level) setExperience((e) => e || settings.experience)
   }, [programsLoading, loading, active, refresh, profile])
 
@@ -229,17 +246,29 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   // sets, supersets, notes — on top of the proposal, per week. Tied to the
   // week it was made on, so a week planned again from scratch never inherits
   // edits made to rows that are no longer the same rows.
+  //
+  // The cardio plan is laid over both: the week as proposed, and any edits. A
+  // draft remembers the plan it was last laid with, and a changed plan swaps in
+  // its own rows (applyCardioPlan) — so changing the cardio never throws away a
+  // swap or a set made below it.
   const [edits, setEdits] = useState({})
   const draft = edits[answersKey]
   const edited = !!built && draft?.base === built
-  const program = edited ? draft.program : built?.program
+  const proposedProgram = useMemo(() => (built ? applyCardioPlan(built.program, cardio) : null), [built, cardio])
+  const program = useMemo(
+    () => (edited ? (draft.cardio === cardio ? draft.program : applyCardioPlan(draft.program, cardio)) : proposedProgram),
+    [edited, draft, cardio, proposedProgram]
+  )
   const summary = useMemo(() => (built ? summarizeProposal(built, program) : null), [built, program])
   function update(fn) {
     setEdits((prev) => {
-      const current = prev[answersKey]?.base === built ? prev[answersKey].program : built.program
-      return { ...prev, [answersKey]: { base: built, program: fn(current) } }
+      const kept = prev[answersKey]?.base === built ? prev[answersKey] : null
+      const current = kept ? (kept.cardio === cardio ? kept.program : applyCardioPlan(kept.program, cardio)) : applyCardioPlan(built.program, cardio)
+      return { ...prev, [answersKey]: { base: built, program: fn(current), cardio } }
     })
   }
+  // Whose weight turns minutes into calories: the client's, or yours.
+  const person = usePlanPerson(client ? client.profile || NO_PROFILE : null)
   const swap = (dayId, rowId, choice) => update((p) => swapProposedRow(built, p, dayId, rowId, choice))
   function undoEdits() {
     setEdits((prev) => {
@@ -436,10 +465,22 @@ export default function SplitWizard({ client = null, onCreate = null }) {
             </p>
           </section>
 
-          {/* ---- 4. The proposal ----------------------------------------- */}
+          {/* ---- 4. Cardio ---------------------------------------------- */}
+          {built && (
+            <CardioSection
+              plan={cardio}
+              onChange={chooseCardio}
+              program={program}
+              person={person}
+              client={client}
+              signedIn={!!user}
+            />
+          )}
+
+          {/* ---- 5. The proposal ----------------------------------------- */}
           {built && (
             <Preview
-              base={built.program}
+              base={proposedProgram}
               program={program}
               summary={summary}
               history={history}
@@ -451,6 +492,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
               setName={setName}
               onCreate={create}
               client={client}
+              person={person}
             />
           )}
         </div>
@@ -485,6 +527,124 @@ function RefreshNote({ refresh }) {
     </div>
   )
 }
+
+// The Cardio question: two independent halves, after lifting and on rest days,
+// each with its own activity, settings, amount per session and number of days.
+// Both on is every day; either can have more than the other.
+const CARDIO_HALVES = [
+  {
+    kind: 'lifting',
+    title: 'On lifting days',
+    hint: (some) =>
+      some
+        ? 'Last thing after the weights, on the days with the least leg work — walking, stairs, bikes and rowers are leg work too, so this keeps them off leg day.'
+        : 'Last thing after the weights, every lifting day.',
+  },
+  {
+    kind: 'rest',
+    title: 'On rest days',
+    hint: () => 'Optional on the day: skip it and nothing moves — the rest day still passes on its own.',
+  },
+]
+
+function CardioSection({ plan, onChange, program, person, client, signedIn }) {
+  const available = {
+    lifting: program.days.filter((d) => d.kind !== 'rest').length,
+    rest: program.days.filter((d) => d.kind === 'rest').length,
+  }
+  const week = weeklyCardio(program, person.weightKg)
+  const weekly = program.days.length === 7
+  const pill = (active) =>
+    `min-w-9 px-2.5 py-1.5 text-[12px] font-medium border cursor-pointer transition-colors ${
+      active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+    }`
+  const amount = (w) =>
+    [
+      w.minutes ? `${Math.round(w.minutes).toLocaleString('en-US')} min` : null,
+      w.kcal ? `${(Math.round(w.kcal / 5) * 5).toLocaleString('en-US')} cal` : null,
+    ].filter(Boolean).join(' and ')
+
+  return (
+    <section className="bg-white border border-border p-6 sm:p-8">
+      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Cardio</h2>
+      <p className="text-[12px] text-text-light mb-5 leading-relaxed">
+        Optional. Set it per session, in minutes or calories — after lifting, on rest days, or both, with more on one
+        than the other if you like. Walking and cycling cost your lifting the least.
+      </p>
+      <div className="space-y-3">
+        {CARDIO_HALVES.map(({ kind, title, hint }) => {
+          const half = plan[kind]
+          const days = plannedDayCount(half, available[kind])
+          return (
+            <div key={kind} className="border border-border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[13px] font-medium text-text-primary">{title}</p>
+                {available[kind] > 0 && (
+                  <div className="flex gap-1.5">
+                    <button type="button" aria-pressed={!half.on} onClick={() => onChange(kind, { on: false })} className={pill(!half.on)}>Off</button>
+                    <button type="button" aria-pressed={half.on} onClick={() => onChange(kind, { on: true })} className={pill(half.on)}>On</button>
+                  </div>
+                )}
+              </div>
+              {available[kind] === 0 ? (
+                <p className="text-[12px] text-text-light mt-1">This week has no rest days.</p>
+              ) : (
+                half.on && (
+                  <div className="mt-4 space-y-4">
+                    <CardioFields
+                      value={half}
+                      onChange={(next) => onChange(kind, { activity: next.activity, params: next.params, target: next.target })}
+                      unit={person.unit}
+                      weightKg={person.weightKg}
+                      chooseActivity
+                      label={title}
+                    />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-text-light mb-1.5">
+                        {kind === 'rest' ? 'Rest days' : 'Lifting days'} {weekly ? 'a week' : 'per rotation'}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Array.from({ length: available[kind] }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            aria-pressed={days === n}
+                            onClick={() => onChange(kind, { days: n === available[kind] ? null : n })}
+                            className={pill(days === n)}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[12px] text-text-light leading-relaxed">{hint(days < available[kind])}</p>
+                  </div>
+                )
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {week.total.sessions > 0 && (
+        <p className="text-[12px] text-text-secondary mt-4 leading-relaxed">
+          {weekly ? 'Every week' : 'Every rotation'}: {week.total.sessions} session{week.total.sessions === 1 ? '' : 's'}
+          {week.lifting.sessions > 0 && week.rest.sessions > 0 ? ` (${week.lifting.sessions} after lifting, ${week.rest.sessions} on rest days)` : ''}
+          {amount(week.total) ? `, about ${amount(week.total)} in all.` : '.'}
+        </p>
+      )}
+      {cardioPlanOn(plan) && !person.weightKg && (
+        <p className="text-[12px] text-text-light mt-2 leading-relaxed">
+          {client
+            ? `Add ${client.name ? `${client.name}'s` : 'their'} bodyweight to their profile to see calories beside minutes.`
+            : signedIn
+              ? 'Add your bodyweight to your profile to see calories beside minutes.'
+              : 'Log your bodyweight to see calories beside minutes.'}
+        </p>
+      )}
+    </section>
+  )
+}
+
 
 // The split as it will be created: every day, every movement, and what the week
 // adds up to per muscle. Shown in full before anything is written — a plan you
@@ -533,7 +693,7 @@ function FocusTrade({ trade }) {
   )
 }
 
-function Preview({ base, program, summary, history, edited, update, onSwap, onUndoEdits, name, setName, onCreate, client }) {
+function Preview({ base, program, summary, history, edited, update, onSwap, onUndoEdits, name, setName, onCreate, client, person }) {
   const [exporting, setExporting] = useState(false)
   // The row whose swap panel is open — one at a time, as in the split editor.
   const [swapOpenFor, setSwapOpenFor] = useState(null)
@@ -601,21 +761,22 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                     </span>
                   )}
                 </div>
-                {d.kind === 'rest' ? (
-                  <p className="text-[11px] text-text-light mt-0.5">Rest</p>
-                ) : (
-                  <>
+                {d.kind === 'rest' && (
+                  <p className="text-[11px] text-text-light mt-0.5">{d.exercises.length ? 'Rest · optional cardio' : 'Rest'}</p>
+                )}
+                <>
                   {/* What this day is FOR, at a glance. The exercise list below
                       says what you will do; this says what it adds up to — which
                       is the question a day name like "Lower A" only half
                       answers. */}
-                  {d.donut?.length > 0 && (
+                  {d.kind !== 'rest' && d.donut?.length > 0 && (
                     <div className="mt-2">
                       <MuscleDonut items={d.donut} unitLabel="sets" compact />
                     </div>
                   )}
                   {!editing.has(d.id) && (
                   <>
+                  {d.exercises.length > 0 && (
                   <ul className="mt-2 space-y-1 list-none p-0 m-0">
                     {d.exercises.map((e) => {
                       const row = rows.get(e.id)
@@ -655,9 +816,20 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                                   {rirLabel(e.rirTarget)}
                                 </span>
                               )}
+                              {/* A cardio row's settings and the other half of
+                                  its target — "5 km/h, 10% incline · about
+                                  185 cal" — under its name, like the effort
+                                  line under a lift. */}
+                              {e.cardio && (
+                                <span className="block text-[11px] text-text-light">
+                                  {[cardioSettingsText(e.cardio, person.unit), cardioCounterpartText(e.cardio, person.weightKg)].filter(Boolean).join(' · ')}
+                                </span>
+                              )}
                             </span>
                             <span className="text-text-light shrink-0 ml-auto tabular-nums">
-                              {e.sets} × {e.repRange.low}–{e.repRange.high}
+                              {e.kind === 'cardio'
+                                ? e.cardio ? cardioTargetText(e.cardio.target) : null
+                                : `${e.sets} × ${e.repRange?.low ?? ''}–${e.repRange?.high ?? ''}`}
                             </span>
                             {/* A full-size tap target that takes up only a line
                                 of height: the negative margins hand the rest
@@ -699,17 +871,21 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                       )
                     })}
                   </ul>
+                  )}
                   <button
                     type="button"
                     onClick={() => toggleEditing(d.id)}
                     className="inline-flex items-center gap-1.5 min-h-8 mt-1 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
                   >
-                    <Pencil className="w-3.5 h-3.5" /> Edit day
+                    {d.kind === 'rest' && !d.exercises.length ? (
+                      <><Plus className="w-3.5 h-3.5" /> Add cardio</>
+                    ) : (
+                      <><Pencil className="w-3.5 h-3.5" /> Edit day</>
+                    )}
                   </button>
                   </>
                   )}
-                  </>
-                )}
+                </>
               </div>
             </div>
             {/* The split editor's own day editor, on the draft: add, remove,
@@ -719,17 +895,21 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                 width of the card: the inputs need it on a phone. Notes stay on
                 their rows until Create, and "Learn more" is left out — leaving
                 the page would lose the split. */}
-            {d.kind !== 'rest' && editing.has(d.id) && days.get(d.id) && (
+            {editing.has(d.id) && days.get(d.id) && (
               <div className="mt-3">
-                <label className="block text-[10px] uppercase tracking-wider text-text-light mb-1" htmlFor={`day-name-${d.id}`}>
-                  Day name
-                </label>
-                <input
-                  id={`day-name-${d.id}`}
-                  value={days.get(d.id).name}
-                  onChange={(ev) => update((p) => setDayName(p, d.id, ev.target.value))}
-                  className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] outline-none focus:border-text-primary transition-colors mb-3"
-                />
+                {d.kind !== 'rest' && (
+                  <>
+                    <label className="block text-[10px] uppercase tracking-wider text-text-light mb-1" htmlFor={`day-name-${d.id}`}>
+                      Day name
+                    </label>
+                    <input
+                      id={`day-name-${d.id}`}
+                      value={days.get(d.id).name}
+                      onChange={(ev) => update((p) => setDayName(p, d.id, ev.target.value))}
+                      className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] outline-none focus:border-text-primary transition-colors mb-3"
+                    />
+                  </>
+                )}
                 <DayEditor
                   program={program}
                   day={days.get(d.id)}
@@ -738,6 +918,9 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                   sessions={history}
                   onSubstitute={onSwap}
                   learnMore={false}
+                  unit={person.unit}
+                  weightKg={person.weightKg}
+                  cardioOnly={d.kind === 'rest'}
                 />
                 <button
                   type="button"

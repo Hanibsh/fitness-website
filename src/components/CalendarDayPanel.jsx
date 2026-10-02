@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { Dumbbell, Moon, Check, Play, Bandage } from 'lucide-react'
 import DayCard from './DayCard'
 import StatusChip from './StatusChip'
-import { dayStatusForDate } from '../lib/program'
+import { dayStatusForDate, hasPlannedWork } from '../lib/program'
+import { cardioOf, cardioTargetText } from '../lib/cardio'
 import { dayStats, sessionStats } from '../lib/planStats'
 import { formatDuration } from '../lib/dashboard'
 import { reasonLabel } from '../lib/dayLog'
@@ -126,8 +127,12 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
   // now; a day you missed is logged against the date it was missed on, so the
   // split's rotation consumes that slot rather than today's. Deliberately not
   // offered on days still ahead — there's nothing to log yet — nor on a day
-  // that's done, off, or a rest day.
-  const startable = state.day && state.day.kind !== 'rest' && (state.status === 'today' || state.status === 'missed')
+  // that's done, off, or a rest day — unless it's today's rest day and holds
+  // cardio, which is there to be done.
+  const restWithCardio = state.status === 'rest' && hasPlannedWork(state.day)
+  const isToday = date.toDateString() === new Date().toDateString()
+  const startable =
+    (state.day && state.day.kind !== 'rest' && (state.status === 'today' || state.status === 'missed')) || (restWithCardio && isToday)
   const startState = startable
     ? { startPlannedDay: state.day.id, ...(state.status === 'missed' ? { sessionDate: date.getTime() } : {}) }
     : null
@@ -181,8 +186,8 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
         <p className="text-[12px] text-text-muted">No workout logged this day.</p>
       ) : (
         <DayCard
-          stats={state.day && state.day.kind !== 'rest' ? dayStats(state.day) : null}
-          to={state.status === 'rest' ? undefined : dayHref || undefined}
+          stats={state.day && hasPlannedWork(state.day) ? dayStats(state.day) : null}
+          to={state.status === 'rest' && !restWithCardio ? undefined : dayHref || undefined}
           linkState={backState}
           linkLabel={`Open ${state.day?.name || 'this day'} in your split`}
           footer={
@@ -193,11 +198,14 @@ export default function CalendarDayPanel({ selectedDay, program, annotations = [
                 className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 text-[13px] no-underline hover:bg-accent-hover transition-colors"
               >
                 <Play className="w-3.5 h-3.5" />
-                {state.status === 'today' ? 'Start today’s session' : 'Log this workout'}
+                {restWithCardio ? 'Start cardio' : state.status === 'today' ? 'Start today’s session' : 'Log this workout'}
               </Link>
             ) : null
           }
-          chips={(state.day?.exercises || []).map((pe) => ({ key: pe.id, label: pe.name, suffix: `${pe.sets}×` }))}
+          chips={(state.day?.exercises || []).map((pe) => {
+            const cardio = pe.kind === 'cardio' ? cardioOf(pe) : null
+            return { key: pe.id, label: pe.name, suffix: cardio ? cardioTargetText(cardio.target) : pe.kind === 'cardio' ? null : `${pe.sets}×` }
+          })}
           note={NOTES[state.status] ?? (state.day?.exercises?.length ? null : 'Nothing planned for this day yet.')}
           header={
             <>

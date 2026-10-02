@@ -161,11 +161,14 @@ function newAccumulator() {
 // {exerciseId, name, kind} — a planned row or a logged one; the only difference
 // between a plan and a session at this level is where `n` came from.
 function creditExercise(acc, ex, n) {
-  acc.sets += n
   if (ex.kind === 'cardio') {
     acc.cardio++
-    return // no muscle split and no systemic load we can honestly claim
+    // No muscle split and no systemic load we can honestly claim — and no sets
+    // either: a cardio row's "sets" are intervals, and counting them would put
+    // a walk against the day's set cap.
+    return
   }
+  acc.sets += n
   const db = getFullExercise(bankIdFor(ex))
   if (isCoreMovement(db)) acc.coreSets += n
 

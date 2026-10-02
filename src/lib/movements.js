@@ -147,6 +147,7 @@ export const MOVEMENTS = [
 
   // Cardio
   { name: 'Running', category: 'Cardio', keywords: ['run', 'treadmill', 'jog', 'conditioning'] },
+  { name: 'Walking', category: 'Cardio', keywords: ['walk', 'treadmill', 'steps', 'conditioning'] },
   { name: 'Incline Walk', category: 'Cardio', keywords: ['treadmill', 'walking', 'conditioning'] },
   { name: 'Cycling', category: 'Cardio', keywords: ['bike', 'stationary bike', 'spin', 'conditioning'] },
   { name: 'Rowing', category: 'Cardio', keywords: ['rower', 'erg', 'conditioning'] },

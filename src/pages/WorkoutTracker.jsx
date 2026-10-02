@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History, Route } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History, Route, Play } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -45,7 +45,8 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel } from '../lib/program'
+import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork } from '../lib/program'
+import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
@@ -717,7 +718,7 @@ export default function WorkoutTracker() {
     if (!dayId || loadingHistory) return
     const day = program?.days.find((d) => d.id === dayId)
     const safe = !draftHasWork(draft) || willStashDraft(draft, staleDraft)
-    if (day && day.kind !== 'rest') {
+    if (hasPlannedWork(day)) {
       if (safe) startPlannedSession(day, { date: location.state.sessionDate || Date.now() })
       else setBlockedStart(day.name || 'that day')
     }
@@ -2338,6 +2339,13 @@ export default function WorkoutTracker() {
           )}
           {ex.kind === 'cardio' ? (
             <>
+              {/* What the split asks of this cardio, read-only — it belongs to
+                  the split, so it's edited there. */}
+              {ex.cardio && (
+                <p className="text-[11px] text-text-light mb-2 break-words">
+                  Target: {cardioLabel(ex.cardio, unit, convertWeight(Number(draft.bodyweight) || 0, unit, 'kg') || null)}
+                </p>
+              )}
               <div className={`${CARDIO_SET_GRID} mb-2 text-[10px] uppercase tracking-wider text-text-light`}>
                 <span className="text-center">#</span>
                 <span>Min</span>
@@ -2771,22 +2779,55 @@ export default function WorkoutTracker() {
                 </div>
               ) : todayDay.kind === 'rest' ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-heading text-xl font-medium">Rest day</p>
-                    <p className="text-[12px] text-cream-60 mt-0.5">
-                      {isWeeklyProgram
-                        ? `Enjoy your day off — relax and recover.${nextUp ? ` Back at it ${nextDayLabel(nextUp.date)} with ${nextUp.day.name}.` : ''}`
-                        : 'Recovery in your rotation — it passes on its own tomorrow. Log freely below, or mark it done to move on now.'}
-                    </p>
+                    {/* Cardio on a rest day is optional: said, offered, and
+                        never what holds the split up. */}
+                    {hasPlannedWork(todayDay) ? (
+                      <>
+                        {todayDay.exercises.map((pe) => {
+                          const cardio = cardioOf(pe)
+                          return (
+                            <p key={pe.id} className="text-[13px] text-cream mt-1 break-words">
+                              {pe.name}
+                              {cardio && <span className="text-cream-70"> · {cardioLabel(cardio, unit, convertWeight(Number(prefillBodyweight()) || 0, unit, 'kg') || null)}</span>}
+                            </p>
+                          )
+                        })}
+                        <p className="text-[12px] text-cream-60 mt-1">
+                          Optional cardio — {isWeeklyProgram ? 'skip it and nothing moves.' : 'skip it and the day still passes on its own tomorrow.'}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[12px] text-cream-60 mt-0.5">
+                        {isWeeklyProgram
+                          ? `Enjoy your day off — relax and recover.${nextUp ? ` Back at it ${nextDayLabel(nextUp.date)} with ${nextUp.day.name}.` : ''}`
+                          : 'Recovery in your rotation — it passes on its own tomorrow. Log freely below, or mark it done to move on now.'}
+                      </p>
+                    )}
                   </div>
-                  {!isWeeklyProgram && (
-                    <button
-                      onClick={() => markRestDone(todayDay)}
-                      className="shrink-0 inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[13px] hover:bg-white transition-colors"
-                    >
-                      Mark rest done
-                    </button>
-                  )}
+                  <div className="shrink-0 flex flex-wrap gap-2">
+                    {hasPlannedWork(todayDay) && (
+                      <button
+                        onClick={() => startPlannedSession(todayDay)}
+                        className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[13px] hover:bg-white transition-colors"
+                      >
+                        <Play className="w-4 h-4" /> Start cardio
+                      </button>
+                    )}
+                    {!isWeeklyProgram && (
+                      <button
+                        onClick={() => markRestDone(todayDay)}
+                        className={`inline-flex items-center justify-center gap-2 font-medium px-5 py-2.5 cursor-pointer text-[13px] transition-colors ${
+                          hasPlannedWork(todayDay)
+                            ? 'bg-transparent text-cream border border-cream-50 hover:border-cream'
+                            : 'bg-cream text-text-primary border-none hover:bg-white'
+                        }`}
+                      >
+                        Mark rest done
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : skipTodayCard ? (
                 <div>
@@ -2820,11 +2861,14 @@ export default function WorkoutTracker() {
                   <p className="font-heading text-2xl font-medium mb-1 break-words">{todayDay.name}</p>
                   {todayDay.exercises.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-3 mb-5">
-                      {todayDay.exercises.map((ex) => (
-                        <span key={ex.id} className="text-[12px] text-cream-90 bg-cream-10 border border-cream-20 px-2.5 py-1">
-                          {ex.name} <span className="text-cream-50">· {ex.sets}×</span>
-                        </span>
-                      ))}
+                      {todayDay.exercises.map((ex) => {
+                        const cardio = ex.kind === 'cardio' ? cardioOf(ex) : null
+                        return (
+                          <span key={ex.id} className="text-[12px] text-cream-90 bg-cream-10 border border-cream-20 px-2.5 py-1">
+                            {ex.name} <span className="text-cream-50">· {cardio ? cardioTargetText(cardio.target) : `${ex.sets}×`}</span>
+                          </span>
+                        )
+                      })}
                     </div>
                   ) : (
                     <p className="text-[12px] text-cream-60 mt-1 mb-5">No exercises planned yet — add some in the routine builder.</p>

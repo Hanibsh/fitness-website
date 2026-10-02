@@ -5,7 +5,8 @@ import DayEditor from '../components/DayEditor'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats } from '../lib/planStats'
-import { setDayName, splitSetCap } from '../lib/program'
+import { setDayName, splitSetCap, hasPlannedWork } from '../lib/program'
+import { usePlanPerson } from '../lib/profilePrefill'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -20,11 +21,14 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function SplitDay() {
   const { dayId } = useParams()
   const { state } = useLocation()
-  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex, mode = 'own', basePath = `/split/${program.id}` } = useOutletContext()
+  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex, mode = 'own', client = null, basePath = `/split/${program.id}` } = useOutletContext()
   // A client's split (ClientSplitLayout) keeps its notes on its own rows and
   // never reads your log: the shared per-movement notes and your history are
   // yours, and neither belongs on — or should steer — someone else's plan.
   const sharedNotes = mode !== 'client'
+  // Cardio rows show km/h or mph and turn minutes into calories with the
+  // weight of whoever the split is for.
+  const person = usePlanPerson(mode === 'client' ? client?.profile || {} : null)
 
   const dayIndex = program.days.findIndex((d) => d.id === dayId)
   const day = dayIndex === -1 ? null : program.days[dayIndex]
@@ -60,8 +64,9 @@ export default function SplitDay() {
   // The day the badge above calls Today (or Up next) is the one you can start
   // from here, and the logger resolves it against your ACTIVE split — so a day
   // belonging to a split you aren't running gets no button rather than a dead
-  // one. Rest days have nothing to log.
-  const canStart = isToday && isActive && day.kind !== 'rest'
+  // one. A rest day can be started once it holds cardio.
+  const canStart = isToday && isActive && hasPlannedWork(day)
+  const rest = day.kind === 'rest'
 
   return (
     <>
@@ -92,9 +97,10 @@ export default function SplitDay() {
             className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
           />
 
-          {day.kind === 'rest' ? (
-            <p className="text-[12px] text-text-light mt-3">
-              {isWeekly ? 'A rest day — no exercises.' : 'A rest slot in the rotation — no exercises.'}
+          {rest ? (
+            <p className="text-[12px] text-text-light mt-3 leading-relaxed">
+              {isWeekly ? 'A rest day.' : 'A rest slot in the rotation.'} Cardio here is optional: it never holds up the
+              rest of your split{isWeekly ? '' : ', and the day still passes on its own'}.
             </p>
           ) : stats.exercises === 0 ? (
             <p className="text-[12px] text-text-light mt-3">Nothing planned yet — add your first exercise below.</p>
@@ -145,22 +151,23 @@ export default function SplitDay() {
               className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2.5 mt-4 text-[13px] no-underline hover:bg-accent-hover transition-colors"
             >
               <Play className="w-3.5 h-3.5" />
-              {isWeekly ? 'Start today’s session' : 'Start this session'}
+              {rest ? 'Start cardio' : isWeekly ? 'Start today’s session' : 'Start this session'}
             </Link>
           )}
         </div>
 
-        {/* Exercises */}
-        {day.kind !== 'rest' && (
-          <DayEditor
-            program={program}
-            day={day}
-            update={update}
-            user={user}
-            notes={sharedNotes ? 'shared' : 'row'}
-            sessions={sharedNotes ? undefined : []}
-          />
-        )}
+        {/* Exercises — or, on a rest day, its optional cardio */}
+        <DayEditor
+          program={program}
+          day={day}
+          update={update}
+          user={user}
+          notes={sharedNotes ? 'shared' : 'row'}
+          sessions={sharedNotes ? undefined : []}
+          unit={person.unit}
+          weightKg={person.weightKg}
+          cardioOnly={rest}
+        />
       </motion.div>
     </>
   )

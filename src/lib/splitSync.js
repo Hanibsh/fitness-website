@@ -16,7 +16,7 @@
 //     carry forward from your last session as suggestions, not from the plan.
 //   - notes: shared per movement, not per plan row (see workoutStore).
 
-import { createPlannedExercise, matchesPlanned, plannedRowFor, isOpenSlot } from './program'
+import { createPlannedExercise, matchesPlanned, plannedRowFor, isOpenSlot, withKindFields } from './program'
 import { newSupersetId, pruneSupersets, regroupSupersets, setHasWork } from './workoutStats'
 
 const DEFAULT_REP_RANGE = { low: 6, high: 10 }
@@ -335,19 +335,20 @@ export function applySplitChanges(program, dayId, changes) {
     if (setChanges.size || rangeChanges.size || swaps.size || lats.size) {
       exercises = exercises.map((pe) => {
         if (!setChanges.has(pe.id) && !rangeChanges.has(pe.id) && !swaps.has(pe.id) && !lats.has(pe.id)) return pe
-        const next = { ...pe }
+        let next = { ...pe }
         if (setChanges.has(pe.id)) next.sets = Math.max(1, setChanges.get(pe.id))
         if (rangeChanges.has(pe.id)) next.repRange = rangeChanges.get(pe.id)
         if (swaps.has(pe.id)) {
           // The slot survives, the movement changes: sets, rep target and
           // position all stay as planned — the same semantics as swapping a row
           // in the builder. A cardio row can't be half of a superset, so a swap
-          // across that line has to let go of the pairing.
+          // across that line lets go of the pairing; a cardio row's activity
+          // follows its new machine while how much per session stays.
           const s = swaps.get(pe.id)
           next.name = s.name
           next.exerciseId = s.exerciseId || null
           next.kind = s.exKind
-          if (s.exKind === 'cardio') next.supersetId = null
+          next = withKindFields(next, pe)
         }
         if (lats.has(pe.id)) next.unilateral = lats.get(pe.id)
         return next
@@ -362,7 +363,7 @@ export function applySplitChanges(program, dayId, changes) {
         exerciseId: c.exerciseId,
         kind: c.exKind,
         sets: c.sets,
-        repRange: c.repRange || DEFAULT_REP_RANGE,
+        repRange: c.exKind === 'cardio' ? null : c.repRange || DEFAULT_REP_RANGE,
         unilateral: c.unilateral ?? null,
         note: c.note || '',
       })

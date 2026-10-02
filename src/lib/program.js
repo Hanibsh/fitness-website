@@ -25,6 +25,7 @@ import { lateralityFor, usesBodyweight } from './movements'
 import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
 import { patternPhrase } from '../data/movementPatterns'
 import { volumePreference, shapeById, SPLIT_REFRESH_WEEKS } from './generatorConfig'
+import { cardioOf, retargetCardio, movementForCardio } from './cardio'
 
 export { plannedExerciseDbId }
 
@@ -77,9 +78,27 @@ export function moveInArray(arr, index, delta) {
 //
 // Null on every hand-built row and on every split written before this existed,
 // and null reads exactly as the app read before — nothing migrates.
+//
+// A cardio row carries `cardio` instead of a rep target: the activity, its
+// machine settings and how much per session (see lib/cardio.js). Its `sets` is
+// the logger's interval count, which starts at one.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, rirTarget = null, note = '', unilateral = null, slot = null } = opts
-  return { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, rirTarget, note, unilateral, slot }
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, rirTarget = null, note = '', unilateral = null, slot = null, cardio = null } = opts
+  const row = { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, rirTarget, note, unilateral, slot }
+  if (kind === 'cardio') {
+    const prescription = cardio || cardioOf({ name })
+    if (prescription) row.cardio = prescription
+  }
+  return row
+}
+
+// A day with something to do in it. A training day always counts — an empty
+// one is still a session waiting for exercises — and a rest day counts once it
+// holds cardio. Rest days stay rest days either way: their cardio is optional
+// and never holds up the rest of the split.
+export function hasPlannedWork(day) {
+  if (!day) return false
+  return day.kind !== 'rest' || (day.exercises || []).length > 0
 }
 
 // "1–2 RIR", "1–2 RIR, last set to failure", "Last set to failure", or ''
@@ -197,9 +216,12 @@ export function setDayName(program, dayId, name) {
 // `sharedNotes: false` is for a split that isn't yours (a client's): its rows
 // keep their own notes and never read the per-movement store, which is yours.
 export function addExercise(program, dayId, { name, category, exerciseId }, { sharedNotes = true } = {}) {
+  const cardio = category === 'Cardio'
   const planned = createPlannedExercise(name, {
     exerciseId,
-    kind: category === 'Cardio' ? 'cardio' : 'strength',
+    kind: cardio ? 'cardio' : 'strength',
+    // A cardio row's "sets" are intervals, and it has no rep target.
+    ...(cardio ? { sets: 1, repRange: null } : {}),
     // Whatever this movement's note already says, wherever it was written —
     // notes belong to the movement, not to the slot.
     note: sharedNotes ? getExerciseNote({ exerciseId, name }) : '',
@@ -311,14 +333,35 @@ export function setRowNote(program, dayId, exId, note) {
 export function substituteExercise(program, dayId, exId, { name, category, exerciseId, pattern }) {
   return withExercise(program, dayId, exId, (e) => {
     const slot = e.slot && pattern && pattern !== e.slot.pattern ? { ...e.slot, pattern } : e.slot
-    return {
-      ...e,
-      name: name.trim().slice(0, 60),
-      exerciseId,
-      kind: category === 'Cardio' ? 'cardio' : 'strength',
-      slot,
-    }
+    const kind = category === 'Cardio' ? 'cardio' : 'strength'
+    const next = { ...e, name: name.trim().slice(0, 60), exerciseId, kind, slot }
+    return withKindFields(next, e)
   })
+}
+
+// What a row needs once its movement changes kind, or stays cardio on a new
+// machine: a cardio row's activity follows its movement (keeping how much per
+// session), and a row that turns into a lift gets a rep target back.
+export function withKindFields(next, prev) {
+  if (next.kind === 'cardio') {
+    const cardio = retargetCardio(prev.cardio || cardioOf(prev), next.name)
+    const { cardio: _old, ...rest } = next
+    return { ...rest, supersetId: null, ...(cardio ? { cardio } : {}) }
+  }
+  if (!next.cardio && next.repRange) return next
+  const { cardio: _gone, ...rest } = next
+  return { ...rest, repRange: rest.repRange || { low: 6, high: 10 } }
+}
+
+// A cardio row's prescription, replaced whole. The name follows the activity
+// where the activity has a name of its own for the setting — a walk on an
+// incline is an Incline Walk, back to Walking at 0%.
+export function setExerciseCardio(program, dayId, exId, cardio) {
+  return withExercise(program, dayId, exId, (e) => ({
+    ...e,
+    cardio,
+    name: movementForCardio(cardio.activity, cardio.params) || e.name,
+  }))
 }
 
 // Commit this row to the movement it currently names, or hand it back to its
@@ -946,6 +989,12 @@ export function draftFromDay(day, opts = {}) {
     // mid-session substitution can optionally update the plan too.
     ex.plannedExerciseId = pe.id
     ex.rirTarget = strength ? pe.rirTarget || null : null
+    // What the plan asks of a cardio row, read-only in the logger the way the
+    // effort target is for a lift.
+    if (!strength) {
+      const cardio = cardioOf(pe)
+      if (cardio) ex.cardio = cardio
+    }
     // Planned supersets carry into the session: partners share the same group
     // id in the plan, so the log renders the same A1/A2 pairing.
     ex.supersetId = pe.supersetId || null

@@ -25,11 +25,15 @@ import MuscleShareBars from './MuscleShareBars'
 // `setCap` is the split's hard-set cap per day, for a PLANNED day only: the count
 // reads "18 / 16 sets" and says so when an edit has pushed the day past it. Ab
 // sets don't count toward it (CORE_CATEGORY), so they're said on their own:
-// "16 / 16 sets + 3 abs".
+// "16 / 16 sets + 3 abs". Cardio is neither an exercise in that count nor a
+// set: a day says "+ cardio" after its lifting, and a day with nothing else (a
+// rest day's walk) says "Cardio".
 export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, onOpen, note, cta = 'Open day', highlight = false, compact = false, footer, setCap = null }) {
   const capped = setCap != null
   const sets = stats ? stats.sets - (capped ? stats.coreSets || 0 : 0) : 0
   const overCap = capped && sets > setCap
+  const cardio = stats?.cardio || 0
+  const lifts = stats ? stats.exercises - cardio : 0
   const openable = !!to || !!onOpen
   const body = (
     <>
@@ -38,17 +42,24 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
       {stats && stats.exercises > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-text-muted">
-            <span className="tabular-nums">
-              {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} ·{' '}
-              <span className={overCap ? 'text-amber-600' : undefined}>
-                {sets}
-                {capped ? ` / ${setCap}` : ''} set{sets !== 1 || capped ? 's' : ''}
+            {lifts > 0 ? (
+              <span className="tabular-nums">
+                {lifts} exercise{lifts !== 1 ? 's' : ''} ·{' '}
+                <span className={overCap ? 'text-amber-600' : undefined}>
+                  {sets}
+                  {capped ? ` / ${setCap}` : ''} set{sets !== 1 || capped ? 's' : ''}
+                </span>
+                {capped && stats.coreSets > 0 && ` + ${stats.coreSets} abs`}
+                {cardio > 0 && ' + cardio'}
               </span>
-              {capped && stats.coreSets > 0 && ` + ${stats.coreSets} abs`}
-            </span>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
-              {stats.load.label}
-            </span>
+            ) : (
+              <span>Cardio</span>
+            )}
+            {lifts > 0 && (
+              <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
+                {stats.load.label}
+              </span>
+            )}
           </div>
           {overCap && (
             <p className="text-[11px] text-amber-600 mt-1">

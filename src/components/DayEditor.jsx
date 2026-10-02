@@ -4,11 +4,13 @@ import { X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, B
 import ExercisePicker from './ExercisePicker'
 import SlotSwapPanel from './SlotSwapPanel'
 import NumberField from './NumberField'
+import CardioFields from './CardioFields'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
 import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
 import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
 import { patternPhrase } from '../data/movementPatterns'
 import { bankIdFor } from '../lib/planStats'
+import { cardioOf } from '../lib/cardio'
 import {
   canChooseLaterality,
   addExercise,
@@ -26,6 +28,7 @@ import {
   isOpenSlot,
   pairSuperset,
   unpairSuperset,
+  setExerciseCardio,
 } from '../lib/program'
 
 // One training day's exercises, editable: every row's movement, sets, reps and
@@ -46,6 +49,11 @@ import {
 // substitution (the preview re-derives reps for the new movement).
 // `learnMore` links each movement to its bank page, which a host with unsaved
 // work turns off.
+//
+// Cardio rows edit their prescription (CardioFields) instead of sets and reps:
+// `unit` sets km/h or mph, and `weightKg` (whoever the split is for) turns a
+// time into calories and back. `cardioOnly` is a rest day's editor — its picker
+// offers cardio and nothing else.
 export default function DayEditor({
   program,
   day,
@@ -55,6 +63,9 @@ export default function DayEditor({
   sessions,
   onSubstitute,
   learnMore = true,
+  unit = 'kg',
+  weightKg = null,
+  cardioOnly = false,
 }) {
   const { pathname, state } = useLocation()
   const sharedNotes = notes === 'shared'
@@ -190,6 +201,19 @@ export default function DayEditor({
                 </button>
               </div>
 
+              {ex.kind === 'cardio' ? (
+                cardioOf(ex) && (
+                  <div className="mt-3">
+                    <CardioFields
+                      value={cardioOf(ex)}
+                      onChange={(c) => update((p) => setExerciseCardio(p, day.id, ex.id, c))}
+                      unit={unit}
+                      weightKg={weightKg}
+                      label={ex.name}
+                    />
+                  </div>
+                )
+              ) : (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] uppercase tracking-wider text-text-light">Sets</span>
@@ -256,6 +280,7 @@ export default function DayEditor({
                   </label>
                 )}
               </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-1 mt-3 pt-2.5 border-t border-border">
                 <button
@@ -423,7 +448,8 @@ export default function DayEditor({
 
       <ExercisePicker
         onSelect={(name, category, id) => update((p) => addExercise(p, day.id, { name, category, exerciseId: id }, { sharedNotes }))}
-        placeholder="Add an exercise…"
+        onlyCategory={cardioOnly ? 'Cardio' : undefined}
+        placeholder={cardioOnly ? 'Add cardio…' : 'Add an exercise…'}
       />
     </>
   )
