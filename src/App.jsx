@@ -25,6 +25,7 @@ const SplitLayout = lazy(() => import('./pages/SplitLayout'))
 const SplitOverview = lazy(() => import('./pages/SplitOverview'))
 const SplitDay = lazy(() => import('./pages/SplitDay'))
 const GenerateSplit = lazy(() => import('./pages/GenerateSplit'))
+const ImportSplit = lazy(() => import('./pages/ImportSplit'))
 // The coach's client area — only reachable on the coach's account (CoachLayout).
 const CoachLayout = lazy(() => import('./pages/CoachLayout'))
 const Clients = lazy(() => import('./pages/Clients'))
@@ -76,6 +77,7 @@ function App() {
             dynamic one, so "generate" never reaches SplitLayout the way "new"
             deliberately does. */}
         <Route path="/split/generate" element={<GenerateSplit />} />
+        <Route path="/import" element={<ImportSplit />} />
         <Route path="/split/:id" element={<SplitLayout />}>
           <Route index element={<SplitOverview />} />
           <Route path="day/:dayId" element={<SplitDay />} />

@@ -137,7 +137,9 @@ function partFor(pe, { sessions, unit, noteFor }) {
   const db = getFullExercise(bankIdFor(pe))
   return {
     id: pe.id,
-    name: pe.name,
+    // The movement's CURRENT name: a row added before a rename still says the
+    // old one, and the text should read — and import back — as the DB does now.
+    name: open ? pe.name : db?.name || pe.name,
     exerciseId: pe.exerciseId || null,
     // An open slot names the job ("Any vertical pull"); the generator's own
     // pick rides along as an example rather than an instruction.

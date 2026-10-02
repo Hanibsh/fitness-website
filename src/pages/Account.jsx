@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, LogOut, Check, Users } from 'lucide-react'
+import { ArrowLeft, LogOut, Check, Users, Upload } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
@@ -289,12 +289,18 @@ export default function Account() {
                   <span className="text-[11px] font-medium text-cream bg-text-primary px-2 py-0.5">Coaching client</span>
                 )}
               </div>
-              {/* The coach's own account only (profiles.is_coach). */}
-              {isCoach && (
-                <Link to="/coach" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline mb-3 transition-colors">
-                  <Users className="w-4 h-4" /> Your clients
+              <div className="flex flex-wrap gap-x-5 gap-y-2 mb-3">
+                {/* A split sent as text can fill this page in too. */}
+                <Link to="/import" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline transition-colors">
+                  <Upload className="w-4 h-4" /> Import from a text file
                 </Link>
-              )}
+                {/* The coach's own account only (profiles.is_coach). */}
+                {isCoach && (
+                  <Link to="/coach" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline transition-colors">
+                    <Users className="w-4 h-4" /> Your clients
+                  </Link>
+                )}
+              </div>
 
               <p className="text-[13px] text-text-muted mb-10 leading-relaxed">
                 Everything here is optional — fill in whatever helps us tailor your training, and skip or clear the rest anytime. Tap a selected option again to clear it.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2, Sparkles, Users } from 'lucide-react'
+import { Plus, ChevronUp, ChevronDown, Trash2, CalendarRange, Copy, Wand2, Sparkles, Users, Upload } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
@@ -130,6 +130,12 @@ export default function TrainingSplit() {
                 >
                   <Plus className="w-3.5 h-3.5" /> Start one from scratch
                 </button>
+                <button
+                  onClick={() => navigate('/import')}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Import one from text
+                </button>
                 {canBuild && (
                   <button
                     onClick={() => setBuilding(true)}
@@ -222,6 +228,12 @@ export default function TrainingSplit() {
                     className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" /> New split
+                  </button>
+                  <button
+                    onClick={() => navigate('/import')}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Import from text
                   </button>
                   {canBuild && (
                     <button

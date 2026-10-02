@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Sparkles, FileText, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, FileText, Trash2, X, Upload } from 'lucide-react'
 import NumberField from '../components/NumberField'
 import FocusPicker from '../components/FocusPicker'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
+import Modal from '../components/Modal'
+import ImportReview from '../components/ImportReview'
+import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, CLIENT_NAME_MAX } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
 import { convertWeight } from '../lib/workoutStats'
@@ -20,6 +23,7 @@ export default function ClientDetail() {
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
   const [exporting, setExporting] = useState(null) // program | null
+  const [importing, setImporting] = useState(false)
   const client = clients.find((c) => c.id === clientId) || null
 
   if (!client) {
@@ -40,6 +44,32 @@ export default function ClientDetail() {
     const program = blankClientProgram(client)
     updateClient(client.id, (c) => withProgram(c, program), { now: true })
     navigate(`/coach/${client.id}/split/${program.id}`)
+  }
+
+  // A split sent back as text (or one someone already had): its days become a
+  // program here, ticked profile fields fill theirs, and their own lines,
+  // injuries and notes come along unless unticked. Notes already written stay —
+  // the new ones go underneath.
+  function importForClient({ program, profile, extra = [], injuries = '', coachNotes = '' }) {
+    updateClient(
+      client.id,
+      (c) => {
+        const seen = new Set(c.extra.map((x) => `${x.label}|${x.value}`))
+        const notes = (c.notes || '').trim()
+        let next = {
+          ...c,
+          profile: profile ? { ...c.profile, ...profile } : c.profile,
+          extra: [...c.extra, ...extra.filter((x) => !seen.has(`${x.label}|${x.value}`))],
+          injuries: injuries || c.injuries,
+          notes: coachNotes && notes !== coachNotes.trim() ? (notes ? `${notes}\n\n${coachNotes}` : coachNotes) : c.notes,
+        }
+        if (program) next = withProgram(next, program)
+        return next
+      },
+      { now: true }
+    )
+    setImporting(false)
+    if (program) navigate(`/coach/${client.id}/split/${program.id}`)
   }
 
   // Same rule as the profile page: numbers are stored in the system the unit
@@ -178,6 +208,12 @@ export default function ClientDetail() {
               className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors"
             >
               <Plus className="w-4 h-4" /> Blank program
+            </button>
+            <button
+              onClick={() => setImporting(true)}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors"
+            >
+              <Upload className="w-4 h-4" /> Import from text
             </button>
           </div>
         </section>
@@ -320,6 +356,21 @@ export default function ClientDetail() {
       </motion.div>
 
       {exporting && <ExportModal program={exporting} client={client} onClose={() => setExporting(null)} />}
+
+      {importing && (
+        <Modal onClose={() => setImporting(false)} maxWidth="max-w-2xl">
+          <div className="p-5 sm:p-7">
+            <h3 className="font-heading text-xl font-medium text-text-primary mb-1 pr-8">Import for {client.name || 'this client'}</h3>
+            <p className="text-[13px] text-text-muted mb-5 leading-relaxed">
+              Paste an exported split. Its days become one of their programs; tick which profile details to keep.
+            </p>
+            {/* Their picker, not yours: no injury badges of your own. */}
+            <InjuryScope.Provider value={NO_INJURIES}>
+              <ImportReview currentProfile={client.profile} withExtras importLabel={`Import for ${client.name || 'this client'}`} onImport={importForClient} />
+            </InjuryScope.Provider>
+          </div>
+        </Modal>
+      )}
 
       {confirm?.kind === 'client' && (
         <ConfirmModal
