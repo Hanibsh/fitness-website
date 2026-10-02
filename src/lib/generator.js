@@ -52,7 +52,7 @@ import {
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
   PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
-  corePlacement,
+  corePlacement, CORE_MUSCLES,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -672,6 +672,8 @@ export function candidates(muscle, ctx) {
     if (ctx.patterns && !ctx.patterns.includes(db.pattern)) return false
     // ...or to movements this muscle is the main mover of (a focus lead).
     if (ctx.mainMover && primaryMuscleOf(db) !== muscle) return false
+    // Ab work and everything else never stand in for each other (CORE_MUSCLES).
+    if (CORE_MUSCLES.includes(muscle) !== isCoreMovement(db)) return false
     const w = muscleWeights(db)[muscle] || 0
     return w > 0 && w >= (ctx.minContribution || 0)
   })

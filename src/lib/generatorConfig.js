@@ -411,6 +411,12 @@ export const DEFAULT_VOLUME_PREFERENCE = 'standard'
 // the user picks where it goes: paired with the day's least fatiguing movement,
 // or after everything else.
 export const CORE_CATEGORY = 'Core'
+// The muscles only a core movement trains, and the only ones a core movement is
+// picked for (candidates). Without the first half, a day that already had its
+// one ab movement handed its spare ab sets to whatever brushed the abs on
+// multi-muscle credit — a Copenhagen adduction, a weighted chin-up on leg day.
+// Without the second, toes-to-bar got picked for the lats.
+export const CORE_MUSCLES = ['Abs', 'Obliques']
 export const CORE_PLACEMENTS = [
   { value: 'superset', label: 'Superset', sub: 'With the lightest movement' },
   { value: 'end', label: 'At the end', sub: 'After everything else' },

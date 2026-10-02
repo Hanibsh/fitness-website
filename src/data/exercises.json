@@ -9329,19 +9329,19 @@
         "Glute Max": 1,
         "Hamstrings": 0.5
       },
-      "fatigueScore": 3,
+      "fatigueScore": 1,
       "recoveryWindowHours": [
-        36,
-        60
+        24,
+        48
       ],
       "restSeconds": [
-        180,
-        240
+        120,
+        180
       ],
       "progressiveOverload": "high",
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
-      "sfr": "good",
+      "sfr": "excellent",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "machine",
@@ -9798,15 +9798,14 @@
       "pattern": "hip-hinge"
     },
     {
-      "id": "copenhagen-adduction",
-      "name": "Copenhagen Adduction",
+      "id": "hip-adduction-machine",
+      "name": "Hip Adduction Machine",
       "category": "Legs",
       "subCategory": "Adductors",
       "type": "isolation",
       "laterality": "bilateral",
       "muscles": {
-        "Adductors": 1,
-        "Rectus Abdominis": 0.5
+        "Adductors": 1
       },
       "fatigueScore": 1,
       "recoveryWindowHours": [
@@ -9817,46 +9816,11 @@
         120,
         180
       ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "lengthened",
-      "equipment": "bodyweight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "limiter": "target",
-      "programmable": true,
-      "notes": null,
-      "video": null,
-      "thumbnail": null,
-      "pattern": "hip-adduction"
-    },
-    {
-      "id": "hip-adduction-machine",
-      "name": "Hip Adduction Machine",
-      "category": "Legs",
-      "subCategory": "Adductors",
-      "type": "isolation",
-      "laterality": "bilateral",
-      "muscles": {
-        "Adductors": 1
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        36,
-        60
-      ],
-      "restSeconds": [
-        180,
-        240
-      ],
       "progressiveOverload": "high",
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "none",
+      "sfr": "excellent",
+      "stretchMediated": "partial",
       "resistanceProfile": "balanced",
       "equipment": "machine",
       "axialLoading": false,
@@ -9904,6 +9868,42 @@
       "pattern": "hip-adduction"
     },
     {
+      "id": "copenhagen-adduction",
+      "name": "Copenhagen Adduction",
+      "category": "Legs",
+      "subCategory": "Adductors",
+      "type": "isolation",
+      "laterality": "unilateral",
+      "muscles": {
+        "Adductors": 1,
+        "Rectus Abdominis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "low",
+      "stability": "moderate",
+      "hypertrophyPotential": "high",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "lengthened",
+      "equipment": "bodyweight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "limiter": "load cap",
+      "programmable": true,
+      "notes": null,
+      "video": null,
+      "thumbnail": null,
+      "pattern": "hip-adduction"
+    },
+    {
       "id": "hip-abduction-machine",
       "name": "Hip Abduction Machine",
       "category": "Legs",
@@ -9914,19 +9914,19 @@
         "Abductors": 1,
         "Glute Max": 0.5
       },
-      "fatigueScore": 3,
+      "fatigueScore": 1,
       "recoveryWindowHours": [
-        36,
-        60
+        24,
+        48
       ],
       "restSeconds": [
-        180,
-        240
+        120,
+        180
       ],
       "progressiveOverload": "high",
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
-      "sfr": "good",
+      "sfr": "excellent",
       "stretchMediated": "none",
       "resistanceProfile": "balanced",
       "equipment": "machine",
