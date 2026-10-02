@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate } from 'lucide-react'
+import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, FileText } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
 import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay, splitSetCap } from '../lib/program'
 import { dayStats } from '../lib/planStats'
@@ -20,6 +21,7 @@ export default function SplitOverview() {
   const { program, update, isActive, setActiveRoutine, deleteRoutine, isWeekly, todayWeekdayIndex, pointerIndex, highlightIndex } = useOutletContext()
   const navigate = useNavigate()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const trainingDays = program.days.filter((d) => d.kind === 'train').length
 
@@ -73,6 +75,14 @@ export default function SplitOverview() {
             <p className="text-[11px] text-text-light mt-1.5">
               Tip: make it exactly 7 days (rest days included) and it becomes a fixed weekly schedule instead.
             </p>
+          )}
+          {trainingDays > 0 && (
+            <button
+              onClick={() => setExporting(true)}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-3 py-1.5 mt-4 cursor-pointer transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" /> Export as text
+            </button>
           )}
         </div>
 
@@ -169,6 +179,8 @@ export default function SplitOverview() {
           <Trash2 className="w-3.5 h-3.5" /> Delete this split
         </button>
       </motion.div>
+
+      {exporting && <ExportModal program={program} onClose={() => setExporting(false)} />}
 
       {confirmDelete && (
         <ConfirmModal

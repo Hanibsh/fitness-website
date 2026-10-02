@@ -412,6 +412,21 @@ export function dismissSplitNudge() {
   write(SPLIT_NUDGE_KEY, Date.now())
 }
 
+// ---- Export choices ----------------------------------------------------------
+// What the last export included (programExport.js DEFAULT_EXPORT_PREFS shape).
+// Device-local on purpose: it's how you like the text to read on this screen,
+// not something an account needs to carry.
+const EXPORT_PREFS_KEY = 'leon_export_prefs'
+
+export function getExportPrefs() {
+  const p = read(EXPORT_PREFS_KEY, null)
+  return p && typeof p === 'object' ? p : null
+}
+
+export function saveExportPrefs(prefs) {
+  write(EXPORT_PREFS_KEY, prefs)
+}
+
 // ---- Specialization blocks -------------------------------------------------
 // A list of muscle-group specialization phases, stored as one JSON array (the
 // block logic lives in blocks.js; the per-muscle summary in dashboard.js).

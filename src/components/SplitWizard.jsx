@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Dumbbell, Moon, RefreshCw, Wand2 } from 'lucide-react'
+import { Dumbbell, FileText, Moon, RefreshCw, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -8,6 +8,7 @@ import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import FocusPicker from './FocusPicker'
 import MuscleDonut from './MuscleDonut'
+import ExportModal from './ExportModal'
 import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
 import { setProgramName, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
@@ -446,6 +447,7 @@ function FocusTrade({ trade }) {
 
 function Preview({ built, name, setName, onCreate }) {
   const { summary } = built
+  const [exporting, setExporting] = useState(false)
   const cardCls = 'bg-white border border-border p-6 sm:p-8'
   const trained = summary.volume.filter((v) => v.sets > 0)
   const maxSets = Math.max(1, ...trained.map((v) => v.sets))
@@ -677,10 +679,24 @@ function Preview({ built, name, setName, onCreate }) {
       >
         <Wand2 className="w-4 h-4" /> Create this split
       </button>
+      {/* The proposal exports as it stands, name and all — no need to save a
+          split just to send it to someone. */}
+      <button
+        onClick={() => setExporting(true)}
+        className="w-full inline-flex items-center justify-center gap-2 bg-white text-text-muted hover:text-text-primary font-medium py-2.5 mt-2 border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
+      >
+        <FileText className="w-4 h-4" /> Export as text
+      </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
         Nothing is saved until you tap Create — and every day, movement, set and rep range is editable
         afterwards.
       </p>
+      {exporting && (
+        <ExportModal
+          program={name.trim() ? setProgramName(built.program, name.trim()) : built.program}
+          onClose={() => setExporting(false)}
+        />
+      )}
     </section>
   )
 }
