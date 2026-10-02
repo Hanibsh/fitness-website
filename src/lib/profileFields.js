@@ -8,6 +8,8 @@
 // posture, not the program type.
 
 import { AT_HOME_EQUIPMENT, ALL_EQUIPMENT } from '../data/equipmentGroups'
+import { ENGINE_MUSCLES } from './engineConfig'
+import { MAX_FOCUS_MUSCLES, PROGRAMMED_MUSCLES } from './generatorConfig'
 
 export const GOALS = [
   { value: 'lose_fat', label: 'Lose fat' },
@@ -58,3 +60,16 @@ export const HEIGHT_BOUNDS = {
 
 // Age bounds (matched to the calculators); birth-year range is derived from these.
 export const AGE_BOUNDS = { min: 10, max: 100 }
+
+// Muscles to bring up (`profiles.focus_muscles`): the split generator's focus,
+// kept on the profile so every new split starts from it. Offered over the
+// muscles a split actually programs first, then anything else the engine
+// tracks, so "I want bigger forearms" is sayable — naming one is what gets it
+// its own slot.
+export const FOCUS_OPTIONS = [...PROGRAMMED_MUSCLES, ...ENGINE_MUSCLES.filter((m) => !PROGRAMMED_MUSCLES.includes(m))]
+
+// A stored or passed-in pick, cleaned: known muscles only, no repeats, at most
+// MAX_FOCUS_MUSCLES. A profile row written by an older build can't break it.
+export function cleanFocus(list) {
+  return [...new Set(Array.isArray(list) ? list : [])].filter((m) => ENGINE_MUSCLES.includes(m)).slice(0, MAX_FOCUS_MUSCLES)
+}

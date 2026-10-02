@@ -284,8 +284,21 @@ export const DEFAULT_WEEKDAYS = {
 }
 
 // ---- Focus ------------------------------------------------------------------
-// A focus muscle gets three things: more weekly volume, an extra weekly session
-// where the template has room for one, and the front of every day it appears in.
+// Hani's rule (2026-10-02): a muscle is brought up by training it FIRST and MORE
+// OFTEN, not by piling sets onto one day — "from 2 sets in a day to 4 sets in
+// the same day" is fatigue, not progress. So a focus muscle gets:
+//
+//   1. the front of every day it's in, opened by a movement it's the main mover
+//      of (a lateral raise for side delts, never an overhead press);
+//   2. extra weekly sessions where the template has room, up to
+//      FOCUS_TARGET_FREQUENCY;
+//   3. never more sets in a session than it would get without the focus — its
+//      only extra volume is FOCUS_EXTRA_SESSION_SETS for the added session, or
+//      FOCUS_NO_ROOM_SETS where the week already trains it as often as it can
+//      (a 3-day full body);
+//   4. and the week's total doesn't grow: the other muscles give those sets
+//      back evenly, none below its minimum (generateProgram).
+//
 // Which half of the body a muscle belongs to. Used to decide whether a training
 // day can host a focus muscle it wasn't built for: raising a lagging muscle to
 // three sessions a week is only worth doing if the extra sessions make sense,
@@ -306,10 +319,17 @@ export const MUSCLE_REGION = {
 // recover from, and genuinely trained anywhere in practice — calves at the end
 // of a push day is ordinary programming, quads on a push day is not.
 export const PORTABLE_MUSCLES = new Set(['Calves', 'Tibialis', 'Abs', 'Obliques', 'Forearms', 'Neck & Traps'])
+// ...and, once someone has asked for them to be brought up, the small upper-body
+// muscles too: a few lateral raises or curls at the start of a leg day are the
+// only way an upper/lower week gives them a third session, and specialising a
+// lagging small muscle that way is ordinary bodybuilding practice. The big ones
+// (chest, back, quads, hamstrings, glutes) stay on their own days.
+export const FOCUS_PORTABLE_MUSCLES = new Set([...PORTABLE_MUSCLES, 'Side Delts', 'Rear Delts', 'Biceps', 'Triceps'])
 
 export const MAX_FOCUS_MUSCLES = 3
-export const FOCUS_VOLUME_MULT = 1.4
 export const FOCUS_TARGET_FREQUENCY = 3 // sessions/wk to lift a focus muscle to
+export const FOCUS_EXTRA_SESSION_SETS = 2 // weekly sets added when it gains a session
+export const FOCUS_NO_ROOM_SETS = 1 // ...or when the week has no session to give it
 // A focus muscle is deliberately fresh territory — someone naming it is asking
 // for it to be brought up, not for more of what already wasn't enough. So their
 // own habitual movements count for less when filling a focus slot.

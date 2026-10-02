@@ -6,8 +6,9 @@ import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
 import {
-  GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS,
+  GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, HEIGHT_BOUNDS, AGE_BOUNDS, cleanFocus,
 } from '../lib/profileFields'
+import FocusPicker from '../components/FocusPicker'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
@@ -41,6 +42,7 @@ export default function Account() {
   const [goal, setGoal] = useState('')
   const [experience, setExperience] = useState('')
   const [equipment, setEquipment] = useState('')
+  const [focusMuscles, setFocusMuscles] = useState([])
 
   // Preferences
   const [shareData, setShareData] = useState(false)
@@ -75,6 +77,7 @@ export default function Account() {
           setGoal(p.goal || '')
           setExperience(p.experience_level || '')
           setEquipment(p.equipment || '')
+          setFocusMuscles(cleanFocus(p.focus_muscles))
           setShareData(!!p.share_data)
           setCoachingStatus(p.coaching_status || 'none')
         }
@@ -125,6 +128,7 @@ export default function Account() {
         goal: goal || null,
         experience_level: experience || null,
         equipment: equipment || null,
+        focus_muscles: focusMuscles.length ? focusMuscles : null,
         share_data: shareData,
       })
       setNickname(nick.value)
@@ -312,6 +316,15 @@ export default function Account() {
                       <div className="grid grid-cols-2 gap-2">
                         {EQUIPMENT_PRESETS.map((eq) => choice(equipment === eq.value, () => setEquipment(equipment === eq.value ? '' : eq.value), eq.label))}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className={labelCls}>Muscles to bring up</label>
+                      <p className="text-[12px] text-text-light -mt-1 mb-3 leading-relaxed">
+                        Up to 3. Every split you generate trains them first in the day and on more days of the
+                        week, without adding to the week&apos;s total.
+                      </p>
+                      <FocusPicker value={focusMuscles} onChange={(next) => { setFocusMuscles(next); edited() }} />
                     </div>
                   </div>
                 </section>

@@ -5,7 +5,8 @@ import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
 import { getHistory } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
-import { fetchProfile } from '../lib/profile'
+import { fetchProfile, saveProfile } from '../lib/profile'
+import FocusPicker from './FocusPicker'
 import MuscleDonut from './MuscleDonut'
 import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
@@ -13,10 +14,9 @@ import { setProgramName, rirLabel } from '../lib/program'
 import { donutRows } from '../lib/planStats'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
-  DEFAULT_EXPERIENCE, PROGRAMMED_MUSCLES, shapesFor,
+  DEFAULT_EXPERIENCE, shapesFor,
   VOLUME_PREFERENCES, DEFAULT_VOLUME_PREFERENCE, volumePreference } from '../lib/generatorConfig'
-import { ENGINE_MUSCLES } from '../lib/engineConfig'
-import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS } from '../lib/profileFields'
+import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, cleanFocus } from '../lib/profileFields'
 
 // The split generator's questions and its preview, with no page around them.
 //
@@ -45,10 +45,6 @@ const TIER_BAR = {
 
 const LOAD_DOT = { fresh: 'bg-green-500', moderate: 'bg-amber-400', high: 'bg-red-500' }
 
-// Focus is offered over the muscles a split actually programs, plus anything
-// else the engine tracks, so "I want bigger forearms" is sayable — naming one
-// is what gets it its own slot.
-const FOCUS_OPTIONS = [...PROGRAMMED_MUSCLES, ...ENGINE_MUSCLES.filter((m) => !PROGRAMMED_MUSCLES.includes(m))]
 
 export default function SplitWizard() {
   const navigate = useNavigate()
@@ -63,6 +59,13 @@ export default function SplitWizard() {
   const [schedule, setSchedule] = useState('weekly')
   const [weekdays, setWeekdays] = useState(DEFAULT_WEEKDAYS[DEFAULT_DAYS_PER_WEEK])
   const [focus, setFocus] = useState([])
+  // The profile's pick seeds the wizard; once changed here, the profile never
+  // overrides it again this visit. Saved back to the profile on create.
+  const focusTouched = useRef(false)
+  function chooseFocus(next) {
+    focusTouched.current = true
+    setFocus(next)
+  }
   const [experience, setExperience] = useState('')
   const [volume, setVolume] = useState(DEFAULT_VOLUME_PREFERENCE)
   // Picked by hand this visit? Then the active split's setting never overrides it.
@@ -104,6 +107,7 @@ export default function SplitWizard() {
       setProfile(p)
       if (p?.experience_level) setExperience(p.experience_level)
       if (p?.equipment) setEquipment(p.equipment)
+      if (p?.focus_muscles && !focusTouched.current) setFocus(cleanFocus(p.focus_muscles))
       setLoading(false)
     }
     load()
@@ -139,13 +143,6 @@ export default function SplitWizard() {
     })
   }
 
-  function toggleFocus(m) {
-    setFocus((prev) => {
-      if (prev.includes(m)) return prev.filter((x) => x !== m)
-      return prev.length >= MAX_FOCUS_MUSCLES ? prev : [...prev, m]
-    })
-  }
-
   // The proposal. Recomputed on every answer — the generator is pure and cheap,
   // so the preview below is always the split the button would create.
   const built = useMemo(() => {
@@ -174,6 +171,13 @@ export default function SplitWizard() {
     if (!built) return
     const program = name.trim() ? setProgramName(built.program, name.trim()) : built.program
     addRoutine(program)
+    // The muscles they're bringing up live on the profile, so the next split
+    // starts from them. Best effort: the split is what they asked for, and a
+    // failed profile write must never stand between them and it.
+    const saved = cleanFocus(profile?.focus_muscles)
+    if (user && (saved.length !== focus.length || saved.some((m, i) => m !== focus[i]))) {
+      saveProfile(user.id, { focus_muscles: focus.length ? focus : null }).catch(() => {})
+    }
     navigate(`/split/${program.id}`)
   }
 
@@ -253,32 +257,13 @@ export default function SplitWizard() {
           <section className={cardCls}>
             <h2 className={headCls}>Anything you want to bring up?</h2>
             <p className="text-[12px] text-text-light mb-5">
-              Up to {MAX_FOCUS_MUSCLES}. A focus muscle gets more weekly volume, an extra session where the
-              week has room for one, and the front of every day it appears in — done last and tired is most
-              of why a muscle lags. Leave it empty for a balanced split.
+              Up to {MAX_FOCUS_MUSCLES}. A muscle you bring up is trained first in the day, while you&apos;re
+              fresh, and on more days of the week — not with more sets piled onto one session. The week&apos;s
+              total stays the same: the other muscles give back what it gains.
+              {user ? ' Saved to your profile when you create the split.' : ''} Leave it empty for a balanced
+              split.
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {FOCUS_OPTIONS.map((m) => {
-                const on = focus.includes(m)
-                const full = !on && focus.length >= MAX_FOCUS_MUSCLES
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => toggleFocus(m)}
-                    disabled={full}
-                    aria-pressed={on}
-                    className={`px-2.5 py-1.5 text-[12px] font-medium border cursor-pointer transition-colors ${
-                      on
-                        ? 'bg-text-primary text-cream border-text-primary'
-                        : 'bg-white text-text-muted border-border hover:border-border-hover disabled:opacity-40 disabled:cursor-not-allowed'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                )
-              })}
-            </div>
+            <FocusPicker value={focus} onChange={chooseFocus} />
           </section>
 
           {/* ---- 3. You and your gym ------------------------------------- */}
@@ -348,6 +333,50 @@ export default function SplitWizard() {
 // The split as it will be created: every day, every movement, and what the week
 // adds up to per muscle. Shown in full before anything is written — a plan you
 // can't see the consequences of isn't a plan, it's a surprise.
+const signed = (n) => (n > 0 ? `+${n}` : `−${Math.abs(n)}`)
+
+function FocusTrade({ trade }) {
+  const grew = trade.totalSets - trade.totalSetsBefore
+  const lead = trade.raised.length > 1 ? 'taking turns to open the day' : 'first in the day'
+  return (
+    <div className="mb-4 text-[12px] leading-relaxed">
+      <p className="text-[11px] uppercase tracking-wider text-text-light mb-1.5">Bringing up</p>
+      {trade.raised.map((r) => (
+        <span key={r.muscle} className="block text-text-secondary">
+          <span className="text-text-primary font-medium">{r.muscle}</span>: {r.sessions} session
+          {r.sessions === 1 ? '' : 's'} a week{r.sessions > r.sessionsBefore ? ` (was ${r.sessionsBefore})` : ''}, {lead},{' '}
+          <span className="tabular-nums">
+            {r.setsBefore} → {r.sets} sets
+          </span>
+          .
+        </span>
+      ))}
+      {/* Credit, not sets: swapping a press for a raise also moves what the
+          press gave the chest and front delts, so these can add up to more than
+          the focus gained. The week's own total is the line below. */}
+      {trade.paid.length > 0 && (
+        <span className="block text-text-light mt-1">
+          Elsewhere in the week:{' '}
+          <span className="tabular-nums">
+            {trade.paid.slice(0, 4).map((p) => `${p.muscle} ${signed(p.change)}`).join(' · ')}
+          </span>
+          .
+        </span>
+      )}
+      {grew > 0 ? (
+        <span className="block text-amber-600 mt-1">
+          This week holds {grew} more set{grew === 1 ? '' : 's'} than it would without the focus: the other
+          muscles are already at their minimum, so none could give any up.
+        </span>
+      ) : (
+        <span className="block text-text-light tabular-nums">
+          Week total: {trade.totalSetsBefore} → {trade.totalSets} sets.
+        </span>
+      )}
+    </div>
+  )
+}
+
 function Preview({ built, name, setName, onCreate }) {
   const { summary } = built
   const cardCls = 'bg-white border border-border p-6 sm:p-8'
@@ -510,6 +539,11 @@ function Preview({ built, name, setName, onCreate }) {
           </p>
         </>
       )}
+
+      {/* What bringing a muscle up did, measured against the same week built
+          without it — the macro tool's trade, for muscles: what it gained, who
+          paid, and the week's total, which stays put. */}
+      {summary.focusTrade && <FocusTrade trade={summary.focusTrade} />}
 
       {/* Asked for a muscle to be brought up and the shape couldn't do it. Said
           here, beside the volume it did get, rather than left for the reader to

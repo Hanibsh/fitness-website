@@ -25,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram, failureSafe, primaryMuscleOf, movementFamily } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -240,13 +240,45 @@ function audit(label, program, summary, inputs, opts) {
     check(label, hit, `${muscle} has no direct movement (${paths.join(' / ')}) all week`)
   }
 
-  // ---- focus: more often, more volume, and earlier in the day
+  // ---- focus: earlier, more often, never more per session, and paid for
+  // (Hani, 2026-10-02). Measured against the same week built without the focus,
+  // which generateProgram reports as summary.focusTrade.
   for (const muscle of opts.focus) {
     const row = summary.volume.find((v) => v.muscle === muscle)
     check(label, !!row && row.sets > 0, `focus ${muscle} got no work`)
     if (!row) continue
     if (opts.daysPerWeek >= 4 && opts.recommended) {
       check(label, row.sessions >= 3, `focus ${muscle} only ${row.sessions}×/wk`)
+    }
+  }
+  const trade = summary.focusTrade
+  if (opts.focus.length) {
+    check(label, !!trade, 'focus week has no focusTrade report')
+    let sessionsGained = 0
+    for (const r of trade?.raised || []) {
+      // Never fewer sets than the same week without the focus. The one known
+      // exception is at home with three focus muscles at once: every at-home lat
+      // movement is a pull-up or chin-up variant, and with chest and glutes also
+      // claiming room the week can come up to about a set short.
+      const slack = opts.equipment === 'bodyweight' && opts.focus.length > 1 ? 1.2 : 0.05
+      check(label, r.sets >= r.setsBefore - slack, `focus ${r.muscle} lost sets: ${r.setsBefore} → ${r.sets}`)
+      // More often up to FOCUS_TARGET_FREQUENCY; a muscle the week already hit
+      // more often than that (through other movements) keeps at least that many.
+      check(label, r.sessions >= Math.min(r.sessionsBefore, FOCUS_TARGET_FREQUENCY), `focus ${r.muscle} lost sessions: ${r.sessionsBefore} → ${r.sessions}`)
+      sessionsGained += Math.max(0, r.sessions - r.sessionsBefore)
+      if (r.sessionCap == null) continue
+      for (const day of training) {
+        const own = day.exercises.filter((e) => e.slot?.muscle === r.muscle).reduce((n, e) => n + e.sets, 0)
+        check(label, own <= r.sessionCap, `"${day.name}" gives focus ${r.muscle} ${own} sets, its per-session cap is ${r.sessionCap}`)
+      }
+    }
+    // The week's total doesn't grow — except by what the focus itself was given
+    // (the two-set minimum of each session it added, plus its extra sets) when
+    // every other muscle is already at its minimum and can't give a set back:
+    // once-a-week splits, mostly on the Lower setting. The preview says so.
+    if (trade) {
+      const allowed = trade.totalSetsBefore + MIN_SETS_PER_EXERCISE * sessionsGained + FOCUS_EXTRA_SESSION_SETS * opts.focus.length
+      check(label, trade.totalSets <= allowed, `focus grew the week: ${trade.totalSetsBefore} → ${trade.totalSets} sets`)
     }
   }
   // "Earlier" can only be checked once, for the set: with three focus muscles

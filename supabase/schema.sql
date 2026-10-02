@@ -40,6 +40,10 @@ create table if not exists public.profiles (
   days_per_week int,
   session_minutes int,
   equipment text check (equipment in ('gym', 'home', 'dumbbells', 'bodyweight')),
+  -- Muscles to bring up (up to 3, engine muscle names): the split generator's
+  -- focus, so every new split starts from it. Validated by the app
+  -- (profileFields.js cleanFocus); unknown names are ignored on read.
+  focus_muscles text[],
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.
   coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
@@ -57,6 +61,7 @@ alter table public.profiles add column if not exists training_months int;
 alter table public.profiles add column if not exists days_per_week int;
 alter table public.profiles add column if not exists session_minutes int;
 alter table public.profiles add column if not exists equipment text;
+alter table public.profiles add column if not exists focus_muscles text[];
 
 alter table public.profiles enable row level security;
 

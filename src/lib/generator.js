@@ -41,8 +41,8 @@ import {
 } from './engineConfig'
 import {
   PROGRAMMED_MUSCLES, shapesFor, DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS,
-  MAX_FOCUS_MUSCLES, FOCUS_VOLUME_MULT, FOCUS_TARGET_FREQUENCY, FAMILIARITY_FOCUS_DAMP,
-  MUSCLE_REGION, PORTABLE_MUSCLES,
+  MAX_FOCUS_MUSCLES, FOCUS_TARGET_FREQUENCY, FOCUS_EXTRA_SESSION_SETS, FOCUS_NO_ROOM_SETS, FAMILIARITY_FOCUS_DAMP,
+  MUSCLE_REGION, FOCUS_PORTABLE_MUSCLES,
   EXPERIENCE_POSTURE, DEFAULT_EXPERIENCE, SKILL_RANK, volumePreference, CAPPED_LEAD_SLOTS, RIR_TARGETS, MIN_WORKING_RIR, FAILURE_MAX_FATIGUE_SCORE,
   MIN_SETS_PER_EXERCISE, MAX_SETS_PER_MUSCLE_PER_SESSION, MIN_SLOT_SETS,
   HISTORY_VOLUME_DAYS, HISTORY_MIN_SESSIONS, FAMILIARITY_DAYS,
@@ -286,9 +286,11 @@ function normaliseWeekdays(picked, daysPerWeek) {
 // have never trained at. Either way the result is clamped into the engine's own
 // landmarks, so the generator can't write a split the dashboard would
 // immediately grade "below minimum" or "low efficiency".
+//
+// A focus muscle gets its ordinary target here. What bringing it up changes is
+// worked out against the week's shape, in focusPlan.
 export function weeklyTargets({ posture, focus, history, volumePref = volumePreference() }) {
   const wanted = new Set([...PROGRAMMED_MUSCLES, ...focus])
-  const isFocus = new Set(focus)
   const targets = {}
 
   for (const muscle of ENGINE_MUSCLES) {
@@ -301,12 +303,66 @@ export function weeklyTargets({ posture, focus, history, volumePref = volumePref
     // The preference applies to their own history too: someone asking for
     // "lower" wants less than they've been doing, not a copy of it.
     target = clamp(target * volumePref.targetMult, mevFor(muscle), ceilingFor(muscle))
-    if (isFocus.has(muscle)) {
-      target = Math.min(target * FOCUS_VOLUME_MULT, ceilingFor(muscle) * ADVISOR_BLOCK_SLACK)
-    }
     targets[muscle] = round1(target)
   }
   return targets
+}
+
+// What bringing the focus muscles up costs and pays (see the Focus section of
+// generatorConfig.js). Compares the week's shape with and without the focus:
+//
+//   - a muscle the focus gave another session gets FOCUS_EXTRA_SESSION_SETS more
+//     a week, one that already trains as often as the week allows gets
+//     FOCUS_NO_ROOM_SETS — spread over its sessions, so each session carries
+//     about what it did before rather than double;
+//   - `sessionCap` holds every session to that: what the muscle got per session
+//     without the focus, plus the one set a week with no room to give it more;
+//   - the other programmed muscles give the same sets back, evenly, none below
+//     its minimum, so the week's total stays what the volume setting made it.
+//
+// A focus muscle the split doesn't program at all (forearms, say) is new work,
+// not more of it: it gets its ordinary target, and the others pay for all of it.
+//
+// Planned from what the week WITHOUT the focus actually delivered (`baseVolume`,
+// its weekly sets) rather than from its targets: the two differ, and planning
+// "+2" on a target the week never reached hands the gap to the focus muscle too.
+export function focusPlan(targets, focus, baseDays, focusDays, baseVolume = new Map()) {
+  const out = { ...targets }
+  const sessionCap = {}
+  const extraSets = {}
+  const sessions = (days, m) => days.filter((d) => d.muscles.includes(m)).length
+  let owed = 0
+  for (const m of focus) {
+    if (!targets[m]) continue
+    const before = sessions(baseDays, m)
+    const after = Math.max(1, sessions(focusDays, m))
+    const gained = after > before
+    const base = before && baseVolume.get(m) > 0 ? baseVolume.get(m) : targets[m]
+    const extra = !before ? 0 : gained ? FOCUS_EXTRA_SESSION_SETS : FOCUS_NO_ROOM_SETS
+    extraSets[m] = extra
+    out[m] = round1(Math.min(base + extra, ceilingFor(m) * ADVISOR_BLOCK_SLACK))
+    owed += out[m] - targets[m]
+    // Its new weekly sets spread over its new sessions — never above what one
+    // session held before, since the extra session takes more than the extra
+    // sets add. Where there was no session to add, this is where the one extra
+    // set a week lands.
+    sessionCap[m] = Math.max(MIN_SETS_PER_EXERCISE, Math.ceil(out[m] / after - 0.05))
+  }
+  // Paid back evenly by the rest, a share at a time, so a muscle that hits its
+  // minimum stops paying and the others cover what it couldn't.
+  let payers = PROGRAMMED_MUSCLES.filter((m) => !focus.includes(m) && out[m] > mevFor(m))
+  for (let guard = 0; owed > 0.05 && payers.length && guard < 20; guard++) {
+    const share = owed / payers.length
+    owed = 0
+    for (const m of payers) {
+      const next = Math.max(mevFor(m), out[m] - share)
+      owed += share - (out[m] - next)
+      out[m] = next
+    }
+    payers = payers.filter((m) => out[m] > mevFor(m))
+  }
+  for (const m of Object.keys(out)) out[m] = round1(out[m])
+  return { targets: out, sessionCap, extraSets }
 }
 
 // ---- The week's shape --------------------------------------------------------
@@ -345,7 +401,7 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
     for (const d of days) {
       if (freq >= FOCUS_TARGET_FREQUENCY) break
       if (d.muscles.includes(muscle)) continue
-      if (!PORTABLE_MUSCLES.has(muscle) && regionOf(d) !== MUSCLE_REGION[muscle]) continue
+      if (!FOCUS_PORTABLE_MUSCLES.has(muscle) && regionOf(d) !== MUSCLE_REGION[muscle]) continue
       d.muscles.push(muscle)
       d.sizedAs?.push(muscle)
       borrowed.get(d).push(muscle)
@@ -357,10 +413,15 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   // third home for it — better to leave it at two and say so (summarize reports
   // the shortfall) than to invent a day for it.
 
-  // One ordering pass at the end rather than promoting as we go, so the focus
-  // muscles lead in the order the user listed them.
+  // One ordering pass at the end rather than promoting as we go. The focus
+  // muscles lead in the order the user listed them on the first day that holds
+  // them, then take turns: only one can literally open a session, and the one
+  // that always comes second would always come to it a little tired.
+  let turn = 0
   for (const d of days) {
-    const lead = focus.filter((m) => d.muscles.includes(m))
+    const listed = focus.filter((m) => d.muscles.includes(m))
+    const k = listed.length ? turn++ % listed.length : 0
+    const lead = [...listed.slice(k), ...listed.slice(0, k)]
     d.muscles = [...lead, ...d.muscles.filter((m) => !lead.includes(m))]
     if (d.sizedAs) d.sizedAs = [...lead, ...d.sizedAs.filter((m) => !lead.includes(m))]
   }
@@ -605,6 +666,8 @@ export function candidates(muscle, ctx) {
     if (ctx.pattern && db.pattern !== ctx.pattern) return false
     // ...or to a muscle's direct-work paths (DIRECT_WORK).
     if (ctx.patterns && !ctx.patterns.includes(db.pattern)) return false
+    // ...or to movements this muscle is the main mover of (a focus lead).
+    if (ctx.mainMover && primaryMuscleOf(db) !== muscle) return false
     const w = muscleWeights(db)[muscle] || 0
     return w > 0 && w >= (ctx.minContribution || 0)
   })
@@ -706,7 +769,12 @@ export function fillDay(template, alloc, gaps, ctx) {
 
   function tryAdd(muscle, minOwed, { ignoreLoadCap = false } = {}) {
     const first = !chosen.some((c) => c.muscle === muscle)
-    if (!(first && pending.has(muscle)) && (remaining[muscle] || 0) < minOwed) return false
+    // A guaranteed direct movement, or a focus muscle on a day it's planned for,
+    // is placed even when earlier days have already paid its sets: "more often"
+    // is the point of a focus, and a week that front-loads the volume and then
+    // skips the third session hasn't delivered it.
+    const owedASlot = first && (pending.has(muscle) || ctx.focus.includes(muscle))
+    if (!owedASlot && (remaining[muscle] || 0) < minOwed) return false
     if (chosen.length + 1 + held(muscle) > ctx.posture.exerciseCap) return false
     if (!setRoom(MIN_SETS_PER_EXERCISE * (1 + held(muscle)))) return false
     if (!ignoreLoadCap && !loadRoom()) return false
@@ -716,7 +784,12 @@ export function fillDay(template, alloc, gaps, ctx) {
     // which hands the triceps slot to a close-grip press. Its other days pick
     // the way they always have: once a week is the ask, and a push day opening
     // on an overhead press is still a good push day.
-    const paths = first && pending.has(muscle) ? DIRECT_WORK[muscle] : null
+    //
+    // A focus muscle opens EVERY one of its days down those paths, where it has
+    // them: a side-delt focus leads with a raise even though the database lists
+    // the side delts as the main mover of a behind-the-neck press.
+    const leadsFocus = first && ctx.focus.includes(muscle)
+    const paths = first && (pending.has(muscle) || leadsFocus) ? DIRECT_WORK[muscle] || null : null
     const pickCtx = {
       muscle,
       allowedEquipment: ctx.allowedEquipment,
@@ -743,6 +816,10 @@ export function fillDay(template, alloc, gaps, ctx) {
       // Only the muscle's FIRST movement of the day leads with a compound.
       wantCompound: !paths && !compoundFor.has(muscle) && first,
       patterns: paths,
+      // A focus muscle opens on a movement it is the main mover of: bringing up
+      // side delts means lateral raises first, not an overhead press that
+      // happens to list them.
+      mainMover: leadsFocus,
     }
 
     const pick = (pctx) => {
@@ -756,7 +833,11 @@ export function fillDay(template, alloc, gaps, ctx) {
     }
     // Nothing down those paths with this equipment: fall back to the whole pool
     // and the usual compound lead, rather than leaving the muscle untrained.
-    const best = pick(pickCtx) || (paths ? pick({ ...pickCtx, patterns: null, wantCompound: !compoundFor.has(muscle) }) : null)
+    // Likewise a focus muscle with nothing it's the main mover of here.
+    const best =
+      pick(pickCtx) ||
+      (pickCtx.mainMover ? pick({ ...pickCtx, mainMover: false }) : null) ||
+      (paths ? pick({ ...pickCtx, mainMover: false, patterns: null, wantCompound: !compoundFor.has(muscle) }) : null)
     if (!best) return false
 
     pending.delete(muscle)
@@ -825,19 +906,66 @@ export function fillDay(template, alloc, gaps, ctx) {
   // doesn't insist.
   const effort = chosen.map(({ db }) => ({ db, rirTarget: rirTargetForExercise(db, ctx.experience, ctx.volumePref) }))
   markFailureSets(effort, ctx.volumePref.failureSetsPerDay || 0)
-  day.exercises = chosen.map(({ db, sets, muscle }, i) => {
-    const slot = { pattern: db.pattern || null, muscle, pinned: false, suggestedId: db.id }
-    const open = ctx.openSlots && db.pattern
-    return createPlannedExercise(open ? patternPhrase(db.pattern) : db.name, {
-      exerciseId: open ? null : db.id,
-      kind: 'strength',
-      sets,
-      repRange: repRangeForExercise(db, muscle, ctx.history),
-      rirTarget: effort[i].rirTarget,
-      slot,
-    })
-  })
+  day.exercises = chosen.map(({ db, sets, muscle }, i) => plannedRow(db, sets, muscle, effort[i].rirTarget, ctx))
   return day
+}
+
+function plannedRow(db, sets, muscle, rirTarget, ctx) {
+  const slot = { pattern: db.pattern || null, muscle, pinned: false, suggestedId: db.id }
+  const open = ctx.openSlots && db.pattern
+  return createPlannedExercise(open ? patternPhrase(db.pattern) : db.name, {
+    exerciseId: open ? null : db.id,
+    kind: 'strength',
+    sets,
+    repRange: repRangeForExercise(db, muscle, ctx.history),
+    rirTarget,
+    slot,
+  })
+}
+
+// One more movement for a focus muscle on a finished day, picked by the same
+// scorer under the same hard rules fillDay uses — nothing the day or the week
+// already has, no second heavy movement for a muscle, and one the muscle is the
+// main mover of — and placed straight after
+// the muscle's own movements, so the day still opens on it.
+function addFocusMovement(day, muscle, trainingDays, ctx) {
+  const dbOf = (e) => DB_BY_ID.get(plannedExerciseDbId(e) || '')
+  const today = day.exercises.map(dbOf).filter(Boolean)
+  const week = trainingDays.flatMap((d) => d.exercises).map(dbOf).filter(Boolean)
+  const load = day.exercises.reduce((n, e) => n + (dbOf(e) ? setLoad(dbOf(e)) * e.sets : 0), 0)
+  const pickCtx = {
+    muscle,
+    allowedEquipment: ctx.allowedEquipment,
+    excludedEquipment: ctx.excludedEquipment,
+    excludedOverload: ctx.excludedOverload,
+    limiterPenalty: ctx.limiterPenalty,
+    excludeLimited: ctx.excludeLimited,
+    weights: ctx.weights,
+    maxSkillRank: ctx.maxSkillRank,
+    dayIds: new Set(today.map((db) => db.id)),
+    dayFamilies: new Set(today.map(movementFamily)),
+    dayPatterns: new Set(today.map((db) => db.pattern).filter(Boolean)),
+    dayHeavy: new Set(today.map(heavyMuscleOf).filter(Boolean)),
+    weekIds: new Set(week.map((db) => db.id)),
+    weekFamilies: new Set(week.map(movementFamily)),
+    weekSignatures: new Set(week.map(signature)),
+    noWeekRepeats: true,
+    injuryRisk: ctx.injuryRisk,
+    budgetUsed: clamp(load / (SYSTEMIC_CAPACITY * DAY_LOAD_TARGET), 0, 1),
+    isFocus: true,
+    // Real work for the muscle, not a movement that lists it in passing.
+    mainMover: true,
+  }
+  let top = null
+  for (const db of candidates(muscle, pickCtx)) {
+    const scored = scoreExercise(db, { ...pickCtx, familiarity: familiarity(db, ctx.history) })
+    if (scored && (!top || scored.score > top.score)) top = { db, score: scored.score }
+  }
+  if (!top) return false
+  const row = plannedRow(top.db, MIN_SETS_PER_EXERCISE, muscle, rirTargetForExercise(top.db, ctx.experience, ctx.volumePref), ctx)
+  const after = day.exercises.findLastIndex((e) => e.slot?.muscle === muscle)
+  day.exercises.splice(after + 1, 0, row)
+  return true
 }
 
 // The systemic cost of one set, mirroring the per-set deposit in planStats.js
@@ -968,7 +1096,7 @@ export function trimOvershoot(trainingDays, { perWeek, focus = [], targets = {} 
 // its own: those sets come back out of whatever muscle is furthest past its
 // weekly target, one at a time, never below a movement's minimum and never
 // pulling another muscle under its minimum.
-function giveBack(trainingDays, total, { perWeek, targets }) {
+function giveBack(trainingDays, total, { perWeek, targets, floors = {} }) {
   for (let guard = 0; guard < 60; guard++) {
     if (trainingDays.reduce((n, d) => n + daySets(d), 0) <= total) return
     const weekly = weeklyMuscleSets(trainingDays, perWeek)
@@ -979,7 +1107,7 @@ function giveBack(trainingDays, total, { perWeek, targets }) {
         const muscle = planned.slot?.muscle
         if (!muscle || targets[muscle] == null) continue
         const weights = muscleWeights(DB_BY_ID.get(plannedExerciseDbId(planned)))
-        const robs = Object.entries(weights).some(([m, mw]) => (weekly[m] || 0) - mw * perWeek < mevFor(m))
+        const robs = Object.entries(weights).some(([m, mw]) => (weekly[m] || 0) - mw * perWeek < Math.max(mevFor(m), floors[m] || 0))
         if (robs) continue
         const surplus = (weekly[muscle] || 0) - targets[muscle]
         if (!victim || surplus > victim.surplus) victim = { planned, surplus }
@@ -1470,8 +1598,24 @@ export function patternOptions(planned, { program, dayId, sessions = [], injurie
 // nothing is persisted, the caller decides whether to keep it.
 export function generateProgram({ answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
   const inputs = resolveInputs({ answers, profile, sessions, injuries, now })
-  const targets = weeklyTargets(inputs)
   const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus, inputs.shape)
+  // A focus is planned against the same week without it (focusPlan), and the
+  // preview reports what it actually changed against that week built in full —
+  // so "Side Delts: 3 sessions, +2 sets" is a measurement, not a promise.
+  const baseline = inputs.focus.length
+    ? generateProgram({ answers: { ...answers, focus: [] }, profile, sessions, injuries, now })
+    : null
+  const { targets, sessionCap, extraSets } = baseline
+    ? focusPlan(
+        weeklyTargets(inputs), inputs.focus, pickTemplate(inputs.daysPerWeek, [], inputs.shape), templateDays,
+        new Map(baseline.summary.volume.map((v) => [v.muscle, v.sets])),
+      )
+    : { targets: weeklyTargets(inputs), sessionCap: {}, extraSets: {} }
+  // A focus muscle's share of any one day never exceeds sessionCap.
+  const capSession = (alloc) => {
+    for (const [m, cap] of Object.entries(sessionCap)) if (alloc[m] != null) alloc[m] = Math.min(alloc[m], cap)
+    return alloc
+  }
   const cycle = cycleShape(inputs)
   const gaps = recoveryGaps(templateDays, cycle)
   const perWeek = 7 / cycle.length
@@ -1489,7 +1633,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     // whatever Monday's cap squeezed out. A fixed share can't do that — it
     // splits a small target into slivers too thin to earn an exercise, and the
     // same muscles at the bottom of every day lose out every day.
-    const allocation = Number.isFinite(cap) ? null : allocate(weekTargets, templateDays)
+    const allocation = Number.isFinite(cap) ? null : allocate(weekTargets, templateDays).map(capSession)
     const credited = {}
     const owedAlloc = (i) => {
       const alloc = {}
@@ -1503,7 +1647,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
         const share = Math.max(owed / daysLeft, owed >= MIN_SLOT_SETS ? MIN_SLOT_SETS : 0)
         alloc[m] = Math.min(share, MAX_SETS_PER_MUSCLE_PER_SESSION)
       }
-      return alloc
+      return capSession(alloc)
     }
     // Under the cap the day's lead muscles still open it (that order is the
     // point of a lead), but the rest go most-owed first, so the muscles a
@@ -1587,6 +1731,32 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   let week = fit(Infinity)
   if (Math.max(0, ...week.natural.map(daySets)) > setCap) week = fit(setCap)
   const trainingDays = week.days
+  // The focus promises, held on the finished week: no session of a focus
+  // muscle above its cap, and no more sets in the week than without the focus.
+  if (baseline) {
+    holdSessions(trainingDays, sessionCap)
+    const before = new Map(baseline.summary.volume.map((v) => [v.muscle, v.sets]))
+    const goal = Object.fromEntries(inputs.focus.map((m) => [m, Math.min(
+      (before.get(m) || 0) + (extraSets[m] || 0),
+      ceilingFor(m) * ADVISOR_BLOCK_SLACK,
+    )]))
+    const focusOpts = {
+      focus: inputs.focus, goal, sessionCap, setCap, perWeek, targets,
+      maxSets: inputs.posture.maxSetsPerExercise,
+      planned: templateDays,
+      week: trainingDays,
+      gen: { ...inputs, maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2 },
+    }
+    deliverFocus(trainingDays, focusOpts)
+    const total = programSets(baseline.program)
+    giveBack(trainingDays, total, { perWeek, targets, floors: goal })
+    // Every movement already at its two sets leaves giveBack nothing to trim;
+    // then the week drops the movement it can best spare, as deliverFocus does.
+    for (let guard = 0; guard < 8 && trainingDays.reduce((n, d) => n + daySets(d), 0) > total; guard++) {
+      const weekly = weeklyMuscleSets(trainingDays, perWeek)
+      if (!makeRoom(trainingDays, weekly, focusOpts)) break
+    }
+  }
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
   // What the split was built FOR, kept on it: the day cap the split editor
@@ -1599,15 +1769,159 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     focus: [...inputs.focus],
     shape: templateDays.shape?.id || null,
   }
+  const summary = summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape })
+  if (baseline) summary.focusTrade = focusTrade(program, summary, baseline, inputs.focus, sessionCap)
+  return { program, summary, inputs }
+}
+
+// What bringing the focus muscles up did, measured against the same week built
+// without them: each focus muscle's sessions and weekly sets before and after,
+// who paid for it, and the week's total (which shouldn't have grown).
+//
+// Sessions here are days that give the muscle at least one real set, not any
+// trace of it: a push-up that brushes the side delts is not a side-delt session,
+// and counting it would make trimming one look like a lost day.
+function focusTrade(program, summary, baseline, focus, sessionCap) {
+  const before = new Map(baseline.summary.volume.map((v) => [v.muscle, v]))
+  const after = new Map(summary.volume.map((v) => [v.muscle, v]))
+  const realSessions = (p, m) =>
+    p.days.filter((d) => d.kind !== 'rest' && (dayStats(d).muscles.find((r) => r.muscle === m)?.sets || 0) >= 1).length
   return {
-    program,
-    summary: summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape }),
-    inputs,
+    raised: focus.map((m) => ({
+      muscle: m,
+      sessions: realSessions(program, m),
+      sessionsBefore: realSessions(baseline.program, m),
+      sets: after.get(m)?.sets ?? 0,
+      setsBefore: before.get(m)?.sets ?? 0,
+      sessionCap: sessionCap[m] ?? null,
+    })),
+    paid: [...after.values()]
+      .filter((v) => !focus.includes(v.muscle))
+      .map((v) => ({ muscle: v.muscle, change: round1(v.sets - (before.get(v.muscle)?.sets ?? 0)) }))
+      .filter((p) => p.change <= -0.5)
+      .sort((a, b) => a.change - b.change),
+    totalSets: programSets(program),
+    totalSetsBefore: programSets(baseline.program),
   }
 }
 
 function daySets(day) {
   return day.exercises.reduce((sum, e) => sum + (Number(e.sets) || 0), 0)
+}
+
+function programSets(program) {
+  return program.days.reduce((n, d) => n + (d.kind === 'rest' ? 0 : daySets(d)), 0)
+}
+
+// Every focus muscle ends the week with at least `goal` sets: what it had in the
+// week without the focus, plus what focusPlan promised it. The fill aims there,
+// but under a tight day cap the muscles ahead of it can leave it short — so the
+// difference is made up here, a set at a time on its own movements, on the day
+// it has the most room, and never past its `sessionCap`.
+//
+// When every movement it has is already at its most sets, it gets a new one
+// instead, on a day the week plans it for that still has room under its cap.
+//
+// A day already at the volume setting's cap makes room inside itself rather than
+// growing (makeRoom). A day that can't is passed over for the next.
+function deliverFocus(trainingDays, opts) {
+  const { focus, goal, sessionCap, setCap, perWeek, maxSets, planned, gen } = opts
+  const ownSets = (day, muscle) => day.exercises.reduce((n, e) => n + (e.slot?.muscle === muscle ? Number(e.sets) || 0 : 0), 0)
+  for (const muscle of focus) {
+    const cap = sessionCap[muscle] ?? Infinity
+    const full = new Set()
+    for (let guard = 0; guard < 12; guard++) {
+      const weekly = weeklyMuscleSets(trainingDays, perWeek)
+      if ((weekly[muscle] || 0) >= goal[muscle] - 0.05) break
+      let best = null
+      for (const day of trainingDays) {
+        if (full.has(day)) continue
+        const held = ownSets(day, muscle)
+        if (held >= cap) continue
+        for (const row of day.exercises) {
+          if (row.slot?.muscle === muscle && row.sets < maxSets && (!best || held < best.held)) best = { day, row, held }
+        }
+      }
+      if (best) {
+        if (daySets(best.day) >= setCap && !makeRoom([best.day], weekly, opts)) full.add(best.day)
+        else best.row.sets++
+        continue
+      }
+      // No movement of its own has a set to spare: a new one, on the planned
+      // day with the most room under the cap. Where the cap leaves room for one
+      // more set but a movement needs two, the new one takes a set from the
+      // muscle's existing movement — 4 sets of one row become 3 + 2 of two
+      // angles, one set more than before and still inside the cap.
+      const spare = (d) => d.exercises.filter((e) => e.slot?.muscle === muscle && e.sets > MIN_SETS_PER_EXERCISE)
+      const fits = (d) => ownSets(d, muscle) + MIN_SETS_PER_EXERCISE - (spare(d).length ? 1 : 0) <= cap
+      const day = trainingDays
+        .filter((d, i) => !full.has(d) && planned[i]?.muscles.includes(muscle) && fits(d))
+        .sort((a, b) => ownSets(a, muscle) - ownSets(b, muscle))[0]
+      if (!day) break
+      const split = ownSets(day, muscle) + MIN_SETS_PER_EXERCISE > cap ? spare(day).sort((a, b) => b.sets - a.sets)[0] : null
+      const room = MIN_SETS_PER_EXERCISE - (split ? 1 : 0)
+      while (setCap - daySets(day) < room && makeRoom([day], weeklyMuscleSets(trainingDays, perWeek), opts));
+      if (setCap - daySets(day) < room || day.exercises.length >= gen.posture.exerciseCap || !addFocusMovement(day, muscle, trainingDays, gen)) {
+        full.add(day)
+        continue
+      }
+      if (split) split.sets--
+    }
+  }
+}
+
+// One set of room in `days`, for a focus week: a set off a movement that has
+// sets to spare, or — when every one is down to its minimum two, as a Standard
+// upper day of eight movements is — the movement the week can best spare,
+// dropped. Never a focus muscle's own movement, never one that takes a muscle
+// under its minimum (or a focus muscle under its goal), and never a movement
+// for a muscle with DIRECT_WORK, which may be its only direct one.
+function makeRoom(days, weekly, { focus, goal, perWeek, targets, week }) {
+  const rows = days.flatMap((day) => day.exercises.filter((e) => !focus.includes(e.slot?.muscle)).map((e) => ({ day, e })))
+  const robs = (e, sets) =>
+    Object.entries(muscleWeights(DB_BY_ID.get(plannedExerciseDbId(e)))).some(
+      ([m, w]) => targets[m] != null && (weekly[m] || 0) - w * sets * perWeek < Math.max(mevFor(m), goal[m] ?? 0)
+    )
+  const trim = rows
+    .filter(({ e }) => e.sets > MIN_SETS_PER_EXERCISE && !robs(e, 1))
+    .sort((a, b) => b.e.sets - a.e.sets)[0]
+  if (trim) {
+    trim.e.sets--
+    return true
+  }
+  const surplus = ({ e }) => (weekly[e.slot?.muscle] || 0) - (targets[e.slot?.muscle] ?? 0)
+  // ...and never the movement that is a muscle's only work that day when the
+  // muscle is down to two sessions a week: that would make it once-a-week.
+  const hits = (day, m, skip) =>
+    day.exercises.some((x) => x !== skip && (muscleWeights(DB_BY_ID.get(plannedExerciseDbId(x)))[m] || 0) > 0)
+  const costsASession = ({ day, e }) =>
+    Object.keys(muscleWeights(DB_BY_ID.get(plannedExerciseDbId(e)))).some(
+      (m) => targets[m] != null && !hits(day, m, e) && week.filter((d) => hits(d, m)).length <= 2
+    )
+  const drop = rows
+    .filter((r) => !DIRECT_WORK[r.e.slot?.muscle] && !robs(r.e, r.e.sets) && !costsASession(r))
+    .sort((a, b) => surplus(b) - surplus(a))[0]
+  if (!drop) return false
+  drop.day.exercises.splice(drop.day.exercises.indexOf(drop.e), 1)
+  return true
+}
+
+// A focus muscle's own movements never hold more sets in one day than its
+// `sessionCap` (focusPlan). Trimmed a set at a time from the biggest of them,
+// never below the two sets a movement needs to be worth writing down.
+function holdSessions(trainingDays, sessionCap) {
+  for (const day of trainingDays) {
+    for (const [muscle, cap] of Object.entries(sessionCap)) {
+      const rows = day.exercises.filter((e) => e.slot?.muscle === muscle)
+      let over = rows.reduce((n, e) => n + (Number(e.sets) || 0), 0) - cap
+      while (over > 0) {
+        const row = rows.filter((e) => e.sets > MIN_SETS_PER_EXERCISE).sort((a, b) => b.sets - a.sets)[0]
+        if (!row) break
+        row.sets--
+        over--
+      }
+    }
+  }
 }
 
 // Does the day already hold a movement down one of `muscle`'s DIRECT_WORK paths?
