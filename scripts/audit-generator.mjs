@@ -25,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram, failureSafe, primaryMuscleOf, movementFamily } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -248,7 +248,18 @@ function audit(label, program, summary, inputs, opts) {
     check(label, !!row && row.sets > 0, `focus ${muscle} got no work`)
     if (!row) continue
     if (opts.daysPerWeek >= 4 && opts.recommended) {
-      check(label, row.sessions >= 3, `focus ${muscle} only ${row.sessions}×/wk`)
+      // Three sessions where the shape has a day for a third. The big muscles
+      // stay on their own half of the body (FOCUS_PORTABLE_MUSCLES, 483b717), so
+      // chest on a 4-day upper/lower has two upper days and glutes two lower days
+      // in every recommended shape — Hani's call (2026-10-02): that's the shape,
+      // not a bug, and the preview says so. What still fails is a day the
+      // muscle could have used and didn't, or a shortfall the user isn't told.
+      const want = Math.min(FOCUS_TARGET_FREQUENCY, homeDays(muscle, opts.daysPerWeek))
+      check(label, row.sessions >= want, `focus ${muscle} only ${row.sessions}×/wk, the shape has ${want} days for it`)
+      if (row.sessions < FOCUS_TARGET_FREQUENCY) {
+        const told = summary.focusShortfall?.find((f) => f.muscle === muscle)
+        check(label, told?.reason === 'shape', `focus ${muscle} at ${row.sessions}×/wk and the preview doesn't say why`)
+      }
     }
   }
   const trade = summary.focusTrade
@@ -340,6 +351,21 @@ function directTrainable(muscle, paths, equipment) {
         ? AT_HOME_EQUIPMENT.includes(db.equipment)
         : db.equipment !== 'resistance band' && db.progressiveOverload !== 'low')
   )
+}
+
+// How many of the recommended shape's days could host this focus muscle: any
+// day for one that travels (FOCUS_PORTABLE_MUSCLES), otherwise the days that
+// already train it or that train its half of the body. Restated here from the
+// rule in generatorConfig.js rather than borrowed from pickTemplate, so a bug
+// in the generator's version can't vouch for itself.
+function homeDays(muscle, daysPerWeek) {
+  const days = shapesFor(daysPerWeek)[0].days
+  if (FOCUS_PORTABLE_MUSCLES.has(muscle)) return days.length
+  return days.filter((d) => {
+    if (d.muscles.includes(muscle)) return true
+    const lower = d.muscles.filter((m) => MUSCLE_REGION[m] === 'lower').length
+    return (lower * 2 > d.muscles.length ? 'lower' : 'upper') === MUSCLE_REGION[muscle]
+  }).length
 }
 
 function hitsMuscle(planned, muscle, min = 0) {
