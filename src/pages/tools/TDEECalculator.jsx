@@ -9,7 +9,7 @@ import { usePrefillEffect } from '../../lib/profilePrefill'
 import { asset } from '../../lib/assets'
 import { proteinRange, macroSplit, macroLimits, shiftMacro, MACRO_STEP_PCT, FAT_CEILING_PCT, CARB_NOTE_BELOW_G } from '../../lib/macros'
 import { macroFoods, foodKcal } from '../../data/macroFoods'
-import { CARDIO_PRESETS, netKcalPerMin, kmhToMph } from '../../lib/cardio'
+import { CARDIO_PRESETS, netKcalPerMin, durationParts, kmhToMph } from '../../lib/cardio'
 import { estimateTdee } from '../../lib/tdee'
 
 const loseSpeeds = [
@@ -96,6 +96,8 @@ export default function TDEECalculator() {
   const [error, setError] = useState('')
   const [targetId, setTargetId] = useState(null)
   const [burnChoice, setBurnChoice] = useState(250)
+  const [burnBy, setBurnBy] = useState('kcal')
+  const [burnMinutes, setBurnMinutes] = useState(30)
   // A hand-adjusted split, as calories per macro, for one target only:
   // switching targets (or recalculating) falls back to the suggestion.
   const [adjust, setAdjust] = useState({ target: null, kcal: null })
@@ -231,19 +233,26 @@ export default function TDEECalculator() {
     ? `${(grams / (result.weightKg / 0.453592)).toFixed(2)} g/lb`
     : `${(grams / result.weightKg).toFixed(1)} g/kg`
 
-  // The "burn more" box: a few set amounts, plus the selected target's floor
-  // gap when it has one. A remembered "gap" choice falls back once it's gone.
+  // The "burn more" box, either way round: a few set amounts (plus the
+  // selected target's floor gap when it has one) to see how long each takes,
+  // or a few set times to see what each burns. A remembered "gap" choice
+  // falls back once it's gone.
   const burnOptions = [200, 250, 300].map(v => ({ value: v, label: `${v} cal` }))
   if (selected?.floored) burnOptions.push({ value: 'gap', label: `Gap ${selected.moveKcal}` })
   const burn = burnOptions.some(o => o.value === burnChoice) ? burnChoice : 250
   const burnKcal = burn === 'gap' ? selected.moveKcal : burn
+  const minuteOptions = [20, 30, 45, 60]
   const speedLabel = (kmh) => unit === 'imperial' ? `${(Math.round(kmhToMph(kmh) * 10) / 10)} mph` : `${kmh} km/h`
-  const cardioRows = result ? CARDIO_PRESETS.map(p => ({
-    id: p.id,
-    label: p.label,
-    detail: p.params.watts ? `${p.params.watts} W` : `${speedLabel(p.params.speedKmh)}${p.params.gradePct ? `, ${p.params.gradePct}% incline` : ', flat'}`,
-    minutes: Math.round(burnKcal / netKcalPerMin(p.activity, p.params, result.weightKg)),
-  })) : []
+  const cardioRows = result ? CARDIO_PRESETS.map(p => {
+    const perMin = netKcalPerMin(p.activity, p.params, result.weightKg)
+    return {
+      id: p.id,
+      label: p.label,
+      detail: p.params.watts ? `${p.params.watts} W` : `${speedLabel(p.params.speedKmh)}${p.params.gradePct ? `, ${p.params.gradePct}% incline` : ', flat'}`,
+      time: durationParts(burnKcal / perMin),
+      kcal: Math.round(perMin * burnMinutes),
+    }
+  }) : []
 
   // A tappable calorie target; the selected one drives the macro split.
   const targetCard = (id, title, sub) => {
@@ -393,10 +402,16 @@ export default function TDEECalculator() {
 
               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mt-10 bg-white border border-border p-5 sm:p-9">
                 <h2 className="font-heading text-xl font-medium text-text-primary mb-2">Burn more instead of eating less</h2>
-                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">How long it takes you, at your weight, to burn a little extra. These are extra calories on top of your normal day, so they add straight to your deficit.</p>
+                <p className="text-text-muted text-[13px] mb-6 leading-relaxed">{burnBy === 'kcal' ? 'How long it takes you, at your weight, to burn a little extra.' : 'What a session burns at your weight.'} These are extra calories on top of your normal day, so they add straight to your deficit.</p>
+                <div className="flex gap-3 mb-3">
+                  {toggle(burnBy === 'kcal', () => setBurnBy('kcal'), 'Calories → time')}
+                  {toggle(burnBy === 'time', () => setBurnBy('time'), 'Time → calories')}
+                </div>
                 <div className="flex gap-2 mb-6">
-                  {burnOptions.map(o => (
+                  {burnBy === 'kcal' ? burnOptions.map(o => (
                     <button key={o.value} type="button" aria-pressed={burn === o.value} onClick={() => setBurnChoice(o.value)} className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burn === o.value ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{o.label}</button>
+                  )) : minuteOptions.map(m => (
+                    <button key={m} type="button" aria-pressed={burnMinutes === m} onClick={() => setBurnMinutes(m)} className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burnMinutes === m ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{m} min</button>
                   ))}
                 </div>
                 <div className="space-y-3">
@@ -406,7 +421,11 @@ export default function TDEECalculator() {
                         <p className="text-[13px] text-text-primary">{r.label}</p>
                         <p className="text-[11px] text-text-light">{r.detail}</p>
                       </div>
-                      <span className="text-[13px] text-text-muted shrink-0"><strong className="text-text-primary font-medium">{r.minutes}</strong> min</span>
+                      <span className="text-[13px] text-text-muted shrink-0">
+                        {burnBy === 'kcal'
+                          ? <><strong className="text-text-primary font-medium">{r.time.value}</strong> {r.time.unit}</>
+                          : <><strong className="text-text-primary font-medium">{r.kcal}</strong> cal</>}
+                      </span>
                     </div>
                   ))}
                 </div>
