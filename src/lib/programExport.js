@@ -63,26 +63,29 @@ function ageFrom(birthYear, now) {
 const lengthUnit = (unit) => (unit === 'lbs' ? 'in' : 'cm')
 const weightUnit = (unit) => (unit === 'lbs' ? 'lbs' : 'kg')
 
-// One entry per profile field the export can say. `line` groups fields that
-// read better side by side ("Female · 28 years"); `text` returns null when the
-// profile doesn't say — and a field that doesn't say is left out, never written
-// as "Goal: —". `label` is what the export panel toggles it by.
+// One entry per profile field the export can say. `value` reads the field
+// ("Gain muscle", "168 cm") and returns null when the profile doesn't say — a
+// field that doesn't say is left out, never written as "Goal: —". `say` puts a
+// value into the sentence the text uses; `line` groups fields that read better
+// side by side ("Female · 28 years"). `label` is what the export panel toggles
+// it by, and the Excel About tab's first column.
+const nOr = (v, f) => (num(v) == null ? null : f(num(v)))
 export const PROFILE_EXPORT_FIELDS = [
-  { key: 'sex', label: 'Sex', line: 'who', text: (p) => (p.sex === 'male' ? 'Male' : p.sex === 'female' ? 'Female' : null) },
-  { key: 'age', label: 'Age', line: 'who', text: (p, now) => (ageFrom(p.birth_year, now) == null ? null : `${ageFrom(p.birth_year, now)} years`) },
-  { key: 'height', label: 'Height', line: 'body', text: (p) => (num(p.height) == null ? null : `${trim1(num(p.height))} ${lengthUnit(p.unit)}`) },
-  { key: 'bodyweight', label: 'Bodyweight', line: 'body', text: (p) => (num(p.bodyweight) == null ? null : `${trim1(num(p.bodyweight))} ${weightUnit(p.unit)}`) },
-  { key: 'body_fat', label: 'Body fat', line: 'body', text: (p) => (num(p.body_fat) == null ? null : `${trim1(num(p.body_fat))}% body fat`) },
-  { key: 'wrist', label: 'Wrist', line: 'frame', text: (p) => (num(p.wrist) == null ? null : `Wrist ${trim1(num(p.wrist))} ${lengthUnit(p.unit)}`) },
-  { key: 'ankle', label: 'Ankle', line: 'frame', text: (p) => (num(p.ankle) == null ? null : `Ankle ${trim1(num(p.ankle))} ${lengthUnit(p.unit)}`) },
-  { key: 'goal', label: 'Goal', line: 'goal', text: (p) => (labelOf(GOALS, p.goal) ? `Goal: ${labelOf(GOALS, p.goal)}` : null) },
-  { key: 'experience_level', label: 'Experience', line: 'experience', text: (p) => (labelOf(EXPERIENCE_LEVELS, p.experience_level) ? `Experience: ${labelOf(EXPERIENCE_LEVELS, p.experience_level)}` : null) },
-  { key: 'training_start_year', label: 'Training since', line: 'experience', text: (p) => (num(p.training_start_year) == null ? null : `training since ${num(p.training_start_year)}`) },
-  { key: 'equipment', label: 'Equipment', line: 'equipment', text: (p) => (labelOf(EQUIPMENT_PRESETS, p.equipment) ? `Equipment: ${labelOf(EQUIPMENT_PRESETS, p.equipment)}` : null) },
-  { key: 'focus', label: 'Bringing up', line: 'focus', text: (p) => (p.focus?.length ? `Bringing up: ${p.focus.join(', ')}` : null) },
-  { key: 'daily_steps', label: 'Steps', line: 'steps', text: (p) => (num(p.daily_steps) == null ? null : `Steps: ${Math.round(num(p.daily_steps)).toLocaleString('en-US')} a day`) },
-  { key: 'diet', label: 'Diet', line: 'diet', text: (p) => (labelOf(DIETS, p.diet) ? `Diet: ${labelOf(DIETS, p.diet)}` : null) },
-  { key: 'injuries', label: 'Injuries', line: 'injuries', text: (p) => (p.injuries?.trim() ? `Injuries: ${oneLine(p.injuries)}` : null) },
+  { key: 'sex', label: 'Sex', line: 'who', value: (p) => (p.sex === 'male' ? 'Male' : p.sex === 'female' ? 'Female' : null) },
+  { key: 'age', label: 'Age', line: 'who', value: (p, now) => ageFrom(p.birth_year, now), say: (v) => `${v} years` },
+  { key: 'height', label: 'Height', line: 'body', value: (p) => nOr(p.height, (n) => `${trim1(n)} ${lengthUnit(p.unit)}`) },
+  { key: 'bodyweight', label: 'Bodyweight', line: 'body', value: (p) => nOr(p.bodyweight, (n) => `${trim1(n)} ${weightUnit(p.unit)}`) },
+  { key: 'body_fat', label: 'Body fat', line: 'body', value: (p) => nOr(p.body_fat, (n) => `${trim1(n)}%`), say: (v) => `${v} body fat` },
+  { key: 'wrist', label: 'Wrist', line: 'frame', value: (p) => nOr(p.wrist, (n) => `${trim1(n)} ${lengthUnit(p.unit)}`), say: (v) => `Wrist ${v}` },
+  { key: 'ankle', label: 'Ankle', line: 'frame', value: (p) => nOr(p.ankle, (n) => `${trim1(n)} ${lengthUnit(p.unit)}`), say: (v) => `Ankle ${v}` },
+  { key: 'goal', label: 'Goal', line: 'goal', value: (p) => labelOf(GOALS, p.goal), say: (v) => `Goal: ${v}` },
+  { key: 'experience_level', label: 'Experience', line: 'experience', value: (p) => labelOf(EXPERIENCE_LEVELS, p.experience_level), say: (v) => `Experience: ${v}` },
+  { key: 'training_start_year', label: 'Training since', line: 'experience', value: (p) => num(p.training_start_year), say: (v) => `training since ${v}` },
+  { key: 'equipment', label: 'Equipment', line: 'equipment', value: (p) => labelOf(EQUIPMENT_PRESETS, p.equipment), say: (v) => `Equipment: ${v}` },
+  { key: 'focus', label: 'Bringing up', line: 'focus', value: (p) => (p.focus?.length ? p.focus.join(', ') : null), say: (v) => `Bringing up: ${v}` },
+  { key: 'daily_steps', label: 'Steps', line: 'steps', value: (p) => nOr(p.daily_steps, (n) => Math.round(n).toLocaleString('en-US')), say: (v) => `Steps: ${v} a day` },
+  { key: 'diet', label: 'Diet', line: 'diet', value: (p) => labelOf(DIETS, p.diet), say: (v) => `Diet: ${v}` },
+  { key: 'injuries', label: 'Injuries', line: 'injuries', value: (p) => (p.injuries?.trim() ? oneLine(p.injuries) : null), say: (v) => `Injuries: ${v}` },
 ]
 
 // The heaviest working weight the log holds for this movement, from the most
@@ -211,12 +214,17 @@ export function buildExportModel({
   const focus = Array.isArray(program.settings?.focus) ? program.settings.focus : cleanFocus(profile?.focus_muscles)
   const person = { ...(profile || {}), focus, injuries }
 
-  const about = PROFILE_EXPORT_FIELDS.map((f) => ({ key: f.key, label: f.label, line: f.line, text: f.text(person, now) })).filter((f) => f.text)
+  const about = []
+  for (const f of PROFILE_EXPORT_FIELDS) {
+    const value = f.value(person, now)
+    if (value == null || value === '') continue
+    about.push({ key: f.key, label: f.label, line: f.line, value: String(value), text: f.say ? f.say(value) : String(value) })
+  }
   ;(extra || []).forEach((x, i) => {
     const label = (x?.label || '').trim()
     const value = oneLine(x?.value || '')
     if (!value) return
-    about.push({ key: `extra-${i}`, label: label || value, line: `extra-${i}`, text: label ? `${label}: ${value}` : value })
+    about.push({ key: `extra-${i}`, label: label || value, line: `extra-${i}`, value, text: label ? `${label}: ${value}` : value })
   })
 
   const days = program.days
@@ -258,6 +266,8 @@ export const DEFAULT_EXPORT_PREFS = {
   weights: true,
   weeklySets: true,
   coachNotes: true,
+  // Excel only: empty Week 1–8 columns to log into.
+  logColumns: false,
 }
 
 export function partText(p, prefs = DEFAULT_EXPORT_PREFS) {

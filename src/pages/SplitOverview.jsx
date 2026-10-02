@@ -81,7 +81,7 @@ export default function SplitOverview() {
               onClick={() => setExporting(true)}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-3 py-1.5 mt-4 cursor-pointer transition-colors"
             >
-              <FileText className="w-3.5 h-3.5" /> Export as text
+              <FileText className="w-3.5 h-3.5" /> Export as text or Excel
             </button>
           )}
         </div>

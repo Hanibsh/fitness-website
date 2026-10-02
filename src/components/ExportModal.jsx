@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Copy, Check, Share2, FileText } from 'lucide-react'
+import { Copy, Check, Share2, FileText, FileSpreadsheet } from 'lucide-react'
 import Modal from './Modal'
 import { useAuth } from '../lib/auth'
 import { useInjuries } from '../lib/useInjuries'
@@ -7,9 +7,10 @@ import { openInjuries, injuryTitle } from '../lib/injuries'
 import { getHistory, getUnit, getExerciseNote, getExportPrefs, saveExportPrefs } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { buildExportModel, exportText, exportFileName, DEFAULT_EXPORT_PREFS } from '../lib/programExport'
-import { copyText, canShareText, shareText, downloadText } from '../lib/download'
+import { copyText, canShareText, shareText, downloadText, downloadBlob } from '../lib/download'
+import { workbookBlob } from '../lib/excelExport'
 
-// Export a split as text — the panel around lib/programExport.js.
+// Export a split as text or Excel — the panel around lib/programExport.js.
 //
 // The preview IS the export: what's in the box is exactly what Copy, Share and
 // Download hand over, so there's never a "what will this look like" guess. Each
@@ -28,6 +29,7 @@ export default function ExportModal({ program, client = null, onClose }) {
   const [sessions, setSessions] = useState([])
   const [prefs, setPrefs] = useState(() => ({ ...DEFAULT_EXPORT_PREFS, ...(getExportPrefs() || {}) }))
   const [copied, setCopied] = useState(false)
+  const [excel, setExcel] = useState('idle') // idle | busy | failed
 
   // Your log, for the weights you last used. Loaded the way every other
   // surface loads it: the account when signed in, this device otherwise.
@@ -96,6 +98,17 @@ export default function ExportModal({ program, client = null, onClose }) {
     }
   }
 
+  // The workbook library loads on this first tap, not with the page.
+  async function handleExcel() {
+    setExcel('busy')
+    try {
+      downloadBlob(exportFileName(model, 'xlsx', prefs), await workbookBlob(model, prefs))
+      setExcel('idle')
+    } catch {
+      setExcel('failed')
+    }
+  }
+
   // Only the chips that would change something: no "Last weights" on a split
   // nobody has logged, no "Notes" where there are none.
   const parts = model.days.flatMap((d) => d.rows.flatMap((r) => r.parts))
@@ -132,10 +145,10 @@ export default function ExportModal({ program, client = null, onClose }) {
   return (
     <Modal onClose={onClose} maxWidth="max-w-2xl">
       <div className="p-5 sm:p-7">
-        <h3 className="font-heading text-xl font-medium text-text-primary mb-1 pr-8">Export as text</h3>
+        <h3 className="font-heading text-xl font-medium text-text-primary mb-1 pr-8">Export</h3>
         <p className="text-[13px] text-text-muted mb-5 leading-relaxed">
-          Laid out like a note on your phone — paste it into Notes or send it in a chat. Tap a chip to leave
-          something out.
+          Text laid out like a note on your phone — paste it into Notes or send it in a chat — or an Excel
+          file. Tap a chip to leave something out.
         </p>
 
         {model.about.length > 0 && (
@@ -154,6 +167,13 @@ export default function ExportModal({ program, client = null, onClose }) {
           </div>
         </div>
 
+        <div className="mb-5">
+          <span className={labelCls}>Excel only</span>
+          <div className="flex flex-wrap gap-1.5">
+            {chip(!!prefs.logColumns, () => update({ logColumns: !prefs.logColumns }), 'Week 1–8 log columns')}
+          </div>
+        </div>
+
         <pre
           className="whitespace-pre-wrap break-words bg-cream border border-border p-3 sm:p-4 text-[12px] leading-relaxed text-text-secondary max-h-[45vh] overflow-y-auto mb-5"
           style={{ fontFamily: 'inherit' }}
@@ -162,11 +182,13 @@ export default function ExportModal({ program, client = null, onClose }) {
           {text}
         </pre>
 
-        {/* Two to a row on a phone: three across leaves "Copied" no room at 320px. */}
-        <div className={`grid gap-2 grid-cols-2 ${canShareText() ? 'sm:grid-cols-3' : ''}`}>
+        {/* Two to a row on a phone — three across leaves "Copied" no room at
+            320px. Without a share sheet there are three, so Copy takes the
+            whole first row. */}
+        <div className={`grid gap-2 grid-cols-2 ${canShareText() ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
           <button
             onClick={handleCopy}
-            className={`${actionCls} bg-text-primary text-cream border-text-primary hover:bg-accent-hover`}
+            className={`${actionCls} ${canShareText() ? '' : 'col-span-2 sm:col-span-1'} bg-text-primary text-cream border-text-primary hover:bg-accent-hover`}
           >
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Copied' : 'Copy'}
@@ -185,7 +207,17 @@ export default function ExportModal({ program, client = null, onClose }) {
           >
             <FileText className="w-4 h-4" /> .txt
           </button>
+          <button
+            onClick={handleExcel}
+            disabled={excel === 'busy'}
+            className={`${actionCls} bg-white text-text-muted border-border hover:border-border-hover hover:text-text-primary disabled:opacity-60 disabled:cursor-wait`}
+          >
+            <FileSpreadsheet className="w-4 h-4" /> {excel === 'busy' ? 'Building…' : 'Excel'}
+          </button>
         </div>
+        {excel === 'failed' && (
+          <p className="text-[12px] text-amber-600 mt-2">The Excel file couldn&apos;t be built — check your connection and try again.</p>
+        )}
       </div>
     </Modal>
   )

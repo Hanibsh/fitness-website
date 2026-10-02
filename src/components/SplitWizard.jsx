@@ -685,7 +685,7 @@ function Preview({ built, name, setName, onCreate }) {
         onClick={() => setExporting(true)}
         className="w-full inline-flex items-center justify-center gap-2 bg-white text-text-muted hover:text-text-primary font-medium py-2.5 mt-2 border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
       >
-        <FileText className="w-4 h-4" /> Export as text
+        <FileText className="w-4 h-4" /> Export as text or Excel
       </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
         Nothing is saved until you tap Create — and every day, movement, set and rep range is editable
