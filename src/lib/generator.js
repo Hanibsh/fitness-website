@@ -50,7 +50,7 @@ import {
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD, LIMITER_PENALTY, LIMITER_EXCLUDED,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, HIGH_REP_MUSCLES, SWAP_MIN_CONTRIBUTION_RATIO,
-  PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK,
+  PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -120,6 +120,12 @@ export function muscleWeights(db) {
 // choice, doing it in the same session is an accident.
 export function movementFamily(db) {
   return db.name.toLowerCase().split(/\s+-\s+|,/)[0].trim()
+}
+
+// The main muscle of a movement heavy enough that a day holds only one of them
+// per muscle (HEAVY_FATIGUE_SCORE), or null for a lighter movement.
+function heavyMuscleOf(db) {
+  return (db.fatigueScore ?? 0) >= HEAVY_FATIGUE_SCORE ? primaryMuscleOf(db) : null
 }
 
 // Two movements are "the same idea" when they send the same joints down the same
@@ -515,6 +521,17 @@ export function scoreExercise(db, ctx) {
     score += w.debtRelief * Math.min(2, relief)
   }
 
+  // A region of muscle the week hasn't trained yet (WEIGHTS.coverage). Read
+  // from the DB's own regions, not the engine muscles, so it can tell the upper
+  // chest from the middle and the soleus from the gastrocnemius.
+  if (ctx.weekAtoms) {
+    let fresh = 0
+    for (const [atom, aw] of Object.entries(db.muscles || {})) {
+      if (aw >= COVERAGE_MIN_WEIGHT && !ctx.weekAtoms.has(atom)) fresh += aw
+    }
+    score += (w.coverage ?? 0) * Math.min(1, fresh)
+  }
+
   // The hybrid rule: their own movements get a nudge, damped on a focus muscle
   // where fresh stimulus is the entire point of naming it.
   const fam = ctx.familiarity ?? 0
@@ -574,7 +591,7 @@ export function scoreExercise(db, ctx) {
 // muscle's first movement of the day is a compound where the database has a
 // real one for it, and its best isolation where it doesn't.
 export function candidates(muscle, ctx) {
-  const pool = POOL.filter((db) => {
+  const eligible = POOL.filter((db) => {
     if (!ctx.allowedEquipment.has(db.equipment)) return false
     if (ctx.excludedEquipment?.has(db.equipment)) return false
     if (ctx.excludedOverload?.has(db.progressiveOverload)) return false
@@ -591,11 +608,40 @@ export function candidates(muscle, ctx) {
     const w = muscleWeights(db)[muscle] || 0
     return w > 0 && w >= (ctx.minContribution || 0)
   })
+  const pool = complementary(eligible, muscle, ctx)
   if (!ctx.wantCompound) return pool
   const leads = pool.filter(
     (db) => db.type === 'compound' && muscleWeights(db)[muscle] >= COMPOUND_LEAD_MIN_CONTRIBUTION
   )
   return leads.length ? leads : pool
+}
+
+// Two rules that hold whenever the pool lets them, and give way, in this order,
+// only when keeping them would leave the slot empty — a muscle going untrained
+// is worse than either.
+//
+//   1. One heavy movement per muscle per day (`dayHeavy`, HEAVY_FATIGUE_SCORE).
+//      Kept longest: it's about what the day can recover from.
+//   2. Nothing the week already has, by movement or by family (`noWeekRepeats`,
+//      generation only). Hani's rule: a week's days complement each other
+//      rather than run the same workout again — the second-best quad movement
+//      is nearly as good as the best, and a different one trains the muscle
+//      from a different angle. But never at the cost of directness: the fresh
+//      movements have to include one that trains the muscle as directly as the
+//      best repeat would. A full gym never runs out; at home, three days of
+//      side-delt focus with bands would otherwise end on a banded overhead
+//      press, which is a shoulder press with some side delt in it.
+//
+// Swap suggestions pass `dayHeavy` but not `noWeekRepeats`: someone choosing a
+// replacement should still see the movement they did on Monday, just ranked
+// lower for it (PENALTIES.repeatExercise).
+function complementary(pool, muscle, ctx) {
+  const spaced = ctx.dayHeavy?.size ? pool.filter((db) => !ctx.dayHeavy.has(heavyMuscleOf(db))) : pool
+  const base = spaced.length ? spaced : pool
+  if (!ctx.noWeekRepeats) return base
+  const directness = (list) => Math.max(0, ...list.map((db) => muscleWeights(db)[muscle] || 0))
+  const fresh = base.filter((db) => !ctx.weekIds?.has(db.id) && !ctx.weekFamilies?.has(movementFamily(db)))
+  return fresh.length && directness(fresh) >= directness(base) ? fresh : base
 }
 
 // ---- Filling one day ---------------------------------------------------------
@@ -625,6 +671,7 @@ export function fillDay(template, alloc, gaps, ctx) {
   const dayIds = new Set()
   const dayFamilies = new Set()
   const dayPatterns = new Set()
+  const dayHeavy = new Set() // muscles a heavy movement already leads today
   const compoundFor = new Set()
   const chosen = []
   let setsUsed = 0
@@ -682,10 +729,13 @@ export function fillDay(template, alloc, gaps, ctx) {
       dayIds,
       dayFamilies,
       dayPatterns,
+      dayHeavy,
       remaining,
       weekIds: ctx.weekIds,
       weekFamilies: ctx.weekFamilies,
       weekSignatures: ctx.weekSignatures,
+      weekAtoms: ctx.weekAtoms,
+      noWeekRepeats: ctx.noWeekRepeats,
       injuryRisk: ctx.injuryRisk,
       budgetUsed: budgetUsed(),
       hoursToNext: gaps[muscle],
@@ -714,9 +764,14 @@ export function fillDay(template, alloc, gaps, ctx) {
     dayIds.add(best.db.id)
     dayFamilies.add(movementFamily(best.db))
     if (best.db.pattern) dayPatterns.add(best.db.pattern)
+    const heavy = heavyMuscleOf(best.db)
+    if (heavy) dayHeavy.add(heavy)
     ctx.weekIds.add(best.db.id)
     ctx.weekFamilies.add(movementFamily(best.db))
     ctx.weekSignatures.add(signature(best.db))
+    for (const [atom, aw] of Object.entries(best.db.muscles || {})) {
+      if (aw >= COVERAGE_MIN_WEIGHT) ctx.weekAtoms?.add(atom)
+    }
     if (best.db.type === 'compound') compoundFor.add(muscle)
     charge(best.db, MIN_SETS_PER_EXERCISE)
     return true
@@ -1231,6 +1286,7 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
   const selfPlannedId = planned.plannedExerciseId || planned.id
   const dayIds = new Set()
   const dayFamilies = new Set()
+  const dayHeavy = new Set()
   let load = 0
   for (const other of day.exercises) {
     const db = DB_BY_ID.get(plannedExerciseDbId(other) || '')
@@ -1238,6 +1294,8 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
     if (other.id !== selfPlannedId) {
       dayIds.add(db.id)
       dayFamilies.add(movementFamily(db))
+      const heavy = heavyMuscleOf(db)
+      if (heavy) dayHeavy.add(heavy)
       load += setLoad(db) * (Number(other.sets) || 0)
     }
   }
@@ -1275,6 +1333,7 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
     maxSkillRank: SKILL_RANK.high, // a split they wrote themselves; only the very hardest is held back
     dayIds,
     dayFamilies,
+    dayHeavy,
     weekIds,
     weekFamilies,
     weekSignatures,
@@ -1472,10 +1531,13 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       volumePref: inputs.volumePref,
       setCap: cap,
       // Week-wide variety state, shared across days on purpose: the second Push
-      // day should know what the first one already used.
+      // day should know what the first one already used — and, with
+      // `noWeekRepeats`, never use it again while anything else fits.
       weekIds: new Set(),
       weekFamilies: new Set(),
       weekSignatures: new Set(),
+      weekAtoms: new Set(),
+      noWeekRepeats: true,
     }
     const days = templateDays.map((template, i) => {
       // Measuring the day's size uses the order it is sized in (`sizedAs`).

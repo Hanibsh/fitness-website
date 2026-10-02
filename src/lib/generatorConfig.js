@@ -513,7 +513,25 @@ export const WEIGHTS = {
   // triceps and front-delt work. This is the term that makes the generator
   // write a workout rather than a list of body parts.
   debtRelief: 0.9,
+  // A region of muscle the week hasn't trained yet — upper chest after two flat
+  // presses, the soleus after two straight-leg calf raises, the brachialis
+  // after two preacher curls. Paid once per movement however many new regions
+  // it brings (capped at one region's worth), so it steers each later day
+  // toward the angle the earlier days missed without rewarding a movement just
+  // for listing more muscles. Hani's rule: the days of a week complement each
+  // other, so the week as a whole covers as much as it can. It adds no sets.
+  coverage: 0.8,
 }
+// How heavily a region must be trained to count as covered (and to earn the
+// coverage bonus): a secondary mover or better.
+export const COVERAGE_MIN_WEIGHT = 0.5
+
+// One heavy movement per muscle per day. Two movements at or above this fatigue
+// score whose main muscle is the same — hack squat and leg press, RDL and a
+// good morning — never share a day: the second one is trained on what the first
+// left, at the highest systemic cost in the session. A light movement for the
+// same muscle (a leg extension after the hack squat) is unaffected.
+export const HEAVY_FATIGUE_SCORE = 4
 
 export const PENALTIES = {
   // Fatigue is charged against what's LEFT of the day, not in the abstract:
@@ -525,6 +543,9 @@ export const PENALTIES = {
   axial: 1.2, // scaled by the same budget fraction — only bites late in a day
   recovery: 0.8, // per 24h its recovery window overruns the gap to the next session
   recoveryCap: 2.4,
+  // The generator itself never repeats a movement or a family across the week
+  // while the pool has anything else (candidates, `noWeekRepeats`), so these two
+  // bite only where it runs out — at home — and in swap suggestions.
   sameFamily: 1.6, // another variant of this movement is already in the week
   sameSignature: 1.0, // a near-identical movement is already in the week
   // A second movement down the SAME PATH in the same day — a second row after a

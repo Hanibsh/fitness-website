@@ -22,10 +22,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VERBOSE = process.argv.includes('--verbose')
 
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-const { generateProgram, failureSafe } = await server.ssrLoadModule('/src/lib/generator.js')
+const { generateProgram, failureSafe, primaryMuscleOf, movementFamily } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -122,6 +122,32 @@ function audit(label, program, summary, inputs, opts) {
       }
       // "Don't Program" rows stay in the bank, never in a generated split.
       check(label, db.programmable !== false, `"${e.name}" is marked Don't Program`)
+    }
+  }
+
+  // ---- complementary days (Hani, 2026-10-02)
+  // One heavy movement per main muscle per day, everywhere. And at a full gym,
+  // where the pool never runs out, no movement or movement family twice in a
+  // week — at home it may, and the generator then repeats rather than leave a
+  // muscle untrained.
+  const weekIds = new Map()
+  const weekFamilies = new Map()
+  for (const day of training) {
+    const heavy = new Map()
+    for (const e of day.exercises) {
+      const db = getFullExercise(e.exerciseId)
+      if (!db) continue
+      if ((db.fatigueScore ?? 0) >= HEAVY_FATIGUE_SCORE) {
+        const m = primaryMuscleOf(db)
+        check(label, !heavy.has(m), `"${day.name}" has two heavy ${m} movements: ${heavy.get(m)} and ${e.name}`)
+        heavy.set(m, e.name)
+      }
+      if (opts.equipment === 'gym') {
+        const fam = movementFamily(db)
+        check(label, !weekIds.has(db.id) && !weekFamilies.has(fam), `"${e.name}" repeats ${weekFamilies.get(fam) || e.name} in the same week`)
+        weekIds.set(db.id, e.name)
+        weekFamilies.set(fam, e.name)
+      }
       check(label, (SKILL_RANK[db.skill] ?? 1) <= skillCap + 1, `"${e.name}" skill ${db.skill} over the ${opts.experience} cap`)
     }
   }

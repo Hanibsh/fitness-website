@@ -1621,7 +1621,7 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -1659,7 +1659,7 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -1697,7 +1697,7 @@
       "equipment": "machine",
       "axialLoading": false,
       "skill": "low",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": "Allows pushing closer to failure safely",
       "video": null,
@@ -1817,6 +1817,45 @@
       "video": null,
       "thumbnail": null,
       "pattern": "horizontal-pull"
+    },
+    {
+      "id": "chin-up-weighted",
+      "name": "Chin-Up - Weighted",
+      "category": "Back",
+      "subCategory": null,
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Rectus Abdominis": 0.125,
+        "Upper Traps": 0.125
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "limiter": "target",
+      "programmable": true,
+      "notes": null,
+      "video": null,
+      "thumbnail": null,
+      "pattern": "vertical-pull"
     },
     {
       "id": "lat-pulldown-wide-grip",
@@ -2013,6 +2052,124 @@
       "pattern": "vertical-pull"
     },
     {
+      "id": "pull-up-wide-grip-weighted",
+      "name": "Pull Up - Wide Grip, Weighted",
+      "category": "Back",
+      "subCategory": null,
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Teres Major": 0.5,
+        "Rhomboids": 0.25,
+        "Rear Delts": 0.25,
+        "Biceps": 0.25,
+        "Rectus Abdominis": 0.125
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "limiter": "target",
+      "programmable": true,
+      "notes": null,
+      "video": null,
+      "thumbnail": null,
+      "pattern": "vertical-pull"
+    },
+    {
+      "id": "pull-up-neutral-grip-weighted",
+      "name": "Pull Up - Neutral Grip, Weighted",
+      "category": "Back",
+      "subCategory": null,
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Upper Traps": 0.125,
+        "Rectus Abdominis": 0.125
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "limiter": "target",
+      "programmable": true,
+      "notes": null,
+      "video": null,
+      "thumbnail": null,
+      "pattern": "vertical-pull"
+    },
+    {
+      "id": "pull-up-overhand-grip-weighted",
+      "name": "Pull Up - Overhand Grip, Weighted",
+      "category": "Back",
+      "subCategory": null,
+      "type": "compound",
+      "laterality": "bilateral",
+      "muscles": {
+        "Lats": 1,
+        "Biceps": 0.5,
+        "Rhomboids": 0.25,
+        "Rear Delts": 0.25,
+        "Upper Traps": 0.125
+      },
+      "fatigueScore": 3,
+      "recoveryWindowHours": [
+        48,
+        72
+      ],
+      "restSeconds": [
+        210,
+        300
+      ],
+      "progressiveOverload": "high",
+      "stability": "moderate",
+      "hypertrophyPotential": "excellent",
+      "sfr": "good",
+      "stretchMediated": "yes",
+      "resistanceProfile": "balanced",
+      "equipment": "free weight",
+      "axialLoading": false,
+      "skill": "moderate",
+      "limiter": "target",
+      "programmable": true,
+      "notes": null,
+      "video": null,
+      "thumbnail": null,
+      "pattern": "vertical-pull"
+    },
+    {
       "id": "chin-up-with-band",
       "name": "Chin-Up - With Band",
       "category": "Back",
@@ -2129,45 +2286,6 @@
       "pattern": "horizontal-pull"
     },
     {
-      "id": "chin-up-weighted",
-      "name": "Chin-Up - Weighted",
-      "category": "Back",
-      "subCategory": null,
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rhomboids": 0.25,
-        "Rectus Abdominis": 0.125,
-        "Upper Traps": 0.125
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "limiter": "target",
-      "programmable": true,
-      "notes": null,
-      "video": null,
-      "thumbnail": null,
-      "pattern": "vertical-pull"
-    },
-    {
       "id": "pull-up-wide-grip",
       "name": "Pull Up - Wide Grip",
       "category": "Back",
@@ -2200,7 +2318,7 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -2277,7 +2395,7 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -2363,46 +2481,6 @@
       "pattern": "vertical-pull"
     },
     {
-      "id": "pull-up-wide-grip-weighted",
-      "name": "Pull Up - Wide Grip, Weighted",
-      "category": "Back",
-      "subCategory": null,
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Teres Major": 0.5,
-        "Rhomboids": 0.25,
-        "Rear Delts": 0.25,
-        "Biceps": 0.25,
-        "Rectus Abdominis": 0.125
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "limiter": "target",
-      "programmable": true,
-      "notes": null,
-      "video": null,
-      "thumbnail": null,
-      "pattern": "vertical-pull"
-    },
-    {
       "id": "pull-up-overhand-grip-with-band",
       "name": "Pull Up - Overhand Grip, With Band",
       "category": "Back",
@@ -2435,45 +2513,6 @@
       "axialLoading": false,
       "skill": "low",
       "limiter": "load cap",
-      "programmable": true,
-      "notes": null,
-      "video": null,
-      "thumbnail": null,
-      "pattern": "vertical-pull"
-    },
-    {
-      "id": "pull-up-neutral-grip-weighted",
-      "name": "Pull Up - Neutral Grip, Weighted",
-      "category": "Back",
-      "subCategory": null,
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rhomboids": 0.25,
-        "Upper Traps": 0.125,
-        "Rectus Abdominis": 0.125
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "excellent",
-      "sfr": "good",
-      "stretchMediated": "yes",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "limiter": "target",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -2588,7 +2627,7 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -2703,7 +2742,7 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -2828,45 +2867,6 @@
       "pattern": "horizontal-pull"
     },
     {
-      "id": "pull-up-overhand-grip-weighted",
-      "name": "Pull Up - Overhand Grip, Weighted",
-      "category": "Back",
-      "subCategory": null,
-      "type": "compound",
-      "laterality": "bilateral",
-      "muscles": {
-        "Lats": 1,
-        "Biceps": 0.5,
-        "Rhomboids": 0.25,
-        "Rear Delts": 0.25,
-        "Upper Traps": 0.125
-      },
-      "fatigueScore": 3,
-      "recoveryWindowHours": [
-        48,
-        72
-      ],
-      "restSeconds": [
-        210,
-        300
-      ],
-      "progressiveOverload": "moderate",
-      "stability": "moderate",
-      "hypertrophyPotential": "high",
-      "sfr": "average",
-      "stretchMediated": "partial",
-      "resistanceProfile": "balanced",
-      "equipment": "free weight",
-      "axialLoading": false,
-      "skill": "moderate",
-      "limiter": "target",
-      "programmable": true,
-      "notes": null,
-      "video": null,
-      "thumbnail": null,
-      "pattern": "vertical-pull"
-    },
-    {
       "id": "chin-up-close-grip",
       "name": "Chin-Up - Close Grip",
       "category": "Back",
@@ -2897,7 +2897,7 @@
       "equipment": "bodyweight",
       "axialLoading": false,
       "skill": "moderate",
-      "limiter": "target",
+      "limiter": "load cap",
       "programmable": true,
       "notes": null,
       "video": null,
@@ -8024,7 +8024,7 @@
         "Glute Max": 0.5,
         "Abductors": 0.5
       },
-      "fatigueScore": 3,
+      "fatigueScore": 4,
       "recoveryWindowHours": [
         48,
         72
