@@ -24,7 +24,7 @@ import { plannedExerciseDbId } from './planStats'
 import { lateralityFor, usesBodyweight } from './movements'
 import { canonicalExerciseId, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks } from './workoutStats'
 import { patternPhrase } from '../data/movementPatterns'
-import { volumePreference } from './generatorConfig'
+import { volumePreference, shapeById, SPLIT_REFRESH_WEEKS } from './generatorConfig'
 
 export { plannedExerciseDbId }
 
@@ -141,6 +141,35 @@ function withExercise(program, dayId, exId, fn) {
 // built by hand (or before settings were stored) — those have no cap to keep.
 export function splitSetCap(program) {
   return program?.settings?.volume ? volumePreference(program.settings.volume).setCap : null
+}
+
+// A generated split that has run its course: how many weeks it's been going and
+// what it brought up, so the wizard can say so before the next one is built.
+// Null while it's younger than SPLIT_REFRESH_WEEKS — and always for a split built
+// by hand or duplicated (no settings), which never came with a shelf life.
+//
+// `focus` is null rather than [] when the split predates storing it: "we don't
+// know" must not read as "it was balanced". `shape` is the template, or null.
+export function splitRefresh(program, { now = Date.now() } = {}) {
+  const settings = program?.settings
+  const created = program?.createdAt
+  if (!settings || !Number.isFinite(created)) return null
+  const weeks = Math.floor((now - created) / (7 * 864e5))
+  if (weeks < SPLIT_REFRESH_WEEKS) return null
+  return {
+    weeks,
+    focus: Array.isArray(settings.focus) ? [...settings.focus] : null,
+    shape: shapeById(settings.shape),
+  }
+}
+
+// The profile's focus pick, minus what the old split already brought up once
+// it's due for a change — so the wizard never quietly reopens on the emphasis
+// it's suggesting they move on from. Untouched while the split is still young:
+// someone regenerating a fortnight in wants their pick back.
+export function withoutStaleFocus(focus, refresh) {
+  if (!refresh?.focus?.length) return focus
+  return focus.filter((m) => !refresh.focus.includes(m))
 }
 
 export function setProgramName(program, name) {

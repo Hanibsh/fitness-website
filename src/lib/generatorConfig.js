@@ -270,6 +270,16 @@ export function shapesFor(daysPerWeek) {
   return TEMPLATES[daysPerWeek] || TEMPLATES[DEFAULT_DAYS_PER_WEEK]
 }
 
+// A shape by its id, at whatever day count it lives — 'full-body' is the same
+// shape at two days and three. Null for an id no template has (or none at all).
+export function shapeById(id) {
+  for (const shapes of Object.values(TEMPLATES)) {
+    const shape = shapes.find((sh) => sh.id === id)
+    if (shape) return shape
+  }
+  return null
+}
+
 export const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6]
 export const DEFAULT_DAYS_PER_WEEK = 4
 
@@ -334,6 +344,14 @@ export const FOCUS_NO_ROOM_SETS = 1 // ...or when the week has no session to giv
 // for it to be brought up, not for more of what already wasn't enough. So their
 // own habitual movements count for less when filling a focus slot.
 export const FAMILIARITY_FOCUS_DAMP = 0.5
+
+// ---- How long a split runs --------------------------------------------------
+// A generated split is built to be run for three to four months (Hani's rule).
+// Past the start of that window the wizard says so — how long it's been and
+// what the split brought up — so the next one can bring up something else. A
+// note, never a nudge: nothing is picked for them, and the old focus is simply
+// not carried over (splitRefresh and withoutStaleFocus in program.js).
+export const SPLIT_REFRESH_WEEKS = 12
 
 // ---- Experience posture -----------------------------------------------------
 // Weekly sets per muscle for a standard (unscaled) muscle, the per-session

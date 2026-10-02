@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Dumbbell, Moon, Wand2 } from 'lucide-react'
+import { Dumbbell, Moon, RefreshCw, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -10,7 +10,7 @@ import FocusPicker from './FocusPicker'
 import MuscleDonut from './MuscleDonut'
 import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName, rirLabel } from '../lib/program'
+import { setProgramName, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
 import { donutRows } from '../lib/planStats'
 import { supersetLabels } from '../lib/workoutStats'
 import {
@@ -116,25 +116,41 @@ export default function SplitWizard() {
       setProfile(p)
       if (p?.experience_level) setExperience(p.experience_level)
       if (p?.equipment) setEquipment(p.equipment)
-      if (p?.focus_muscles && !focusTouched.current) setFocus(cleanFocus(p.focus_muscles))
       setLoading(false)
     }
     load()
     return () => { cancelled = true }
   }, [user])
 
+  // The split the log follows now, and — once it has run the months it was
+  // built for — how long it's been going and what it brought up.
+  const active = useMemo(
+    () => programsState?.programs?.find((p) => p.id === programsState.activeId) || null,
+    [programsState]
+  )
+  const refresh = useMemo(() => splitRefresh(active), [active])
+
   // Reopen on what the ACTIVE split was generated with — volume and the abs
   // always (the profile has no such fields), training age only when the
-  // profile didn't say.
+  // profile didn't say. Focus and shape never reopen from the split: they're
+  // its emphasis, and a new split is the moment to choose that again.
+  //
+  // The profile's focus pick seeds the wizard here rather than in load(), so
+  // the active split is known first. That pick was saved FROM the active split,
+  // so once it's due for a change the muscles it already brought up are left
+  // out (withoutStaleFocus) — reopening on them would quietly hand back the
+  // emphasis the note at the top suggests moving on from.
   useEffect(() => {
     if (programsLoading || loading) return
-    const active = programsState?.programs?.find((p) => p.id === programsState.activeId)
+    if (profile?.focus_muscles && !focusTouched.current) {
+      setFocus(withoutStaleFocus(cleanFocus(profile.focus_muscles), refresh))
+    }
     const settings = active?.settings
     if (!settings) return
     if (settings.volume && !volumeTouched.current) setVolume(settings.volume)
     if (settings.core && !coreTouched.current) setCore(corePlacement(settings.core))
     if (settings.experience && !profile?.experience_level) setExperience((e) => e || settings.experience)
-  }, [programsLoading, loading, programsState, profile])
+  }, [programsLoading, loading, active, refresh, profile])
 
   // Changing the frequency re-spreads the training days, unless the user has
   // already placed exactly that many themselves.
@@ -218,6 +234,8 @@ export default function SplitWizard() {
         <p className="text-[13px] text-text-muted">Loading…</p>
       ) : (
         <div className="space-y-6">
+          {refresh && <RefreshNote refresh={refresh} />}
+
           {/* ---- 1. How often ------------------------------------------- */}
           <section className={cardCls}>
             <h2 className={headCls}>How often do you train?</h2>
@@ -352,6 +370,32 @@ export default function SplitWizard() {
   )
 }
 
+// The active split has run the three to four months it was built for. Said
+// once, at the top, in the shape of the dashboard's nudges — and that's all it
+// does. It names no new muscle and picks nothing below: what to bring up next is
+// theirs to choose, and choosing the same emphasis again is one tap away.
+function RefreshNote({ refresh }) {
+  const { weeks, focus, shape } = refresh
+  // What it brought up, on what shape — each half only when the split recorded
+  // it. A split from before focus was stored says nothing about focus at all.
+  const emphasis = focus == null ? null : focus.length ? `${focus.join(' + ')} focus` : 'balanced'
+  const last = [emphasis, shape?.name].filter(Boolean).join(', on ')
+  return (
+    <div className="bg-white border border-border p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <RefreshCw className="w-4 h-4 text-text-light shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-text-primary break-words">Your split has run {weeks} weeks</p>
+          <p className="text-[12px] text-text-light mt-0.5 leading-relaxed break-words">
+            Programs like this are built for three to four months, so this is a good time to switch the emphasis:
+            bring up something new, or try a different shape.
+            {last && ` Last time: ${last}${focus?.length ? ' — not picked for you this time.' : '.'}`}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // The split as it will be created: every day, every movement, and what the week
 // adds up to per muscle. Shown in full before anything is written — a plan you
