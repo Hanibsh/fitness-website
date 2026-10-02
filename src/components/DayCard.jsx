@@ -23,9 +23,13 @@ import MuscleShareBars from './MuscleShareBars'
 // `onOpen` is the button-shaped twin of `to`, for when opening means a dialog
 // rather than a route.
 // `setCap` is the split's hard-set cap per day, for a PLANNED day only: the count
-// reads "18 / 16 sets" and says so when an edit has pushed the day past it.
+// reads "18 / 16 sets" and says so when an edit has pushed the day past it. Ab
+// sets don't count toward it (CORE_CATEGORY), so they're said on their own:
+// "16 / 16 sets + 3 abs".
 export default function DayCard({ header, stats, chips = [], to, linkState, linkLabel, onOpen, note, cta = 'Open day', highlight = false, compact = false, footer, setCap = null }) {
-  const overCap = setCap != null && stats && stats.sets > setCap
+  const capped = setCap != null
+  const sets = stats ? stats.sets - (capped ? stats.coreSets || 0 : 0) : 0
+  const overCap = capped && sets > setCap
   const openable = !!to || !!onOpen
   const body = (
     <>
@@ -37,9 +41,10 @@ export default function DayCard({ header, stats, chips = [], to, linkState, link
             <span className="tabular-nums">
               {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} ·{' '}
               <span className={overCap ? 'text-amber-600' : undefined}>
-                {stats.sets}
-                {setCap != null ? ` / ${setCap}` : ''} set{stats.sets !== 1 || setCap != null ? 's' : ''}
+                {sets}
+                {capped ? ` / ${setCap}` : ''} set{sets !== 1 || capped ? 's' : ''}
               </span>
+              {capped && stats.coreSets > 0 && ` + ${stats.coreSets} abs`}
             </span>
             <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
               {stats.load.label}

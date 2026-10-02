@@ -12,10 +12,12 @@ import { generateProgram } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
 import { setProgramName, rirLabel } from '../lib/program'
 import { donutRows } from '../lib/planStats'
+import { supersetLabels } from '../lib/workoutStats'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
   DEFAULT_EXPERIENCE, shapesFor,
-  VOLUME_PREFERENCES, DEFAULT_VOLUME_PREFERENCE, volumePreference } from '../lib/generatorConfig'
+  VOLUME_PREFERENCES, DEFAULT_VOLUME_PREFERENCE, volumePreference,
+  CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, corePlacement } from '../lib/generatorConfig'
 import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, cleanFocus } from '../lib/profileFields'
 
 // The split generator's questions and its preview, with no page around them.
@@ -74,6 +76,13 @@ export default function SplitWizard() {
     volumeTouched.current = true
     setVolume(v)
   }
+  // Where the abs go — supersetted or last. Same reopen rule as volume.
+  const [core, setCore] = useState(DEFAULT_CORE_PLACEMENT)
+  const coreTouched = useRef(false)
+  function chooseCore(v) {
+    coreTouched.current = true
+    setCore(v)
+  }
   const [equipment, setEquipment] = useState('')
   const [openSlots, setOpenSlots] = useState(false)
   // null = "pick for me": pickTemplate takes the recommended shape for the count.
@@ -114,14 +123,16 @@ export default function SplitWizard() {
     return () => { cancelled = true }
   }, [user])
 
-  // Reopen on what the ACTIVE split was generated with — volume always (the
-  // profile has no such field), training age only when the profile didn't say.
+  // Reopen on what the ACTIVE split was generated with — volume and the abs
+  // always (the profile has no such fields), training age only when the
+  // profile didn't say.
   useEffect(() => {
     if (programsLoading || loading) return
     const active = programsState?.programs?.find((p) => p.id === programsState.activeId)
     const settings = active?.settings
     if (!settings) return
     if (settings.volume && !volumeTouched.current) setVolume(settings.volume)
+    if (settings.core && !coreTouched.current) setCore(corePlacement(settings.core))
     if (settings.experience && !profile?.experience_level) setExperience((e) => e || settings.experience)
   }, [programsLoading, loading, programsState, profile])
 
@@ -155,6 +166,7 @@ export default function SplitWizard() {
         focus,
         experience: experience || undefined,
         volume,
+        core,
         equipment: equipment || undefined,
         shape: shape || undefined,
         openSlots,
@@ -163,7 +175,7 @@ export default function SplitWizard() {
       sessions: history,
       injuries,
     })
-  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, volume, equipment, openSlots, shape, profile, history, injuries])
+  }, [loading, daysPerWeek, schedule, weekdays, focus, experience, volume, core, equipment, openSlots, shape, profile, history, injuries])
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
@@ -296,6 +308,17 @@ export default function SplitWizard() {
             </div>
             <p className="text-[12px] text-text-light mb-6 leading-relaxed">{volumePreference(volume).note}</p>
 
+            {/* Ab work sits outside the volume setting (CORE_CATEGORY): it
+                costs next to nothing in fatigue, so it's a question of where it
+                goes, not of how much room it takes. */}
+            <label className={labelCls}>Abs</label>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              {CORE_PLACEMENTS.map((p) => choice(core === p.value, () => chooseCore(p.value), p.label, p.sub))}
+            </div>
+            <p className="text-[12px] text-text-light mb-6 leading-relaxed">
+              Ab sets don&apos;t count toward the day&apos;s sets — they cost next to nothing in fatigue.
+            </p>
+
             <label className={labelCls}>Equipment</label>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {EQUIPMENT_PRESETS.map((eq) => choice((equipment || 'gym') === eq.value, () => setEquipment(eq.value), eq.label))}
@@ -391,6 +414,8 @@ function Preview({ built, name, setName, onCreate }) {
   const weekDonut = donutRows(summary.volume)
   const unavailable = summary.volume.filter((v) => v.target != null && v.sets === 0 && !v.available)
   const squeezed = summary.volume.filter((v) => v.target != null && v.sets === 0 && v.available)
+  // Each day's superset labels (A1/A2), by day id.
+  const pairs = new Map(summary.days.map((d) => [d.id, supersetLabels(d.exercises)]))
 
   return (
     <section className={cardCls}>
@@ -422,7 +447,7 @@ function Preview({ built, name, setName, onCreate }) {
                   {d.kind !== 'rest' && (
                     <span className="inline-flex items-center gap-1.5 text-[11px] text-text-light ml-auto shrink-0">
                       <span className={`w-1.5 h-1.5 rounded-full ${LOAD_DOT[d.load.level]}`} />
-                      {d.sets} sets · {d.load.label.toLowerCase()}
+                      {d.sets} sets{d.coreSets > 0 ? ` + ${d.coreSets} abs` : ''} · {d.load.label.toLowerCase()}
                     </span>
                   )}
                 </div>
@@ -442,6 +467,13 @@ function Preview({ built, name, setName, onCreate }) {
                   <ul className="mt-2 space-y-0.5 list-none p-0 m-0">
                     {d.exercises.map((e) => (
                       <li key={e.id} className="flex items-baseline gap-2 text-[12px]">
+                        {/* A1/A2: the abs paired with the day's lightest
+                            movement — the same badge the split page shows. */}
+                        {pairs.get(d.id)?.get(e.id) && (
+                          <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">
+                            {pairs.get(d.id).get(e.id).label}
+                          </span>
+                        )}
                         <span className="text-text-secondary break-words min-w-0">
                           {e.name}
                           {/* The path a committed row fills, so the shape of the

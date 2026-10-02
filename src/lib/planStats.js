@@ -23,6 +23,14 @@ import {
   FATIGUE_SCORE_COEF, DEFAULT_FATIGUE_SCORE,
   AXIAL_MULT, FREE_WEIGHT_MULT, SYSTEMIC_CAPACITY, systemicLevel,
 } from './engineConfig'
+import { CORE_CATEGORY } from './generatorConfig'
+
+// An ab movement — the work a split's set cap doesn't count (CORE_CATEGORY in
+// generatorConfig.js). The generator and the split pages both ask this, so a
+// generated day and its day card agree on what's under the cap.
+export function isCoreMovement(db) {
+  return db?.category === CORE_CATEGORY
+}
 
 // The engine's 20 muscles rolled up into the exercise bank's 7 home categories
 // (CATEGORY_ORDER in exerciseBank.js). A phone-width day card fits three bars
@@ -143,6 +151,7 @@ function newAccumulator() {
     muscleSets: {}, // engine muscle -> sets, weighted by contribution
     coarseSets: {}, // ...and the same, rolled up to the bank's 7 categories
     sets: 0,
+    coreSets: 0, // ...of which ab work (isCoreMovement)
     cardio: 0,
     load: 0,
   }
@@ -158,6 +167,7 @@ function creditExercise(acc, ex, n) {
     return // no muscle split and no systemic load we can honestly claim
   }
   const db = getFullExercise(bankIdFor(ex))
+  if (isCoreMovement(db)) acc.coreSets += n
 
   if (db && db.muscles && Object.keys(db.muscles).length) {
     // Bucket the atoms and credit the BEST-trained one per bucket, never their
@@ -206,6 +216,7 @@ function summarise(acc, exercises) {
   return {
     exercises,
     sets: acc.sets,
+    coreSets: acc.coreSets,
     cardio: acc.cardio,
     muscles: toRows(acc.muscleSets, 'muscle'),
     groups: toRows(acc.coarseSets, 'group'),

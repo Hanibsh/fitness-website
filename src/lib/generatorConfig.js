@@ -379,6 +379,29 @@ export const VOLUME_PREFERENCES = [
 ]
 export const DEFAULT_VOLUME_PREFERENCE = 'standard'
 
+// ---- Core work --------------------------------------------------------------
+// Hani's rule (2026-10-02): ab sets don't count toward the day's set cap or the
+// week's total. A crunch or a leg raise costs next to nothing in systemic
+// fatigue, so a 12-set day with three sets of abs paired in is still a 12-set
+// day — and counting them meant a tight week dropped abs altogether to make
+// room. Their own weekly volume is still graded against its minimum, like any
+// other muscle's.
+//
+// Which rows are core is the database's call, not a list kept here: every
+// movement whose category is CORE_CATEGORY (crunches, leg raises, planks,
+// twists). A day carries at most one, its extra sets go on that one row, and
+// the user picks where it goes: paired with the day's least fatiguing movement,
+// or after everything else.
+export const CORE_CATEGORY = 'Core'
+export const CORE_PLACEMENTS = [
+  { value: 'superset', label: 'Superset', sub: 'With the lightest movement' },
+  { value: 'end', label: 'At the end', sub: 'After everything else' },
+]
+export const DEFAULT_CORE_PLACEMENT = 'superset'
+export function corePlacement(value) {
+  return CORE_PLACEMENTS.some((p) => p.value === value) ? value : DEFAULT_CORE_PLACEMENT
+}
+
 // ---- Effort (RIR) targets ---------------------------------------------------
 // How close to failure a generated row's WORKING sets should go, by training
 // age and by whether the movement is a compound. Beginners aim further off:

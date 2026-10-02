@@ -124,6 +124,9 @@ export default function SplitDay() {
   blocks.forEach((b, i) => b.forEach((e) => blockIdxOf.set(e.id, i)))
   const strengthCount = day.exercises.filter((e) => e.kind !== 'cardio').length
   const stats = dayStats(day)
+  // What the day spends of the split's set cap: ab sets don't count toward it
+  // (CORE_CATEGORY), so they're shown beside it instead.
+  const cappedSets = stats.sets - (setCap != null ? stats.coreSets : 0)
   const isToday = isWeekly ? dayIndex === todayWeekdayIndex : dayIndex === pointerIndex
   // The day the badge above calls Today (or Up next) is the one you can start
   // from here, and the logger resolves it against your ACTIVE split — so a day
@@ -171,10 +174,11 @@ export default function SplitDay() {
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[12px] text-text-muted">
                 <span className="tabular-nums">
                   {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} ·{' '}
-                  <span className={setCap != null && stats.sets > setCap ? 'text-amber-600' : undefined}>
-                    {stats.sets}
-                    {setCap != null ? ` / ${setCap}` : ''} set{stats.sets !== 1 || setCap != null ? 's' : ''}
+                  <span className={setCap != null && cappedSets > setCap ? 'text-amber-600' : undefined}>
+                    {cappedSets}
+                    {setCap != null ? ` / ${setCap}` : ''} set{cappedSets !== 1 || setCap != null ? 's' : ''}
                   </span>
+                  {setCap != null && stats.coreSets > 0 && ` + ${stats.coreSets} abs`}
                 </span>
                 <span className="text-[10px] font-medium uppercase tracking-wider text-text-muted bg-cream border border-border px-1.5 py-0.5">
                   {stats.load.label}
@@ -182,7 +186,7 @@ export default function SplitDay() {
               </div>
               {/* The split's day cap, from the volume preference it was
                   generated with. Not enforced — editing is yours — just said. */}
-              {setCap != null && stats.sets > setCap && (
+              {setCap != null && cappedSets > setCap && (
                 <p className="text-[11px] text-amber-600 mt-1">
                   Over this split’s {setCap}-set day — the sets past it are done tired and buy little.
                 </p>

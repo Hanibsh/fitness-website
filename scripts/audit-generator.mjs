@@ -22,10 +22,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VERBOSE = process.argv.includes('--verbose')
 
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-const { generateProgram, failureSafe, primaryMuscleOf, movementFamily } = await server.ssrLoadModule('/src/lib/generator.js')
+const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, setLoad } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -55,18 +55,24 @@ function check(label, ok, detail) {
 // shape (the first, what "Pick for me" takes) is held to everything below; the
 // others to everything except frequency and minimum volume, because training a
 // muscle once a week is what a bro split IS, and its picker note says so.
+//
+// Every week is built with the abs supersetted (the default); the recommended
+// shapes are built a second time with the abs at the end.
 for (const daysPerWeek of DAYS_CASES) {
   shapesFor(daysPerWeek).forEach(({ id: shape }, rank) => {
+    const coreCases = rank === 0 ? CORE_PLACEMENTS.map((p) => p.value) : [DEFAULT_CORE_PLACEMENT]
     for (const focus of FOCUS_CASES) {
       for (const equipment of EQUIPMENT_CASES) {
         for (const experience of EXPERIENCE_CASES) {
           for (const schedule of SCHEDULE_CASES) {
             for (const volume of VOLUME_CASES) {
-              scenarios++
-              const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume }
-              const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]`
-              const { program, summary, inputs } = generateProgram({ answers })
-              audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, recommended: rank === 0 })
+              for (const core of coreCases) {
+                scenarios++
+                const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume, core }
+                const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]${core === DEFAULT_CORE_PLACEMENT ? '' : `/abs-${core}`}`
+                const { program, summary, inputs } = generateProgram({ answers })
+                audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, core, recommended: rank === 0 })
+              }
             }
           }
         }
@@ -152,8 +158,34 @@ function audit(label, program, summary, inputs, opts) {
     }
   }
 
+  // ---- abs (Hani, 2026-10-02): one ab movement a day at most, outside the set
+  // cap and the movement count (checked below), and where the user asked for
+  // it — supersetted with the day's least fatiguing movement, or last. An ab
+  // movement that is itself a focus leads instead, like any focus.
+  for (const day of training) {
+    const core = day.exercises.filter(isCoreRow)
+    check(label, core.length <= 1, `"${day.name}" has ${core.length} ab movements`)
+    const row = core[0]
+    if (!row || opts.focus.includes(row.slot?.muscle)) continue
+    const at = day.exercises.indexOf(row)
+    if (opts.core === 'end') {
+      check(label, at === day.exercises.length - 1 && !row.supersetId, `"${day.name}" has its ab movement at ${at + 1} of ${day.exercises.length}, not last`)
+      continue
+    }
+    const partner = day.exercises[at - 1]
+    const pair = day.exercises.filter((e) => row.supersetId && e.supersetId === row.supersetId)
+    check(label, !!partner && pair.length === 2 && partner.supersetId === row.supersetId, `"${day.name}" ab movement isn't supersetted with the movement before it`)
+    if (!partner) continue
+    const cost = (e) => setLoad(getFullExercise(e.exerciseId))
+    const lightest = Math.min(...day.exercises.filter((e) => e !== row).map(cost))
+    check(label, cost(partner) <= lightest, `"${day.name}" pairs its abs with ${partner.name}, not its lightest movement`)
+  }
+
   // ---- what limits a day: fatigue and the movement count, never the clock
   for (const day of summary.days.filter((d) => d.kind !== 'rest')) {
+    // The ab movement counts toward neither the movement cap nor the set cap.
+    const planned = program.days.find((d) => d.id === day.id)
+    const counted = planned.exercises.filter((e) => !isCoreRow(e))
     // DAY_LOAD_MAX governs DISCRETIONARY work — second movements and top-up
     // sets. The coverage pass is deliberately exempt from it (a muscle the day
     // is supposed to train getting nothing is worse than a day that reads
@@ -163,16 +195,18 @@ function audit(label, program, summary, inputs, opts) {
     check(label, day.load.pct <= 100 * DAY_LOAD_MAX + 10, `"${day.name}" load ${day.load.pct}% (${day.load.label})`)
     check(
       label,
-      day.exercises.length <= EXPERIENCE_POSTURE[opts.experience].exerciseCap,
-      `"${day.name}" has ${day.exercises.length} exercises, cap is ${EXPERIENCE_POSTURE[opts.experience].exerciseCap}`
+      counted.length <= EXPERIENCE_POSTURE[opts.experience].exerciseCap,
+      `"${day.name}" has ${counted.length} exercises, cap is ${EXPERIENCE_POSTURE[opts.experience].exerciseCap}`
     )
     // The volume preference's hard-set cap is never waived, coverage included.
     const finishers = day.exercises.filter((e) => e.rirTarget?.lastSetFailure).length
     const maxFinishers = volumePreference(opts.volume).failureSetsPerDay
     check(label, finishers <= maxFinishers, `"${day.name}" has ${finishers} failure finishers, the ${opts.volume} limit is ${maxFinishers}`)
     const cap = volumePreference(opts.volume).setCap
-    const sets = day.exercises.reduce((n, e) => n + (Number(e.sets) || 0), 0)
+    const sets = counted.reduce((n, e) => n + (Number(e.sets) || 0), 0)
     check(label, sets <= cap, `"${day.name}" has ${sets} sets, the ${opts.volume} cap is ${cap}`)
+    // ...and the preview says the same number the cap was held to.
+    check(label, day.sets === sets, `"${day.name}" preview reads ${day.sets} sets, the day holds ${sets} under the cap`)
   }
   // There used to be a check here that at least one training day came out under
   // the 'heavy' band. It was written when a day was capped by a session length,
@@ -366,6 +400,12 @@ function homeDays(muscle, daysPerWeek) {
     const lower = d.muscles.filter((m) => MUSCLE_REGION[m] === 'lower').length
     return (lower * 2 > d.muscles.length ? 'lower' : 'upper') === MUSCLE_REGION[muscle]
   }).length
+}
+
+// An ab movement, by the database's own category (CORE_CATEGORY) — restated
+// here rather than asked of the generator.
+function isCoreRow(planned) {
+  return getFullExercise(planned.exerciseId || planned.slot?.suggestedId)?.category === CORE_CATEGORY
 }
 
 function hitsMuscle(planned, muscle, min = 0) {
