@@ -16,6 +16,7 @@
 // and refuses to emit if the art's labels don't match it. `?anatomy-debug`
 // on /exercises logs click coordinates in the image's pixel space for nudging.
 import { ENGINE_MUSCLE_TO_SLUG, SUBCATEGORIES } from './muscleInfo'
+import { ENGINE_MUSCLES } from '../lib/engineConfig'
 
 // Boxes are natural-pixel {x,y,w,h} of each figure (plus its labels) within its
 // image. The two figures are separated by an empty gutter, so each box covers one
@@ -152,4 +153,16 @@ export function rectAttrs(rect, box) {
     width: nw * box.w,
     height: nh * box.h,
   }
+}
+
+// The engine muscles a label zone stands for — the reverse of
+// zoneSlugForEngineMuscle, for picking muscles on the map (FocusPicker). Several
+// muscles share a label (the three delts on "Shoulders", abs and obliques on
+// "Core"), so a pick on those opens a close-up. Upper Back rides on "Lats": the
+// art has no label of its own for it, and a picker has to be able to reach every
+// muscle it offers.
+export function zoneMuscles(slug) {
+  const out = ENGINE_MUSCLES.filter((m) => zoneSlugForEngineMuscle(m) === slug)
+  if (slug === 'lats') out.push('Upper Back')
+  return out
 }

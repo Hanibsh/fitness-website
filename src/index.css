@@ -232,6 +232,13 @@ body {
   stroke-opacity: 0.95;
   filter: drop-shadow(0 0 6px rgba(239, 198, 91, 0.7));
 }
+/* Picked on the map (FocusPicker): a ring and a faint fill that stay on, so the
+   selection reads at a glance without tinting the art into a heatmap. */
+.anatomy-zone.is-on rect {
+  fill-opacity: 0.22;
+  stroke-opacity: 1;
+  stroke-width: 2;
+}
 /* Data-driven chips (dashboard body map): here the tint IS the value, so it is
    always on and the fill comes from the `values` prop rather than this rule.
    That fill is an rgba() whose alpha encodes magnitude, so fill-opacity stays
