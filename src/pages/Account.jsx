@@ -18,6 +18,7 @@ import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
 import { useCoachAccess } from '../lib/useClientsState'
+import { useReturnLink } from '../lib/returnPath'
 
 const NOW_YEAR = new Date().getFullYear()
 const MIN_BIRTH_YEAR = NOW_YEAR - AGE_BOUNDS.max
@@ -33,6 +34,7 @@ const outOfBounds = (v, b) => v !== '' && !(Number.isFinite(Number(v)) && Number
 export default function Account() {
   const { user, signOut, setNickname: setAuthNickname, refreshProfile } = useAuth()
   const { isCoach } = useCoachAccess()
+  const back = useReturnLink('account', { to: '/log', label: 'Back to workout log' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -265,8 +267,9 @@ export default function Account() {
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
-        <Link to="/log" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to workout log
+        {/* Your name in the top bar opens this from any page — back goes there. */}
+        <Link to={back.to} state={back.state} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> {back.label}
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>

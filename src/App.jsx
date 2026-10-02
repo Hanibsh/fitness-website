@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import InstallPrompt from './components/InstallPrompt'
 import { useAuth } from './lib/auth'
+import { useTrackReturnPaths } from './lib/returnPath'
 
 // Every page except the landing page is lazy-loaded so first paint doesn't
 // pay for calculators and the tracker up front.
@@ -50,6 +51,9 @@ const Injuries = lazy(() => import('./pages/Injuries'))
 
 function App() {
   const { user, loading } = useAuth()
+  // Remembers where you were before opening a page that's a tap away from
+  // everywhere (Clients, your profile, Import), so its back link returns there.
+  useTrackReturnPaths()
   // Logged-in users land on their dashboard; everyone else gets the marketing
   // home. While auth is resolving, show Home to avoid a flash of empty state.
   const homeElement = user && !loading ? <Dashboard /> : <Home />

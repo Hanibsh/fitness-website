@@ -6,6 +6,7 @@ import ImportReview from '../components/ImportReview'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
 import { saveProfile } from '../lib/profile'
+import { useReturnLink } from '../lib/returnPath'
 
 // Bring an exported split back in — /import. The text someone was sent (or
 // exported themselves) becomes a split in their list, and, if they want, fills
@@ -16,6 +17,8 @@ export default function ImportSplit() {
   const { addRoutine, setActiveRoutine, loading } = useProgramsState()
   const [makeActive, setMakeActive] = useState(true)
   const [error, setError] = useState('')
+  // Linked from the split list and the profile — back goes to whichever.
+  const back = useReturnLink('import', { to: '/log/split', label: 'Back to training splits' })
 
   async function importIt({ program, profile: patch }) {
     setError('')
@@ -30,17 +33,19 @@ export default function ImportSplit() {
     if (program) {
       addRoutine(program)
       if (makeActive) setActiveRoutine(program.id)
-      navigate(`/split/${program.id}`)
+      // Replace, not push: the phone's back button shouldn't land on a used
+      // import form.
+      navigate(`/split/${program.id}`, { replace: true })
     } else if (patch && user) {
-      navigate('/account')
+      navigate('/account', { replace: true })
     }
   }
 
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
-        <Link to="/log/split" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to training splits
+        <Link to={back.to} state={back.state} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> {back.label}
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>

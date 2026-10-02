@@ -30,7 +30,9 @@ export default function ClientGenerate() {
   // next program starts from the same emphasis, as yours does.
   function save(program, { focus }) {
     updateClient(client.id, (c) => withProgram({ ...c, profile: { ...c.profile, focus_muscles: focus } }, program), { now: true })
-    navigate(`/coach/${client.id}/split/${program.id}`)
+    // Replace, not push: back from the new program goes to the client, not
+    // to a wizard for a program that's already saved.
+    navigate(`/coach/${client.id}/split/${program.id}`, { replace: true })
   }
 
   return (

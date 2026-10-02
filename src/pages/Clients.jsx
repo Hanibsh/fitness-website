@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { ArrowLeft, Plus, ChevronRight, Users } from 'lucide-react'
 import { createClient, CLIENT_NAME_MAX } from '../lib/clients'
+import { useReturnLink } from '../lib/returnPath'
 
 // The coach's client list — /coach. Only the coach's account reaches it
 // (CoachLayout). Each client is a person with a profile and the programs
@@ -21,12 +22,15 @@ export default function Clients() {
     navigate(`/coach/${client.id}`)
   }
 
+  // In the top bar on every page, so "back" is wherever you opened it from.
+  const back = useReturnLink('coach', { to: '/', label: 'Back to dashboard' })
+
   const fmt = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <>
-      <Link to="/log/split" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Your training splits
+      <Link to={back.to} state={back.state} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" /> {back.label}
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
