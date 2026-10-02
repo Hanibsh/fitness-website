@@ -9,11 +9,13 @@
 // with open slots. Every export carries a full profile, last-used weights, rest
 // times, a note on some rows (with brackets, " - " and " + " inside it, the
 // characters the format itself uses) and coach notes — the hardest text the
-// format produces.
+// format produces. Every one also carries cardio, cycling through every
+// activity, both kinds of target, and lifting days / rest days / both.
 //
 // Fixed weeks must come back exactly. A rotation comes back as its training
 // days in order: the text leaves rest days out (as Hani's own notes do), so
-// where they sat isn't recoverable. Loaded through Vite's SSR loader like the
+// where they sat isn't recoverable — except a rest day holding cardio, which is
+// written and comes back in its place. Loaded through Vite's SSR loader like the
 // other audits; reads only, writes nothing.
 
 import { createServer } from 'vite'
@@ -27,6 +29,7 @@ const { shapesFor, VOLUME_PREFERENCES } = await server.ssrLoadModule('/src/lib/g
 const { buildExportModel, exportText, DEFAULT_EXPORT_PREFS } = await server.ssrLoadModule('/src/lib/programExport.js')
 const { parseExportText } = await server.ssrLoadModule('/src/lib/programImport.js')
 const { canonicalExerciseId } = await server.ssrLoadModule('/src/lib/workoutStats.js')
+const { applyCardioPlan } = await server.ssrLoadModule('/src/lib/cardioPlan.js')
 
 const PROFILE = {
   sex: 'female', birth_year: 1998, unit: 'kg', height: 168, bodyweight: 62.5, body_fat: 24, wrist: 15.5, ankle: 21,
@@ -38,6 +41,20 @@ const COACH = 'Add a rep each week.\n\nDeload never: manage fatigue with volume.
 const NOTE = 'record yourself (side view) - slow + controlled'
 const PREFS = { ...DEFAULT_EXPORT_PREFS, rest: true }
 
+// The cardio each scenario carries, in turn: every activity, minutes and
+// calories, a subset of days and all of them, lifting days, rest days, both.
+const half = (activity, params, by, value, days = null) => ({ on: true, activity, params, target: { by, value }, days })
+const OFF = { on: false, activity: 'walk', params: { speedKmh: 5.5, gradePct: 0 }, target: { by: 'minutes', value: 20 }, days: null }
+const CARDIO_PLANS = [
+  { lifting: half('walk', { speedKmh: 5, gradePct: 10 }, 'minutes', 20), rest: OFF },
+  { lifting: OFF, rest: half('stairs', { level: 8 }, 'kcal', 250, 1) },
+  { lifting: half('run', { speedKmh: 10, gradePct: 0, outdoors: true }, 'minutes', 25, 2), rest: half('swim', { stroke: 'breast', level: 1 }, 'kcal', 300) },
+  { lifting: half('bike', { watts: 120 }, 'minutes', 15), rest: half('elliptical', { level: 1 }, 'minutes', 40) },
+  { lifting: half('rope', { level: 2 }, 'minutes', 10, 1), rest: half('row', { watts: 150 }, 'kcal', 400) },
+  { lifting: half('walk', { speedKmh: 6.5, gradePct: 0 }, 'minutes', 30), rest: half('swim', { stroke: 'fly', level: 0 }, 'minutes', 20) },
+  { lifting: OFF, rest: half('walk', { speedKmh: 5.5, gradePct: 0 }, 'minutes', 45) },
+]
+
 const failures = []
 let scenarios = 0
 const check = (label, ok, detail) => { if (!ok) failures.push(`${label}: ${detail}`) }
@@ -45,6 +62,9 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
 // What a row SAYS, the part the text carries.
 function rowKey(e) {
+  if (e.kind === 'cardio') {
+    return { name: e.name, activity: e.cardio?.activity, params: e.cardio?.params, target: e.cardio?.target, note: e.note || '' }
+  }
   const open = !e.exerciseId && !!e.slot?.pattern
   return {
     id: open ? null : canonicalExerciseId(e.exerciseId),
@@ -77,6 +97,13 @@ for (const daysPerWeek of [2, 3, 4, 5, 6]) {
                 const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',')}]${openSlots ? '/open' : ''}`
                 const { program } = generateProgram({ answers: { daysPerWeek, shape, focus, equipment, experience, schedule, volume, openSlots } })
                 program.name = `Gym ${scenarios}`
+                Object.assign(program, applyCardioPlan(program, CARDIO_PLANS[scenarios % CARDIO_PLANS.length]))
+                // Cardio plan rows carry the planner's mark; the text doesn't, and
+                // shouldn't — read back in, they're plain cardio rows.
+                program.days.forEach((d) => d.exercises.forEach((e) => {
+                  if (e.cardio?.plan) { const { plan: _plan, ...rest } = e.cardio; e.cardio = rest }
+                  if (e.kind === 'cardio' && scenarios % 2) e.note = NOTE
+                }))
                 // A note on every other day's first row.
                 program.days.filter((d) => d.kind !== 'rest').forEach((d, i) => { if (i % 2 === 0 && d.exercises[0]) d.exercises[0].note = NOTE })
                 // A logged session holding every movement, so weights are written.
@@ -99,15 +126,14 @@ for (const daysPerWeek of [2, 3, 4, 5, 6]) {
                 check(label, back.program?.settings?.volume === volume, `volume ${back.program?.settings?.volume}`)
                 check(label, back.program?.settings?.shape === program.settings.shape, `shape ${back.program?.settings?.shape} ≠ ${program.settings.shape}`)
 
-                const want = schedule === 'weekly' ? program.days : program.days.filter((d) => d.kind !== 'rest')
+                const want = schedule === 'weekly' ? program.days : program.days.filter((d) => d.kind !== 'rest' || d.exercises.length)
                 const got = back.program?.days || []
                 check(label, got.length === want.length, `${got.length} days ≠ ${want.length}`)
                 want.forEach((d, i) => {
                   const g = got[i]
                   if (!g) return
                   check(label, g.kind === d.kind, `day ${i + 1} kind ${g.kind} ≠ ${d.kind}`)
-                  if (d.kind === 'rest') return
-                  check(label, g.name === d.name, `day ${i + 1} name "${g.name}" ≠ "${d.name}"`)
+                  if (d.kind !== 'rest') check(label, g.name === d.name, `day ${i + 1} name "${g.name}" ≠ "${d.name}"`)
                   check(label, g.exercises.length === d.exercises.length, `day ${i + 1}: ${g.exercises.length} rows ≠ ${d.exercises.length}`)
                   d.exercises.forEach((e, j) => {
                     const a = rowKey(e)

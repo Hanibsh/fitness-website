@@ -8,9 +8,13 @@
 //
 //   2. Seated Leg Curl 10-15 10-15 + Cable Crunch 10-15 10-15 - slow negatives
 //
+//   3. Incline Walk 20 min (5 km/h, 10% incline, about 185 cal)
+//
 // Reps are written once PER SET ("10 10" is two sets of ten), a superset shares
 // one numbered line joined by " + ", a note trails after " - ", and rest days
-// don't appear at all. Nothing is lined up with spaces: Notes uses a
+// don't appear — unless they hold cardio, written under "Rest day (Wednesday)".
+// A cardio row says its target per session (minutes or calories), then its
+// settings and the other half worked out from bodyweight, in brackets. Nothing is lined up with spaces: Notes uses a
 // proportional font, so columns would only line up on a computer.
 //
 // Pure: no React, no storage. Everything about the person — profile, name, log
@@ -26,12 +30,16 @@ import { exerciseBlocks, canonicalExerciseId, convertWeight } from './workoutSta
 import { dayStats, bankIdFor } from './planStats'
 import { getFullExercise, fmtRest } from './exerciseBank'
 import { volumePreference, shapeById } from './generatorConfig'
+import { cardioOf, cardioTargetText, cardioSettingsText, cardioCounterpartText } from './cardio'
 
 export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 // The heading the coach's notes go under, in a client's export.
 export const COACH_NOTES_HEADING = 'Notes from Leon'
 export const WEEKLY_SETS_HEADING = 'Weekly sets'
+// A rest day that holds cardio is written under this name, so it reads back in
+// as a rest day.
+export const REST_DAY_HEADING = 'Rest day'
 
 const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v))
 const trim1 = (n) => String(Math.round(n * 10) / 10)
@@ -129,9 +137,10 @@ function repText(range) {
 }
 
 // One planned row, as the export says it.
-function partFor(pe, { sessions, unit, noteFor }) {
+function partFor(pe, { sessions, unit, noteFor, weightKg }) {
   const open = isOpenSlot(pe)
   const cardio = pe.kind === 'cardio'
+  const prescription = cardio ? cardioOf(pe) : null
   const sets = Math.max(1, Number(pe.sets) || 1)
   const reps = repText(pe.repRange)
   const db = getFullExercise(bankIdFor(pe))
@@ -152,6 +161,15 @@ function partFor(pe, { sessions, unit, noteFor }) {
     rest: db?.restSeconds ? plain(fmtRest(db.restSeconds)) : null,
     note: oneLine(noteFor(pe)) || null,
     weight: cardio || open ? null : lastWeight(sessions, pe, unit),
+    // "20 min", "5 km/h, 10% incline", "about 185 cal" — a cardio row's target,
+    // settings and the half worked out from bodyweight.
+    cardio: prescription
+      ? {
+          target: cardioTargetText(prescription.target),
+          settings: cardioSettingsText(prescription, unit),
+          estimate: cardioCounterpartText(prescription, weightKg),
+        }
+      : null,
   }
 }
 
@@ -198,6 +216,8 @@ function programLine(program, weekly) {
 //   extra     — custom "Label: value" lines (a client's profile extras).
 //   injuries  — free text, said as one line.
 //   coachNotes — free text under COACH_NOTES_HEADING.
+//   weightKg  — for cardio rows' estimates; the profile's bodyweight when left
+//               out, and none at all when that's blank.
 export function buildExportModel({
   program,
   profile = null,
@@ -208,9 +228,12 @@ export function buildExportModel({
   extra = [],
   injuries = '',
   coachNotes = '',
+  weightKg,
   now = Date.now(),
 }) {
   const weekly = scheduleMode(program) === 'weekly'
+  const bodyweightKg =
+    weightKg !== undefined ? weightKg : num(profile?.bodyweight) != null ? convertWeight(num(profile.bodyweight), weightUnit(profile.unit), 'kg') : null
   // The split's own emphasis when it was generated with one (even "none"), the
   // profile's pick otherwise.
   const focus = Array.isArray(program.settings?.focus) ? program.settings.focus : cleanFocus(profile?.focus_muscles)
@@ -229,16 +252,18 @@ export function buildExportModel({
     about.push({ key: `extra-${i}`, label: label || value, line: `extra-${i}`, value, text: label ? `${label}: ${value}` : value })
   })
 
+  // Training days, and the rest days that hold cardio.
   const days = program.days
     .map((day, i) => ({ day, i }))
-    .filter(({ day }) => day.kind !== 'rest')
+    .filter(({ day }) => day.kind !== 'rest' || (day.exercises || []).length)
     .map(({ day, i }) => ({
       id: day.id,
-      name: (day.name || '').trim() || 'Training day',
+      kind: day.kind === 'rest' ? 'rest' : 'train',
+      name: day.kind === 'rest' ? REST_DAY_HEADING : (day.name || '').trim() || 'Training day',
       weekday: weekly ? WEEKDAY_NAMES[i] : null,
       rows: exerciseBlocks(day.exercises || []).map((block, b) => ({
         number: b + 1,
-        parts: block.map((pe) => partFor(pe, { sessions, unit, noteFor })),
+        parts: block.map((pe) => partFor(pe, { sessions, unit, noteFor, weightKg: bodyweightKg })),
       })),
     }))
 
@@ -273,6 +298,11 @@ export const DEFAULT_EXPORT_PREFS = {
 }
 
 export function partText(p, prefs = DEFAULT_EXPORT_PREFS) {
+  if (p.cardio) {
+    const detail = [p.cardio.settings, p.cardio.estimate].filter(Boolean).join(', ')
+    const text = `${p.name} ${p.cardio.target}${detail ? ` (${detail})` : ''}`
+    return prefs.notes && p.note ? `${text} - ${p.note}` : text
+  }
   const bits = [p.example ? `${p.name}, e.g. ${p.example}` : p.name]
   if (prefs.weights && p.weight) bits.push(p.weight)
   if (p.reps.length) bits.push(p.reps.join(' '))

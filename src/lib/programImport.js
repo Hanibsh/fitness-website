@@ -10,6 +10,8 @@
 //   Upper / Lower · 4 days a week · Standard volume   ← the split's shape
 //   Upper A (Monday)                         ← a day; a weekday means a fixed week
 //   1. Hack Squat 40kg 6-10 6-10 (1-2 RIR) - record yourself + Leg Raises 10-15
+//   3. Incline Walk 20 min (5 km/h, 10% incline, about 185 cal)   ← cardio
+//   Rest day (Wednesday)                     ← a rest day holding cardio
 //   Weekly sets / Notes from Leon            ← trailing sections
 //
 // An exercise line is read left to right: the movement's name (matched against
@@ -19,6 +21,10 @@
 // and " + " before a superset partner. Anything the library doesn't know is
 // returned in `unmatched` for the person importing to pick, because a split row
 // with no DB movement behind it has no muscles to count.
+//
+// A cardio movement reads differently: its target ("20 min", "250 cal"), then a
+// bracket of settings — km/h or mph, % incline, outdoors, W, level, a stroke,
+// an effort. The "about …" estimate in there is ignored and worked out again.
 //
 // Pure: no React, no storage.
 
@@ -30,7 +36,8 @@ import { getFullExercise } from './exerciseBank'
 import { PATTERNS, patternPhrase } from '../data/movementPatterns'
 import { VOLUME_PREFERENCES, DAYS_PER_WEEK_OPTIONS, shapesFor } from './generatorConfig'
 import { primaryMuscleOf } from './generator'
-import { WEEKDAY_NAMES, COACH_NOTES_HEADING, WEEKLY_SETS_HEADING } from './programExport'
+import { WEEKDAY_NAMES, COACH_NOTES_HEADING, WEEKLY_SETS_HEADING, REST_DAY_HEADING } from './programExport'
+import { activityById, activityForMovement, defaultCardioParams, DEFAULT_CARDIO_TARGET, mphToKmh } from './cardio'
 
 const EXERCISE_LINE = /^(\d+)\.\s+(.*)$/
 const WEEKDAY_HEADER = new RegExp(`^(.*?)\\s*\\((${WEEKDAY_NAMES.join('|')})\\)$`, 'i')
@@ -81,6 +88,7 @@ const partStarts = (s) => !!(matchPhrase(s) || matchName(s))
 // ---- One exercise line -------------------------------------------------------------
 
 const WEIGHT = /^\s+[+-]?\d+(?:[.,]\d+)?\s?(?:kg|lbs)(?=\s|$)/i
+const CARDIO_TARGET = /^\s+(\d+(?:[.,]\d+)?)\s?(min|cal)(?=\s|$|\()/i
 const REPS = /^\s+(\d+)(?:-(\d+))?(?=\s|$|\()/
 const BRACKET = /^\s*\(([^)]*)\)/
 
@@ -120,6 +128,23 @@ function parsePart(text) {
     }
   }
 
+  // A cardio movement: its target per session, then its settings.
+  if (head.match?.category === 'Cardio') {
+    let target = null
+    let m = s.match(CARDIO_TARGET)
+    if (m) {
+      target = { by: m[2].toLowerCase() === 'cal' ? 'kcal' : 'minutes', value: toNum(m[1]) }
+      s = s.slice(m[0].length)
+    }
+    let settings = []
+    m = s.match(BRACKET)
+    if (m) {
+      settings = m[1].split(/,\s*/).map((t) => t.trim()).filter(Boolean)
+      s = s.slice(m[0].length)
+    }
+    return { head, reps: [], rir: null, failure: false, cardio: { target, settings }, ...noteAndNext(s) }
+  }
+
   let m = s.match(WEIGHT)
   if (m) s = s.slice(m[0].length)
   const reps = []
@@ -140,8 +165,12 @@ function parsePart(text) {
     }
   }
 
-  // Whatever's left up to the next partner is the note — " - record yourself",
-  // or loose words someone typed after the reps.
+  return { head, reps, rir, failure, ...noteAndNext(s) }
+}
+
+// Whatever's left up to the next partner is the note — " - record yourself",
+// or loose words someone typed after the reps.
+function noteAndNext(s) {
   let boundary = -1
   for (let i = s.indexOf(' + '); i !== -1; i = s.indexOf(' + ', i + 1)) {
     if (partStarts(s.slice(i + 3))) { boundary = i; break }
@@ -149,14 +178,54 @@ function parsePart(text) {
   const tail = boundary === -1 ? s : s.slice(0, boundary)
   const note = tail.replace(/^\s*-\s*/, '').trim()
   const next = boundary === -1 ? null : s.slice(boundary + 3)
+  return { note, next }
+}
 
-  return { head, reps, rir, failure, note, next }
+// A cardio row's settings back from the words the export wrote. Starts from
+// the movement's own defaults, so a hand-typed "Running 30 min" with no
+// bracket still makes a whole row.
+function cardioFrom(name, { target, settings }) {
+  const activity = activityForMovement(name)
+  if (!activity) return null
+  const a = activityById[activity]
+  const params = defaultCardioParams(activity, name)
+  const round1 = (n) => Math.round(n * 10) / 10
+  const levels = a.kind === 'stroke' ? null : a.levels
+  for (const token of settings) {
+    const t = token.toLowerCase()
+    let m
+    if (/^about /.test(t)) continue
+    if ((m = t.match(/^([\d.]+)\s?km\/h$/))) params.speedKmh = toNum(m[1])
+    else if ((m = t.match(/^([\d.]+)\s?mph$/))) params.speedKmh = round1(mphToKmh(toNum(m[1])))
+    else if ((m = t.match(/^([\d.]+)% incline$/))) params.gradePct = toNum(m[1])
+    else if (t === 'outdoors' && activity === 'run') params.outdoors = true
+    else if ((m = t.match(/^(\d+)\s?w$/))) params.watts = Number(m[1])
+    else if ((m = t.match(/^level ([\d.]+)$/))) params.level = toNum(m[1])
+    else if ((m = t.match(/^(\d+) steps\/min$/))) { delete params.level; params.spm = Number(m[1]) }
+    else if (a.kind === 'stroke') {
+      const stroke = a.strokes.find((s) => s.label.toLowerCase() === t)
+      if (stroke) params.stroke = stroke.id
+      const current = a.strokes.find((s) => s.id === params.stroke) || a.strokes[0]
+      const i = current.levels.findIndex((l) => l.label.toLowerCase() === t)
+      if (i !== -1) params.level = i
+    } else if (levels) {
+      const i = levels.findIndex((l) => l.label.toLowerCase() === t)
+      if (i !== -1) params.level = i
+    }
+  }
+  // A speed with no incline named is flat — the export writes it whenever it's there.
+  if (a.kind === 'speed' && !settings.some((t) => /% incline$/i.test(t)) && settings.some((t) => /km\/h$|mph$/i.test(t))) params.gradePct = 0
+  return { activity, params, target: target || { ...DEFAULT_CARDIO_TARGET } }
 }
 
 // A parsed part as a planned row — the same shape the generator writes, so an
 // imported split edits, swaps and grades like a generated one.
 function plannedFrom(part) {
   const { head, reps, rir, failure, note } = part
+  if (part.cardio) {
+    const name = head.match.name
+    return createPlannedExercise(name, { kind: 'cardio', sets: 1, repRange: null, note, cardio: cardioFrom(name, part.cardio) })
+  }
   const sets = reps.length || undefined
   const repRange = reps.length ? { low: Math.min(...reps.map((r) => r.low)), high: Math.max(...reps.map((r) => r.high)) } : undefined
   const rirTarget = rir || failure ? { low: rir?.low ?? '', high: rir?.high ?? '', ...(failure ? { lastSetFailure: true } : {}) } : null
@@ -336,7 +405,9 @@ export function parseExportText(input, { now = Date.now() } = {}) {
     const program = emptyProgram(out.title || 'Imported split')
     const weekdays = headers.map((h) => h.weekday)
     const weekly = weekdays.every((w) => w != null && w >= 0) && new Set(weekdays).size === weekdays.length
-    const train = (h) => ({ ...createDay('train', h.name), exercises: h.rows })
+    // "Rest day" over nothing but cardio is a rest day holding it.
+    const isRest = (h) => h.name.toLowerCase() === REST_DAY_HEADING.toLowerCase() && h.rows.length > 0 && h.rows.every((r) => r.kind === 'cardio')
+    const train = (h) => (isRest(h) ? { ...createDay('rest'), exercises: h.rows } : { ...createDay('train', h.name), exercises: h.rows })
     // A fixed week comes back on its weekdays with rest days in between. A
     // rotation can't: the text leaves rest days out, so only its training
     // days return.
@@ -346,7 +417,8 @@ export function parseExportText(input, { now = Date.now() } = {}) {
           return h ? train(h) : createDay('rest')
         })
       : headers.map(train)
-    const settings = programLine ? readProgramLine(programLine, headers.length) : {}
+    // A shape is named for its training days; rest days holding cardio don't count.
+    const settings = programLine ? readProgramLine(programLine, headers.filter((h) => !isRest(h)).length) : {}
     if (settings.volume) {
       program.settings = {
         volume: settings.volume,

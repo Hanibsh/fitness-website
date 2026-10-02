@@ -15,7 +15,10 @@ const bold = (value) => ({ value, fontWeight: 'bold' })
 // checked without producing a file.
 export function workbookSheets(model, prefs = DEFAULT_EXPORT_PREFS) {
   // Program: one row per exercise. Columns follow the export's chips, so a
-  // workbook never carries something the text left out.
+  // workbook never carries something the text left out. A cardio row puts its
+  // target ("20 min", "250 cal") under Reps, and its settings and estimate in
+  // a Cardio column that only appears when the split has cardio.
+  const hasCardio = model.days.some((d) => d.rows.some((r) => r.parts.some((p) => p.cardio)))
   const cols = [
     { key: 'day', head: 'Day', width: 22 },
     { key: 'n', head: '#', width: 5 },
@@ -24,6 +27,7 @@ export function workbookSheets(model, prefs = DEFAULT_EXPORT_PREFS) {
     { key: 'reps', head: 'Reps', width: 9 },
     prefs.rir && { key: 'rir', head: 'RIR', width: 26 },
     prefs.weights && { key: 'weight', head: 'Last weight', width: 12 },
+    hasCardio && { key: 'cardio', head: 'Cardio', width: 34 },
     prefs.rest && { key: 'rest', head: 'Rest', width: 12 },
     prefs.notes && { key: 'note', head: 'Notes', width: 40 },
     ...(prefs.logColumns ? Array.from({ length: LOG_WEEKS }, (_, i) => ({ key: `w${i}`, head: `Week ${i + 1}`, width: 12 })) : []),
@@ -46,7 +50,10 @@ export function workbookSheets(model, prefs = DEFAULT_EXPORT_PREFS) {
           n: { value: n },
           name: { value: p.example ? `${p.name}, e.g. ${p.example}` : p.name },
           sets: p.kind === 'cardio' ? null : { value: p.sets, type: Number },
-          reps: p.reps[0] ? { value: p.reps[0] } : null,
+          reps: p.cardio ? { value: p.cardio.target } : p.reps[0] ? { value: p.reps[0] } : null,
+          cardio: p.cardio && (p.cardio.settings || p.cardio.estimate)
+            ? { value: [p.cardio.settings, p.cardio.estimate].filter(Boolean).join(' · ') }
+            : null,
           rir: p.rir ? { value: p.rir } : null,
           weight: p.weight ? { value: p.weight } : null,
           rest: p.rest ? { value: p.rest } : null,

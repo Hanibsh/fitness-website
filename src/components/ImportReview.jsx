@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Upload, Dumbbell, AlertTriangle } from 'lucide-react'
+import { Upload, Dumbbell, Moon, AlertTriangle } from 'lucide-react'
 import ExercisePicker from './ExercisePicker'
 import { parseExportText, resolveUnmatched, measuresInUnit } from '../lib/programImport'
 import { PROFILE_EXPORT_FIELDS, WEEKDAY_NAMES, COACH_NOTES_HEADING } from '../lib/programExport'
 import { supersetLabels } from '../lib/workoutStats'
+import { cardioTargetText } from '../lib/cardio'
 
 // Paste (or open) an exported split and see what it would bring in before
 // anything is written: the split, day by day, and each profile field as
@@ -155,17 +156,18 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
           <p className="text-[11px] text-text-light mb-3">
             {program.days.length === 7 ? 'Fixed week' : `${program.days.length}-day rotation`} ·{' '}
             {program.days.filter((d) => d.kind !== 'rest').length} training days
-            {program.days.length !== 7 && ' — a rotation comes back without its rest days, which the text leaves out.'}
+            {program.days.length !== 7 && ' — a rotation comes back without its rest days, which the text leaves out (except ones holding cardio).'}
           </p>
           <div className="border border-border divide-y divide-border">
             {program.days.map((d, dayIndex) => {
-              if (d.kind === 'rest') return null
+              // A rest day shows only when it holds cardio.
+              if (d.kind === 'rest' && !d.exercises.length) return null
               const pairs = supersetLabels(d.exercises)
               return (
                 <div key={d.id} className="px-3 py-3">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Dumbbell className="w-3.5 h-3.5 text-text-light shrink-0" />
-                    <span className="text-[13px] font-medium text-text-primary break-words">{d.name}</span>
+                    {d.kind === 'rest' ? <Moon className="w-3.5 h-3.5 text-text-light shrink-0" /> : <Dumbbell className="w-3.5 h-3.5 text-text-light shrink-0" />}
+                    <span className="text-[13px] font-medium text-text-primary break-words">{d.kind === 'rest' ? 'Rest day · cardio' : d.name}</span>
                     {program.days.length === 7 && <span className="text-[11px] text-text-light">{WEEKDAY_NAMES[dayIndex]}</span>}
                   </div>
                   <ul className="list-none p-0 m-0 space-y-1">
@@ -178,11 +180,11 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
                               <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{pairs.get(e.id).label}</span>
                             )}
                             <span className={`min-w-0 break-words ${missing ? 'text-amber-600' : 'text-text-secondary'}`}>{e.name}</span>
-                            {e.kind !== 'cardio' && (
-                              <span className="text-text-light shrink-0 ml-auto tabular-nums">
-                                {e.sets} × {e.repRange?.low}–{e.repRange?.high}
-                              </span>
-                            )}
+                            <span className="text-text-light shrink-0 ml-auto tabular-nums">
+                              {e.kind === 'cardio'
+                                ? e.cardio ? cardioTargetText(e.cardio.target) : null
+                                : `${e.sets} × ${e.repRange?.low}–${e.repRange?.high}`}
+                            </span>
                           </div>
                           {missing && (
                             <div className="mt-1.5 mb-2">

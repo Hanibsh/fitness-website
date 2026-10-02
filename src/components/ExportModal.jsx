@@ -9,6 +9,9 @@ import { fetchRemoteHistory } from '../lib/workoutRemote'
 import { buildExportModel, exportText, exportFileName, DEFAULT_EXPORT_PREFS, COACH_NOTES_HEADING } from '../lib/programExport'
 import { copyText, canShareText, shareText, downloadText, downloadBlob } from '../lib/download'
 import { workbookBlob } from '../lib/excelExport'
+import { usePlanPerson } from '../lib/profilePrefill'
+
+const NO_PROFILE = {}
 
 // Export a split as text or Excel — the panel around lib/programExport.js.
 //
@@ -30,6 +33,9 @@ export default function ExportModal({ program, client = null, onClose }) {
   const [prefs, setPrefs] = useState(() => ({ ...DEFAULT_EXPORT_PREFS, ...(getExportPrefs() || {}) }))
   const [copied, setCopied] = useState(false)
   const [excel, setExcel] = useState('idle') // idle | busy | failed
+  // Whose bodyweight turns a cardio row's minutes into calories (and back):
+  // the client's, or yours — your latest weigh-in when the profile has none.
+  const person = usePlanPerson(own ? null : client.profile || NO_PROFILE)
 
   // Your log, for the weights you last used. Loaded the way every other
   // surface loads it: the account when signed in, this device otherwise.
@@ -62,6 +68,7 @@ export default function ExportModal({ program, client = null, onClose }) {
             unit: profile?.unit || getUnit(),
             noteFor: (pe) => getExerciseNote(pe) || pe.note || '',
             injuries: openInjuries(injuries).map(injuryTitle).join(', '),
+            weightKg: person.weightKg,
           })
         : buildExportModel({
             program,
@@ -72,8 +79,9 @@ export default function ExportModal({ program, client = null, onClose }) {
             extra: client.extra,
             injuries: client.injuries,
             coachNotes: client.notes,
+            weightKg: person.weightKg,
           }),
-    [own, program, profile, nickname, sessions, injuries, client]
+    [own, program, profile, nickname, sessions, injuries, client, person]
   )
   const text = useMemo(() => exportText(model, prefs), [model, prefs])
 
