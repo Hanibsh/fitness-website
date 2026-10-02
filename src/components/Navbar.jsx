@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogOut } from 'lucide-react'
+import { Menu, X, LogOut, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { useCoachAccess } from '../lib/useClientsState'
 import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
 import ThemeToggle from './ThemeToggle'
@@ -29,6 +30,10 @@ export default function Navbar() {
   const [authOpen, setAuthOpen] = useState(false)
   const location = useLocation()
   const { user, nickname, signOut } = useAuth()
+  // The coach's own account gets its client list beside its name — the one
+  // page only it can reach, and the one it opens most.
+  const { isCoach } = useCoachAccess()
+  const onCoach = location.pathname.startsWith('/coach')
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-nav backdrop-blur-md border-b border-border">
@@ -43,7 +48,9 @@ export default function Navbar() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
 
-          <div className="hidden md:flex items-center gap-8">
+          {/* Tighter between md and lg: signed in, "Dashboard", your name and
+              (for the coach) Clients only just fit at 768px. */}
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
           {navLinks.map(({ to, label }) => (
             <Link
               key={to}
@@ -61,6 +68,21 @@ export default function Navbar() {
           {supabase && (
             user ? (
               <div className="flex items-center gap-3">
+                {/* Icon only until lg: at 768px the bar has ~35px to spare once
+                    you're signed in, and the word would push it over. */}
+                {isCoach && (
+                  <Link
+                    to="/coach"
+                    aria-label="Clients"
+                    title="Clients"
+                    className={`inline-flex items-center gap-1.5 text-[13px] no-underline transition-colors ${
+                      onCoach ? 'text-text-primary font-medium' : 'text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    <Users className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                    <span className="hidden lg:inline">Clients</span>
+                  </Link>
+                )}
                 <Link
                   to="/account"
                   title={user.email}
@@ -126,14 +148,25 @@ export default function Navbar() {
                 <div className="pt-3 border-t border-border">
                   {user ? (
                     <div className="flex items-center justify-between gap-3">
-                      <Link
-                        to="/account"
-                        onClick={() => setIsOpen(false)}
-                        title={user.email}
-                        className="text-[13px] text-text-muted truncate no-underline hover:text-text-primary"
-                      >
-                        {accountLabel(user, nickname)}
-                      </Link>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <Link
+                          to="/account"
+                          onClick={() => setIsOpen(false)}
+                          title={user.email}
+                          className="text-[13px] text-text-muted truncate no-underline hover:text-text-primary"
+                        >
+                          {accountLabel(user, nickname)}
+                        </Link>
+                        {isCoach && (
+                          <Link
+                            to="/coach"
+                            onClick={() => setIsOpen(false)}
+                            className={`inline-flex items-center gap-1.5 text-[13px] no-underline shrink-0 ${onCoach ? 'text-text-primary font-medium' : 'text-text-muted hover:text-text-primary'}`}
+                          >
+                            <Users className="w-3.5 h-3.5" /> Clients
+                          </Link>
+                        )}
+                      </div>
                       <button
                         onClick={() => { signOut(); setIsOpen(false) }}
                         className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5 shrink-0"
