@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedAt": "2026-10-02",
-  "count": 284,
+  "count": 285,
   "exercises": [
     {
       "id": "high-to-low-cable-fly",
@@ -10046,6 +10046,42 @@
       "video": null,
       "thumbnail": null,
       "pattern": "calf-straight-leg"
+    },
+    {
+      "id": "seated-calf-raise-machine",
+      "name": "Seated Calf Raise - Machine",
+      "category": "Legs",
+      "subCategory": "Calves",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Soleus": 1,
+        "Gastrocnemius": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        120
+      ],
+      "progressiveOverload": "very high",
+      "stability": "very stable",
+      "hypertrophyPotential": "high",
+      "sfr": "excellent",
+      "stretchMediated": "yes",
+      "resistanceProfile": "shortened",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "limiter": "target",
+      "programmable": true,
+      "notes": "Pad on the lower thighs, knees at 90°; the bent knee slackens the gastrocnemius so the soleus does the work. Let the heels drop all the way for the stretch.",
+      "video": null,
+      "thumbnail": null,
+      "pattern": "calf-bent-leg"
     },
     {
       "id": "standing-calf-raise-dumbbell",
