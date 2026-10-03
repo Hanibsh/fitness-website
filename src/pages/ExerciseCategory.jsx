@@ -32,9 +32,6 @@ function SubTile({ parentSlug, sub }) {
         </h3>
         <span className="text-text-light text-[12px] shrink-0">{sub.count}</span>
       </div>
-      {MUSCLE_INFO[sub.slug]?.size && (
-        <p className="text-text-muted text-[12px] mt-1.5 leading-snug">{MUSCLE_INFO[sub.slug].size}</p>
-      )}
     </Link>
   )
 }
@@ -121,8 +118,8 @@ export default function ExerciseCategory() {
           >
             <ArrowLeft className="w-3.5 h-3.5" /> {category.name}
           </Link>
+          {/* No eyebrow: the back link right above already names the group. */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <p className="text-[11px] uppercase tracking-[3px] text-text-light mb-2">{category.name}</p>
             <h1 className="font-heading text-3xl md:text-4xl font-medium text-text-primary tracking-tight">
               {subDef.name}
             </h1>

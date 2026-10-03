@@ -13,7 +13,7 @@
 // under Legs for volume purposes. Slugs below also power the dashboard's
 // "what is this muscle?" deep-links, so keep them stable.
 //
-// COPY NOTE (Leon): the blurbs and guide bullets are a scientific first draft —
+// COPY NOTE (Leon): the guide bullets are a scientific first draft —
 // rewrite in your own voice before leaning on them publicly.
 
 // Home categories in landing order. A category either:
@@ -62,528 +62,430 @@ export const SUBCATEGORIES = {
 }
 
 // Educational copy, keyed by category OR subcategory slug.
-//   teaser    → one-liner for the landing tile (≤6 words)
-//   blurb     → 2-sentence scientific explanation shown at the top of the hub
-//   size      → the "how much muscle is this, really" line the user asked for
-//   anatomy   → optional bullets: what/where the muscle actually is
-//   functions → optional bullets: what it does mechanically
-//   training  → optional bullets: how to train it for growth (angles, reps,
-//               stretch bias, common mistakes) — hypertrophy-first, no fluff
-// The guide card renders whichever of the three arrays exist, so entries can be
-// filled in gradually.
+//   anatomy   → bullets: what/where the muscle actually is
+//   functions → bullets: what it does mechanically
+//   training  → bullets: how to train it for growth (angles, reps, stretch
+//               bias, common mistakes) — hypertrophy-first, no fluff
+//   size      → optional closing line: "how much muscle is this, really"
+// Say each point once: the three lists sit on one card, so an idea repeated
+// across them (or in `size`) reads as padding. Leave `size` out when the
+// bullets already cover it.
 export const MUSCLE_INFO = {
   // ---- Categories ----
   chest: {
-    teaser: 'One fan-shaped pressing muscle',
-    blurb:
-      'The pectoralis major is a single fan-shaped muscle that pulls your upper arm across and in front of your body. Its clavicular (upper), sternal (mid) and costal (lower) regions bias to different pressing angles.',
-    size: 'One muscle — you bias regions with incline, flat and decline, not separate muscles.',
     anatomy: [
-      'Three regions of one muscle: clavicular fibers from the collarbone (upper), sternal fibers from the breastbone (middle) and costal fibers from the ribs (lower) — all funnelling into one tendon on the upper arm.',
-      'The fibers run in different directions per region, which is exactly why pressing angle changes what works hardest.',
-      'Underneath sit the pec minor and serratus anterior, which anchor and move the shoulder blade so the pec has a stable base to press from.',
+      'Three regions of one muscle: upper fibers from the collarbone, middle from the breastbone, lower from the ribs — all meeting in one tendon on the upper arm.',
+      'Each region’s fibers run a different way, which is why pressing angle changes what works hardest.',
+      'The pec minor and serratus anterior sit underneath, steadying the shoulder blade so the pec has a base to press from.',
     ],
     functions: [
-      'Pulls the upper arm across and in front of the body — the motion inside every press, flye and dip.',
-      'Upper fibers help raise the arm; lower fibers help drive it down and forward.',
-      'Internally rotates the shoulder.',
+      'Pulls the upper arm across the body — the motion in every press, flye and dip.',
+      'Upper fibers help raise the arm, lower fibers drive it down, and the whole muscle rotates the shoulder inward.',
     ],
     training: [
-      'Spread your sets across incline, flat and dip/decline angles — each biases a different region of the same muscle.',
-      'Pair heavy pressing (5–10 reps) with a stretch-focused movement like flyes or deep push-ups (10–20 reps); the pec responds strongly to loaded stretch.',
-      'Take presses through a full range — shoulder blades pulled back, a real stretch at the bottom.',
-      'Most common gap: only flat pressing. The upper chest lags without dedicated incline work.',
+      'Cover incline, flat and dip/decline angles across the week. The most common gap is flat-only pressing, which leaves the upper chest behind.',
+      'Pair heavy presses (5–10 reps) with a stretch-focused move like flyes or deep push-ups (10–20 reps).',
+      'Press through a full range — shoulder blades back, a real stretch at the bottom.',
     ],
   },
   back: {
-    teaser: 'Lats, rhomboids and erectors together',
-    blurb:
-      'Your back stacks several muscles: the lats (a large fan from spine to upper arm), the rhomboids and mid-traps that squeeze the shoulder blades together, and the spinal erectors that hold you upright. Rows and pulldowns train most of them at once.',
-    size: 'Collectively one of the largest muscular areas in the body.',
     anatomy: [
-      'The lats: a huge fan from the lower spine and pelvis to the front of the upper arm — the width muscle.',
-      'Between the shoulder blades: rhomboids, mid-traps and teres major — the thickness muscles.',
-      'Along the spine: the erector columns that keep you upright and stiff under load.',
+      'Lats: a huge fan from the lower spine and pelvis to the upper arm — the width muscle.',
+      'Rhomboids, mid-traps and teres major between the shoulder blades — the thickness muscles.',
+      'Erectors: long columns running up the spine.',
     ],
     functions: [
-      'Lats pull the arm down and into the body (pull-ups, pulldowns, pullovers).',
+      'Lats pull the arm down and in (pull-ups, pulldowns, pullovers).',
       'Rhomboids and mid-traps squeeze the shoulder blades together (rows).',
-      'Erectors extend the spine and brace it against rounding in hinges and squats.',
+      'Erectors straighten the spine and stop it rounding in hinges and squats.',
     ],
     training: [
-      'Cover both pulling planes every week: a vertical pull (pulldown/pull-up) for lats and a horizontal row for the mid-back.',
-      'Chest-supported rows remove momentum and let the back do the work — great stimulus-to-fatigue.',
-      'Let the shoulder blades travel: full stretch at the bottom of a pulldown, full squeeze at the top of a row.',
-      'The erectors mostly get trained by hinges (RDLs, good mornings) and heavy compound bracing — they rarely need much isolation.',
+      'Every week, do a vertical pull (pulldown, pull-up) for the lats and a row for the mid-back.',
+      'Chest-supported rows take momentum out, so the back does the work.',
+      'Let the shoulder blades move: full stretch at the bottom of a pulldown, full squeeze at the top of a row.',
+      'Hinges (RDLs, good mornings) and heavy compounds cover the erectors — they rarely need isolation.',
     ],
+    size: 'One of the largest muscle areas in the body.',
   },
   shoulders: {
-    teaser: 'One muscle, three heads',
-    blurb:
-      'The deltoid is one muscle with three heads — front, side and rear — that raise and rotate the arm. Because each head responds to different exercises, all three are worth training directly; the rotator cuff underneath keeps the joint stable.',
-    size: 'Small overall, but the three heads each need their own work.',
     anatomy: [
-      'One muscle, three heads wrapping the shoulder like a cap: anterior (front), lateral (side) and posterior (rear).',
-      'Each head has its own line of pull, so they behave like three small muscles in practice.',
-      'The four rotator-cuff muscles sit underneath, centering the ball in the socket on every rep.',
+      'Three heads capping the shoulder: front, side and rear. Each has its own line of pull, so they act like three small muscles.',
+      'The four rotator-cuff muscles sit underneath, keeping the ball centered in the socket.',
     ],
     functions: [
-      'Front delt raises the arm forward — heavily involved in all pressing.',
-      'Side delt lifts the arm out to the side — this is what builds visual width.',
-      'Rear delt pulls the arm backward and rotates it out — active in rows and reverse flyes.',
+      'Front raises the arm forward and works in all pressing.',
+      'Side lifts the arm out to the side — this builds width.',
+      'Rear pulls the arm back and rotates it out — rows and reverse flyes.',
     ],
     training: [
-      'Front delts usually need little direct work — presses already hammer them.',
-      'Side delts are the priority for width: lateral raise variations, moderate-to-high reps (10–20+), and they tolerate high frequency well.',
-      'Rear delts are chronically undertrained — give them direct reverse flyes or face pulls, not just rows.',
+      'Front: presses already cover it — little direct work needed.',
+      'Side: the priority. Lateral raises, 10–20+ reps, and they handle high frequency.',
+      'Rear: chronically undertrained — give it direct reverse flyes or face pulls, not just rows.',
     ],
   },
   arms: {
-    teaser: 'Biceps in front, triceps behind',
-    blurb:
-      'The upper arm is two muscle groups pulling against each other: the biceps (and the brachialis beneath) on the front bend the elbow, and the triceps on the back straighten it.',
-    size: 'The triceps is about two-thirds of your arm — bigger than the biceps.',
     anatomy: [
-      'Front of the arm: biceps brachii (two heads) with the thick brachialis hiding underneath it.',
-      'Back of the arm: triceps brachii (three heads) — roughly two-thirds of upper-arm mass.',
-      'The forearms continue the chain down to the grip.',
+      'Front: the biceps (two heads) with the thick brachialis underneath.',
+      'Back: the triceps (three heads).',
+      'The forearms continue down to the grip.',
     ],
     functions: [
       'Biceps and brachialis bend the elbow; the biceps also turns the palm up.',
-      'Triceps straightens the elbow and, through its long head, helps pull the arm down at the shoulder.',
+      'Triceps straightens the elbow, and its long head helps pull the arm down at the shoulder.',
     ],
     training: [
-      'Arms grow from direct work — presses and pulls help, but curls and extensions drive most visible arm growth.',
-      'Train both sides of the arm with similar volume; a lagging triceps caps how big an arm looks.',
-      'Moderate loads and strict reps beat heaving heavy weights — elbows are the joint you least want to anger.',
+      'Arms grow most from direct work — curls and extensions, not just presses and pulls.',
+      'Give both sides similar volume; a lagging triceps caps how big the arm looks.',
+      'Moderate loads and strict reps — elbows are the joint you least want to anger.',
     ],
+    size: 'The triceps is about two-thirds of your arm — bigger than the biceps.',
   },
   forearms: {
-    teaser: 'Inner flexors vs outer extensors',
-    blurb:
-      'The forearm has two opposing sides. The flexors on the inner side curl the wrist and drive your grip; the extensors on the outer side lift the wrist and power reverse and hammer curls.',
-    size: 'Small, high-endurance muscles that respond to frequent, higher-rep work.',
     anatomy: [
       'Inner (palm) side: the wrist and finger flexors that close your grip.',
-      'Outer side: the wrist extensors, plus the brachioradialis running up toward the elbow — the muscle hammer curls build.',
-      'Dozens of small muscles rather than one big one — built for endurance.',
+      'Outer side: the wrist extensors, plus the brachioradialis running up toward the elbow.',
+      'Dozens of small muscles rather than one big one.',
     ],
     functions: [
       'Flexors curl the wrist and squeeze the hand shut — every deadlift, row and carry uses them.',
-      'Extensors lift the back of the hand and stabilize the wrist on curls and presses.',
-      'Brachioradialis bends the elbow in neutral grip (hammer-curl position).',
+      'Extensors lift the back of the hand and steady the wrist on curls and presses.',
+      'Brachioradialis bends the elbow in a neutral grip — the muscle hammer curls build.',
     ],
     training: [
-      'They already work in every pulling session — add direct work only if forearms lag or grip fails first.',
-      'High reps (12–25) on wrist curls, reverse curls and hammer curls; they recover fast, so frequency can be high.',
-      'Heavy holds and carries are honest grip work that doubles as forearm volume.',
+      'Every pulling session already works them — add direct work only if they lag or your grip fails first.',
+      'Wrist curls, reverse curls and hammer curls at 12–25 reps; they recover fast, so train them often.',
+      'Heavy holds and carries count as both grip and forearm work.',
     ],
   },
   traps: {
-    teaser: 'One diamond, neck to mid-back',
-    blurb:
-      'The trapezius is one large diamond-shaped muscle from the neck to the mid-back. Its upper fibers shrug, the mid fibers retract the shoulder blades, and the lower fibers pull them down.',
-    size: 'One muscle — upper/mid/lower are regions, not separate muscles.',
     anatomy: [
-      'One diamond-shaped sheet from the base of the skull, out to both shoulders, down to the mid-back.',
-      'Three fiber regions: upper (the visible neck-to-shoulder slope), middle (between the blades) and lower (pointing down the spine).',
-      'The neck itself adds its own flexors (front) and extensors (back), which is why this category covers both.',
+      'One diamond-shaped sheet from the base of the skull out to both shoulders and down to the mid-back.',
+      'Three regions, not separate muscles: upper (the neck-to-shoulder slope), middle (between the blades) and lower (down the spine).',
+      'The neck adds its own flexors and extensors, so this group covers both.',
     ],
     functions: [
-      'Upper fibers shrug the shoulders up and support the neck under load.',
-      'Middle fibers pull the shoulder blades together; lower fibers pull them down and help rotate them upward on overhead work.',
-      'Neck muscles flex, extend and turn the head — and stiffen it under heavy carries and deadlifts.',
+      'Upper fibers shrug the shoulders and support the neck under load.',
+      'Middle fibers pull the shoulder blades together; lower fibers pull them down and help rotate them on overhead work.',
+      'Neck muscles bend, straighten and turn the head, and stiffen it under heavy carries and deadlifts.',
     ],
     training: [
-      'Upper traps: shrugs and heavy carries — they take heavy loads well; use a controlled squeeze rather than bouncing.',
-      'Mid and lower traps get plenty from rows and face pulls; add prone Y-raises only if they visibly lag.',
-      'Direct neck work (flexion/extension) pays off for contact-sport athletes and anyone whose neck visually lags — start light, high reps, slow progression.',
+      'Upper traps: shrugs and heavy carries — a controlled squeeze, no bouncing.',
+      'Mid and lower traps get plenty from rows and face pulls; add prone Y-raises only if they lag.',
+      'Direct neck work pays off for contact sports or a neck that visually lags — start light, high reps, slow progression.',
     ],
   },
   core: {
-    teaser: 'Abs, obliques and deep bracing',
-    blurb:
-      "Your core wraps the trunk: the rectus abdominis (the 'six-pack') flexes the spine, the obliques rotate and side-bend it, and the deeper transverse abdominis braces like a belt.",
-    size: 'Built more for bracing and endurance than for heavy load.',
     anatomy: [
-      'Front: the rectus abdominis — one long muscle whose tendon lines create the six-pack segments.',
-      'Sides: external and internal obliques layered diagonally for rotation and side-bending.',
-      'Deepest layer: the transverse abdominis, wrapping the waist like a belt for bracing.',
+      'Front: the rectus abdominis — one long muscle whose tendon lines make the six-pack.',
+      'Sides: the external and internal obliques, layered diagonally.',
+      'Deepest: the transverse abdominis, wrapping the waist like a belt.',
     ],
     functions: [
-      'Rectus abdominis curls the ribcage toward the pelvis (spine flexion).',
+      'Rectus abdominis curls the ribcage toward the pelvis.',
       'Obliques rotate and side-bend the trunk — and resist being rotated.',
-      'The whole wall stiffens to transfer force in squats, deadlifts and presses.',
+      'The whole wall braces to transfer force in squats, deadlifts and presses.',
     ],
     training: [
-      'Abs are muscle — they grow from resisted flexion (weighted crunch patterns, hanging knee/leg raises) in the 8–20 rep range, not from hundreds of free reps.',
-      'Add one anti-movement drill (plank variations, ab-wheel) for the deep bracing layer.',
-      'Visibility is body-fat, not rep count — training builds the blocks, nutrition reveals them.',
+      'Abs grow from resisted flexion (weighted crunches, hanging knee/leg raises) at 8–20 reps, not from hundreds of free reps.',
+      'Add one anti-movement drill (planks, ab wheel) for the deep bracing layer.',
+      'Seeing them is about body fat, not reps — training builds them, nutrition reveals them.',
     ],
   },
   legs: {
-    teaser: 'Your biggest muscle mass',
-    blurb:
-      'The legs hold your largest muscles: the glutes driving the hips, the quads on the front of the thigh, the hamstrings behind them, the adductors on the inner thigh and the calves below.',
-    size: 'The largest muscle mass in the body, by far.',
     anatomy: [
-      'Hips: the glutes — the biggest muscle group you own.',
-      'Thigh: quads in front, hamstrings behind, adductors along the inner side.',
+      'Hips: the glutes.',
+      'Thigh: quads in front, hamstrings behind, adductors on the inner side.',
       'Below the knee: the calves (gastrocnemius and soleus).',
     ],
     functions: [
-      'Glutes and hamstrings extend the hip; quads extend the knee — together they produce squats, hinges and lunges.',
-      'Adductors pull the legs together and assist deep squatting.',
+      'Glutes and hamstrings extend the hip; quads straighten the knee — together they make squats, hinges and lunges.',
+      'Adductors pull the legs together and help in deep squats.',
       'Calves point the foot and drive every step.',
     ],
     training: [
-      'Build sessions around one squat pattern and one hinge pattern — that pair covers most of the leg.',
-      'Isolation (extensions, curls, calf raises, adduction) then tops up what compounds under-stimulate.',
-      'Legs tolerate and need hard sets close to failure — but they are also the most systemically fatiguing muscle group, so volume is the lever to manage.',
+      'Build sessions around one squat and one hinge — that pair covers most of the leg.',
+      'Isolation (extensions, curls, calf raises, adduction) tops up what compounds miss.',
+      'Legs need hard sets close to failure, but they’re the most fatiguing to train — manage them through volume.',
     ],
+    size: 'The largest muscle mass in the body, by far.',
   },
   glutes: {
-    teaser: 'The single biggest muscle you have',
-    blurb:
-      'The gluteus maximus is the single largest muscle in the human body. It extends the hip to drive you up out of a squat, lock out a hinge, and propel you forward when you sprint — built by hip thrusts, hinges and squats.',
-    size: 'The biggest muscle in your body by volume.',
     anatomy: [
-      'The gluteus maximus spans from the pelvis and sacrum to the upper thigh — the largest single muscle in the body.',
-      'The gluteus medius and minimus sit above and to the side, stabilizing the pelvis (covered under Abductors).',
+      'The gluteus maximus runs from the pelvis and sacrum to the upper thigh.',
+      'The gluteus medius and minimus sit above and to the side (see Abductors).',
     ],
     functions: [
       'Extends the hip — standing up from a squat, locking out a deadlift, sprinting, climbing stairs.',
-      'Rotates the thigh outward and posteriorly tilts the pelvis.',
-      'Works hardest when the hip is deeply bent — depth matters.',
+      'Rotates the thigh outward and tilts the pelvis back.',
     ],
     training: [
-      'Mix a stretch-position movement (deep squat, split squat, RDL) with a peak-contraction movement (hip thrust, kickback).',
-      'Deep ranges are the growth signal: the glute max is most stretched — and most stimulated — near full hip flexion.',
-      'It recovers well; glutes handle heavy loads and reasonable frequency without complaint.',
+      'Mix a stretch-position move (deep squat, split squat, RDL) with a peak-contraction move (hip thrust, kickback).',
+      'Go deep: the glute max is most stretched — and most stimulated — near full hip flexion.',
+      'It recovers well and handles heavy loads and frequent training.',
     ],
+    size: 'The biggest muscle in your body by volume.',
   },
 
   // ---- Subcategories: chest regions ----
   'upper-chest': {
-    blurb:
-      'The clavicular (upper) region of the pec major runs from the collarbone down to the upper arm. Its fibers pull the arm up and across the body, so incline pressing and low-to-high flyes load it most directly.',
-    size: 'The smallest chest region — and the first to visibly lag.',
     anatomy: [
-      'Fibers start on the inner half of the collarbone and run diagonally down to the upper arm.',
-      'A region of the pec major, not a separate muscle — but with its own line of pull.',
+      'A region of the pec major, not a separate muscle: fibers run diagonally from the inner collarbone down to the upper arm.',
     ],
     functions: [
-      'Pulls the arm up and across the body — the top part of an incline press.',
-      'Assists the front delt in raising the arm.',
+      'Pulls the arm up and across the body, and helps the front delt raise the arm.',
     ],
     training: [
-      'Incline presses at roughly 15–30° — steeper turns the exercise into a shoulder press.',
-      'Low-to-high cable flyes isolate the fiber direction exactly.',
-      'If your chest looks bottom-heavy, move a flat-press slot to incline rather than adding total volume.',
+      'Incline presses at about 15–30° — steeper turns it into a shoulder press.',
+      'Low-to-high cable flyes follow the fiber direction exactly.',
+      'If your chest looks bottom-heavy, swap a flat press for an incline instead of adding sets.',
     ],
+    size: 'The smallest chest region — and the first to visibly lag.',
   },
   'middle-chest': {
-    blurb:
-      'The sternal (middle) region is the biggest slice of the pec major, running horizontally from the breastbone to the upper arm. Flat pressing and mid-height flyes load it most directly.',
-    size: 'The bulk of the pec — most chest mass lives here.',
     anatomy: [
-      'Fibers run nearly horizontally from the breastbone out to the upper arm.',
-      'The largest of the three pec regions by a wide margin.',
+      'Fibers run nearly horizontally from the breastbone to the upper arm.',
     ],
     functions: [
-      'Pulls the arm straight across the chest — the exact motion of a flat press or cable crossover at chest height.',
+      'Pulls the arm straight across the chest — a flat press or a chest-height crossover.',
     ],
     training: [
-      'Flat barbell, dumbbell and machine presses are the bread and butter.',
-      'Flyes and crossovers at chest height keep tension on the pec without the triceps taking over.',
-      'Dumbbells and deficit push-ups allow a deeper stretch than a barbell — worth a slot for that reason.',
+      'Flat barbell, dumbbell and machine presses are the staples.',
+      'Chest-height flyes and crossovers keep tension on the pec without the triceps taking over.',
+      'Dumbbells and deficit push-ups stretch deeper than a barbell — worth a slot for that.',
     ],
+    size: 'The bulk of the pec — most chest mass lives here.',
   },
   'lower-chest': {
-    blurb:
-      'The costal (lower) region of the pec major rises from the ribs up to the arm, so it works hardest when you press down and forward. Dips, decline presses and high-to-low flyes hit it most directly.',
-    size: 'A small slice that finishes the lower line of the chest.',
     anatomy: [
-      'Fibers start on the ribs and the abdominal sheath and run upward to the arm — the mirror image of the upper chest.',
+      'Fibers run upward from the ribs and abdominal sheath to the arm — the mirror image of the upper chest.',
     ],
     functions: [
-      'Drives the arm down and forward — the bottom-out motion of a dip.',
-      'Assists everything the rest of the pec does when pressing.',
+      'Drives the arm down and forward — the bottom of a dip.',
     ],
     training: [
-      'Dips are the king here — lean the torso slightly forward and let the chest stretch at the bottom.',
-      'High-to-low cable flyes match the fiber direction precisely.',
-      'Flat pressing already trains it substantially — most people need little dedicated lower-chest volume.',
+      'Dips are king — lean slightly forward and let the chest stretch at the bottom.',
+      'High-to-low cable flyes match the fiber direction.',
+      'Flat pressing already trains it a lot — most people need little dedicated work.',
     ],
+    size: 'A small slice that finishes the lower line of the chest.',
   },
 
   // ---- Subcategories: back muscles ----
   lats: {
-    blurb:
-      'The latissimus dorsi is a huge fan of muscle from the lower spine and pelvis to the front of the upper arm — the widest muscle in the body. Pulldowns, pull-ups, rows and pullovers all live here.',
-    size: 'The widest muscle you have — this is the V-taper.',
     anatomy: [
-      'Originates across the lower half of the spine, the pelvis and the lower ribs, then twists to attach on the front of the upper arm.',
-      'That twist means the lat is fully stretched when the arm is overhead and slightly across the body.',
+      'Starts across the lower spine, pelvis and lower ribs, then twists to attach on the front of the upper arm.',
+      'That twist means it’s fully stretched with the arm overhead and slightly across the body.',
     ],
     functions: [
-      'Pulls the arm down and into the body — pull-ups, pulldowns and pullovers.',
+      'Pulls the arm down and into the body — pull-ups, pulldowns, pullovers.',
       'Drives the elbow back and down in rows.',
-      'Internally rotates the shoulder and assists the spine in extension.',
+      'Rotates the shoulder inward and helps extend the spine.',
     ],
     training: [
-      'Vertical pulls (pull-ups, pulldowns) give the lat its biggest loaded stretch — let the arms go fully long at the top.',
-      'In rows, keep the elbow closer to the body to bias lat over upper back.',
-      'Half-kneeling or single-arm variations let you lean away and stretch the lat harder — an easy upgrade.',
+      'Vertical pulls give the biggest loaded stretch — let your arms go fully long at the top.',
+      'In rows, keep the elbow close to the body to bias lats over upper back.',
+      'Half-kneeling or single-arm versions let you lean away for a deeper stretch.',
     ],
+    size: 'The widest muscle you have — this is the V-taper.',
   },
   'mid-back': {
-    blurb:
-      'The mid-back is the retraction team: the rhomboids and mid-traps pulling the shoulder blades together, plus the teres major — a "little lat" from shoulder blade to arm. Rows of every kind build it.',
-    size: 'The thickness muscles — depth between the shoulder blades.',
     anatomy: [
-      'Rhomboids run from the spine to the inner edge of each shoulder blade, under the traps.',
-      'The mid fibers of the trapezius lie on top, pulling in the same direction.',
-      'Teres major runs from the bottom tip of the shoulder blade to the front of the arm and works like a small lat.',
+      'Rhomboids run from the spine to the inner edge of each shoulder blade, under the mid-traps, which pull the same way.',
+      'Teres major runs from the bottom of the shoulder blade to the front of the arm — a small lat.',
     ],
     functions: [
       'Squeezes the shoulder blades together — the finish of every row.',
-      'Keeps the blades pinned so pressing and pulling have a stable base.',
-      'Teres major pulls the arm down and back alongside the lat.',
+      'Keeps the blades pinned so presses and pulls have a stable base.',
+      'Teres major pulls the arm down and back with the lat.',
     ],
     training: [
-      'Rows with the elbow flared out ~45–60° shift work from lats to the mid-back.',
-      'A deliberate squeeze and controlled return beat heavier weight with a shrugging bounce.',
-      'Chest-supported and cable rows keep tension honest by removing body English.',
+      'Rows with the elbows flared ~45–60° shift work from the lats to the mid-back.',
+      'A deliberate squeeze and controlled return beat heavier weight with a shrug.',
+      'Chest-supported and cable rows take the body English out.',
     ],
+    size: 'The thickness muscles — depth between the shoulder blades.',
   },
   'spinal-erectors': {
-    blurb:
-      'The erector spinae are long columns of muscle running the full length of your spine. They straighten it, arch it, and — most of the time in the gym — hold it rigid while your hips do the moving.',
-    size: 'Long endurance columns that thicken the entire lower back.',
     anatomy: [
-      'Three parallel columns (iliocostalis, longissimus, spinalis) running from the pelvis up to the ribs, neck and skull.',
-      'Thickest in the lower back, which is where you see and feel them most.',
+      'Three parallel columns (iliocostalis, longissimus, spinalis) from the pelvis up to the ribs, neck and skull — thickest in the lower back.',
     ],
     functions: [
-      'Extend the spine — standing tall out of a hinge, arching in a back extension.',
-      'Brace isometrically against rounding in squats, deadlifts and rows — their main job under load.',
+      'Straighten the spine — standing tall out of a hinge, arching in a back extension.',
+      'Their main job under load: holding the spine rigid in squats, deadlifts and rows.',
     ],
     training: [
-      'Hinges (RDLs, good mornings) and back extensions are the direct builders.',
-      'They already work isometrically in every heavy compound — count that before adding volume.',
-      'They are slow to recover when trained hard; a little direct work goes a long way.',
+      'Hinges (RDLs, good mornings) and back extensions train them directly.',
+      'Every heavy compound already works them — count that before adding more.',
+      'They recover slowly when trained hard; a little direct work goes a long way.',
     ],
   },
 
   // ---- Subcategories: delt heads ----
   'front-delts': {
-    blurb:
-      'The anterior (front) deltoid raises the arm to the front and assists on every press. It already gets heavy indirect work from chest pressing, so most people need little extra direct volume.',
-    size: 'Usually the most-developed delt head, thanks to all your pressing.',
     anatomy: [
-      'The front third of the deltoid, running from the collarbone to the outer arm.',
+      'The front third of the deltoid, from the collarbone to the outer arm.',
     ],
     functions: [
-      'Raises the arm forward and helps every incline and overhead press.',
-      'Internally rotates the shoulder.',
+      'Raises the arm forward and rotates the shoulder inward.',
     ],
     training: [
-      'If you press (bench, incline, overhead), your front delts are already well trained.',
-      'Overhead pressing is the best direct choice when you do want more.',
-      'Front raises are rarely worth a slot — spend that set on side or rear delts instead.',
+      'Bench, incline and overhead pressing already train them well.',
+      'When you want more, overhead pressing is the best direct choice.',
+      'Front raises are rarely worth a slot — spend that set on side or rear delts.',
     ],
   },
   'side-delts': {
-    blurb:
-      'The lateral (side) deltoid lifts the arm out to the side and is what gives the shoulders their width. Lateral raises are the staple, and it responds well to high frequency.',
-    size: 'The head that builds shoulder width — often worth extra volume.',
     anatomy: [
-      'The middle third of the deltoid, sitting directly over the point of the shoulder.',
+      'The middle third of the deltoid, right over the point of the shoulder.',
     ],
     functions: [
-      'Lifts the arm out to the side (abduction) — the motion of a lateral raise.',
-      'Contributes to overhead pressing once the arm is away from the body.',
+      'Lifts the arm out to the side — the motion of a lateral raise, and what builds shoulder width.',
+      'Helps overhead pressing once the arm is away from the body.',
     ],
     training: [
-      'Lateral raise variations are the staple — dumbbells, cables or machines all work.',
-      'Cables and lean-away variations keep tension at the bottom, where dumbbells give none.',
-      'Moderate-to-high reps (10–20+) with strict form; they recover fast, so frequency can be high.',
+      'Lateral raises are the staple — dumbbells, cables or machines.',
+      'Cables and lean-away versions keep tension at the bottom, where dumbbells give none.',
+      '10–20+ reps with strict form; they recover fast, so extra volume and frequency pay off.',
     ],
   },
   'rear-delts': {
-    blurb:
-      'The posterior (rear) deltoid pulls the arm backward and rotates it outward, working with the rotator cuff. It is commonly underdeveloped, so direct rows and reverse flyes pay off.',
-    size: 'The most-neglected head; key for posture and balanced shoulders.',
     anatomy: [
-      'The back third of the deltoid, from the shoulder-blade ridge to the outer arm.',
-      'The rotator cuff works underneath it, keeping the joint centered.',
+      'The back third of the deltoid, from the shoulder-blade ridge to the outer arm, with the rotator cuff underneath.',
     ],
     functions: [
-      'Pulls the arm backward (horizontal abduction) — reverse flyes, face pulls, wide rows.',
-      'Externally rotates the shoulder with the cuff.',
+      'Pulls the arm back — reverse flyes, face pulls, wide rows.',
+      'Rotates the shoulder outward with the cuff.',
     ],
     training: [
-      'Rows help but rarely suffice — give rear delts direct sets (reverse flyes, face pulls, rear-delt rows).',
-      'Light weight, strict reps, higher volume: momentum steals rear-delt tension instantly.',
-      'They tolerate a lot of frequency — easy to add at the end of any session.',
+      'Rows help but rarely suffice — give them direct sets (reverse flyes, face pulls, rear-delt rows).',
+      'Light weight, strict reps: momentum steals rear-delt tension instantly.',
+      'They handle lots of frequency — easy to add at the end of any session.',
     ],
+    size: 'Key for posture and balanced shoulders.',
   },
 
   // ---- Subcategories: arms ----
   biceps: {
-    blurb:
-      'The biceps brachii and the brachialis beneath it bend the elbow, and the biceps also turns the palm up. Curl variations and chin-ups are the staples.',
-    size: 'About a third of your upper-arm mass — smaller than the triceps.',
     anatomy: [
       'Two heads: the long head on the outside (crosses the shoulder), the short head on the inside.',
       'The brachialis lies underneath and pushes the biceps up as it grows.',
     ],
     functions: [
-      'Bends the elbow and turns the palm upward (supination).',
-      'The long head assists slightly at the shoulder.',
+      'Bends the elbow and turns the palm up; the long head helps slightly at the shoulder.',
     ],
     training: [
-      'Curl through a full range and control the lowering — the stretch half of the rep drives growth.',
+      'Full range, controlled lowering — the stretch half of the rep drives growth.',
       'Incline or behind-the-body curls stretch the long head; hammer and reverse curls hit the brachialis and brachioradialis.',
-      'Chin-ups double as heavy biceps work; moderate reps (8–15) with strict form is the sweet spot.',
+      'Chin-ups double as heavy biceps work. 8–15 strict reps is the sweet spot.',
     ],
+    size: 'About a third of your upper-arm mass — smaller than the triceps.',
   },
   triceps: {
-    blurb:
-      'The triceps has three heads and straightens the elbow; its long head also crosses the shoulder, so it stretches hard under overhead work. Presses and extensions grow it.',
-    size: 'About two-thirds of your upper-arm size — the bigger arm muscle.',
     anatomy: [
-      'Three heads: the long head (crosses the shoulder), plus the lateral and medial heads on the outer and inner arm.',
-      'The long head is the biggest — and the one most training misses.',
+      'Three heads: the long head (crosses the shoulder, and the biggest), plus the lateral and medial heads.',
     ],
     functions: [
       'Straightens the elbow on every press and pushdown.',
-      'The long head also pulls the arm down toward the body at the shoulder.',
+      'The long head also pulls the arm down at the shoulder.',
     ],
     training: [
-      'Overhead extensions put the long head under stretch — the highest-value triceps slot for most people.',
-      'Pushdowns and close-grip pressing cover the lateral and medial heads.',
-      'Presses provide heavy indirect volume; extensions are where the extra growth comes from.',
+      'Overhead extensions stretch the long head — the highest-value triceps slot, and the one most training misses.',
+      'Pushdowns and close-grip presses cover the lateral and medial heads.',
+      'Presses give heavy indirect work; extensions drive the extra growth.',
     ],
-  },
-  'forearm-flexors': {
-    blurb:
-      'The wrist and finger flexors on the palm side of the forearm close your grip and curl the wrist. Wrist curls and heavy holds train them.',
-    size: 'These drive grip and crushing strength.',
-  },
-  'forearm-extensors': {
-    blurb:
-      'The extensors on the back of the forearm lift the wrist and are the prime movers in reverse and hammer curls. They are often weak relative to the flexors.',
-    size: 'Balancing them protects the elbow and evens out the forearm.',
+    size: 'About two-thirds of your upper-arm size — the bigger arm muscle.',
   },
 
   // ---- Subcategories: legs ----
   quads: {
-    blurb:
-      'The quadriceps are four muscles on the front of the thigh that straighten the knee — the largest single muscle group in the lower body. Squats, presses and leg extensions build them.',
-    size: 'The biggest muscle group in your legs.',
     anatomy: [
-      'Four muscles: vastus lateralis (outer sweep), vastus medialis (the teardrop), vastus intermedius (hidden underneath) and rectus femoris on top.',
+      'Four muscles: vastus lateralis (outer sweep), vastus medialis (the teardrop), vastus intermedius (underneath) and rectus femoris on top.',
       'The rectus femoris also crosses the hip, so it behaves differently from the other three.',
     ],
     functions: [
-      'All four straighten the knee — squats, presses, lunges, extensions.',
-      'The rectus femoris also flexes the hip (knee raises, sprinting).',
+      'All four straighten the knee; the rectus femoris also lifts the thigh (knee raises, sprinting).',
     ],
     training: [
-      'Deep knee bend is the growth signal — full-depth squats, presses and split squats beat half reps.',
-      'Leg extensions are the only movement that truly loads the rectus femoris at both joints — worth a slot.',
-      'Quad training is systemically brutal; manage weekly hard sets rather than stacking more.',
+      'Deep knee bend is the growth signal — full-depth squats, leg presses and split squats beat half reps.',
+      'Leg extensions are the only move that fully loads the rectus femoris — worth a slot.',
+      'Quad work is very fatiguing; manage weekly hard sets rather than stacking more.',
     ],
+    size: 'The biggest muscle group in your legs.',
   },
   hamstrings: {
-    blurb:
-      'The hamstrings run down the back of the thigh, bending the knee and extending the hip. Because they do two jobs, they need both a curl (knee) and a hinge (hip) to train fully.',
-    size: 'Two jobs — train them with both curls and hinges.',
     anatomy: [
       'Three muscles: biceps femoris on the outside, semitendinosus and semimembranosus on the inside.',
-      'All but the short head of biceps femoris cross BOTH the hip and the knee — the key to training them.',
+      'All but the short head of biceps femoris cross both the hip and the knee.',
     ],
     functions: [
-      'Extend the hip (RDLs, good mornings) and bend the knee (leg curls).',
-      'Decelerate the leg every stride — why sprinters tear them.',
+      'Extend the hip and bend the knee.',
+      'Slow the leg down every stride — why sprinters tear them.',
     ],
     training: [
-      'You need both patterns: a hinge (RDL) for the hip role and a curl for the knee role — neither alone trains everything.',
-      'Seated curls beat lying curls: the flexed hip pre-stretches the hamstrings for more growth per set.',
-      'In hinges, the stretch near the bottom is the money — deep, controlled, no bouncing.',
+      'Do both: a hinge (RDL, good morning) for the hip and a curl for the knee — neither alone trains everything.',
+      'Seated curls beat lying curls: the bent hip pre-stretches the hamstrings.',
+      'In hinges, the stretch near the bottom is what counts — deep, controlled, no bouncing.',
     ],
   },
   calves: {
-    blurb:
-      'The calves are the gastrocnemius (the visible bulge, worked with a straight leg) and the soleus beneath it (worked with a bent knee). Both extend the ankle to push you off the ground.',
-    size: 'High-endurance muscles that respond to frequent, full-range work.',
     anatomy: [
       'The gastrocnemius is the visible two-headed bulge; it crosses the knee, so it only works fully with a straight leg.',
-      'The soleus lies underneath, crossing only the ankle — bent-knee work is soleus work.',
+      'The soleus lies underneath and crosses only the ankle — bent-knee work is soleus work.',
     ],
     functions: [
       'Point the foot and push you off the ground — every step, jump and sprint.',
-      'The soleus works constantly holding you upright.',
+      'The soleus works constantly to hold you upright.',
     ],
     training: [
-      'Straight-leg raises for the gastroc, seated (bent-knee) raises for the soleus — both, not either.',
-      'Pause deep in the stretch; bouncing lets the Achilles do the work instead of the muscle.',
-      'They are endurance machines — they take high reps, high frequency, and slow visible progress. Patience.',
+      'Straight-leg raises for the gastroc, seated raises for the soleus — do both.',
+      'Pause deep in the stretch; bouncing lets the Achilles do the work.',
+      'They take high reps and high frequency, and progress is slow. Be patient.',
     ],
   },
   adductors: {
-    blurb:
-      'The adductors on the inner thigh pull the leg toward your midline and assist the squat and hinge. Wide stances, Copenhagen planks and the adduction machine hit them.',
-    size: 'A surprisingly large share of total thigh mass.',
     anatomy: [
-      'A group of five on the inner thigh, dominated by the adductor magnus — one of the biggest muscles in the body.',
+      'A group of five on the inner thigh, led by the adductor magnus — one of the biggest muscles in the body.',
     ],
     functions: [
       'Pull the leg toward the midline.',
-      'The adductor magnus also extends the hip from deep positions — it works like a hamstring in a deep squat.',
+      'The adductor magnus also extends the hip from deep positions, like a hamstring in a deep squat.',
     ],
     training: [
-      'Deep, wider-stance squats already train them hard — most inner-thigh growth comes free.',
-      'The adduction machine adds direct volume when the inner thigh visibly lags.',
-      'Copenhagen planks build them isometrically and armor the groin against strains.',
+      'Deep, wider-stance squats already train them hard.',
+      'The adduction machine adds direct volume if the inner thigh lags.',
+      'Copenhagen planks build them and protect the groin from strains.',
     ],
+    size: 'A surprisingly large share of total thigh mass.',
   },
   abductors: {
-    blurb:
-      'The hip abductors — the gluteus medius and minimus on the outer hip — move the leg away from your midline and stabilise the pelvis on every step and single-leg movement. The abduction machine and banded work target them directly.',
-    size: 'Small stabilisers, but key for hip health and a balanced hip.',
     anatomy: [
-      'The gluteus medius and minimus sit on the outer hip, above and beneath the glute max.',
+      'The gluteus medius and minimus on the outer hip, above and beneath the glute max.',
     ],
     functions: [
       'Lift the leg out to the side.',
-      'Keep the pelvis level every time you stand on one leg — every step, lunge and split squat.',
+      'Keep the pelvis level whenever you stand on one leg — every step, lunge and split squat.',
     ],
     training: [
-      'Single-leg work (split squats, lunges, step-ups) trains them as stabilizers automatically.',
-      'The abduction machine or banded side-steps add direct volume for the outer-hip shape.',
-      'Higher reps (12–20) with a deliberate pause beat heavy stack-slamming.',
+      'Single-leg work (split squats, lunges, step-ups) trains them automatically.',
+      'The abduction machine or banded side-steps add direct volume for outer-hip shape.',
+      '12–20 reps with a deliberate pause beat heavy stack-slamming.',
     ],
+    size: 'Small stabilisers, but key for hip health.',
   },
   tibialis: {
-    blurb:
-      'The tibialis anterior runs down the front of the shin and pulls the foot up toward you — the exact opposite of what the calves do. Toe raises train it directly; nothing else in a normal program does.',
-    size: 'The visible front-of-shin muscle — small, but it fills out the lower leg from the front.',
     anatomy: [
-      'Sits on the outer front of the shin bone, running from just below the knee to the inside of the foot.',
-      'It is the calves’ antagonist: calves point the foot down, the tibialis pulls it up.',
+      'Runs down the outer front of the shin bone, from just below the knee to the inside of the foot.',
     ],
     functions: [
-      'Lift the foot and toes (dorsiflexion) — it controls every step you take downhill.',
+      'Pulls the foot and toes up — the opposite of the calves. It controls every downhill step.',
       'Absorbs impact when the foot lands, which is why it matters for shin splints and knee-friendly running.',
     ],
     training: [
-      'Toe raises are the whole menu: tib bar, dumbbell on the foot, cable over the forefoot, or heels-forward wall raises.',
-      'It recovers fast and takes high reps (15–25) well — train it like the calves, just in the other direction.',
-      'Control the lowering; letting the toes drop fast skips the half of the work it is best at.',
+      'Toe raises are the whole menu: tib bar, dumbbell on the foot, cable over the forefoot, or heels-forward wall raises. Nothing else in a normal program trains it.',
+      '15–25 reps, and it recovers fast — train it like the calves, just in the other direction.',
+      'Control the lowering; letting the toes drop fast skips half the work.',
     ],
+    size: 'Small, but it fills out the lower leg from the front.',
   },
 }
 

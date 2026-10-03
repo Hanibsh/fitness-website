@@ -119,7 +119,7 @@ export default function Exercises() {
             Every exercise, explained
           </h1>
           <p className="text-text-muted text-[15px]">
-            {EXERCISE_COUNT} movements — pick a muscle group, or search across everything.
+            {EXERCISE_COUNT} movements.
           </p>
         </motion.div>
 

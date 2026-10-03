@@ -96,10 +96,9 @@ export default function ExercisePerformance({ exercise }) {
       <section>
         {heading}
         <div className="border border-dashed border-border rounded-xl px-6 py-8 text-center">
-          <p className="text-[13px] text-text-muted">You haven't logged this exercise yet.</p>
           <button
             onClick={() => navigate('/log', { state: { addExerciseId: exercise.id, addExerciseName: exercise.name } })}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary bg-transparent border-none cursor-pointer mt-2 hover:text-accent-hover"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary bg-transparent border-none cursor-pointer hover:text-accent-hover"
           >
             <Plus className="w-4 h-4" /> Log it once and your stats appear here
           </button>
