@@ -90,7 +90,7 @@ export default function ExerciseSelect({ value, options, onChange, ariaLabel = '
       </button>
 
       {open && (
-        <div className="drop-in absolute z-30 left-0 mt-1 w-full min-w-[16rem] max-w-[calc(100vw-2rem)] bg-white border border-border shadow-lg">
+        <div className="absolute z-30 left-0 mt-1 w-full min-w-[16rem] max-w-[calc(100vw-2rem)] bg-white border border-border shadow-lg">
           <div className="p-2 border-b border-border">
             <SearchField
               value={query}

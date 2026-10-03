@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
-import ActivePill from '../../components/ActivePill'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { convertMassText } from '../../lib/units'
 import {
@@ -221,19 +220,13 @@ export default function CardioCalculator() {
   })
   const maxOther = Math.max(...others.map(o => o.value), 1)
 
-  // `group` names the row a button belongs to, so the selected block slides
-  // within that row and never jumps to another one.
-  const toggle = (group, active, onClick, label) => (
-    <button type="button" aria-pressed={active} onClick={onClick} className={`relative flex-1 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-white text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>
-      {active && <ActivePill id={`cardio-${group}`} />}
-      <span className="relative">{label}</span>
-    </button>
+  const toggle = (active, onClick, label) => (
+    <button type="button" aria-pressed={active} onClick={onClick} className={`flex-1 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{label}</button>
   )
-  const chip = (group, active, onClick, label, sub) => (
-    <button key={label} type="button" aria-pressed={active} onClick={onClick} className={`relative flex-1 px-1.5 py-2.5 border cursor-pointer transition-colors ${active ? 'bg-white border-text-primary' : 'bg-white border-border hover:border-border-hover'}`}>
-      {active && <ActivePill id={`cardio-${group}`} />}
-      <span className={`relative block text-[13px] font-medium ${active ? 'text-cream' : 'text-text-muted'}`}>{label}</span>
-      {sub && <span className={`relative block text-[10px] ${active ? 'text-cream-70' : 'text-text-light'}`}>{sub}</span>}
+  const chip = (active, onClick, label, sub) => (
+    <button key={label} type="button" aria-pressed={active} onClick={onClick} className={`flex-1 px-1.5 py-2.5 border cursor-pointer transition-colors ${active ? 'bg-text-primary border-text-primary' : 'bg-white border-border hover:border-border-hover'}`}>
+      <span className={`block text-[13px] font-medium ${active ? 'text-cream' : 'text-text-muted'}`}>{label}</span>
+      {sub && <span className={`block text-[10px] ${active ? 'text-cream-70' : 'text-text-light'}`}>{sub}</span>}
     </button>
   )
   const fieldLabel = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
@@ -255,8 +248,8 @@ export default function CardioCalculator() {
 
           <div className="bg-white border border-border p-5 sm:p-9 space-y-7">
             <div className="flex gap-3 items-center">
-              {toggle('unit', unit === 'metric', () => pickUnit('metric'), 'Metric (kg, km/h)')}
-              {toggle('unit', unit === 'imperial', () => pickUnit('imperial'), 'Imperial (lbs, mph)')}
+              {toggle(unit === 'metric', () => pickUnit('metric'), 'Metric (kg, km/h)')}
+              {toggle(unit === 'imperial', () => pickUnit('imperial'), 'Imperial (lbs, mph)')}
               <UnitHelp />
             </div>
             <PrefillNote from={prefill.from} />
@@ -269,8 +262,8 @@ export default function CardioCalculator() {
             <div className="space-y-4">
               <p className={fieldLabel}>What do you want to know?</p>
               <div className="flex gap-3 -mt-2">
-                {toggle('mode', mode === 'burn', () => setMode('burn'), 'Calories → time')}
-                {toggle('mode', mode === 'time', () => setMode('time'), 'Time → calories')}
+                {toggle(mode === 'burn', () => setMode('burn'), 'Calories → time')}
+                {toggle(mode === 'time', () => setMode('time'), 'Time → calories')}
               </div>
               {mode === 'burn' ? (
                 <div>
@@ -290,7 +283,7 @@ export default function CardioCalculator() {
               <p className={fieldLabel}>Activity</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {CARDIO_ACTIVITIES.map(a => (
-                  <button key={a.id} type="button" aria-pressed={activityId === a.id} onClick={() => pickActivity(a)} className={`relative px-2 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${activityId === a.id ? 'bg-white text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{activityId === a.id && <ActivePill id="cardio-activity" />}<span className="relative">{a.label}</span></button>
+                  <button key={a.id} type="button" aria-pressed={activityId === a.id} onClick={() => pickActivity(a)} className={`px-2 py-3 text-[13px] font-medium border cursor-pointer transition-colors ${activityId === a.id ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{a.label}</button>
                 ))}
               </div>
             </div>
@@ -298,15 +291,15 @@ export default function CardioCalculator() {
             <div className="space-y-4">
               <p className={fieldLabel}>Estimate from</p>
               <div className="flex gap-3 -mt-2">
-                {toggle('source', !useHR, () => setUseHR(false), 'Settings')}
-                {toggle('source', useHR, () => setUseHR(true), 'Heart rate')}
+                {toggle(!useHR, () => setUseHR(false), 'Settings')}
+                {toggle(useHR, () => setUseHR(true), 'Heart rate')}
               </div>
 
               {useHR ? (
                 <div className="space-y-4">
                   <div className="flex gap-3">
-                    {toggle('sex', sex === 'male', () => { prefill.touch(); setSex('male') }, 'Male')}
-                    {toggle('sex', sex === 'female', () => { prefill.touch(); setSex('female') }, 'Female')}
+                    {toggle(sex === 'male', () => { prefill.touch(); setSex('male') }, 'Male')}
+                    {toggle(sex === 'female', () => { prefill.touch(); setSex('female') }, 'Female')}
                   </div>
                   <div className="grid grid-cols-2 gap-4 items-end">
                     <div>
@@ -326,8 +319,8 @@ export default function CardioCalculator() {
                     <div className="space-y-4">
                       {activity.id === 'run' && (
                         <div className="flex gap-3">
-                          {toggle('surface', !outdoors, () => setOutdoors(false), 'Treadmill')}
-                          {toggle('surface', outdoors, () => setOutdoors(true), 'Outdoors')}
+                          {toggle(!outdoors, () => setOutdoors(false), 'Treadmill')}
+                          {toggle(outdoors, () => setOutdoors(true), 'Outdoors')}
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-4 items-end">
@@ -360,8 +353,8 @@ export default function CardioCalculator() {
                   {activity.kind === 'row' && (
                     <div className="space-y-4">
                       <div className="flex gap-3">
-                        {toggle('rowBy', rowBy === 'watts', () => pickRowBy('watts'), 'Watts')}
-                        {toggle('rowBy', rowBy === 'split', () => pickRowBy('split'), 'Split /500 m')}
+                        {toggle(rowBy === 'watts', () => pickRowBy('watts'), 'Watts')}
+                        {toggle(rowBy === 'split', () => pickRowBy('split'), 'Split /500 m')}
                       </div>
                       {rowBy === 'watts' ? (
                         <div>
@@ -384,8 +377,8 @@ export default function CardioCalculator() {
                   {activity.kind === 'steps' && (
                     <div className="space-y-4">
                       <div className="flex gap-3">
-                        {toggle('stairBy', stairBy === 'level', () => pickStairBy('level'), 'Level')}
-                        {toggle('stairBy', stairBy === 'spm', () => pickStairBy('spm'), 'Steps/min')}
+                        {toggle(stairBy === 'level', () => pickStairBy('level'), 'Level')}
+                        {toggle(stairBy === 'spm', () => pickStairBy('spm'), 'Steps/min')}
                       </div>
                       {stairBy === 'level' ? (
                         <div>
@@ -411,7 +404,7 @@ export default function CardioCalculator() {
                       <p className={fieldLabel}>Stroke</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {activity.strokes.map(s => (
-                          <button key={s.id} type="button" aria-pressed={stroke === s.id} onClick={() => pickStroke(s.id)} className={`relative px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${stroke === s.id ? 'bg-white text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{stroke === s.id && <ActivePill id="cardio-stroke" />}<span className="relative">{s.label}</span></button>
+                          <button key={s.id} type="button" aria-pressed={stroke === s.id} onClick={() => pickStroke(s.id)} className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${stroke === s.id ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{s.label}</button>
                         ))}
                       </div>
                     </div>
@@ -421,7 +414,7 @@ export default function CardioCalculator() {
                     <div>
                       <p className={fieldLabel}>Effort</p>
                       <div className="flex gap-2">
-                        {effortLevels.map((l, i) => chip('effort', level === i, () => setLevel(i), l.label, l.sub))}
+                        {effortLevels.map((l, i) => chip(level === i, () => setLevel(i), l.label, l.sub))}
                       </div>
                       {activity.id === 'elliptical' && (
                         <p className={hint}>Resistance levels and console watts aren't the same from one brand to the next, so this goes by effort. Heart rate is more exact if you have it.</p>

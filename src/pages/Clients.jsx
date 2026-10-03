@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import Reveal from '../components/Reveal'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { ArrowLeft, Plus, ChevronRight, Users } from 'lucide-react'
 import { createClient, CLIENT_NAME_MAX } from '../lib/clients'
@@ -72,20 +71,19 @@ export default function Clients() {
         ) : (
           <div className="bg-white border border-border divide-y divide-border">
             {clients.map((c) => (
-              <Reveal key={c.id}>
-                <Link
-                  to={`/coach/${c.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3.5 no-underline hover:bg-cream transition-colors"
-                >
-                  <div className="min-w-0">
-                    <span className="block text-[14px] font-medium text-text-primary break-words">{c.name || 'Unnamed client'}</span>
-                    <span className="block text-[11px] text-text-light mt-0.5">
-                      {c.programs.length} program{c.programs.length === 1 ? '' : 's'} · updated {fmt(c.updatedAt || c.createdAt)}
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-text-light shrink-0" />
-                </Link>
-              </Reveal>
+              <Link
+                key={c.id}
+                to={`/coach/${c.id}`}
+                className="flex items-center justify-between gap-3 px-4 py-3.5 no-underline hover:bg-cream transition-colors"
+              >
+                <div className="min-w-0">
+                  <span className="block text-[14px] font-medium text-text-primary break-words">{c.name || 'Unnamed client'}</span>
+                  <span className="block text-[11px] text-text-light mt-0.5">
+                    {c.programs.length} program{c.programs.length === 1 ? '' : 's'} · updated {fmt(c.updatedAt || c.createdAt)}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-text-light shrink-0" />
+              </Link>
             ))}
           </div>
         )}

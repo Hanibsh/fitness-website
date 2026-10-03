@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import Reveal from '../components/Reveal'
 import { Link } from 'react-router-dom'
 import { Flame, Target, Beef, Pill, Trophy, TrendingDown, Ruler, Dna, ClipboardList, CalendarRange, Footprints } from 'lucide-react'
 
@@ -91,8 +90,13 @@ export default function Tools() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tools.map((tool) => (
-            <Reveal key={tool.to}>
+          {tools.map((tool, i) => (
+            <motion.div
+              key={tool.to}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.06 }}
+            >
               <Link
                 to={tool.to}
                 className="block bg-white border border-border rounded-xl p-6 no-underline hover:border-border-hover transition-all group h-full"
@@ -103,7 +107,7 @@ export default function Tools() {
                 </h3>
                 <p className="text-text-muted text-[13px] leading-relaxed">{tool.desc}</p>
               </Link>
-            </Reveal>
+            </motion.div>
           ))}
         </div>
       </div>

@@ -1,5 +1,4 @@
 import Modal from './Modal'
-import { useModalClose } from '../lib/modalClose'
 
 // A destructive-action confirmation naming exactly what's being removed —
 // deleting a routine used to fire on a single trash-icon click with no
@@ -17,23 +16,14 @@ export default function ConfirmModal({ title, message, confirmLabel = 'Delete', 
           >
             {confirmLabel}
           </button>
-          <CancelButton />
+          <button
+            onClick={onClose}
+            className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </Modal>
-  )
-}
-
-// Inside the modal, so it can reach the modal's own close and fade out the
-// way the ✕ does, rather than vanishing.
-function CancelButton() {
-  const close = useModalClose()
-  return (
-    <button
-      onClick={close}
-      className="px-5 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
-    >
-      Cancel
-    </button>
   )
 }

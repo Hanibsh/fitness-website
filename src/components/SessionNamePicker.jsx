@@ -40,7 +40,7 @@ export default function SessionNamePicker({ value, onChange }) {
       </div>
 
       {open && matches.length > 0 && (
-        <div className="drop-in absolute z-30 left-0 right-0 mt-1 bg-white border border-border max-h-56 overflow-y-auto shadow-lg">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-border max-h-56 overflow-y-auto shadow-lg">
           {matches.map((t) => (
             <button
               key={t}

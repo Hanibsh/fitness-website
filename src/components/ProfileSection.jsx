@@ -1,5 +1,4 @@
 import { ChevronDown } from 'lucide-react'
-import Collapse from './Collapse'
 
 // One section of the profile page, folded to its title until tapped. The
 // page starts with every section closed, so it reads as a short list instead
@@ -21,11 +20,11 @@ export default function ProfileSection({ id, title, open, onToggle, children }) 
           <ChevronDown className={`w-4 h-4 text-text-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </h2>
-      <Collapse open={open} id={bodyId}>
-        <div className="border-t border-border px-5 sm:px-6 py-6 sm:py-7">
+      {open && (
+        <div id={bodyId} className="border-t border-border px-5 sm:px-6 py-6 sm:py-7">
           {children}
         </div>
-      </Collapse>
+      )}
     </section>
   )
 }
