@@ -11,7 +11,7 @@ import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
+import { scheduleMode, plannedDayForDate, todayPlan, hasPlannedWork } from '../lib/program'
 import { liveDraft } from '../lib/draftState'
 import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -24,6 +24,7 @@ import {
   InjuriesCard, DailyTargetsCard, TrainingTimeCard, SplitProgressCard,
 } from '../components/DashboardInsightCards'
 import BlockModal from '../components/BlockModal'
+import NewWorkoutModal from '../components/NewWorkoutModal'
 import { saveProfile } from '../lib/profile'
 import { loggedExerciseNames } from '../lib/workoutStats'
 import {
@@ -168,7 +169,7 @@ function CoachingBanner() {
 // half-logged workout waited one tap away. Anyone who trains with the phone in
 // their pocket lands here between exercises, so this is the screen that has to
 // answer "where was I?".
-function SessionActions({ live, plannedDay, firstTime, onStartNew }) {
+function SessionActions({ live, plannedDay, firstTime, onStartNew, onNewWorkout = null }) {
   // Mid-session: pick up where you left off, or deliberately set it aside and
   // begin a fresh one.
   if (live) {
@@ -234,25 +235,45 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew }) {
           </p>
         </div>
         {/* Following the plan and training something else are both ordinary
-            days, so both are one tap. The blank one carries no nav state at
-            all, which is what makes it blank — the logger pre-fills only from
-            a startPlannedDay link. */}
+            days, so both are one tap. "Something else" opens the New workout
+            chooser (another split day, an empty log…) when there's more than
+            one way to start; otherwise it's the blank log, which carries no
+            nav state at all — the logger pre-fills only from a
+            startPlannedDay link. */}
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          <Link
-            to="/log"
-            state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
-            className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" /> {label}
-          </Link>
-          {plannedDay && (
+          {plannedDay || !onNewWorkout ? (
+            <Link
+              to="/log"
+              state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> {label}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onNewWorkout}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 border-none cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> {label}
+            </button>
+          )}
+          {plannedDay && (onNewWorkout ? (
+            <button
+              type="button"
+              onClick={onNewWorkout}
+              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+            >
+              New workout
+            </button>
+          ) : (
             <Link
               to="/log"
               className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 no-underline cursor-pointer transition-colors"
             >
               New workout
             </Link>
-          )}
+          ))}
         </div>
       </div>
     </div>
@@ -341,6 +362,7 @@ export default function Dashboard() {
   // local-only, exactly as in the logger — there's nothing to sync).
   const [draft, setDraft] = useState(() => getDraft())
   const [confirmStartNew, setConfirmStartNew] = useState(false)
+  const [newWorkoutOpen, setNewWorkoutOpen] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(() => !!getSplitNudgeDismissed())
   // Which cards show and in what order — chosen on the profile page.
   const { layout } = useDashboardLayout()
@@ -498,6 +520,10 @@ export default function Dashboard() {
   // Engine v3: the advisor's targeted volume-trimming recommendations.
   const advice = useMemo(() => adviseTraining(sessions, { blocks, annotations, injuries }), [sessions, blocks, annotations, injuries])
 
+  // The New workout chooser only earns its tap when it offers more than the
+  // blank log — today, another day of the active split.
+  const canChooseWorkout = !!program?.days?.some((d) => d.kind !== 'rest' && hasPlannedWork(d))
+
   const exerciseNames = useMemo(() => loggedExerciseNames(sessions), [sessions])
   // Best working-set weight per exercise (display unit) — the "current" value
   // behind each lift goal.
@@ -537,7 +563,7 @@ export default function Dashboard() {
       <div className="pt-24 pb-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <CoachingBanner />
-          <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} />
+          <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null} />
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
             <div className="flex items-center gap-2 mb-3">
@@ -563,6 +589,7 @@ export default function Dashboard() {
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
         )}
+        {newWorkoutOpen && <NewWorkoutModal program={program} onClose={() => setNewWorkoutOpen(false)} />}
         {confirmStartNew && live && (
           <StartNewConfirm live={live} stashOccupied={stashOccupied} onConfirm={startNewSession} onClose={() => setConfirmStartNew(false)} />
         )}
@@ -1294,6 +1321,7 @@ export default function Dashboard() {
           live={live}
           plannedDay={plan.status === 'train' ? plan.day : null}
           onStartNew={() => setConfirmStartNew(true)}
+          onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null}
         />
         {suggestSplit && <BuildSplitNudge count={sessions.length} onDismiss={dismissNudge} />}
 
@@ -1335,6 +1363,9 @@ export default function Dashboard() {
         <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
       )}
 
+      {newWorkoutOpen && (
+        <NewWorkoutModal program={program} todayId={plan.status === 'train' ? plan.day.id : null} onClose={() => setNewWorkoutOpen(false)} />
+      )}
       {confirmStartNew && live && (
 
         <StartNewConfirm live={live} stashOccupied={stashOccupied} onConfirm={startNewSession} onClose={() => setConfirmStartNew(false)} />
