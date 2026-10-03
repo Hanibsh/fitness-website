@@ -3,16 +3,20 @@
 // A layout is { order, hidden }: `order` lists EVERY card id (shown or not), so
 // a card switched off keeps its place and comes back where it was. The coaching
 // banner, the session row and the coaching block at the bottom aren't cards:
-// they're fixed, and never in this list.
+// they're fixed, and never in this list (the bottom block is gone since
+// 2026-10-03; only the banner remains).
 //
 // Stored on the device always, and on the account (profiles.dashboard_layout)
 // when signed in, so it follows you between devices.
 
 // `half` cards share a row on a wide screen whenever two sit next to each
-// other. `defaultOn: false` cards start switched off.
+// other. `defaultOn: false` cards start switched off. `splitFrom` marks a card
+// carved out of another: a saved layout that predates it takes on that
+// card's on/off state.
 export const DASHBOARD_CARDS = [
   { id: 'today', label: 'Today', sub: 'Streak, last workout, today and tomorrow' },
-  { id: 'calendar', label: 'Calendar & this month', sub: 'Your month at a glance' },
+  { id: 'calendar', label: 'Workout calendar', sub: 'Your training days, month by month' },
+  { id: 'month', label: 'This month', sub: 'Workouts, volume, PRs and muscle focus', splitFrom: 'calendar' },
   { id: 'adherence', label: 'Plan adherence', sub: 'Sessions done vs planned', defaultOn: false },
   { id: 'injuries', label: 'Injuries', sub: 'Pain trend from your check-ins', defaultOn: false },
   { id: 'volume', label: 'Muscle volume', sub: 'Effective sets per muscle' },
@@ -45,19 +49,26 @@ export function dashboardCard(id) {
 }
 
 // Any stored value in, a complete layout out: unknown ids dropped, duplicates
-// removed, and cards it has never seen (new in an update) added at the end —
-// switched on or off as the card itself defaults.
+// removed, and cards it has never seen (new in an update) slotted in right
+// after the card they follow in DASHBOARD_CARDS — beside their relatives
+// rather than at the bottom — switched on or off as the card itself defaults,
+// or as the card it was split from was.
 export function normalizeLayout(saved) {
   const order = []
   for (const id of Array.isArray(saved?.order) ? saved.order : []) {
     if (CARD_BY_ID.has(id) && !order.includes(id)) order.push(id)
   }
   const hidden = new Set(Array.isArray(saved?.hidden) ? saved.hidden.filter((id) => CARD_BY_ID.has(id)) : [])
-  for (const card of DASHBOARD_CARDS) {
-    if (order.includes(card.id)) continue
-    order.push(card.id)
-    if (card.defaultOn === false) hidden.add(card.id)
-  }
+  DASHBOARD_CARDS.forEach((card, i) => {
+    if (order.includes(card.id)) return
+    const before = DASHBOARD_CARDS.slice(0, i).reverse().find((c) => order.includes(c.id))
+    order.splice(before ? order.indexOf(before.id) + 1 : 0, 0, card.id)
+    if (card.splitFrom && order.includes(card.splitFrom) && saved?.order) {
+      if (hidden.has(card.splitFrom)) hidden.add(card.id)
+    } else if (card.defaultOn === false) {
+      hidden.add(card.id)
+    }
+  })
   return { order, hidden: order.filter((id) => hidden.has(id)) }
 }
 

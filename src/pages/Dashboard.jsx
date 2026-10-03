@@ -329,7 +329,6 @@ export default function Dashboard() {
   const [unit, setUnit] = useState(() => getUnit())
   const [selectedDay, setSelectedDay] = useState(null) // { date, sessions }
   const [summarySession, setSummarySession] = useState(null) // the open summary card
-  const [monthPage, setMonthPage] = useState('calendar') // calendar/summary card: which page is showing
   const calendarSectionRef = useRef(null)
   const [goals, setGoals] = useState(() => getGoals())
   const [editingGoals, setEditingGoals] = useState(false)
@@ -408,7 +407,6 @@ export default function Dashboard() {
   function goToDay(date, daySessions) {
     // With the calendar card switched off there's nothing here to scroll to.
     if (layout.hidden.includes('calendar')) return navigate('/calendar')
-    setMonthPage('calendar')
     setSelectedDay({ date, sessions: daySessions })
     calendarSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -735,103 +733,70 @@ export default function Dashboard() {
         </div>
       </motion.div>
     ),
-    // SECTION 2 — CALENDAR / THIS MONTH (paged: calendar first, summary second)
+    // SECTION 2 — WORKOUT CALENDAR (its own card since 2026-10-03; it used to
+    // page between the calendar and the month summary with a toggle)
     calendar: (
       <div ref={calendarSectionRef}>
       <Card>
         <SectionHeading
           icon={CalendarDays}
           right={
-            // Three controls (~353px min-content) can't fit a 320px screen's
-            // ~287px card interior, so this group has to be able to break
-            // internally: shrink-0 pinned it wide and blew out the page. The
-            // parent's flex-wrap alone doesn't help — it only moves the group
-            // to its own line, still 353px wide. flex-wrap here drops its
-            // min-content to the widest single control instead.
-            <div className="flex items-center justify-end gap-x-3 gap-y-2 flex-wrap">
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
-              >
-                <CalendarDays className="w-3.5 h-3.5" /> Full calendar
-              </Link>
-              <Link
-                to={program ? `/split/${program.id}` : '/programs'}
-                className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
-              >
-                <CalendarRange className="w-3.5 h-3.5" /> Edit split
-              </Link>
-              <div className="flex border border-border">
-                <button
-                  onClick={() => setMonthPage('calendar')}
-                  className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
-                    monthPage === 'calendar' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Calendar
-                </button>
-                <button
-                  onClick={() => setMonthPage('summary')}
-                  className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
-                    monthPage === 'summary' ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  Summary
-                </button>
-              </div>
-            </div>
+            <Link
+              to="/calendar"
+              className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
+            >
+              <CalendarDays className="w-3.5 h-3.5" /> Full calendar
+            </Link>
           }
         >
-          {monthPage === 'calendar' ? 'Workout calendar' : 'This month'}
+          Workout calendar
         </SectionHeading>
-
-        {monthPage === 'calendar' ? (
-          <>
-            <WorkoutCalendar
-              sessions={sessions}
-              program={program}
-              annotations={annotations}
-              injuries={injuries}
-              selectedDate={selectedDay?.date}
-              onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
-            />
-            <CalendarDayPanel
-              selectedDay={selectedDay}
-              program={program}
-              annotations={annotations}
-              sessions={sessions}
-              injuries={injuries}
-              onCheckin={(injury, pain) => checkinInjury(injury, pain, { date: selectedDay.date.getTime() })}
-              onOpenSummary={setSummarySession}
-              backTo="/"
-              backLabel="Dashboard"
-            />
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <MiniStat label="Workouts" value={month.workouts} />
-              <MiniStat
-                label="Volume"
-                value={`${fmtNum(month.volume)} ${unit}`}
-                sub={volumeDelta !== null ? `${volumeDelta >= 0 ? '+' : ''}${volumeDelta}% vs last month` : null}
-              />
-              <MiniStat label="Avg RIR" value={month.avgRir ?? '—'} />
-              <MiniStat label="PRs" value={month.prs} />
-              <MiniStat label="Exercises" value={month.exercises} />
-            </div>
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-[10px] uppercase tracking-wider text-text-light mb-3">Muscle focus · hard sets this month</p>
-              {monthMuscles.length === 0 ? (
-                <p className="text-[13px] text-text-muted">No sets logged this month yet.</p>
-              ) : (
-                <MuscleDonut items={monthMuscles.map((x) => ({ muscle: x.muscle, label: displayMuscle(x.muscle), value: x.sets }))} />
-              )}
-            </div>
-          </>
-        )}
+        <WorkoutCalendar
+          sessions={sessions}
+          program={program}
+          annotations={annotations}
+          injuries={injuries}
+          selectedDate={selectedDay?.date}
+          onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
+        />
+        <CalendarDayPanel
+          selectedDay={selectedDay}
+          program={program}
+          annotations={annotations}
+          sessions={sessions}
+          injuries={injuries}
+          onCheckin={(injury, pain) => checkinInjury(injury, pain, { date: selectedDay.date.getTime() })}
+          onOpenSummary={setSummarySession}
+          backTo="/"
+          backLabel="Dashboard"
+        />
       </Card>
       </div>
+    ),
+    // SECTION 2b — THIS MONTH (the calendar card's old second page)
+    month: (
+      <Card>
+        <SectionHeading icon={CalendarRange}>This month</SectionHeading>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <MiniStat label="Workouts" value={month.workouts} />
+          <MiniStat
+            label="Volume"
+            value={`${fmtNum(month.volume)} ${unit}`}
+            sub={volumeDelta !== null ? `${volumeDelta >= 0 ? '+' : ''}${volumeDelta}% vs last month` : null}
+          />
+          <MiniStat label="Avg RIR" value={month.avgRir ?? '—'} />
+          <MiniStat label="PRs" value={month.prs} />
+          <MiniStat label="Exercises" value={month.exercises} />
+        </div>
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-[10px] uppercase tracking-wider text-text-light mb-3">Muscle focus · hard sets this month</p>
+          {monthMuscles.length === 0 ? (
+            <p className="text-[13px] text-text-muted">No sets logged this month yet.</p>
+          ) : (
+            <MuscleDonut items={monthMuscles.map((x) => ({ muscle: x.muscle, label: displayMuscle(x.muscle), value: x.sets }))} />
+          )}
+        </div>
+      </Card>
     ),
     // SECTION 5 — MUSCLE VOLUME (effective sets, range-selectable)
     volume: (
