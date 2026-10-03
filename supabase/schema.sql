@@ -57,6 +57,9 @@ create table if not exists public.profiles (
   -- Which dashboard cards show and in what order: { order: [ids], hidden: [ids] }
   -- (lib/dashboardLayout.js). Unknown ids are dropped on read.
   dashboard_layout jsonb,
+  -- The site theme from Profile → Appearance (an id from lib/theme.js THEMES),
+  -- so it follows you between devices. Unknown ids are ignored on read.
+  theme text,
   share_data boolean not null default false,
   -- Set by the coach in the dashboard to mark who's a client.
   coaching_status text not null default 'none' check (coaching_status in ('none', 'lead', 'client')),
@@ -86,6 +89,7 @@ alter table public.profiles add column if not exists daily_steps int;
 alter table public.profiles add column if not exists diet text;
 alter table public.profiles add column if not exists training_start_year int;
 alter table public.profiles add column if not exists dashboard_layout jsonb;
+alter table public.profiles add column if not exists theme text;
 alter table public.profiles add column if not exists is_coach boolean not null default false;
 
 alter table public.profiles enable row level security;

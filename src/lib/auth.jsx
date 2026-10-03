@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { fetchProfile } from './profile'
+import { fetchProfile, saveProfile } from './profile'
+import { setTheme, storedTheme, themeById } from './theme'
 import { getCachedNickname, getExerciseNotesMap, saveCachedNickname, saveExerciseNotesMap } from './workoutStore'
 import { fetchRemoteExerciseNotes, upsertRemoteExerciseNotes } from './workoutRemote'
 
@@ -17,6 +18,20 @@ import { fetchRemoteExerciseNotes, upsertRemoteExerciseNotes } from './workoutRe
 // dashboard greets you by it on the first frame, so a slow or failed profile
 // fetch would otherwise silently drop you back to your email name until you
 // retyped it. Cached value first, server value once it lands.
+// The theme follows the account, like the dashboard layout: a saved one wins
+// over the device's and becomes the device's too, so the next load paints it
+// before the profile arrives. With none saved yet, this device's pick seeds
+// the account. `undefined` means the column isn't in the DB yet — leave it.
+function reconcileTheme(userId, p) {
+  if (p.theme === undefined) return
+  if (themeById(p.theme)) {
+    if (p.theme !== storedTheme()) setTheme(p.theme)
+    return
+  }
+  const local = storedTheme()
+  if (local) saveProfile(userId, { theme: local }).catch(() => {})
+}
+
 const AuthContext = createContext({
   user: null,
   loading: true,
@@ -78,6 +93,7 @@ export function AuthProvider({ children }) {
         const name = p.display_name || ''
         setNicknameState(name)
         saveCachedNickname(user.id, name)
+        reconcileTheme(user.id, p)
       })
       .catch((e) => {
         // Deliberately keep the cached name rather than blanking the greeting:

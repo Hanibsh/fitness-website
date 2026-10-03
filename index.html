@@ -29,7 +29,7 @@
     <script>
       (function () {
         try {
-          var bg = { light: '#FAF9F6', dark: '#15161a', olive: '#EFE9DA', burgundy: '#2B1016', gold: '#0F0E0C', colorblind: '#FAF9F6' }
+          var bg = { light: '#FAF9F6', dark: '#15161a', olive: '#EFE9DA', burgundy: '#2B1016', gold: '#0F0E0C' }
           var stored = localStorage.getItem('leon_theme')
           var theme = bg[stored] ? stored : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           document.documentElement.dataset.theme = theme

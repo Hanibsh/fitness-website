@@ -314,40 +314,6 @@
   --color-accent-soft: rgba(200, 171, 110, 0.4);
 }
 
-/* Color-blind friendly — the light theme's page with chart colours chosen for
-   separation alone, not mood. Hues stay in each muscle's family, chroma is
-   free. Validated on the white card: muscles worst adjacent CVD ΔE 14.9 (light
-   is 7.4), normal-vision 18.2, all ≥ 3:1; series separate on EVERY pair, not
-   just neighbours (CVD 8.7 all-pairs — Okabe-Ito manages 7.6), all ≥ 3:1. Two
-   steps sit a hair under the 0.10 chroma floor (quads 0.097, series-3 0.098)
-   — the sRGB gamut edge at that lightness; they read as colour, not grey.
-   Tiers keep the light theme's blue ramp: one hue, monotone lightness, which
-   colour vision deficiency doesn't disturb. Muted and light text are darker
-   than in light so every text step clears 4.5:1. */
-:root[data-theme='colorblind'] {
-  --color-muscle-chest: #2a61b1;
-  --color-muscle-back: #399d57;
-  --color-muscle-shoulders: #7e479c;
-  --color-muscle-biceps: #a58d15;
-  --color-muscle-triceps: #a43b35;
-  --color-muscle-forearms: #009f9c;
-  --color-muscle-quads: #765100;
-  --color-muscle-hamstrings: #78931d;
-  --color-muscle-glutes: #732886;
-  --color-muscle-calves: #004ca7;
-  --color-muscle-abs: #777ad8;
-  --color-muscle-adductors: #69737d;
-  --color-series-1: #2b7cb9;
-  --color-series-2: #f0687e;
-  --color-series-3: #00745a;
-  --color-series-4: #9a3c00;
-  --color-series-5: #7e2aa0;
-  --color-series-6: #9e7f00;
-  --color-text-secondary: #474747;
-  --color-text-muted: #5c5c5c;
-  --color-text-light: #6a6a6a;
-}
-
 :root[data-theme='olive'] ::selection {
   background: rgba(58, 70, 40, 0.14);
   color: var(--color-text-primary);

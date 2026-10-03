@@ -1,11 +1,24 @@
 import { Check } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { saveProfile } from '../lib/profile'
 import { THEMES, setTheme, useTheme } from '../lib/theme'
 
 // The profile page's Appearance section: one card per theme, drawn in that
 // theme's own colours (page, card, ink) whatever the current theme is, so you
-// can see what you're picking. Applies on tap; saved on this device.
+// can see what you're picking. Applies on tap; saved on this device, and on
+// the account when signed in so your other devices follow.
 export default function ThemePicker() {
   const current = useTheme()
+  const { user, mergeProfile } = useAuth()
+
+  function pick(id) {
+    setTheme(id)
+    if (user) {
+      mergeProfile({ theme: id })
+      saveProfile(user.id, { theme: id }).catch(() => {})
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {THEMES.map((t) => {
@@ -15,7 +28,7 @@ export default function ThemePicker() {
           <button
             key={t.id}
             type="button"
-            onClick={() => setTheme(t.id)}
+            onClick={() => pick(t.id)}
             aria-pressed={on}
             className={`text-left p-0 cursor-pointer bg-white border transition-colors ${
               on ? 'border-text-primary' : 'border-border hover:border-border-hover'

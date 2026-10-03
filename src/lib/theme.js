@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 
-// Site themes. Preference is stored on the device; with nothing stored we
-// follow the OS (light or dark). The actual switch is just `data-theme` on
+// Site themes. Preference is stored on the device, and on the account when
+// signed in (profiles.theme — auth.jsx brings it to each device you sign in
+// on); with nothing stored we follow the OS (light or dark). The actual
+// switch is just `data-theme` on
 // <html>, which re-points the --color-* variables (see index.css). index.html
 // sets it before first paint to avoid a flash; this module keeps it in sync
 // when the theme changes from the profile's Appearance picker (the only
@@ -13,14 +15,13 @@ import { useEffect, useState } from 'react'
 // browser chrome — keep it, and the copy in index.html, in step with
 // --color-cream in index.css. `swatch` is what the picker draws:
 // page, card, ink. `chart` is the first three series colours, so the picker
-// shows each theme's charts too (the colour-blind theme's whole difference).
+// shows each theme's charts too.
 export const THEMES = [
   { id: 'light', label: 'Light', tone: 'light', bg: '#FAF9F6', swatch: ['#FAF9F6', '#FFFFFF', '#1a1a1a'], chart: ['#2a78d6', '#eb6834', '#1baf7a'] },
   { id: 'dark', label: 'Dark', tone: 'dark', bg: '#15161a', swatch: ['#15161a', '#1e2027', '#f0efeb'], chart: ['#3987e5', '#d95926', '#199e70'] },
   { id: 'olive', label: 'Olive & cream', tone: 'light', bg: '#EFE9DA', swatch: ['#EFE9DA', '#F8F4E9', '#3A4628'], chart: ['#4c7fb9', '#c07a4f', '#226531'] },
   { id: 'burgundy', label: 'Burgundy & black', tone: 'dark', bg: '#2B1016', swatch: ['#2B1016', '#150F10', '#EFE4D4'], chart: ['#4e81bc', '#c57f52', '#33733e'] },
   { id: 'gold', label: 'Gold & black', tone: 'dark', bg: '#0F0E0C', swatch: ['#0F0E0C', '#1A1814', '#C8AB6E'], chart: ['#4e81bc', '#c57f52', '#33733e'] },
-  { id: 'colorblind', label: 'Color-blind friendly', tone: 'light', bg: '#FAF9F6', swatch: ['#FAF9F6', '#FFFFFF', '#1a1a1a'], chart: ['#2b7cb9', '#f0687e', '#00745a'] },
 ]
 
 const KEY = 'leon_theme'

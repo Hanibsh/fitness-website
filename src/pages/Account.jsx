@@ -292,10 +292,10 @@ export default function Account() {
     </ProfileSection>
   )
 
-  // Device setting like the rest timer, so in both branches too.
+  // Works signed out too (device only), so in both branches.
   const appearanceSection = (
     <ProfileSection id="appearance" title="Appearance" {...sec('appearance')}>
-      <p className="text-[13px] text-text-muted mb-4">Saved on this device.</p>
+      <p className="text-[13px] text-text-muted mb-4">{user ? 'Saved to your account.' : 'Saved on this device.'}</p>
       <ThemePicker />
     </ProfileSection>
   )
