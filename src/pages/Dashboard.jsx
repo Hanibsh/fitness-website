@@ -138,7 +138,9 @@ function ProgressGoal({ label, value, target, unit = '' }) {
 }
 
 // Compact 1:1 coaching banner shown at the top of the dashboard — the first
-// thing a logged-in user sees, since coaching is the point of the brand.
+// thing a logged-in user sees, since coaching is the point of the brand. The
+// only coaching card on the page: a second, fuller one at the bottom was
+// dropped 2026-10-03 (one is enough — Hani).
 function CoachingBanner() {
   return (
     <Link to="/contact" className="block group no-underline">
@@ -156,26 +158,6 @@ function CoachingBanner() {
         <ArrowRight className="w-4 h-4 text-text-light shrink-0 sm:hidden group-hover:text-text-primary transition-colors" />
       </div>
     </Link>
-  )
-}
-
-// Fuller coaching call-to-action shown below the dashboard stats.
-function CoachingCTA() {
-  return (
-    <div className="bg-text-primary text-cream p-6 sm:p-8 text-center">
-      <MessageCircle className="w-5 h-5 text-cream-80 mx-auto mb-4" />
-      <h2 className="font-heading text-2xl sm:text-3xl font-medium mb-3">Ready to take it further?</h2>
-      <p className="text-[14px] text-cream-70 max-w-md mx-auto mb-6 leading-relaxed">
-        A dashboard tracks your progress — a coach in your corner accelerates it. I build the plan,
-        fix your form, and adjust it around your life so you actually stick to it.
-      </p>
-      <Link
-        to="/contact"
-        className="inline-flex items-center gap-2 bg-cream text-text-primary font-medium px-6 py-3 no-underline cursor-pointer text-[14px] hover:bg-white transition-colors"
-      >
-        Book a free intro chat <ArrowRight className="w-3.5 h-3.5" />
-      </Link>
-    </div>
   )
 }
 
@@ -579,7 +561,6 @@ export default function Dashboard() {
 
           </motion.div>
           <BodyweightTracker user={user} unit={unit} />
-          <CoachingCTA />
         </div>
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
@@ -1373,8 +1354,6 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* SECTION 15 — COACHING CTA */}
-        <CoachingCTA />
       </div>
 
       {editingGoals && (

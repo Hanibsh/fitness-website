@@ -1,4 +1,4 @@
-import { Sparkles, Upload, Plus } from 'lucide-react'
+import { Sparkles, FileInput, Plus } from 'lucide-react'
 
 // The three ways to start a split, side by side: have one built, bring one in
 // (the program Leon sent you — a .txt file or its text), or lay one out
@@ -10,7 +10,7 @@ import { Sparkles, Upload, Plus } from 'lucide-react'
 // the generator in place).
 const CHOICES = [
   { key: 'build', icon: Sparkles, title: 'Build me a split', text: 'Answer a few questions and it writes the whole program around your week.' },
-  { key: 'import', icon: Upload, title: 'I have a program', text: 'Got one from Leon? Open the .txt file or paste the text.' },
+  { key: 'import', icon: FileInput, title: 'I have a program', text: 'Got one from Leon? Open the .txt file or paste the text.' },
   { key: 'manual', icon: Plus, title: 'I’ll make my own', text: 'Lay out your days and pick every exercise yourself, like the logger.' },
 ]
 

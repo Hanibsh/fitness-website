@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { ArrowLeft, LogOut, Check, Users, Upload } from 'lucide-react'
+import { ArrowLeft, LogOut, Check, Users, FileInput } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { fetchProfile, saveProfile } from '../lib/profile'
 import { validateNickname, NICKNAME_MAX } from '../lib/nickname'
@@ -16,6 +16,7 @@ import { trainingYearsFromStart } from '../lib/profilePrefill'
 import FocusPicker from '../components/FocusPicker'
 import DashboardSettings from '../components/DashboardSettings'
 import ThemePicker from '../components/ThemePicker'
+import ProfileSection from '../components/ProfileSection'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
@@ -83,8 +84,24 @@ export default function Account() {
   // The dashboard's "Customize" link arrives with #dashboard; the router doesn't
   // scroll to a hash by itself, and the section only exists once loading ends.
   const location = useLocation()
+
+  // Which sections are open (components/ProfileSection.jsx). All start closed;
+  // the dashboard's Customize link opens its own.
+  const [openSections, setOpenSections] = useState(() => new Set(location.hash === '#dashboard' ? ['dashboard'] : []))
+  const openSection = (id) => setOpenSections((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  const sec = (id) => ({
+    open: openSections.has(id),
+    onToggle: () => setOpenSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    }),
+  })
+
   useEffect(() => {
     if (location.hash !== '#dashboard' || (user && loading)) return
+    openSection('dashboard')
     document.getElementById('dashboard')?.scrollIntoView({ block: 'start' })
   }, [location.hash, loading, user])
 
@@ -157,36 +174,36 @@ export default function Account() {
       return
     }
     const nick = validateNickname(nickname)
-    if (!nick.ok) { setError(nick.error); return }
+    if (!nick.ok) { openSection('about'); setError(nick.error); return }
     if (birthYear !== '') {
       const y = Number(birthYear)
       if (!Number.isInteger(y) || y < MIN_BIRTH_YEAR || y > MAX_BIRTH_YEAR) {
-        setError(`Birth year should be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`); return
+        openSection('about'); setError(`Birth year should be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`); return
       }
     }
     if (height !== '') {
       const h = Number(height), b = HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg
       if (!Number.isFinite(h) || h < b.min || h > b.max) {
-        setError(`Height should be between ${b.min} and ${b.max} ${b.label}.`); return
+        openSection('body'); setError(`Height should be between ${b.min} and ${b.max} ${b.label}.`); return
       }
     }
     if (outOfBounds(bodyFat, BODY_FAT_BOUNDS)) {
-      setError(`Body fat should be between ${BODY_FAT_BOUNDS.min} and ${BODY_FAT_BOUNDS.max}%.`); return
+      openSection('body'); setError(`Body fat should be between ${BODY_FAT_BOUNDS.min} and ${BODY_FAT_BOUNDS.max}%.`); return
     }
     for (const [label, v, bounds] of [['Wrist', wrist, WRIST_BOUNDS], ['Ankle', ankle, ANKLE_BOUNDS]]) {
       const b = bounds[unit] || bounds.kg
-      if (outOfBounds(v, b)) { setError(`${label} should be between ${b.min} and ${b.max} ${b.label}.`); return }
+      if (outOfBounds(v, b)) { openSection('body'); setError(`${label} should be between ${b.min} and ${b.max} ${b.label}.`); return }
     }
     if (outOfBounds(dailySteps, STEPS_BOUNDS)) {
-      setError(`Daily steps should be between ${STEPS_BOUNDS.min} and ${STEPS_BOUNDS.max.toLocaleString()}.`); return
+      openSection('activity'); setError(`Daily steps should be between ${STEPS_BOUNDS.min} and ${STEPS_BOUNDS.max.toLocaleString()}.`); return
     }
     if (trainingStart !== '') {
       const y = Number(trainingStart)
       if (!Number.isInteger(y) || y < MIN_START_YEAR || y > NOW_YEAR) {
-        setError(`The year you started training should be between ${MIN_START_YEAR} and ${NOW_YEAR}.`); return
+        openSection('training'); setError(`The year you started training should be between ${MIN_START_YEAR} and ${NOW_YEAR}.`); return
       }
       if (birthYear !== '' && y < Number(birthYear)) {
-        setError('The year you started training is before your birth year.'); return
+        openSection('training'); setError('The year you started training is before your birth year.'); return
       }
     }
     setSaving(true)
@@ -243,15 +260,12 @@ export default function Account() {
 
   const labelCls = 'text-[11px] text-text-muted uppercase tracking-wider block mb-2'
   const inputCls = 'w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors'
-  const cardCls = 'bg-white border border-border p-6 sm:p-9 space-y-7'
-  const sectionHeadCls = 'font-heading text-xl font-medium text-text-primary mb-4'
 
   // Rendered in both branches below — it's device settings, not account data,
   // so it has to survive the logged-out short-circuit.
   const loggingSection = (
-    <section>
-      <h2 className={sectionHeadCls}>Logging</h2>
-      <div className="bg-white border border-border p-6 sm:p-9">
+    <ProfileSection id="logging" title="Logging" {...sec('logging')}>
+      <div>
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -268,26 +282,24 @@ export default function Account() {
         </label>
         <p className="text-[12px] text-text-light mt-4">Saved on this device, straight away.</p>
       </div>
-    </section>
+    </ProfileSection>
   )
 
   // Also in both branches: signed out it lives on this device only. The
   // dashboard's "Customize" link lands here (#dashboard).
   const dashboardSection = (
-    <section id="dashboard" style={{ scrollMarginTop: 'calc(5rem + env(safe-area-inset-top, 0px))' }}>
-      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Dashboard</h2>
+    <ProfileSection id="dashboard" title="Dashboard" {...sec('dashboard')}>
       <p className="text-[13px] text-text-muted mb-4">Pick your cards and their order.</p>
       <DashboardSettings />
-    </section>
+    </ProfileSection>
   )
 
   // Device setting like Logging, so in both branches too.
   const appearanceSection = (
-    <section>
-      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Appearance</h2>
+    <ProfileSection id="appearance" title="Appearance" {...sec('appearance')}>
       <p className="text-[13px] text-text-muted mb-4">Saved on this device, straight away.</p>
       <ThemePicker />
-    </section>
+    </ProfileSection>
   )
 
   return (
@@ -306,7 +318,7 @@ export default function Account() {
               <p className="text-text-muted text-[15px] mt-6 mb-10">
                 You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
               </p>
-              <div className="space-y-10">
+              <div className="space-y-3">
                 {dashboardSection}
                 {appearanceSection}
                 {loggingSection}
@@ -325,7 +337,7 @@ export default function Account() {
               <div className="flex flex-wrap gap-x-5 gap-y-2 mb-3">
                 {/* A split sent as text can fill this page in too. */}
                 <Link to="/import" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline transition-colors">
-                  <Upload className="w-4 h-4" /> Import from a text file
+                  <FileInput className="w-4 h-4" /> Import from a text file
                 </Link>
                 {/* The coach's own account only (profiles.is_coach). */}
                 {isCoach && (
@@ -339,11 +351,10 @@ export default function Account() {
                 Everything here is optional — fill in whatever helps us tailor your training, and skip or clear the rest anytime. Tap a selected option again to clear it.
               </p>
 
-              <div className="space-y-10">
+              <div className="space-y-3">
                 {/* ---- About you ---------------------------------------------------- */}
-                <section>
-                  <h2 className={sectionHeadCls}>About you</h2>
-                  <div className={cardCls}>
+                <ProfileSection id="about" title="About you" {...sec('about')}>
+                  <div className="space-y-7">
                     <div>
                       <label className={labelCls}>Nickname</label>
                       <input
@@ -384,15 +395,14 @@ export default function Account() {
                       </div>
                     </div>
                   </div>
-                </section>
+                </ProfileSection>
 
                 {/* ---- Your body ---------------------------------------------------- */}
-                <section>
-                  <h2 className={sectionHeadCls}>Your body</h2>
-                  <p className="text-[13px] text-text-muted -mt-2 mb-4 leading-relaxed">
+                <ProfileSection id="body" title="Your body" {...sec('body')}>
+                  <p className="text-[13px] text-text-muted mb-6 leading-relaxed">
                     The calculators fill these in for you, so you only measure once. Update them as they change.
                   </p>
-                  <div className={cardCls}>
+                  <div className="space-y-7">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Bodyweight ({unit})</label>
@@ -467,12 +477,11 @@ export default function Account() {
                       </p>
                     </div>
                   </div>
-                </section>
+                </ProfileSection>
 
                 {/* ---- Activity & diet --------------------------------------------- */}
-                <section>
-                  <h2 className={sectionHeadCls}>Activity &amp; diet</h2>
-                  <div className={cardCls}>
+                <ProfileSection id="activity" title="Activity & diet" {...sec('activity')}>
+                  <div className="space-y-7">
                     <div>
                       <label className={labelCls}>Daily steps</label>
                       <NumberField
@@ -492,15 +501,14 @@ export default function Account() {
                       </div>
                     </div>
                   </div>
-                </section>
+                </ProfileSection>
 
                 {/* ---- Your training ----------------------------------------------- */}
-                <section>
-                  <h2 className={sectionHeadCls}>Your training</h2>
-                  <p className="text-[13px] text-text-muted -mt-2 mb-4 leading-relaxed">
+                <ProfileSection id="training" title="Your training" {...sec('training')}>
+                  <p className="text-[13px] text-text-muted mb-6 leading-relaxed">
                     This is what we'll use to tailor your training when workout programs land.
                   </p>
-                  <div className={cardCls}>
+                  <div className="space-y-7">
                     <div>
                       <label className={labelCls}>Primary goal</label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -549,7 +557,7 @@ export default function Account() {
                       <FocusPicker value={focusMuscles} onChange={(next) => { setFocusMuscles(next); edited() }} />
                     </div>
                   </div>
-                </section>
+                </ProfileSection>
 
                 {/* ---- Dashboard --------------------------------------------------- */}
                 {dashboardSection}
@@ -561,9 +569,8 @@ export default function Account() {
                 {loggingSection}
 
                 {/* ---- Privacy ----------------------------------------------------- */}
-                <section>
-                  <h2 className={sectionHeadCls}>Privacy</h2>
-                  <div className="bg-white border border-border p-6 sm:p-9">
+                <ProfileSection id="privacy" title="Privacy" {...sec('privacy')}>
+                  <div>
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -577,7 +584,7 @@ export default function Account() {
                       </span>
                     </label>
                   </div>
-                </section>
+                </ProfileSection>
               </div>
 
               {loadFailed && (

@@ -13,7 +13,7 @@ export default function DashboardSettings() {
     'w-8 h-8 inline-flex items-center justify-center text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
 
   return (
-    <div className="bg-white border border-border p-4 sm:p-6">
+    <div>
       <ul className="list-none m-0 p-0 divide-y divide-border">
         {layout.order.map((id, i) => {
           const card = dashboardCard(id)

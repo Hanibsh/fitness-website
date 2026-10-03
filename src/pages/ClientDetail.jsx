@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Sparkles, FileText, Trash2, X, Upload } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput } from 'lucide-react'
 import NumberField from '../components/NumberField'
 import FocusPicker from '../components/FocusPicker'
 import ConfirmModal from '../components/ConfirmModal'
@@ -181,7 +181,7 @@ export default function ClientDetail() {
                     title="Export as text or Excel"
                     className="shrink-0 text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    <FileText className="w-4 h-4" />
+                    <FileOutput className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setConfirm({ kind: 'program', program: prog })}
@@ -212,7 +212,7 @@ export default function ClientDetail() {
               onClick={() => setImporting(true)}
               className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors"
             >
-              <Upload className="w-4 h-4" /> Import from text
+              <FileInput className="w-4 h-4" /> Import from text
             </button>
           </div>
         </section>

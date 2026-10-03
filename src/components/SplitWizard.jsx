@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Check, Dumbbell, FileText, Moon, Pencil, Plus, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
+import { Check, Dumbbell, FileOutput, Moon, Pencil, Plus, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -1073,7 +1073,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
         onClick={() => setExporting(true)}
         className="w-full inline-flex items-center justify-center gap-2 bg-white text-text-muted hover:text-text-primary font-medium py-2.5 mt-2 border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
       >
-        <FileText className="w-4 h-4" /> Export as text or Excel
+        <FileOutput className="w-4 h-4" /> Export as text or Excel
       </button>
       <p className="text-[11px] text-text-light mt-3 leading-relaxed">
         Nothing is saved until you tap {client ? 'Save' : 'Create'}, and everything stays editable afterwards.

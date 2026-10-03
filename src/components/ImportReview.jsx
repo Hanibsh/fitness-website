@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Upload, Dumbbell, Moon, AlertTriangle } from 'lucide-react'
+import { FileInput, Dumbbell, Moon, AlertTriangle } from 'lucide-react'
 import ExercisePicker from './ExercisePicker'
 import { parseExportText, resolveUnmatched, measuresInUnit } from '../lib/programImport'
 import { PROFILE_EXPORT_FIELDS, WEEKDAY_NAMES, COACH_NOTES_HEADING } from '../lib/programExport'
@@ -131,7 +131,7 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
           className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-y"
         />
         <label className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary cursor-pointer mt-2 transition-colors">
-          <Upload className="w-3.5 h-3.5" /> Or open a .txt file
+          <FileInput className="w-3.5 h-3.5" /> Or open a .txt file
           <input type="file" accept=".txt,text/plain" onChange={openFile} className="sr-only" />
         </label>
         {fileError && <p className="text-[12px] text-amber-600 mt-1">{fileError}</p>}
@@ -252,7 +252,7 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
             disabled={unresolved.length > 0}
             className="w-full inline-flex items-center justify-center gap-2 bg-text-primary text-cream font-medium py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Upload className="w-4 h-4" /> {importLabel}
+            <FileInput className="w-4 h-4" /> {importLabel}
           </button>
           {unresolved.length > 0 && (
             <p className="text-[12px] text-amber-600 mt-2">
