@@ -7,7 +7,6 @@ import { useAuth } from '../lib/auth'
 import { useCoachAccess } from '../lib/useClientsState'
 import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
-import ThemeToggle from './ThemeToggle'
 
 // `match` is every path a link stands for, so it stays lit across its whole
 // section: Log over the log and injuries (its two tabs), Programs over your
@@ -63,7 +62,6 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-1">
-          <ThemeToggle />
 
           {/* The full row from 1024px; the menu below that. Eight links plus
               (for the coach) Clients don't fit a 768px bar — six only just

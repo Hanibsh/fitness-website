@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 // follow the OS (light or dark). The actual switch is just `data-theme` on
 // <html>, which re-points the --color-* variables (see index.css). index.html
 // sets it before first paint to avoid a flash; this module keeps it in sync
-// when the theme changes — from the navbar's light/dark button or the
-// profile's Appearance picker.
+// when the theme changes from the profile's Appearance picker (the only
+// control since the navbar's light/dark button was removed, 2026-10-03 — it
+// fought the picker's coloured themes).
 //
-// `tone` is whether the page is light or dark: it picks the navbar icon and
-// the `dark:` variant (index.css lists the dark-tone themes). `bg` is the page
-// colour, for the browser chrome — keep it, and the copy in index.html, in
-// step with --color-cream in index.css. `swatch` is what the picker draws:
+// `tone` is whether the page is light or dark: it picks the `dark:` variant
+// (index.css lists the dark-tone themes). `bg` is the page colour, for the
+// browser chrome — keep it, and the copy in index.html, in step with
+// --color-cream in index.css. `swatch` is what the picker draws:
 // page, card, ink. `chart` is the first three series colours, so the picker
 // shows each theme's charts too (the colour-blind theme's whole difference).
 export const THEMES = [
@@ -74,7 +75,7 @@ export function setTheme(theme) {
     // ignore — still apply for this session
   }
   applyTheme(theme)
-  // The navbar button and the profile picker both show the current theme.
+  // Anything showing the current theme (the profile picker) follows along.
   window.dispatchEvent(new Event(EVENT))
 }
 
