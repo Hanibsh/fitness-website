@@ -37,10 +37,14 @@ function newId() {
 // Move an item within an array by delta, returning a new array. Shared by
 // every reorderable list in the builder (routines, days, planned exercises).
 export function moveInArray(arr, index, delta) {
-  const to = index + delta
-  if (to < 0 || to >= arr.length) return arr
+  return moveItem(arr, index, index + delta)
+}
+
+// Move the item at `from` to position `to` — what a drag-and-drop lands as.
+export function moveItem(arr, from, to) {
+  if (from === to || from < 0 || from >= arr.length || to < 0 || to >= arr.length) return arr
   const next = arr.slice()
-  const [item] = next.splice(index, 1)
+  const [item] = next.splice(from, 1)
   next.splice(to, 0, item)
   return next
 }
@@ -209,6 +213,10 @@ export function moveDay(program, index, delta) {
   return clampPointer({ ...program, days: moveInArray(program.days, index, delta) })
 }
 
+export function moveDayTo(program, from, to) {
+  return clampPointer({ ...program, days: moveItem(program.days, from, to) })
+}
+
 export function setDayName(program, dayId, name) {
   return withDay(program, dayId, (d) => ({ ...d, name: name.slice(0, 40) }))
 }
@@ -242,6 +250,12 @@ export function moveExercise(program, dayId, exId, delta) {
     if (from === -1 || from + delta < 0 || from + delta >= blocks.length) return d
     return { ...d, exercises: moveInArray(blocks, from, delta).flat() }
   })
+}
+
+// The drag-and-drop form: block `from` lands at block `to` (indexes into
+// exerciseBlocks, so a superset still moves whole).
+export function moveExerciseBlockTo(program, dayId, from, to) {
+  return withDay(program, dayId, (d) => ({ ...d, exercises: moveItem(exerciseBlocks(d.exercises), from, to).flat() }))
 }
 
 export function setExerciseSets(program, dayId, exId, value) {

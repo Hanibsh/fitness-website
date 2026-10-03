@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { X, ChevronUp, ChevronDown, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Route, Pin, PinOff } from 'lucide-react'
+import { X, StickyNote, Repeat, Link2, ArrowLeftRight, BookOpen, Route, Pin, PinOff } from 'lucide-react'
 import ExercisePicker from './ExercisePicker'
 import SlotSwapPanel from './SlotSwapPanel'
 import NumberField from './NumberField'
 import CardioFields from './CardioFields'
 import { supersetLabels, exerciseBlocks } from '../lib/workoutStats'
+import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { getExerciseNote, getExerciseNotesMap, getHistory } from '../lib/workoutStore'
 import { upsertRemoteExerciseNotes, fetchRemoteHistory } from '../lib/workoutRemote'
 import { patternPhrase } from '../data/movementPatterns'
@@ -15,7 +16,7 @@ import {
   canChooseLaterality,
   addExercise,
   removeExercise,
-  moveExercise,
+  moveExerciseBlockTo,
   setExerciseSets,
   setExerciseRep,
   setExerciseRir,
@@ -117,12 +118,11 @@ export default function DayEditor({
     setSwapOpenFor(null)
   }
 
-  // Per-day superset context: A1/A2 labels, and the block index of each exercise
-  // (a contiguous group is one block) for the move-up/down disabled states.
+  // Per-day superset context: A1/A2 labels, and the blocks (a contiguous group
+  // is one block) that drag-to-reorder moves — a superset moves whole, and
+  // every member's grip drags the group.
   const groups = supersetLabels(day.exercises)
   const blocks = exerciseBlocks(day.exercises)
-  const blockIdxOf = new Map()
-  blocks.forEach((b, i) => b.forEach((e) => blockIdxOf.set(e.id, i)))
   const strengthCount = day.exercises.filter((e) => e.kind !== 'cardio').length
 
   // A superset goes back and forth between its movements, so they want the same
@@ -139,8 +139,11 @@ export default function DayEditor({
 
   return (
     <>
+      <SortableList ids={blocks.map((b) => b[0].id)} onMove={(from, to) => update((p) => moveExerciseBlockTo(p, day.id, from, to))}>
       <div className="space-y-2 mb-3">
-        {day.exercises.map((ex) => {
+        {blocks.map((block) => (
+        <SortableItem key={block[0].id} id={block[0].id} className="space-y-2">
+        {block.map((ex) => {
           // The shared store wins over this row's copy, so a note written
           // against this movement in another split (or in the logger) shows up
           // here too.
@@ -283,24 +286,7 @@ export default function DayEditor({
               )}
 
               <div className="flex flex-wrap items-center gap-1 mt-3 pt-2.5 border-t border-border">
-                <button
-                  onClick={() => update((p) => moveExercise(p, day.id, ex.id, -1))}
-                  disabled={blockIdxOf.get(ex.id) === 0}
-                  aria-label={`Move ${ex.name} up`}
-                  title="Move up"
-                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => update((p) => moveExercise(p, day.id, ex.id, 1))}
-                  disabled={blockIdxOf.get(ex.id) === blocks.length - 1}
-                  aria-label={`Move ${ex.name} down`}
-                  title="Move down"
-                  className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                <DragHandle label={`Reorder ${ex.name}`} />
                 <span className="w-px h-4 bg-border mx-1" />
                 <button
                   onClick={() => toggleNote(ex.id)}
@@ -375,7 +361,7 @@ export default function DayEditor({
                     className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary no-underline px-1 py-1 transition-colors"
                   >
                     {/* Icon-only on a phone. This row is a fixed budget of
-                        horizontal space — reorder arrows, note, swap, pin,
+                        horizontal space — reorder grip, note, swap, pin,
                         superset, laterality — and the 85px of label was the one
                         thing on it wide enough to push the row onto a second
                         line at 320px. */}
@@ -444,7 +430,10 @@ export default function DayEditor({
             </div>
           )
         })}
+        </SortableItem>
+        ))}
       </div>
+      </SortableList>
 
       <ExercisePicker
         onSelect={(name, category, id) => update((p) => addExercise(p, day.id, { name, category, exerciseId: id }, { sharedNotes }))}

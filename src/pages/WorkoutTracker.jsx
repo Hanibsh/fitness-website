@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronUp, ChevronDown, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History, Route, Play } from 'lucide-react'
+import { Plus, X, Check, Dumbbell, Activity, Trash2, ChevronRight, HelpCircle, LineChart, Calendar, CalendarDays, ArrowLeftRight, Link2, Pencil, Timer, StickyNote, Repeat, Split, Merge, Bandage, History, Route, Play } from 'lucide-react'
 import {
   getDraft,
   saveDraft,
@@ -45,9 +45,10 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
+import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -1107,24 +1108,17 @@ export default function WorkoutTracker() {
     setSplitSyncDone(null)
   }
 
-  // Move an exercise up/down, keeping resistance and cardio reordered
-  // independently (they render in separate sections) and superset groups
-  // moving as a single unit (exerciseBlocks treats a contiguous group as one
-  // block, so this can't split them apart).
-  function moveExercise(exId, delta) {
+  // Drag-and-drop reorder: block `from` lands at block `to`, keeping resistance
+  // and cardio reordered independently (they render in separate sections) and
+  // superset groups moving as a single unit (exerciseBlocks treats a
+  // contiguous group as one block, so this can't split them apart).
+  function moveExerciseBlockTo(isCardio, from, to) {
     setDraft((d) => {
-      const ex = d.exercises.find((e) => e.id === exId)
-      if (!ex) return d
-      const isCardio = ex.kind === 'cardio'
       const sameKind = d.exercises.filter((e) => (e.kind === 'cardio') === isCardio)
       const blocks = exerciseBlocks(sameKind)
-      const blockIdx = blocks.findIndex((b) => b.some((e) => e.id === exId))
-      const to = blockIdx + delta
-      if (to < 0 || to >= blocks.length) return d
-      const reordered = blocks.slice()
-      const [blk] = reordered.splice(blockIdx, 1)
-      reordered.splice(to, 0, blk)
-      const newSameKindOrder = reordered.flat()
+      const moved = moveItem(blocks, from, to)
+      if (moved === blocks) return d
+      const newSameKindOrder = moved.flat()
       let ptr = 0
       const exercises = d.exercises.map((e) => ((e.kind === 'cardio') === isCardio ? newSameKindOrder[ptr++] : e))
       return { ...d, exercises }
@@ -2045,6 +2039,23 @@ export default function WorkoutTracker() {
   // One exercise card. Cardio shows duration/distance; resistance shows a
   // laterality toggle, a rep-range target (double progression) with a live
   // status chip, and either flat sets or per-limb (L/R) sets.
+  // One section's exercises as drag-to-reorder blocks (components/Sortable.jsx):
+  // a superset is one item, every member's grip drags it. `exIndex` stays the
+  // position in the section, which the first-exercise hints key off.
+  const renderSection = (list, isCardio) => {
+    const blocks = exerciseBlocks(list)
+    const indexOf = new Map(list.map((e, i) => [e.id, i]))
+    return (
+      <SortableList ids={blocks.map((b) => b[0].id)} onMove={(from, to) => moveExerciseBlockTo(isCardio, from, to)}>
+        {blocks.map((block) => (
+          <SortableItem key={block[0].id} id={block[0].id} className="mb-4 space-y-4">
+            {block.map((ex) => renderExercise(ex, indexOf.get(ex.id)))}
+          </SortableItem>
+        ))}
+      </SortableList>
+    )
+  }
+
   const renderExercise = (ex, exIndex) => {
     const status = repRangeStatus(ex)
     // Working-set numbering: warm-ups show "W", back-offs "B", the rest count 1,2,3…
@@ -2088,13 +2099,6 @@ export default function WorkoutTracker() {
     const inSuperset = !!group && group.size > 1
     // Other resistance exercises this one can be supersetted with.
     const supersetTargets = ex.kind === 'cardio' ? [] : resistanceExercises.filter((o) => o.id !== ex.id)
-    // Position within its own section's BLOCKS (a superset counts as one block,
-    // so moving any member moves the whole group — see moveExercise).
-    const kindList = ex.kind === 'cardio' ? cardioExercises : resistanceExercises
-    const kindBlocks = exerciseBlocks(kindList)
-    const blockIdx = kindBlocks.findIndex((b) => b.some((e) => e.id === ex.id))
-    const isFirstBlock = blockIdx <= 0
-    const isLastBlock = blockIdx === kindBlocks.length - 1
     // A row the split left open, still waiting for a movement. It carries a
     // slot and no exercise, and until that changes there is nothing to log.
     const unresolvedSlot = !!ex.slot && !ex.exerciseId
@@ -2104,28 +2108,11 @@ export default function WorkoutTracker() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, height: 0 }}
-        className={`mb-4 border border-border bg-cream ${inSuperset ? 'border-l-2 border-l-text-primary' : ''}`}
+        className={`border border-border bg-cream ${inSuperset ? 'border-l-2 border-l-text-primary' : ''}`}
       >
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex flex-col shrink-0">
-              <button
-                onClick={() => moveExercise(ex.id, -1)}
-                disabled={isFirstBlock}
-                aria-label={`Move ${ex.name} up`}
-                className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronUp className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => moveExercise(ex.id, 1)}
-                disabled={isLastBlock}
-                aria-label={`Move ${ex.name} down`}
-                className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <DragHandle label={`Reorder ${ex.name}`} small className="-ml-1" />
             {inSuperset && (
               <span
                 title={`Superset ${group.letter}`}
@@ -3107,9 +3094,7 @@ export default function WorkoutTracker() {
                 <Dumbbell className="w-4 h-4 text-text-primary" />
                 <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Resistance training</h3>
               </div>
-              <AnimatePresence initial={false}>
-                {resistanceExercises.map(renderExercise)}
-              </AnimatePresence>
+              {renderSection(resistanceExercises, false)}
               <ExercisePicker
                 onSelect={(name, _cat, id) => addExercise(name, 'strength', id)}
                 recentNames={recentByKind.resistance}
@@ -3124,9 +3109,7 @@ export default function WorkoutTracker() {
                 <Activity className="w-4 h-4 text-text-primary" />
                 <h3 className="text-[12px] font-medium uppercase tracking-wider text-text-secondary">Cardio</h3>
               </div>
-              <AnimatePresence initial={false}>
-                {cardioExercises.map(renderExercise)}
-              </AnimatePresence>
+              {renderSection(cardioExercises, true)}
               <ExercisePicker
                 onSelect={(name, _cat, id) => addExercise(name, 'cardio', id)}
                 recentNames={recentByKind.cardio}

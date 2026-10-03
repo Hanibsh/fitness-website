@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Dumbbell, Moon, Trash2, Locate, FileOutput } from 'lucide-react'
+import { ArrowLeft, Plus, X, Dumbbell, Moon, Trash2, Locate, FileOutput } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
-import { createDay, appendDay, removeDay, moveDay, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork } from '../lib/program'
+import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
+import { createDay, appendDay, removeDay, moveDayTo, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork } from '../lib/program'
 import { cardioOf, cardioTargetText } from '../lib/cardio'
 import { dayStats } from '../lib/planStats'
 
@@ -98,20 +99,15 @@ export default function SplitOverview() {
           )}
         </div>
 
-        {/* Day cards */}
-        <AnimatePresence initial={false}>
+        {/* Day cards — drag the ⋮⋮ grip to reorder (components/Sortable.jsx). */}
+        <SortableList ids={program.days.map((d) => d.id)} onMove={(from, to) => update((p) => moveDayTo(p, from, to))}>
           {program.days.map((day, dayIndex) => {
             const rest = day.kind === 'rest'
             const stats = hasPlannedWork(day) ? dayStats(day) : null
             const dayHref = `${basePath}/day/${day.id}`
             return (
-              <motion.div
-                key={day.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-3"
-              >
+              <SortableItem key={day.id} id={day.id} className="mb-3">
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                 <DayCard
                   highlight={dayIndex === highlightIndex}
                   to={dayHref}
@@ -164,12 +160,7 @@ export default function SplitOverview() {
                         </button>
                       )}
                       <div className="flex items-center gap-0.5 shrink-0">
-                        <button onClick={() => update((p) => moveDay(p, dayIndex, -1))} disabled={dayIndex === 0} aria-label="Move day up" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => update((p) => moveDay(p, dayIndex, 1))} disabled={dayIndex === program.days.length - 1} aria-label="Move day down" className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed">
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
+                        <DragHandle label={`Reorder ${day.name || 'this day'}`} />
                         <button onClick={() => update((p) => removeDay(p, day.id))} aria-label="Remove day" className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1">
                           <X className="w-4 h-4" />
                         </button>
@@ -178,9 +169,10 @@ export default function SplitOverview() {
                   }
                 />
               </motion.div>
+              </SortableItem>
             )
           })}
-        </AnimatePresence>
+        </SortableList>
 
         {/* Add day / delete split */}
         <div className="flex flex-wrap gap-3 mt-5">

@@ -75,14 +75,13 @@ export function toggleCard(layout, id, on) {
   return normalizeLayout({ order: layout.order, hidden: on ? hidden : [...hidden, id] })
 }
 
-// Move a card one place up (-1) or down (+1) among ALL cards, shown or not —
-// the list on the profile page shows every card, so that's the order it moves in.
-export function moveCard(layout, id, dir) {
+// Move the card at `from` to `to` among ALL cards, shown or not — the list on
+// the profile page shows every card, so that's the order it moves in.
+export function moveCardTo(layout, from, to) {
   const order = [...layout.order]
-  const i = order.indexOf(id)
-  const j = i + dir
-  if (i < 0 || j < 0 || j >= order.length) return layout
-  ;[order[i], order[j]] = [order[j], order[i]]
+  if (from < 0 || from >= order.length || to < 0 || to >= order.length) return layout
+  const [id] = order.splice(from, 1)
+  order.splice(to, 0, id)
   return normalizeLayout({ order, hidden: layout.hidden })
 }
 

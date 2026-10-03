@@ -435,6 +435,13 @@ body {
   }
 }
 
+/* The row being dragged (components/Sortable.jsx): a hairline in the ink
+   colour around it, so it reads as lifted without a shadow. */
+[data-dragging] {
+  outline: 1px solid var(--color-text-primary);
+  outline-offset: -1px;
+}
+
 /* Anatomy map zones (components/InteractiveAnatomy.jsx). Zones sit on the muscle
    labels drawn into the art. The panel is deliberately dark in both themes, so
    these colors are hardcoded gold rather than theme tokens.

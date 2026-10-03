@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from './auth'
 import { getProgramsState, saveProgramsState, deleteProgramById } from './workoutStore'
 import { fetchRemoteProgramsState, upsertRemoteProgramsState, deleteRemoteProgramById } from './workoutRemote'
-import { emptyProgram, moveInArray } from './program'
+import { emptyProgram, moveInArray, moveItem } from './program'
 
 const EMPTY_STATE = { programs: [], activeId: null }
 
@@ -106,6 +106,15 @@ export function useProgramsState() {
     })
   }
 
+  function moveRoutineTo(from, to) {
+    setProgramsState((prev) => {
+      const next = { ...prev, programs: moveItem(prev.programs, from, to) }
+      persistLocal(next)
+      persistRemoteNow(next)
+      return next
+    })
+  }
+
   function deleteRoutine(id) {
     const next = deleteProgramById(id) // local: filters + reassigns active + persists, returns new state
     setProgramsState(next)
@@ -122,6 +131,7 @@ export function useProgramsState() {
     duplicateRoutine,
     setActiveRoutine,
     moveRoutine,
+    moveRoutineTo,
     deleteRoutine,
   }
 }

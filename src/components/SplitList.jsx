@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ChevronUp, ChevronDown, Trash2, Copy, Users, CalendarRange } from 'lucide-react'
+import { Trash2, Copy, Users, CalendarRange } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
+import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { useCoachAccess } from '../lib/useClientsState'
 
-// Your saved splits: reorderable, with Set active / Duplicate / Delete, and a
+// Your saved splits: drag to reorder (the ⋮⋮ grip), with Set active / Duplicate / Delete, and a
 // tap-through to the full-page editor at /split/:id. Lives on the Programs page
 // (it used to be its own tab in the log): Programs is where a split is started,
 // brought in or built, so it's also where the ones you have live.
@@ -14,7 +15,7 @@ import { useCoachAccess } from '../lib/useClientsState'
 // see a delete as soon as this card does.
 export default function SplitList({ programs }) {
   const navigate = useNavigate()
-  const { user, programsState, duplicateRoutine, setActiveRoutine, moveRoutine, deleteRoutine } = programs
+  const { user, programsState, duplicateRoutine, setActiveRoutine, moveRoutineTo, deleteRoutine } = programs
   const [confirmDelete, setConfirmDelete] = useState(null) // { id, name } | null
   const { isCoach } = useCoachAccess()
 
@@ -39,13 +40,15 @@ export default function SplitList({ programs }) {
         <p className="text-[12px] text-text-muted mb-4 leading-relaxed">
           The active one is what your log follows — it surfaces today’s session and pre-fills what you planned.
         </p>
+        <SortableList ids={programsState.programs.map((p) => p.id)} onMove={moveRoutineTo}>
         <div className="space-y-2">
-          {programsState.programs.map((p, index) => {
+          {programsState.programs.map((p) => {
             const isActive = p.id === programsState.activeId
             return (
-              <div
+              <SortableItem
                 key={p.id}
-                className="flex items-center justify-between gap-2 px-3 py-2.5 border border-border hover:border-border-hover cursor-pointer transition-colors"
+                id={p.id}
+                className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border border-border hover:border-border-hover cursor-pointer transition-colors"
                 onClick={() => navigate(`/split/${p.id}`)}
               >
                 <div className="min-w-0">
@@ -58,24 +61,7 @@ export default function SplitList({ programs }) {
                   <p className="text-[11px] text-text-light mt-0.5 truncate">{shapeLabel(p)}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <div className="flex flex-col mr-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveRoutine(index, -1) }}
-                      disabled={index === 0}
-                      aria-label={`Move ${p.name} up`}
-                      className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); moveRoutine(index, 1) }}
-                      disabled={index === programsState.programs.length - 1}
-                      aria-label={`Move ${p.name} down`}
-                      className="text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer p-0 leading-none disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <DragHandle label={`Reorder ${p.name}`} small />
                   {!isActive && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setActiveRoutine(p.id) }}
@@ -101,10 +87,11 @@ export default function SplitList({ programs }) {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              </div>
+              </SortableItem>
             )
           })}
         </div>
+        </SortableList>
         <div className="flex items-center justify-between gap-x-4 gap-y-2 flex-wrap mt-4">
           <span className="inline-flex items-center gap-1.5 text-[11px] text-text-light">
             <CalendarRange className="w-3.5 h-3.5" /> Saved automatically{user ? ' to your account' : ' on this device'}.
