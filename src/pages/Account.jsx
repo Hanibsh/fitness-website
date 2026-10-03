@@ -275,12 +275,10 @@ export default function Account() {
           />
           <span className="text-[13px] text-text-secondary leading-relaxed">
             <span className="font-medium text-text-primary">Show the rest timer while I log.</span>{' '}
-            A clock in the corner of the log counting the time since your last set. Turn it off if you don't
-            measure your rest periods — your sets are still timestamped either way, so your session length and
-            training history don't change.
+            Counts the time since your last set.
           </span>
         </label>
-        <p className="text-[12px] text-text-light mt-4">Saved on this device, straight away.</p>
+        <p className="text-[12px] text-text-light mt-4">Saved on this device.</p>
       </div>
     </ProfileSection>
   )
@@ -297,7 +295,7 @@ export default function Account() {
   // Device setting like Logging, so in both branches too.
   const appearanceSection = (
     <ProfileSection id="appearance" title="Appearance" {...sec('appearance')}>
-      <p className="text-[13px] text-text-muted mb-4">Saved on this device, straight away.</p>
+      <p className="text-[13px] text-text-muted mb-4">Saved on this device.</p>
       <ThemePicker />
     </ProfileSection>
   )
@@ -316,7 +314,7 @@ export default function Account() {
           {!user ? (
             <>
               <p className="text-text-muted text-[15px] mt-6 mb-10">
-                You're not logged in. Use the <span className="text-text-primary font-medium">Log in</span> button in the top bar to access your profile.
+                <span className="text-text-primary font-medium">Log in</span> to see your profile.
               </p>
               <div className="space-y-3">
                 {dashboardSection}
@@ -348,7 +346,7 @@ export default function Account() {
               </div>
 
               <p className="text-[13px] text-text-muted mb-10 leading-relaxed">
-                Everything here is optional — fill in whatever helps us tailor your training, and skip or clear the rest anytime. Tap a selected option again to clear it.
+                Everything here is optional — fill in whatever helps us tailor your training.
               </p>
 
               <div className="space-y-3">
@@ -365,7 +363,7 @@ export default function Account() {
                         placeholder="What should we call you?"
                         className={inputCls}
                       />
-                      <p className="text-[11px] text-text-light mt-1.5">Shown on your dashboard instead of your email. Leave blank to use your email name.</p>
+                      <p className="text-[11px] text-text-light mt-1.5">Shown on your dashboard.</p>
                     </div>
 
                     <div>
@@ -400,7 +398,7 @@ export default function Account() {
                 {/* ---- Your body ---------------------------------------------------- */}
                 <ProfileSection id="body" title="Your body" {...sec('body')}>
                   <p className="text-[13px] text-text-muted mb-6 leading-relaxed">
-                    The calculators fill these in for you, so you only measure once. Update them as they change.
+                    The calculators fill these in for you.
                   </p>
                   <div className="space-y-7">
                     <div className="grid grid-cols-2 gap-4">
@@ -444,7 +442,7 @@ export default function Account() {
                         aria-expanded={showBfChart}
                         className="mt-2 text-[12px] text-text-muted underline underline-offset-2 hover:text-text-primary bg-transparent border-none p-0 cursor-pointer"
                       >
-                        {showBfChart ? 'Hide the reference chart' : 'Not sure? Compare with the reference chart'}
+                        {showBfChart ? 'Hide the chart' : 'Not sure? See the chart'}
                       </button>
                       {showBfChart && (
                         <img src={asset('images/bodyfat-chart.jpeg')} alt="Body fat percentage reference chart" className="w-full border border-border mt-3" />
@@ -473,7 +471,7 @@ export default function Account() {
                         </div>
                       </div>
                       <p className="text-[11px] text-text-light mt-1.5 leading-relaxed">
-                        For the muscle potential calculator. Wrist just past the bony bump on the outside, ankle at its narrowest point, tape snug but not tight.
+                        Wrist just past the bony bump, ankle at its narrowest.
                       </p>
                     </div>
                   </div>
@@ -491,7 +489,7 @@ export default function Account() {
                         placeholder="8000"
                         className={`${inputCls} max-w-[140px]`}
                       />
-                      <p className="text-[11px] text-text-light mt-1.5">Your usual day. Your phone or watch has a good average. Training hours come from the sessions you log.</p>
+                      <p className="text-[11px] text-text-light mt-1.5">Your usual day — check your phone or watch.</p>
                     </div>
 
                     <div>
@@ -505,9 +503,6 @@ export default function Account() {
 
                 {/* ---- Your training ----------------------------------------------- */}
                 <ProfileSection id="training" title="Your training" {...sec('training')}>
-                  <p className="text-[13px] text-text-muted mb-6 leading-relaxed">
-                    This is what we'll use to tailor your training when workout programs land.
-                  </p>
                   <div className="space-y-7">
                     <div>
                       <label className={labelCls}>Primary goal</label>
@@ -537,7 +532,7 @@ export default function Account() {
                           <span className="text-[13px] text-text-muted">{startYears === 0 ? 'This year' : `${startYears} year${startYears === 1 ? '' : 's'}`}</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-text-light mt-1.5">The year you started training consistently. Gives the muscle potential calculator your years trained, and keeps counting by itself.</p>
+                      <p className="text-[11px] text-text-light mt-1.5">The year you started training consistently.</p>
                     </div>
 
                     <div>
@@ -551,8 +546,7 @@ export default function Account() {
                     <div>
                       <label className={labelCls}>Muscles to bring up</label>
                       <p className="text-[12px] text-text-light -mt-1 mb-3 leading-relaxed">
-                        Up to 3. Every split you generate trains them first in the day and on more days of the
-                        week, without adding to the week&apos;s total.
+                        Up to 3. Trained first and more often in your splits.
                       </p>
                       <FocusPicker value={focusMuscles} onChange={(next) => { setFocusMuscles(next); edited() }} />
                     </div>
@@ -580,7 +574,7 @@ export default function Account() {
                       />
                       <span className="text-[13px] text-text-secondary leading-relaxed">
                         <span className="font-medium text-text-primary">Help improve the strength standards.</span>{' '}
-                        Share my lifts (exercise, weight, reps, RIR) along with my bodyweight and sex — <span className="font-medium text-text-primary">anonymously</span>, with no name or email attached. You can turn this off anytime.
+                        Share my lifts, bodyweight and sex — <span className="font-medium text-text-primary">anonymously</span>, no name or email.
                       </span>
                     </label>
                   </div>
@@ -591,8 +585,7 @@ export default function Account() {
                 <div className="mt-8 border border-border bg-white p-4">
                   <p className="text-[13px] text-text-primary font-medium">We couldn't load your profile.</p>
                   <p className="text-[13px] text-text-muted mt-1 leading-relaxed">
-                    The fields above are showing blanks, not your saved answers — so saving is turned off until we can read
-                    your profile again. Nothing has been lost.
+                    Saving is off until it loads. Nothing has been lost.
                   </p>
                   <button
                     onClick={() => { setLoading(true); setReloadKey((k) => k + 1) }}
@@ -623,8 +616,7 @@ export default function Account() {
               </div>
 
               <p className="text-[12px] text-text-light leading-relaxed mt-6">
-                Everything here is used only to make the tools and your training more accurate for you and, if you opt in above,
-                to improve the strength standards anonymously. It's never shown to anyone else.
+                Only used to tailor your training. Never shown to anyone else.
               </p>
             </>
           )}

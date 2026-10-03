@@ -387,8 +387,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
           <section className={cardCls}>
             <h2 className={headCls}>Anything you want to bring up?</h2>
             <p className="text-[12px] text-text-light mb-5">
-              Up to {MAX_FOCUS_MUSCLES}. Trained first and more often, without adding to the week. Leave empty
-              for a balanced split.
+              Up to {MAX_FOCUS_MUSCLES}. Trained first and more often. Leave empty for a balanced split.
               {client ? ` Saved to ${client.name || 'their'} profile.` : user ? ' Saved to your profile.' : ''}
             </p>
             <FocusPicker value={focus} onChange={chooseFocus} />
