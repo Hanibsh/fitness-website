@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-02",
+  "generatedAt": "2026-10-03",
   "count": 285,
   "exercises": [
     {
@@ -39,7 +39,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "low-to-high-cable-fly",
@@ -77,7 +78,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "incline-chest-fly-machine",
@@ -115,7 +117,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "machine"
     },
     {
       "id": "plate-loaded-incline-chest-press",
@@ -154,7 +157,8 @@
       "notes": "Maximal tension yield with low injury risk",
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "machine"
     },
     {
       "id": "machine-chest-press",
@@ -193,7 +197,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "pec-deck-fly",
@@ -231,7 +236,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "machine"
     },
     {
       "id": "smith-machine-bench-press",
@@ -270,7 +276,8 @@
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "weighted-chest-dips",
@@ -309,7 +316,8 @@
       "notes": "High mechanical tension with external load",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "weighted"
     },
     {
       "id": "smith-machine-incline-bench-press",
@@ -348,7 +356,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "machine"
     },
     {
       "id": "incline-barbell-bench-press",
@@ -387,7 +396,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "barbell"
     },
     {
       "id": "flat-bench-press",
@@ -426,7 +436,8 @@
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "barbell"
     },
     {
       "id": "chest-press-machine",
@@ -465,7 +476,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-bench-press",
@@ -504,7 +516,8 @@
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "dumbbell"
     },
     {
       "id": "close-grip-push-up-with-bands",
@@ -544,7 +557,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "band"
     },
     {
       "id": "wide-grip-bench-press",
@@ -583,7 +597,8 @@
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "barbell"
     },
     {
       "id": "close-grip-bench-press",
@@ -621,7 +636,8 @@
       "notes": "Arching and grip width shift bias between Middle Chest and Triceps.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "barbell"
     },
     {
       "id": "lying-chest-press-machine",
@@ -660,7 +676,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-floor-press",
@@ -699,7 +716,8 @@
       "notes": "Limits ROM, emphasizes triceps and lock-out",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "dumbbell"
     },
     {
       "id": "push-up-with-bands",
@@ -738,7 +756,8 @@
       "notes": "Band looped across the upper back adds resistance bodyweight alone cannot provide, giving a progressive overload path at home",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "band"
     },
     {
       "id": "incline-cable-fly",
@@ -776,7 +795,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "dumbbell-floor-press-neutral-grip",
@@ -815,7 +835,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "dumbbell"
     },
     {
       "id": "dumbbell-pullover",
@@ -854,7 +875,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "straight-arm-lat"
+      "pattern": "straight-arm-lat",
+      "implement": "dumbbell"
     },
     {
       "id": "dumbbell-fly",
@@ -892,7 +914,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "incline-dumbbell-fly",
@@ -930,7 +953,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "cable-crossover",
@@ -968,7 +992,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "knee-push-up-with-bands",
@@ -1007,7 +1032,8 @@
       "notes": "Regressed push-up variation; band gives a progression step before a full Push-Up With Bands",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "band"
     },
     {
       "id": "low-cable-crossover",
@@ -1045,7 +1071,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "high-cable-crossover",
@@ -1083,7 +1110,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "close-grip-push-up",
@@ -1123,7 +1151,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "incline-dumbbell-press",
@@ -1162,7 +1191,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "dumbbell"
     },
     {
       "id": "incline-push-up-with-bands",
@@ -1202,7 +1232,8 @@
       "notes": "Regressed push-up variation; band adds resistance for continued progression",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "band"
     },
     {
       "id": "chest-dips",
@@ -1240,7 +1271,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "assisted-chest-dip",
@@ -1278,7 +1310,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "other"
     },
     {
       "id": "single-arm-cable-crossover",
@@ -1316,7 +1349,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "chest-fly"
+      "pattern": "chest-fly",
+      "implement": "cable"
     },
     {
       "id": "push-up",
@@ -1355,7 +1389,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "knee-push-up",
@@ -1394,7 +1429,8 @@
       "notes": "Regressed push-up variation",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "close-grip-knee-push-up",
@@ -1433,7 +1469,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "incline-push-up",
@@ -1473,7 +1510,8 @@
       "notes": "Regressed push-up variation",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "close-grip-incline-push-up",
@@ -1513,7 +1551,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "standing-cable-pullover-bar",
@@ -1550,7 +1589,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "straight-arm-lat"
+      "pattern": "straight-arm-lat",
+      "implement": "cable"
     },
     {
       "id": "standing-cable-pullover-rope",
@@ -1587,7 +1627,8 @@
       "notes": "Allows wider range of motion at bottom",
       "video": null,
       "thumbnail": null,
-      "pattern": "straight-arm-lat"
+      "pattern": "straight-arm-lat",
+      "implement": "cable"
     },
     {
       "id": "machine-supported-pull-up-wide-grip",
@@ -1626,7 +1667,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "machine"
     },
     {
       "id": "machine-supported-pull-up-neutral-grip",
@@ -1664,7 +1706,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "machine"
     },
     {
       "id": "machine-supported-pull-up-overhand-grip",
@@ -1702,7 +1745,8 @@
       "notes": "Allows pushing closer to failure safely",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "machine"
     },
     {
       "id": "braced-single-arm-cable-pulldown",
@@ -1739,7 +1783,8 @@
       "notes": "Underhand/neutral grip with non-working hand bracing against a bench. Exceptional lat isolation.",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "seated-cable-row-underhand-grip",
@@ -1777,7 +1822,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "cable"
     },
     {
       "id": "chest-supported-dumbbell-row",
@@ -1816,7 +1862,8 @@
       "notes": "Zero axial loading",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "dumbbell"
     },
     {
       "id": "chin-up-weighted",
@@ -1855,7 +1902,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "weighted"
     },
     {
       "id": "lat-pulldown-wide-grip",
@@ -1895,7 +1943,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "decline-dumbbell-pullover",
@@ -1932,7 +1981,8 @@
       "notes": "Decline increases tension range",
       "video": null,
       "thumbnail": null,
-      "pattern": "straight-arm-lat"
+      "pattern": "straight-arm-lat",
+      "implement": "dumbbell"
     },
     {
       "id": "lat-pulldown-neutral-grip",
@@ -1971,7 +2021,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "lat-pulldown-overhand-grip",
@@ -2010,7 +2061,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "lat-pulldown-underhand-grip",
@@ -2049,7 +2101,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "pull-up-wide-grip-weighted",
@@ -2089,7 +2142,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "weighted"
     },
     {
       "id": "pull-up-neutral-grip-weighted",
@@ -2128,7 +2182,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "weighted"
     },
     {
       "id": "pull-up-overhand-grip-weighted",
@@ -2167,7 +2222,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "weighted"
     },
     {
       "id": "chin-up-with-band",
@@ -2206,7 +2262,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "band"
     },
     {
       "id": "chest-supported-row-machine-underhand-grip",
@@ -2244,7 +2301,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "single-arm-dumbbell-row",
@@ -2283,7 +2341,8 @@
       "notes": "Great for deep stretch",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "dumbbell"
     },
     {
       "id": "pull-up-wide-grip",
@@ -2323,7 +2382,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "chest-supported-row-machine-neutral-grip-narrow",
@@ -2361,7 +2421,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "pull-up-neutral-grip",
@@ -2400,7 +2461,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "single-arm-landmine-row",
@@ -2439,7 +2501,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "landmine"
     },
     {
       "id": "pull-up-neutral-grip-with-band",
@@ -2478,7 +2541,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "band"
     },
     {
       "id": "pull-up-overhand-grip-with-band",
@@ -2517,7 +2581,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "band"
     },
     {
       "id": "chest-supported-row-machine-single-arm",
@@ -2556,7 +2621,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "chest-supported-barbell-row-underhand-grip",
@@ -2594,7 +2660,8 @@
       "notes": "Zero axial loading",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "barbell"
     },
     {
       "id": "chin-up",
@@ -2632,7 +2699,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "cable-one-arm-lat-pulldown",
@@ -2669,7 +2737,8 @@
       "notes": "Grip width and torso angle dictate Lat vs Upper Back involvement.",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "bent-over-dumbbell-row-neutral-grip",
@@ -2708,7 +2777,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "dumbbell"
     },
     {
       "id": "pull-up-overhand-grip",
@@ -2747,7 +2817,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "lat-pulldown-behind-the-neck",
@@ -2786,7 +2857,8 @@
       "notes": "High shoulder mobility required",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "cable"
     },
     {
       "id": "inverted-row-underhand-grip",
@@ -2825,7 +2897,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "bent-over-barbell-row-underhand-grip",
@@ -2864,7 +2937,8 @@
       "notes": "High axial loading",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "barbell"
     },
     {
       "id": "chin-up-close-grip",
@@ -2902,7 +2976,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "trx-row-neutral-grip",
@@ -2942,7 +3017,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "trx-row-underhand-grip",
@@ -2981,7 +3057,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "seated-row-with-bands",
@@ -3019,7 +3096,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "band"
     },
     {
       "id": "bent-over-row-with-bands",
@@ -3058,7 +3136,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "band"
     },
     {
       "id": "kettlebell-bent-over-row",
@@ -3097,7 +3176,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "kettlebell"
     },
     {
       "id": "human-pullover",
@@ -3135,7 +3215,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "straight-arm-lat"
+      "pattern": "straight-arm-lat",
+      "implement": "bodyweight"
     },
     {
       "id": "band-assisted-muscle-up",
@@ -3173,7 +3254,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "weighted-muscle-up",
@@ -3211,7 +3293,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-pull"
+      "pattern": "vertical-pull",
+      "implement": "weighted"
     },
     {
       "id": "seated-cable-row-wide-grip",
@@ -3249,7 +3332,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "cable"
     },
     {
       "id": "seated-row-machine",
@@ -3287,7 +3371,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "chest-supported-row-machine-wide-grip",
@@ -3325,7 +3410,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "chest-supported-row-machine-overhand-grip",
@@ -3364,7 +3450,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "machine"
     },
     {
       "id": "seated-cable-row",
@@ -3402,7 +3489,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "cable"
     },
     {
       "id": "t-bar-row",
@@ -3442,7 +3530,8 @@
       "notes": "High mechanical tension",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "landmine"
     },
     {
       "id": "close-grip-cable-row",
@@ -3480,7 +3569,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "cable"
     },
     {
       "id": "chest-supported-barbell-row-overhand-grip",
@@ -3519,7 +3609,8 @@
       "notes": "Zero axial loading",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "barbell"
     },
     {
       "id": "chest-supported-t-bar-row",
@@ -3557,7 +3648,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "landmine"
     },
     {
       "id": "barbell-bent-over-row",
@@ -3595,7 +3687,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "barbell"
     },
     {
       "id": "bent-over-dumbbell-row-overhand-grip",
@@ -3635,7 +3728,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "dumbbell"
     },
     {
       "id": "inverted-row-overhand-grip",
@@ -3675,7 +3769,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "trx-row-overhand-grip",
@@ -3715,7 +3810,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-pull"
+      "pattern": "horizontal-pull",
+      "implement": "bodyweight"
     },
     {
       "id": "weighted-roman-chair-back-extension",
@@ -3752,7 +3848,8 @@
       "notes": "Use a barbell across shoulders or hold a plate/dumbbell. Focus on spinal extension/flexion for erectors, or keep spine rigid to bias glutes/hamstrings.",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "machine"
     },
     {
       "id": "deadlift",
@@ -3791,7 +3888,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "overhead-press-machine-wide-grip",
@@ -3829,7 +3927,8 @@
       "notes": "Allows pushing closer to failure safely",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "machine"
     },
     {
       "id": "overhead-press-machine-narrow-grip",
@@ -3866,7 +3965,8 @@
       "notes": "Allows pushing closer to failure safely",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "machine"
     },
     {
       "id": "overhead-press-smith-machine",
@@ -3903,7 +4003,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "machine"
     },
     {
       "id": "cable-front-raise",
@@ -3940,7 +4041,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "front-raise"
+      "pattern": "front-raise",
+      "implement": "cable"
     },
     {
       "id": "overhead-press-lever",
@@ -3977,7 +4079,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "machine"
     },
     {
       "id": "barbell-front-raise",
@@ -4014,7 +4117,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "front-raise"
+      "pattern": "front-raise",
+      "implement": "barbell"
     },
     {
       "id": "landmine-press-half-kneeling",
@@ -4052,7 +4156,8 @@
       "notes": "Excellent for strict tension",
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "landmine"
     },
     {
       "id": "overhead-press-seated-barbell",
@@ -4090,7 +4195,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "barbell"
     },
     {
       "id": "seated-dumbbell-front-raise",
@@ -4127,7 +4233,8 @@
       "notes": "Eliminates momentum",
       "video": null,
       "thumbnail": null,
-      "pattern": "front-raise"
+      "pattern": "front-raise",
+      "implement": "dumbbell"
     },
     {
       "id": "overhead-press-seated-dumbbell",
@@ -4165,7 +4272,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "dumbbell"
     },
     {
       "id": "banded-front-raise",
@@ -4202,7 +4310,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "front-raise"
+      "pattern": "front-raise",
+      "implement": "band"
     },
     {
       "id": "dumbbell-front-raise",
@@ -4239,7 +4348,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "front-raise"
+      "pattern": "front-raise",
+      "implement": "dumbbell"
     },
     {
       "id": "landmine-press-standing",
@@ -4277,7 +4387,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "incline-push"
+      "pattern": "incline-push",
+      "implement": "landmine"
     },
     {
       "id": "overhead-press-dumbbell",
@@ -4314,7 +4425,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "dumbbell"
     },
     {
       "id": "overhead-press-seated-dumbbell-neutral-grip",
@@ -4351,7 +4463,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "dumbbell"
     },
     {
       "id": "pike-push-up",
@@ -4388,7 +4501,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "bodyweight"
     },
     {
       "id": "overhead-press-standing-barbell",
@@ -4427,7 +4541,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "barbell"
     },
     {
       "id": "overhead-press-banded",
@@ -4465,7 +4580,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "band"
     },
     {
       "id": "overhead-press-seated-barbell-behind-the-neck",
@@ -4504,7 +4620,8 @@
       "notes": "Requires good shoulder mobility",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "barbell"
     },
     {
       "id": "overhead-press-standing-dumbbell",
@@ -4543,7 +4660,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "dumbbell"
     },
     {
       "id": "pike-hold",
@@ -4580,7 +4698,8 @@
       "notes": "Good baseline progression for learning freestanding handstands",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "bodyweight"
     },
     {
       "id": "overhead-press-standing-barbell-behind-the-neck",
@@ -4620,7 +4739,8 @@
       "notes": "High mobility requirement",
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "barbell"
     },
     {
       "id": "cable-lateral-raise",
@@ -4657,7 +4777,8 @@
       "notes": "Lean slightly forward to better align Side Delts against gravity.",
       "video": null,
       "thumbnail": null,
-      "pattern": "lateral-raise"
+      "pattern": "lateral-raise",
+      "implement": "cable"
     },
     {
       "id": "overhead-press-smith-machine-behind-the-neck",
@@ -4695,7 +4816,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "vertical-push"
+      "pattern": "vertical-push",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-chest-supported-lateral-raise",
@@ -4732,7 +4854,8 @@
       "notes": "Lean slightly forward to better align Side Delts against gravity.",
       "video": null,
       "thumbnail": null,
-      "pattern": "lateral-raise"
+      "pattern": "lateral-raise",
+      "implement": "dumbbell"
     },
     {
       "id": "seated-dumbbell-lateral-raise",
@@ -4769,7 +4892,8 @@
       "notes": "Lean slightly forward to better align Side Delts against gravity.",
       "video": null,
       "thumbnail": null,
-      "pattern": "lateral-raise"
+      "pattern": "lateral-raise",
+      "implement": "dumbbell"
     },
     {
       "id": "banded-lateral-raise",
@@ -4806,7 +4930,8 @@
       "notes": "Constant band tension; strong at-home side-delt builder",
       "video": null,
       "thumbnail": null,
-      "pattern": "lateral-raise"
+      "pattern": "lateral-raise",
+      "implement": "band"
     },
     {
       "id": "incline-dumbbell-side-lateral-raise",
@@ -4843,7 +4968,8 @@
       "notes": "Lean slightly forward to better align Side Delts against gravity.",
       "video": null,
       "thumbnail": null,
-      "pattern": "lateral-raise"
+      "pattern": "lateral-raise",
+      "implement": "dumbbell"
     },
     {
       "id": "banded-upright-row",
@@ -4880,7 +5006,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "upright-row"
+      "pattern": "upright-row",
+      "implement": "band"
     },
     {
       "id": "rear-delt-fly-machine",
@@ -4917,7 +5044,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "machine"
     },
     {
       "id": "chest-supported-dumbbell-reverse-fly",
@@ -4954,7 +5082,8 @@
       "notes": "Highly stable for maximal mechanical tension",
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "cable-rear-delt-fly",
@@ -4991,7 +5120,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "cable"
     },
     {
       "id": "banded-rear-delt-fly",
@@ -5028,7 +5158,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "band"
     },
     {
       "id": "seated-rear-lateral-dumbbell-raise",
@@ -5065,7 +5196,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "face-pull",
@@ -5102,7 +5234,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "cable"
     },
     {
       "id": "dumbbell-bent-over-reverse-fly",
@@ -5139,7 +5272,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "lever-preacher-curl",
@@ -5175,7 +5309,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "machine"
     },
     {
       "id": "lever-biceps-curl",
@@ -5211,7 +5346,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "machine"
     },
     {
       "id": "h-bar-preacher-curl",
@@ -5247,7 +5383,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "h-bar"
     },
     {
       "id": "preacher-curl-machine",
@@ -5283,7 +5420,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-hammer-preacher-curl",
@@ -5320,7 +5458,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "barbell-curl",
@@ -5356,7 +5495,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "barbell"
     },
     {
       "id": "cable-curl",
@@ -5392,7 +5532,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "cable"
     },
     {
       "id": "seated-incline-dumbbell-curl",
@@ -5428,7 +5569,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "lying-cable-curl",
@@ -5464,7 +5606,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "cable"
     },
     {
       "id": "ez-bar-preacher-curl",
@@ -5500,7 +5643,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "ez-bar"
     },
     {
       "id": "dumbbell-preacher-curl",
@@ -5536,7 +5680,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "cable-rope-hammer-curl",
@@ -5573,7 +5718,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "cable"
     },
     {
       "id": "two-dumbbell-preacher-curl",
@@ -5609,7 +5755,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "prone-incline-barbell-curl-spider-curl",
@@ -5645,7 +5792,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "barbell"
     },
     {
       "id": "z-bar-curl",
@@ -5681,7 +5829,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "ez-bar"
     },
     {
       "id": "hammer-curl",
@@ -5718,7 +5867,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "dumbbell-curl",
@@ -5754,7 +5904,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "concentration-curl",
@@ -5790,7 +5941,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "overhand-grip-straight-bar-preacher-curl",
@@ -5826,7 +5978,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "barbell"
     },
     {
       "id": "bicep-curl-with-bands",
@@ -5862,7 +6015,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "band"
     },
     {
       "id": "h-bar-skull-crusher",
@@ -5897,7 +6051,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "h-bar"
     },
     {
       "id": "h-bar-skull-crusher-behind-head",
@@ -5932,7 +6087,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "h-bar"
     },
     {
       "id": "lever-triceps-extension",
@@ -5967,7 +6123,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "machine"
     },
     {
       "id": "standing-ez-bar-overhead-tricep-extensions",
@@ -6002,7 +6159,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "ez-bar"
     },
     {
       "id": "triceps-dip-machine",
@@ -6039,7 +6197,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "triceps-press-machine",
@@ -6076,7 +6235,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "machine"
     },
     {
       "id": "seated-ez-bar-overhead-triceps-extension",
@@ -6111,7 +6271,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "ez-bar"
     },
     {
       "id": "cable-rope-overhead-triceps-extension",
@@ -6146,7 +6307,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "cable"
     },
     {
       "id": "ez-bar-skull-crusher",
@@ -6181,7 +6343,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "ez-bar"
     },
     {
       "id": "dumbbell-skull-crusher",
@@ -6216,7 +6379,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "dumbbell"
     },
     {
       "id": "lying-barbell-triceps-extension",
@@ -6251,7 +6415,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "barbell"
     },
     {
       "id": "cuffed-triceps-extension",
@@ -6286,7 +6451,8 @@
       "notes": "Wrist cuff attachment instead of a handle, so grip is not the limiter. Upper arm stays at the side; the overhead version is Cable One-Arm Overhead Triceps Extension.",
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "cable"
     },
     {
       "id": "push-down-rope",
@@ -6321,7 +6487,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "cable"
     },
     {
       "id": "barbell-jm-press",
@@ -6358,7 +6525,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "barbell"
     },
     {
       "id": "cable-one-arm-overhead-triceps-extension",
@@ -6393,7 +6561,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "cable"
     },
     {
       "id": "push-down-straight-bar",
@@ -6428,7 +6597,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "cable"
     },
     {
       "id": "barbell-lying-back-of-the-head-tricep-extension",
@@ -6463,7 +6633,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "barbell"
     },
     {
       "id": "seated-overhead-tricep-extensions-with-bands",
@@ -6498,7 +6669,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "band"
     },
     {
       "id": "seated-dumbbell-triceps-extension",
@@ -6533,7 +6705,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "dumbbell"
     },
     {
       "id": "triceps-dips",
@@ -6570,7 +6743,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "assisted-triceps-dips",
@@ -6607,7 +6781,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "other"
     },
     {
       "id": "bench-dips",
@@ -6644,7 +6819,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "horizontal-push"
+      "pattern": "horizontal-push",
+      "implement": "bodyweight"
     },
     {
       "id": "dumbbell-tricep-kick-back-incline-prone",
@@ -6679,7 +6855,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-extension"
+      "pattern": "elbow-extension",
+      "implement": "dumbbell"
     },
     {
       "id": "preacher-dumbbell-wrist-curl",
@@ -6714,7 +6891,8 @@
       "notes": "Bench provides external stability for strict isolation of the flexors.",
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-flexion"
+      "pattern": "wrist-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "preacher-dumbbell-reverse-wrist-curl",
@@ -6750,7 +6928,8 @@
       "notes": "Bench provides external stability for strict isolation of the extensors.",
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-extension"
+      "pattern": "wrist-extension",
+      "implement": "dumbbell"
     },
     {
       "id": "barbell-reverse-curl",
@@ -6787,7 +6966,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "barbell"
     },
     {
       "id": "cable-reverse-curl",
@@ -6824,7 +7004,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "cable"
     },
     {
       "id": "barbell-reverse-wrist-curl",
@@ -6859,7 +7040,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-extension"
+      "pattern": "wrist-extension",
+      "implement": "barbell"
     },
     {
       "id": "cable-wrist-curl",
@@ -6894,7 +7076,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-flexion"
+      "pattern": "wrist-flexion",
+      "implement": "cable"
     },
     {
       "id": "dumbbell-wrist-curl",
@@ -6929,7 +7112,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-flexion"
+      "pattern": "wrist-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "dumbbell-reverse-curl",
@@ -6966,7 +7150,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "dumbbell"
     },
     {
       "id": "seated-one-arm-forearm-cable-curls",
@@ -7002,7 +7187,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "wrist-flexion"
+      "pattern": "wrist-flexion",
+      "implement": "cable"
     },
     {
       "id": "resisted-band-pronation",
@@ -7040,7 +7226,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "forearm-rotation"
+      "pattern": "forearm-rotation",
+      "implement": "band"
     },
     {
       "id": "resisted-band-supination",
@@ -7078,7 +7265,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "forearm-rotation"
+      "pattern": "forearm-rotation",
+      "implement": "band"
     },
     {
       "id": "seated-one-arm-forearm-reverse-curls",
@@ -7115,7 +7303,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "other"
     },
     {
       "id": "reverse-grip-bicep-curl-with-bands",
@@ -7152,7 +7341,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "elbow-flexion"
+      "pattern": "elbow-flexion",
+      "implement": "band"
     },
     {
       "id": "cable-upright-row",
@@ -7190,7 +7380,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "upright-row"
+      "pattern": "upright-row",
+      "implement": "cable"
     },
     {
       "id": "barbell-shrug",
@@ -7227,7 +7418,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "shrug"
+      "pattern": "shrug",
+      "implement": "barbell"
     },
     {
       "id": "barbell-upright-row",
@@ -7265,7 +7457,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "upright-row"
+      "pattern": "upright-row",
+      "implement": "barbell"
     },
     {
       "id": "dumbbell-incline-t-raise",
@@ -7304,7 +7497,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rear-delt-fly"
+      "pattern": "rear-delt-fly",
+      "implement": "dumbbell"
     },
     {
       "id": "incline-dumbbell-y-raise",
@@ -7342,7 +7536,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "shrug"
+      "pattern": "shrug",
+      "implement": "dumbbell"
     },
     {
       "id": "kelso-shrug",
@@ -7381,7 +7576,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "shrug"
+      "pattern": "shrug",
+      "implement": "other"
     },
     {
       "id": "ez-bar-upright-row",
@@ -7419,7 +7615,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "upright-row"
+      "pattern": "upright-row",
+      "implement": "ez-bar"
     },
     {
       "id": "dumbbell-upright-row",
@@ -7457,7 +7654,8 @@
       "notes": "Elbow flare determines bias: tucked = Lats, flared = Upper Back/Rear Delts.",
       "video": null,
       "thumbnail": null,
-      "pattern": "upright-row"
+      "pattern": "upright-row",
+      "implement": "dumbbell"
     },
     {
       "id": "banded-shrug",
@@ -7493,7 +7691,8 @@
       "notes": "Constant band tension through the shrug; a home/travel substitute for a loaded shrug",
       "video": null,
       "thumbnail": null,
-      "pattern": "shrug"
+      "pattern": "shrug",
+      "implement": "band"
     },
     {
       "id": "dumbbell-shrug",
@@ -7530,7 +7729,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "shrug"
+      "pattern": "shrug",
+      "implement": "dumbbell"
     },
     {
       "id": "crunch-machine",
@@ -7567,7 +7767,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "spinal-flexion"
+      "pattern": "spinal-flexion",
+      "implement": "machine"
     },
     {
       "id": "kneeling-cable-crunch",
@@ -7604,7 +7805,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "spinal-flexion"
+      "pattern": "spinal-flexion",
+      "implement": "cable"
     },
     {
       "id": "leg-raises",
@@ -7641,7 +7843,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-flexion"
+      "pattern": "hip-flexion",
+      "implement": "bodyweight"
     },
     {
       "id": "hanging-knee-raise",
@@ -7677,7 +7880,8 @@
       "notes": "Focus on posterior pelvic tilt (curling the pelvis up) rather than just flexing the hips.",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-flexion"
+      "pattern": "hip-flexion",
+      "implement": "bodyweight"
     },
     {
       "id": "decline-crunches",
@@ -7714,7 +7918,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "spinal-flexion"
+      "pattern": "spinal-flexion",
+      "implement": "bodyweight"
     },
     {
       "id": "toes-to-bar",
@@ -7751,7 +7956,8 @@
       "notes": "Requires lat strength to stabilize the swing. Great deep stretch for the lower abs.",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-flexion"
+      "pattern": "hip-flexion",
+      "implement": "bodyweight"
     },
     {
       "id": "plank",
@@ -7790,7 +7996,8 @@
       "notes": "Time-based hold; progress with longer holds or a plate on the back",
       "video": null,
       "thumbnail": null,
-      "pattern": "anti-extension"
+      "pattern": "anti-extension",
+      "implement": "bodyweight"
     },
     {
       "id": "dragon-flag",
@@ -7827,7 +8034,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "anti-extension"
+      "pattern": "anti-extension",
+      "implement": "bodyweight"
     },
     {
       "id": "decline-russian-twist",
@@ -7863,7 +8071,8 @@
       "notes": "Decline bench increases mechanical tension on the rectus abdominis while twisting.",
       "video": null,
       "thumbnail": null,
-      "pattern": "rotation"
+      "pattern": "rotation",
+      "implement": "other"
     },
     {
       "id": "cable-obliques",
@@ -7900,7 +8109,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "rotation"
+      "pattern": "rotation",
+      "implement": "cable"
     },
     {
       "id": "russian-twist",
@@ -7936,7 +8146,8 @@
       "notes": "Can be weighted. Focus on torso rotation, not just moving the hands.",
       "video": null,
       "thumbnail": null,
-      "pattern": "rotation"
+      "pattern": "rotation",
+      "implement": "other"
     },
     {
       "id": "hack-squat",
@@ -7973,7 +8184,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "hack-squat-wide-stance",
@@ -8010,7 +8222,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "leg-press",
@@ -8047,7 +8260,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "pendulum-squat",
@@ -8084,7 +8298,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "leg-extension",
@@ -8119,7 +8334,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "knee-extension"
+      "pattern": "knee-extension",
+      "implement": "machine"
     },
     {
       "id": "barbell-back-squat-wide-stance",
@@ -8157,7 +8373,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "barbell"
     },
     {
       "id": "smith-machine-bulgarian-split-squat",
@@ -8195,7 +8412,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-step-up",
@@ -8233,7 +8451,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "dumbbell"
     },
     {
       "id": "belt-squat",
@@ -8270,7 +8489,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "barbell-front-squat-wide-stance",
@@ -8308,7 +8528,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "barbell"
     },
     {
       "id": "squat-with-bands",
@@ -8346,7 +8567,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "band"
     },
     {
       "id": "dumbbell-bulgarian-split-squat",
@@ -8384,7 +8606,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "dumbbell"
     },
     {
       "id": "barbell-front-squat",
@@ -8422,7 +8645,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "barbell"
     },
     {
       "id": "barbell-zercher-squat",
@@ -8463,7 +8687,8 @@
       "notes": "Elbow-crook loading; upper back and arms often limit the load before the legs do.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "barbell"
     },
     {
       "id": "smith-machine-lunge",
@@ -8501,7 +8726,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "machine"
     },
     {
       "id": "box-squat-single-leg",
@@ -8539,7 +8765,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "other"
     },
     {
       "id": "smith-machine-squat",
@@ -8576,7 +8803,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "machine"
     },
     {
       "id": "reverse-lunge-with-bands",
@@ -8614,7 +8842,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "band"
     },
     {
       "id": "barbell-squat",
@@ -8651,7 +8880,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "squat"
+      "pattern": "squat",
+      "implement": "barbell"
     },
     {
       "id": "sissy-squat",
@@ -8687,7 +8917,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "knee-extension"
+      "pattern": "knee-extension",
+      "implement": "bodyweight"
     },
     {
       "id": "barbell-lunge",
@@ -8725,7 +8956,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "barbell"
     },
     {
       "id": "wall-squat",
@@ -8761,7 +8993,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "knee-extension"
+      "pattern": "knee-extension",
+      "implement": "bodyweight"
     },
     {
       "id": "front-rack-barbell-lunge",
@@ -8799,7 +9032,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "barbell"
     },
     {
       "id": "barbell-bulgarian-split-squat",
@@ -8836,7 +9070,8 @@
       "notes": "Stance width and depth dictate Glute vs Quad bias.",
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "barbell"
     },
     {
       "id": "dumbbell-lunge",
@@ -8873,7 +9108,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "dumbbell"
     },
     {
       "id": "kettlebell-reverse-lunge",
@@ -8911,7 +9147,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "split-squat"
+      "pattern": "split-squat",
+      "implement": "kettlebell"
     },
     {
       "id": "seated-leg-curl",
@@ -8946,7 +9183,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "knee-flexion"
+      "pattern": "knee-flexion",
+      "implement": "machine"
     },
     {
       "id": "lying-leg-curl",
@@ -8981,7 +9219,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "knee-flexion"
+      "pattern": "knee-flexion",
+      "implement": "machine"
     },
     {
       "id": "smith-machine-good-morning",
@@ -9018,7 +9257,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "machine"
     },
     {
       "id": "romanian-deadlift-rdl",
@@ -9056,7 +9296,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "roman-chair-single-leg-back-extension",
@@ -9093,7 +9334,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "bodyweight"
     },
     {
       "id": "smith-machine-staggered-stance-good-morning",
@@ -9131,7 +9373,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "machine"
     },
     {
       "id": "stiff-leg-deadliftsldl",
@@ -9168,7 +9411,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "barbell-good-morning",
@@ -9206,7 +9450,8 @@
       "notes": "High axial loading",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "hip-thrust-machine",
@@ -9242,7 +9487,8 @@
       "notes": "Most stable hip thrust option",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "machine"
     },
     {
       "id": "smith-machine-hip-thrust",
@@ -9279,7 +9525,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "machine"
     },
     {
       "id": "barbell-hip-thrusts",
@@ -9316,7 +9563,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "barbell"
     },
     {
       "id": "glute-kickback-machine",
@@ -9352,7 +9600,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-extension-open"
+      "pattern": "hip-extension-open",
+      "implement": "machine"
     },
     {
       "id": "dumbbell-hip-thrust-with-bands",
@@ -9389,7 +9638,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "dumbbell"
     },
     {
       "id": "barbell-hip-thrust-with-bands",
@@ -9426,7 +9676,8 @@
       "notes": "Bands increase peak tension",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "barbell"
     },
     {
       "id": "standing-cable-hip-extension",
@@ -9462,7 +9713,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-extension-open"
+      "pattern": "hip-extension-open",
+      "implement": "cable"
     },
     {
       "id": "dumbbell-glute-bridge",
@@ -9499,7 +9751,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "dumbbell"
     },
     {
       "id": "barbell-glute-bridge",
@@ -9536,7 +9789,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "barbell"
     },
     {
       "id": "dumbbell-glute-bridge-with-bands",
@@ -9573,7 +9827,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "dumbbell"
     },
     {
       "id": "cable-kickbacks",
@@ -9609,7 +9864,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-extension-open"
+      "pattern": "hip-extension-open",
+      "implement": "cable"
     },
     {
       "id": "hip-thrust-with-bands",
@@ -9645,7 +9901,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "band"
     },
     {
       "id": "sumo-deadlift",
@@ -9683,7 +9940,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "trap-bar-deadlift",
@@ -9720,7 +9978,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "barbell"
     },
     {
       "id": "single-leg-dumbbell-hip-thrust",
@@ -9757,7 +10016,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-thrust"
+      "pattern": "hip-thrust",
+      "implement": "dumbbell"
     },
     {
       "id": "kettlebell-swing",
@@ -9795,7 +10055,8 @@
       "notes": "Explosive movement",
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-hinge"
+      "pattern": "hip-hinge",
+      "implement": "kettlebell"
     },
     {
       "id": "hip-adduction-machine",
@@ -9830,7 +10091,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-adduction"
+      "pattern": "hip-adduction",
+      "implement": "machine"
     },
     {
       "id": "single-leg-cable-adduction",
@@ -9865,7 +10127,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-adduction"
+      "pattern": "hip-adduction",
+      "implement": "cable"
     },
     {
       "id": "copenhagen-adduction",
@@ -9901,7 +10164,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-adduction"
+      "pattern": "hip-adduction",
+      "implement": "bodyweight"
     },
     {
       "id": "hip-abduction-machine",
@@ -9937,7 +10201,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "hip-abduction"
+      "pattern": "hip-abduction",
+      "implement": "machine"
     },
     {
       "id": "calf-raise-machine",
@@ -9973,7 +10238,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "smith-machine-standing-calf-raise",
@@ -10009,7 +10275,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "hack-squat-calf-raise",
@@ -10045,7 +10312,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "seated-calf-raise-machine",
@@ -10081,7 +10349,8 @@
       "notes": "Pad on the lower thighs, knees at 90°; the bent knee slackens the gastrocnemius so the soleus does the work. Let the heels drop all the way for the stretch.",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-bent-leg"
+      "pattern": "calf-bent-leg",
+      "implement": "machine"
     },
     {
       "id": "standing-calf-raise-dumbbell",
@@ -10117,7 +10386,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "dumbbell"
     },
     {
       "id": "leg-press-calf-raise",
@@ -10153,7 +10423,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "seated-calf-raise-dumbbell",
@@ -10189,7 +10460,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-bent-leg"
+      "pattern": "calf-bent-leg",
+      "implement": "dumbbell"
     },
     {
       "id": "lever-donkey-calf-raise",
@@ -10225,7 +10497,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "hack-machine-one-leg-calf-raise",
@@ -10261,7 +10534,8 @@
       "notes": null,
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "machine"
     },
     {
       "id": "standing-calf-raise-deficit",
@@ -10297,7 +10571,8 @@
       "notes": "Forefoot on a step; let the heel drop below the toes for the full stretch",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "bodyweight"
     },
     {
       "id": "seated-calf-raise-band",
@@ -10333,7 +10608,8 @@
       "notes": "Band under the forefoot, looped over the knee; knee bent biases the soleus",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-bent-leg"
+      "pattern": "calf-bent-leg",
+      "implement": "band"
     },
     {
       "id": "standing-calf-raise-band",
@@ -10369,7 +10645,8 @@
       "notes": "Stand on the band, ends held at the hips or looped over the shoulders",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "band"
     },
     {
       "id": "standing-calf-raise-single-leg",
@@ -10405,7 +10682,8 @@
       "notes": "Touch a wall for balance; roughly doubles the load over the bilateral version",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "bodyweight"
     },
     {
       "id": "standing-calf-raise-bodyweight",
@@ -10441,7 +10719,8 @@
       "notes": "Flat floor, no deficit — progress to the single-leg or deficit variant once bodyweight is easy",
       "video": null,
       "thumbnail": null,
-      "pattern": "calf-straight-leg"
+      "pattern": "calf-straight-leg",
+      "implement": "bodyweight"
     },
     {
       "id": "tib-bar-toe-raise",
@@ -10476,7 +10755,8 @@
       "notes": "Plate-loaded and progressive - the most loadable tibialis option",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "other"
     },
     {
       "id": "cable-toe-raise",
@@ -10511,7 +10791,8 @@
       "notes": "Low pulley with a D-handle strapped over the forefoot; constant tension through the whole arc",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "cable"
     },
     {
       "id": "dumbbell-toe-raise",
@@ -10546,7 +10827,8 @@
       "notes": "Seated with the dumbbell held upright on the foot",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "dumbbell"
     },
     {
       "id": "standing-tibialis-raise",
@@ -10581,7 +10863,8 @@
       "notes": "Back against a wall, heels a step forward; walk the feet further out to progress",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "bodyweight"
     },
     {
       "id": "resistance-band-seated-toe-raise",
@@ -10616,7 +10899,8 @@
       "notes": "Band anchored ahead of the feet, loop over the forefoot",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "band"
     },
     {
       "id": "seated-toe-raise",
@@ -10651,7 +10935,8 @@
       "notes": "Heels planted, lift the toes as high as possible; rest a plate on the foot to add load",
       "video": null,
       "thumbnail": null,
-      "pattern": "dorsiflexion"
+      "pattern": "dorsiflexion",
+      "implement": "bodyweight"
     }
   ]
 }

@@ -108,6 +108,34 @@ const CABLE_HINTS = /\bcable|pushdown|push-down|crossover|face pull\b/i
 const BODYWEIGHT_HINTS = /\b(pull-ups?|chin-ups?|push-ups?|dips?|muscle-ups?|dragon flags?|toes to bar|hanging|leg raises?|russian twists?|sissy|crunches)\b/i
 const UNILATERAL_HINTS = /\b(one[ -]arm|single[ -]arm|one[ -]leg|single[ -]leg|1[ -]arm|unilateral)\b/i
 
+// ---- implement (derived) -----------------------------------------------------
+// What you actually hold or sit in. `equipment` says "free weight" for a barbell,
+// a dumbbell, an EZ bar and a kettlebell alike, and the split generator ranks
+// those differently at a gym (Hani's order: machines, then barbells, then
+// dumbbells; EZ and straight bars over the H-bar). Read from the name, in this
+// order — the first match wins, so "Dumbbell Bulgarian Split Squat" is a
+// dumbbell movement before "squat" can make it anything else. A free-weight row
+// none of these place is reported and becomes `other`; pin it with
+// `implement:` in exercise-overrides.mjs.
+const IMPLEMENT_RULES = [
+  ['h-bar', /\bh[- ]bar\b/i],
+  ['ez-bar', /\bez[- ]?bar\b|\bz-bar\b/i],
+  ['kettlebell', /kettlebell/i],
+  ['landmine', /landmine|t-bar/i],
+  ['dumbbell', /dumbbell|hammer curl|concentration curl/i],
+  ['weighted', /\bweighted\b/i],
+  ['barbell', /barbell|bench press|deadlift|\brdl\b|sldl|straight bar|trap bar|jm press/i],
+]
+const IMPLEMENTS = ['machine', 'cable', 'barbell', 'ez-bar', 'weighted', 'landmine', 'dumbbell', 'h-bar', 'kettlebell', 'bodyweight', 'band', 'other']
+function classifyImplement(ex) {
+  if (ex.equipment === 'machine') return 'machine'
+  if (ex.equipment === 'cable') return 'cable'
+  if (ex.equipment === 'resistance band') return 'band'
+  if (ex.equipment === 'bodyweight') return /\bweighted\b/i.test(ex.name) ? 'weighted' : 'bodyweight'
+  for (const [implement, re] of IMPLEMENT_RULES) if (re.test(ex.name)) return implement
+  return null
+}
+
 // Resolve columns by HEADER NAME, not fixed position, so editing the CSV
 // (adding a Quaternary column, reordering, renaming) can't silently misalign
 // the parse. Required columns throw a clear error if missing; optional ones
@@ -263,6 +291,17 @@ function main() {
     // (correctly) has them on the LOWER chest.
     const offAtom = ex.pattern ? driverMismatch(ex.pattern, ex.muscles) : null
     if (offAtom) add('WARNING', name, `Pattern \`${ex.pattern}\` doesn't list "${offAtom}" as a driver, but that's this row's heaviest muscle — check one or the other.`)
+
+    // ---- implement (derived; an override can pin it) ----
+    if (ex.implement) {
+      if (!IMPLEMENTS.includes(ex.implement)) add('BLOCKER', name, `Override pins unknown implement "${ex.implement}".`)
+    } else {
+      ex.implement = classifyImplement(ex)
+      if (!ex.implement) {
+        ex.implement = 'other'
+        add('NOTICE', name, `Free weight, but the name doesn't say barbell, dumbbell, EZ bar, H-bar, kettlebell or landmine — read as \`other\` (ranked like a dumbbell). Pin \`implement:\` in exercise-overrides.mjs if that's wrong.`)
+      }
+    }
 
     // ---- validate FINAL object (post-override) ----
     for (const k of Object.keys(rawByField)) {

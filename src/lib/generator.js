@@ -52,8 +52,9 @@ import {
   WEIGHTS, GYM_WEIGHTS, GYM_EXCLUDED_EQUIPMENT, GYM_EXCLUDED_OVERLOAD, LIMITER_PENALTY, LIMITER_EXCLUDED,
   PENALTIES, DAY_LOAD_TARGET, DAY_LOAD_MAX, COMPOUND_LEAD_MIN_CONTRIBUTION,
   REP_RANGES, MAX_REPS, MIN_REP_SPAN, SWAP_MIN_CONTRIBUTION_RATIO,
-  PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
+  PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, LEAD_PATHS, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
   corePlacement, CORE_MUSCLES, SUPERSET_MAX_COMPOUND_FATIGUE,
+  SAME_JOB, JOB_ALTERNATIVE_MIN, JOB_COVERED_MIN, IMPLEMENT_SCORE, EMPHASIS_WEIGHT, EMPHASIS_MIN_SHARE,
   SESSION_TYPES, SESSION_RECOMMENDABLE, SESSION_GAP_HOURS, SESSION_FATIGUED_BELOW,
 } from './generatorConfig'
 
@@ -145,6 +146,14 @@ function heavyMuscleOf(db) {
 // session — a different strength curve and a different queue.
 function signature(db) {
   return [db.pattern || db.category, db.equipment].join('|')
+}
+
+// The job a movement does in a day (SAME_JOB): its pattern, except the pairs
+// that do the same job down slightly different paths — a lunge is the quad
+// compound a squat already was, an upright row the shoulder press.
+export function jobOf(db) {
+  const pattern = db?.pattern || null
+  return pattern ? SAME_JOB[pattern] || pattern : null
 }
 
 // ---- Reading the user's history ---------------------------------------------
@@ -385,7 +394,16 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   // `sizedAs` (Upper B) is the order the day is measured in for its set budget;
   // it takes the same focus edits as `muscles` so the two always list the same
   // muscles.
-  const days = shape.days.map((d) => ({ name: d.name, muscles: [...d.muscles], sizedAs: d.sizedAs ? [...d.sizedAs] : null }))
+  // `emphasis`, `leadPaths` and `repeatJobs` ride along unchanged: a focus
+  // reorders the day, it doesn't change what the day is for.
+  const days = shape.days.map((d) => ({
+    name: d.name,
+    muscles: [...d.muscles],
+    sizedAs: d.sizedAs ? [...d.sizedAs] : null,
+    emphasis: d.emphasis || null,
+    leadPaths: d.leadPaths || null,
+    repeatJobs: d.repeatJobs || null,
+  }))
 
   // Which half of the body a day is for, read off the day rather than hardcoded
   // per shape, so a shape added later is classified without anyone remembering
@@ -441,6 +459,15 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   for (const d of days) {
     const extra = borrowed.get(d)
     if (extra.length) d.name = `${d.name} + ${extra.join(', ')}`
+  }
+  // A muscle another day of the week emphasises gets ONE movement here — topped
+  // up with sets like any other — and its second angle on its own day. That is
+  // what makes a glute day a glute day: the quads still get their split squat,
+  // not a split squat and a leg extension. A focus muscle is exempt, since
+  // training it more often is the point of naming it.
+  const emphasised = new Set(days.flatMap((d) => d.emphasis || []))
+  for (const d of days) {
+    d.oneMovement = d.muscles.filter((m) => emphasised.has(m) && !d.emphasis?.includes(m) && !focus.includes(m))
   }
   // The shape rides along on the days so summarize can name it without having to
   // resolve the id a second time.
@@ -530,22 +557,56 @@ export function recoveryGaps(templateDays, { length, offsets }) {
   })
 }
 
-// Per-day, per-muscle set allocation: the weekly target split across the days
-// that train that muscle, capped per session at the point where the engine's own
-// within-session diminishing returns start discounting the work.
-export function allocate(targets, templateDays) {
-  const frequency = {}
-  for (const day of templateDays) for (const m of day.muscles) frequency[m] = (frequency[m] || 0) + 1
+// How much of a muscle's week a day takes, relative to its other days: more on
+// the day that emphasises it (EMPHASIS_WEIGHT), an even share otherwise.
+//
+// Only where the week can afford it: if the skew would leave a day that trains
+// the muscle less than EMPHASIS_MIN_SHARE, the week splits evenly instead. A
+// tight week — a beginner on lower volume, three focus muscles — would
+// otherwise starve that day of the muscle altogether and train it once.
+export function emphasisWeight(day, muscle, templateDays = null, target = null) {
+  if (!day.emphasis?.includes(muscle)) return 1
+  if (templateDays && target != null) {
+    const days = templateDays.filter((d) => d.muscles.includes(muscle))
+    const total = days.reduce((n, d) => n + (d.emphasis?.includes(muscle) ? EMPHASIS_WEIGHT : 1), 0)
+    const lightest = days.some((d) => !d.emphasis?.includes(muscle)) ? target / total : Infinity
+    if (lightest < EMPHASIS_MIN_SHARE) return 1
+  }
+  return EMPHASIS_WEIGHT
+}
 
-  return templateDays.map((day) => {
-    const alloc = {}
-    for (const m of day.muscles) {
-      const target = targets[m]
-      if (!target) continue
-      alloc[m] = Math.min(target / frequency[m], MAX_SETS_PER_MUSCLE_PER_SESSION)
+// Per-day, per-muscle set allocation: the weekly target split across the days
+// that train that muscle — evenly, except where a day emphasises it — capped per
+// session at the point where the engine's own within-session diminishing
+// returns start discounting the work.
+//
+// What an emphasised day can't hold under the per-session cap goes back to the
+// muscle's other days, so the emphasis moves sets and never loses any: at 12
+// sets over two days the cap leaves an even 6/6, and the emphasis shows in the
+// day's order and movements instead.
+export function allocate(targets, templateDays) {
+  const out = templateDays.map(() => ({}))
+  const muscles = new Set(templateDays.flatMap((d) => d.muscles))
+  for (const m of muscles) {
+    const target = targets[m]
+    if (!target) continue
+    let open = templateDays.map((d, i) => i).filter((i) => templateDays[i].muscles.includes(m))
+    let left = target
+    // Water-fill: share by weight, pin whichever day overflows the cap, repeat.
+    while (open.length) {
+      const w = (i) => emphasisWeight(templateDays[i], m, templateDays, target)
+      const weight = open.reduce((n, i) => n + w(i), 0)
+      const over = open.filter((i) => (left * w(i)) / weight > MAX_SETS_PER_MUSCLE_PER_SESSION)
+      if (!over.length) {
+        for (const i of open) out[i][m] = (left * w(i)) / weight
+        break
+      }
+      for (const i of over) out[i][m] = MAX_SETS_PER_MUSCLE_PER_SESSION
+      left -= over.length * MAX_SETS_PER_MUSCLE_PER_SESSION
+      open = open.filter((i) => !over.includes(i))
     }
-    return alloc
-  })
+  }
+  return out
 }
 
 // ---- Scoring -----------------------------------------------------------------
@@ -575,6 +636,8 @@ export function scoreExercise(db, ctx) {
   score += w.overload * (OVERLOAD_SCORE[db.progressiveOverload] ?? 0.4)
   score += w.stability * (STABILITY_SCORE[db.stability] ?? 0.6)
   score += (w.simplicity ?? 0) * (SIMPLICITY_SCORE[db.skill] ?? 0.6)
+  // Machines, then barbells, then dumbbells (IMPLEMENT_SCORE) — gym only.
+  score += (w.implement ?? 0) * (IMPLEMENT_SCORE[db.implement] ?? IMPLEMENT_SCORE.other)
 
   // What else in the day this movement pays off. Only muscles that still owe
   // sets count — covering a muscle the day has already finished with is not a
@@ -623,10 +686,10 @@ export function scoreExercise(db, ctx) {
   else if (ctx.weekFamilies?.has(movementFamily(db))) score -= PENALTIES.sameFamily
   else if (ctx.weekSignatures?.has(signature(db))) score -= PENALTIES.sameSignature
 
-  // ...and within the day, down the same path. Not a filter: the point of a
-  // second movement for a muscle is usually a second ANGLE, but sometimes the
-  // volume genuinely wants two rows, and this lets it have them at a cost.
-  if (db.pattern && ctx.dayPatterns?.has(db.pattern)) score -= PENALTIES.samePatternInDay
+  // ...and within the day, a second movement for the same job. The generator
+  // only writes one on a day built for it (candidates, `repeatJobs`), where it
+  // loses ties to a different job; a swap still offers one, ranked lower.
+  if (ctx.dayJobs?.has(jobOf(db))) score -= PENALTIES.sameJobInDay
 
   // One tier of stretch above their level is allowed but discouraged; two is a
   // hard filter and never reaches this function.
@@ -706,13 +769,56 @@ export function candidates(muscle, ctx) {
 // Swap suggestions pass `dayHeavy` but not `noWeekRepeats`: someone choosing a
 // replacement should still see the movement they did on Monday, just ranked
 // lower for it (PENALTIES.repeatExercise).
+//
+// Ahead of both sits the day's one-movement-per-job rule (oneJobPerDay), which
+// can leave the slot empty on purpose.
 function complementary(pool, muscle, ctx) {
-  const spaced = ctx.dayHeavy?.size ? pool.filter((db) => !ctx.dayHeavy.has(heavyMuscleOf(db))) : pool
-  const base = spaced.length ? spaced : pool
+  const jobs = oneJobPerDay(pool, muscle, ctx)
+  if (!jobs.length) return jobs
+  const spaced = ctx.dayHeavy?.size ? jobs.filter((db) => !ctx.dayHeavy.has(heavyMuscleOf(db))) : jobs
+  const base = spaced.length ? spaced : jobs
   if (!ctx.noWeekRepeats) return base
   const directness = (list) => Math.max(0, ...list.map((db) => muscleWeights(db)[muscle] || 0))
   const fresh = base.filter((db) => !ctx.weekIds?.has(db.id) && !ctx.weekFamilies?.has(movementFamily(db)))
   return fresh.length && directness(fresh) >= directness(base) ? fresh : base
+}
+
+// Hani's rule (2026-10-03): a day holds one movement per job (SAME_JOB) — with
+// a squat in it, a lunge is the same work again; with one row, a second row is.
+//
+// So once the day has a movement for a job, a slot looks elsewhere: to another
+// job that is FOR its muscle (the muscle is its main mover, at least as a
+// secondary mover) and that the week doesn't already have. A fly is a chest
+// movement, not the front delts' after a press; a reverse curl is a forearm
+// movement, not the biceps' after a row. If there's none and the day already
+// trains the muscle properly (JOB_COVERED_MIN), the slot stays empty and its
+// sets go onto that movement in the top-up pass — one row of four sets, not two
+// rows of two. Only a muscle the day doesn't train properly yet may take a
+// second movement for the job.
+//
+// Two days may repeat a job on purpose: a day built around one muscle lists the
+// jobs it may (`repeatJobs`: two curls on an arm day), and a muscle the day
+// emphasises may take a second ISOLATION down its own job (a second curl on the
+// biceps day, never a second row or a lunge after the squat). Either way the
+// repeat is FOR the muscle — a second curl for the biceps, not a reverse curl.
+//
+// Generation only (`oneJobPerDay`): a swap suggestion still offers the second
+// row, ranked lower (PENALTIES.sameJobInDay).
+function oneJobPerDay(pool, muscle, ctx) {
+  if (!ctx.oneJobPerDay || !ctx.dayJobs?.size) return pool
+  const repeatable = (db) =>
+    (ctx.repeatJobs?.has(jobOf(db)) || (ctx.emphasised && db.type === 'isolation')) && primaryMuscleOf(db) === muscle
+  const taken = (db) => ctx.dayJobs.has(jobOf(db)) && !repeatable(db)
+  if (!pool.some(taken)) return pool
+  let elsewhere = pool.filter(
+    (db) => !taken(db) && primaryMuscleOf(db) === muscle && (muscleWeights(db)[muscle] || 0) >= JOB_ALTERNATIVE_MIN
+  )
+  // ...and one the week doesn't already have (`noWeekRepeats`): a second
+  // overhead press of the week is no better for the side delts than a second
+  // raise was. If that leaves nothing, the sets go onto what the day has.
+  if (ctx.noWeekRepeats) elsewhere = elsewhere.filter((db) => !ctx.weekIds?.has(db.id) && !ctx.weekFamilies?.has(movementFamily(db)))
+  if (elsewhere.length) return elsewhere
+  return ctx.dayTrained?.has(muscle) ? [] : pool
 }
 
 // ---- Filling one day ---------------------------------------------------------
@@ -741,7 +847,9 @@ export function fillDay(template, alloc, gaps, ctx) {
   const remaining = { ...alloc }
   const dayIds = new Set()
   const dayFamilies = new Set()
-  const dayPatterns = new Set()
+  const dayJobs = new Set() // SAME_JOB
+  const dayTrained = new Set() // muscles a movement already trains at JOB_COVERED_MIN
+  const repeatJobs = template.repeatJobs ? new Set(template.repeatJobs) : null
   const dayHeavy = new Set() // muscles a heavy movement already leads today
   const compoundFor = new Set()
   const chosen = []
@@ -776,6 +884,33 @@ export function fillDay(template, alloc, gaps, ctx) {
   const pending = new Set(template.direct || [])
   const held = (muscle) => pending.size - (pending.has(muscle) ? 1 : 0)
 
+  // The day's own `leadPaths`, else LEAD_PATHS — either way only where the day
+  // has room for them: the partner still owed a movement of its own, and the
+  // day able to hold every slot from here to the partner's, plus the direct
+  // work it's holding room for. A day that can't is tight, and its one back
+  // movement is whatever the scorer finds pays the most — a row, usually.
+  function leadPathsFor(muscle) {
+    const lead = LEAD_PATHS[muscle]
+    const paths = template.leadPaths?.[muscle] || lead?.paths
+    if (!paths) return null
+    const partner = lead?.unlessShort
+    const from = template.muscles.indexOf(muscle)
+    const to = template.muscles.indexOf(partner)
+    if (partner && to !== -1) {
+      if ((remaining[partner] || 0) < MIN_SLOT_SETS * 2) return null
+      const ahead = template.muscles.slice(from, Math.max(from, to) + 1)
+      const toFill = template.muscles.filter(
+        (m) =>
+          !CORE_MUSCLES.includes(m) &&
+          !chosen.some((c) => c.muscle === m) &&
+          (pending.has(m) || (ahead.includes(m) && (remaining[m] || 0) >= MIN_SLOT_SETS))
+      ).length
+      const counted = chosen.filter((c) => !isCoreMovement(c.db)).length
+      if (counted + toFill > ctx.posture.exerciseCap || !setRoom(MIN_SETS_PER_EXERCISE * toFill)) return null
+    }
+    return paths
+  }
+
   function tryAdd(muscle, minOwed, { ignoreLoadCap = false } = {}) {
     const first = !chosen.some((c) => c.muscle === muscle)
     // A guaranteed direct movement, or a focus muscle on a day it's planned for,
@@ -803,8 +938,19 @@ export function fillDay(template, alloc, gaps, ctx) {
     // A focus muscle opens EVERY one of its days down those paths, where it has
     // them: a side-delt focus leads with a raise even though the database lists
     // the side delts as the main mover of a behind-the-neck press.
+    //
+    // Any other muscle can have a path its first movement of the day comes down
+    // (LEAD_PATHS, or the day's own `leadPaths`): the lats a pulldown, the
+    // upper back a row, the hamstrings a leg curl on a quad day.
     const leadsFocus = first && ctx.focus.includes(muscle)
-    const paths = first && (pending.has(muscle) || leadsFocus) ? DIRECT_WORK[muscle] || null : null
+    // Every movement a day gives a muscle it emphasises is FOR that muscle: a
+    // glute day opens on a hip thrust, not a split squat that lists the glutes
+    // second, and a side-delt day's second movement is a raise, not a rear-delt
+    // fly that brushes them.
+    const emphasised = !!template.emphasis?.includes(muscle)
+    const paths = first
+      ? ((pending.has(muscle) || leadsFocus) && DIRECT_WORK[muscle]) || leadPathsFor(muscle) || null
+      : null
     const pickCtx = {
       muscle,
       allowedEquipment: ctx.allowedEquipment,
@@ -816,7 +962,11 @@ export function fillDay(template, alloc, gaps, ctx) {
       maxSkillRank: ctx.maxSkillRank,
       dayIds,
       dayFamilies,
-      dayPatterns,
+      dayJobs,
+      dayTrained,
+      repeatJobs,
+      emphasised,
+      oneJobPerDay: true,
       dayHeavy,
       remaining,
       weekIds: ctx.weekIds,
@@ -833,8 +983,10 @@ export function fillDay(template, alloc, gaps, ctx) {
       patterns: paths,
       // A focus muscle opens on a movement it is the main mover of: bringing up
       // side delts means lateral raises first, not an overhead press that
-      // happens to list them.
-      mainMover: leadsFocus,
+      // happens to list them. Likewise a muscle the day emphasises, and any
+      // movement down a muscle's own paths (DIRECT_WORK, `leadPaths`): a
+      // reverse curl is elbow flexion, but it's a forearm movement.
+      mainMover: leadsFocus || emphasised || !!paths,
     }
 
     const pick = (pctx) => {
@@ -860,7 +1012,8 @@ export function fillDay(template, alloc, gaps, ctx) {
     chosen.push({ db: best.db, sets: MIN_SETS_PER_EXERCISE, muscle })
     dayIds.add(best.db.id)
     dayFamilies.add(movementFamily(best.db))
-    if (best.db.pattern) dayPatterns.add(best.db.pattern)
+    if (jobOf(best.db)) dayJobs.add(jobOf(best.db))
+    for (const [m, w] of Object.entries(muscleWeights(best.db))) if (w >= JOB_COVERED_MIN) dayTrained.add(m)
     const heavy = heavyMuscleOf(best.db)
     if (heavy) dayHeavy.add(heavy)
     ctx.weekIds.add(best.db.id)
@@ -881,8 +1034,11 @@ export function fillDay(template, alloc, gaps, ctx) {
   // A guarantee that couldn't be placed (no movement at all for it here) stops
   // holding room once coverage is done.
   pending.clear()
-  // 2 — a second angle for whatever still owes a movement's worth
-  for (const muscle of template.muscles) tryAdd(muscle, MIN_SLOT_SETS * 2)
+  // 2 — a second angle for whatever still owes a movement's worth, except the
+  // muscles whose second angle belongs to another day (`oneMovement`)
+  for (const muscle of template.muscles) {
+    if (!template.oneMovement?.includes(muscle)) tryAdd(muscle, MIN_SLOT_SETS * 2)
+  }
   // 3 — spend the remainder a set at a time
   for (let pass = 0; pass < MAX_TOP_UP_PASSES; pass++) {
     let added = false
@@ -945,7 +1101,7 @@ function plannedRow(db, sets, muscle, rirTarget, ctx) {
 // already has, no second heavy movement for a muscle, and one the muscle is the
 // main mover of — and placed straight after
 // the muscle's own movements, so the day still opens on it.
-function addFocusMovement(day, muscle, trainingDays, ctx) {
+function addFocusMovement(day, muscle, trainingDays, ctx, repeatJobs = null) {
   const dbOf = (e) => DB_BY_ID.get(plannedExerciseDbId(e) || '')
   const today = day.exercises.map(dbOf).filter(Boolean)
   const week = trainingDays.flatMap((d) => d.exercises).map(dbOf).filter(Boolean)
@@ -961,7 +1117,10 @@ function addFocusMovement(day, muscle, trainingDays, ctx) {
     maxSkillRank: ctx.maxSkillRank,
     dayIds: new Set(today.map((db) => db.id)),
     dayFamilies: new Set(today.map(movementFamily)),
-    dayPatterns: new Set(today.map((db) => db.pattern).filter(Boolean)),
+    dayJobs: new Set(today.map(jobOf).filter(Boolean)),
+    dayTrained: new Set(today.flatMap((db) => Object.entries(muscleWeights(db)).filter(([, w]) => w >= JOB_COVERED_MIN).map(([m]) => m))),
+    repeatJobs: repeatJobs ? new Set(repeatJobs) : null,
+    oneJobPerDay: true,
     dayHeavy: new Set(today.map(heavyMuscleOf).filter(Boolean)),
     weekIds: new Set(week.map((db) => db.id)),
     weekFamilies: new Set(week.map(movementFamily)),
@@ -1448,6 +1607,7 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
   const selfPlannedId = planned.plannedExerciseId || planned.id
   const dayIds = new Set()
   const dayFamilies = new Set()
+  const dayJobs = new Set()
   const dayHeavy = new Set()
   let load = 0
   for (const other of day.exercises) {
@@ -1456,6 +1616,7 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
     if (other.id !== selfPlannedId) {
       dayIds.add(db.id)
       dayFamilies.add(movementFamily(db))
+      if (jobOf(db)) dayJobs.add(jobOf(db))
       const heavy = heavyMuscleOf(db)
       if (heavy) dayHeavy.add(heavy)
       load += setLoad(db) * (Number(other.sets) || 0)
@@ -1495,6 +1656,7 @@ function slotContext(planned, { program, dayId, sessions = [], injuries = [], no
     maxSkillRank: SKILL_RANK.high, // a split they wrote themselves; only the very hardest is held back
     dayIds,
     dayFamilies,
+    dayJobs,
     dayHeavy,
     weekIds,
     weekFamilies,
@@ -1690,11 +1852,12 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       for (const m of templateDays[i].muscles) {
         const target = weekTargets[m]
         if (!target) continue
-        const daysLeft = templateDays.slice(i).filter((d) => d.muscles.includes(m)).length
+        const w = (d) => emphasisWeight(d, m, templateDays, target)
+        const sharesLeft = templateDays.slice(i).filter((d) => d.muscles.includes(m)).reduce((n, d) => n + w(d), 0)
         const owed = Math.max(0, target - (credited[m] || 0))
         // An even share can be too thin to earn an exercise on any day; a
         // muscle still owed a slot's worth may take one today instead.
-        const share = Math.max(owed / daysLeft, owed >= MIN_SLOT_SETS ? MIN_SLOT_SETS : 0)
+        const share = Math.max((owed * w(templateDays[i])) / sharesLeft, owed >= MIN_SLOT_SETS ? MIN_SLOT_SETS : 0)
         alloc[m] = Math.min(share, MAX_SETS_PER_MUSCLE_PER_SESSION)
       }
       return capSession(alloc)
@@ -2046,7 +2209,7 @@ function deliverFocus(trainingDays, opts) {
       const split = ownSets(day, muscle) + MIN_SETS_PER_EXERCISE > cap ? spare(day).sort((a, b) => b.sets - a.sets)[0] : null
       const room = MIN_SETS_PER_EXERCISE - (split ? 1 : 0)
       while (setCap - daySets(day) < room && makeRoom([day], weeklyMuscleSets(trainingDays, perWeek), opts));
-      if (setCap - daySets(day) < room || countedRows(day) >= gen.posture.exerciseCap || !addFocusMovement(day, muscle, trainingDays, gen)) {
+      if (setCap - daySets(day) < room || countedRows(day) >= gen.posture.exerciseCap || !addFocusMovement(day, muscle, trainingDays, gen, planned[trainingDays.indexOf(day)]?.repeatJobs)) {
         full.add(day)
         continue
       }
@@ -2240,7 +2403,7 @@ export function generateSession({ type = 'auto', answers = {}, profile = null, s
     weekAtoms: new Set(),
     noWeekRepeats: false,
   }
-  const template = { name: t.label, muscles: [...t.muscles], direct: t.direct.filter((m) => week.targets[m]) }
+  const template = { name: t.label, muscles: [...t.muscles], direct: t.direct.filter((m) => week.targets[m]), repeatJobs: t.repeatJobs || null }
   const day = fillDay(template, alloc, gaps, ctx)
   placeCore([day], inputs.core, [])
 

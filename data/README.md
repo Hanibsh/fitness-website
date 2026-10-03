@@ -184,3 +184,29 @@ Three things to know when editing the CSV:
 Pattern ids are a fixed list, like the muscle taxonomy. Adding one is a code
 change — it needs a definition (joint actions, path, drivers, blurb) and at
 least one classification rule.
+
+## Implement — a DERIVED column
+
+Every emitted record also carries an `implement`: what you actually hold or sit
+in. **There is no column for it either** — `classifyImplement` in
+`scripts/lint-exercises.mjs` reads it from the equipment and the name:
+
+| `equipment` | `implement` |
+| --- | --- |
+| Machine / Cable / Resistance Band | `machine` / `cable` / `band` |
+| Bodyweight | `weighted` if the name says "Weighted", else `bodyweight` |
+| Free Weight | the first name match of: `h-bar` (H Bar) · `ez-bar` (EZ Bar, Z-Bar) · `kettlebell` · `landmine` (Landmine, T-Bar) · `dumbbell` (Dumbbell, Hammer Curl, Concentration Curl) · `weighted` · `barbell` (Barbell, Bench Press, Deadlift, RDL, SLDL, Straight Bar, Trap Bar, JM Press) |
+
+A free-weight row none of those place becomes `other` and is listed in the
+lint report's notices. Pin it by hand like a pattern:
+
+```js
+'some-exercise-id': { implement: 'dumbbell', _reason: 'name never says so' },
+```
+
+The split generator ranks implements at a full gym — machines, then cables,
+then barbells/EZ bars, then dumbbells and the H-bar (`IMPLEMENT_SCORE` in
+`src/lib/generatorConfig.js`) — at about one rating step, so it decides between
+movements you rate alike and never overrules one you rate clearly better. If a
+dumbbell or H-bar movement keeps getting picked over a machine, look at the two
+rows' ratings first.

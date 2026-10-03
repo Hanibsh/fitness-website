@@ -22,10 +22,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const VERBOSE = process.argv.includes('--verbose')
 
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, supersetPartnerOk } = await server.ssrLoadModule('/src/lib/generator.js')
+const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, supersetPartnerOk, pickTemplate, jobOf, muscleWeights } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS, JOB_COVERED_MIN } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -71,7 +71,7 @@ for (const daysPerWeek of DAYS_CASES) {
                 const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume, core }
                 const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]${core === DEFAULT_CORE_PLACEMENT ? '' : `/abs-${core}`}`
                 const { program, summary, inputs } = generateProgram({ answers })
-                audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, core, recommended: rank === 0 })
+                audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, core, shape, recommended: rank === 0 })
               }
             }
           }
@@ -157,6 +157,39 @@ function audit(label, program, summary, inputs, opts) {
       check(label, (SKILL_RANK[db.skill] ?? 1) <= skillCap + 1, `"${e.name}" skill ${db.skill} over the ${opts.experience} cap`)
     }
   }
+
+  // ---- one movement per job a day (Hani, 2026-10-03): a squat and a lunge, a
+  // shoulder press and an upright row, two rows — the same work twice (SAME_JOB).
+  // A day built around one muscle may repeat the jobs it lists (`repeatJobs`:
+  // curls on an arm day), a muscle the day emphasises may take a second
+  // isolation, and a muscle nothing earlier in the day trains properly
+  // (JOB_COVERED_MIN) may take a second movement for the job rather than go
+  // without. Gym only, like the week rule above: at home the pool runs out.
+  const templates = pickTemplate(opts.daysPerWeek, opts.focus, opts.shape)
+  training.forEach((day, i) => {
+    const t = templates[i]
+    if (!t || t.name !== day.name) return check(label, false, `"${day.name}" doesn't line up with its template day "${t?.name}"`)
+    if (opts.equipment === 'gym') {
+      const seen = []
+      for (const e of day.exercises) {
+        const db = getFullExercise(e.exerciseId)
+        const job = jobOf(db)
+        const earlier = seen.filter((x) => jobOf(x) === job)
+        seen.push(db)
+        if (!db || !earlier.length || t.repeatJobs?.includes(job)) continue
+        const muscle = e.slot?.muscle
+        if (db.type === 'isolation' && t.emphasis?.includes(muscle)) continue
+        const covered = Math.max(0, ...seen.slice(0, -1).map((x) => muscleWeights(x)[muscle] || 0))
+        check(label, covered < JOB_COVERED_MIN, `"${day.name}" has ${earlier[0].name} and ${e.name} — the same job (${job}) twice`)
+      }
+    }
+    // ---- A/B emphasis: an emphasis day opens on a muscle it emphasises, unless
+    // a focus muscle has taken the lead.
+    const lead = day.exercises.find((e) => !isCoreRow(e))
+    if (t.emphasis && !opts.focus.length && lead) {
+      check(label, t.emphasis.includes(lead.slot?.muscle), `"${day.name}" opens on ${lead.name} for ${lead.slot?.muscle}, not on what it emphasises (${t.emphasis.join(', ')})`)
+    }
+  })
 
   // ---- abs (Hani, 2026-10-02): one ab movement a day at most, outside the set
   // cap and the movement count (checked below), and where the user asked for

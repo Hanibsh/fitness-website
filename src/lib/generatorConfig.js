@@ -56,6 +56,44 @@ const PUSH = ['Chest', 'Front Delts', 'Side Delts', 'Triceps']
 const PULL = ['Lats', 'Upper Back', 'Rear Delts', 'Biceps']
 const LEGS = ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs']
 
+// ---- A/B emphasis -------------------------------------------------------------
+// Hani's rule (2026-10-03): when a split trains the same body part on two days,
+// the two days are NOT the same workout twice — one leg day is a quad day, the
+// other a glute and hamstring day; one push day is chest and front delts, the
+// other side delts and triceps; one pull day is lats, the other upper back and
+// biceps. That's the default, before anyone names a muscle to bring up.
+//
+// A day says so with `emphasis`: those muscles open it (they lead its list),
+// every movement it gives them is one they're the main mover of, and they take
+// EMPHASIS_WEIGHT's share of their weekly sets there — about 60/40 against their
+// other day, as far as the per-session cap lets it (at 12 sets over two days it
+// doesn't, and the emphasis is the order and the movements). A muscle another
+// day emphasises gets one movement here; its second angle lives on its own day.
+// `leadPaths` pins the path the day's first movement for a muscle comes down: a
+// lats day opens on a pulldown, the quad day's hamstrings on a leg curl.
+//
+// These days are sized in their own order, not as the neutral one (`sizedAs`,
+// which Upper B uses): measured quads-first, a glute day needs no hip thrust
+// because the split squat already paid the glutes, and the real day then had
+// no room left for its calves.
+//
+// The second day of each pair is built from the same muscles in a different
+// order, so the two always cover the same muscles.
+const LOWER_GLUTES = ['Glutes', 'Hamstrings', 'Quads', 'Calves', 'Abs']
+const PUSH_SHOULDERS = ['Side Delts', 'Triceps', 'Chest', 'Front Delts']
+const PULL_BACK = ['Upper Back', 'Biceps', 'Rear Delts', 'Lats']
+// The quad day's hamstring work is a leg curl, so the hinge lives on the glute
+// and hamstring day and the week trains the hamstrings both ways.
+const QUAD_DAY = { muscles: LOWER, emphasis: ['Quads'], leadPaths: { Hamstrings: ['knee-flexion'] } }
+const GLUTE_DAY = { muscles: LOWER_GLUTES, emphasis: ['Glutes', 'Hamstrings'] }
+const CHEST_PUSH = { muscles: PUSH, emphasis: ['Chest', 'Front Delts'] }
+const SHOULDER_PUSH = { muscles: PUSH_SHOULDERS, emphasis: ['Side Delts', 'Triceps'] }
+const LAT_PULL = { muscles: PULL, emphasis: ['Lats'], leadPaths: { Lats: ['vertical-pull'] } }
+const BACK_PULL = { muscles: PULL_BACK, emphasis: ['Upper Back', 'Biceps'] }
+export const EMPHASIS_WEIGHT = 1.5 // vs 1 on the muscle's other day: a 60/40 split of its week
+// ...as long as the other day keeps at least two slots' worth (2 × MIN_SLOT_SETS).
+export const EMPHASIS_MIN_SHARE = 3.2
+
 // Full-body days must all cover the SAME muscles — at 2–3 sessions a week they
 // are the only sessions there are, so anything missing from one of them is a
 // muscle trained once a week or not at all. What rotates is the ORDER: the day
@@ -87,6 +125,17 @@ const FULL_C = fullBody(['Lats', 'Glutes', 'Quads'])
 // front heads.
 const CHEST_BACK = ['Chest', 'Lats', 'Upper Back', 'Rear Delts']
 const SHOULDERS_ARMS = ['Side Delts', 'Front Delts', 'Rear Delts', 'Biceps', 'Triceps', 'Forearms']
+// The Arnold days' A/B emphasis: one chest-and-back day opens on the chest, the
+// other on the back; one shoulders-and-arms day on the delts, the other on the
+// arms (above).
+const BACK_CHEST = ['Lats', 'Upper Back', 'Chest', 'Rear Delts']
+const ARMS_SHOULDERS = ['Biceps', 'Triceps', 'Forearms', 'Side Delts', 'Front Delts', 'Rear Delts']
+
+// Days built around one body part, where a second movement down the same job is
+// the point of the day rather than a repeat (SAME_JOB): a flat and an incline
+// press on a chest day, two curls and two extensions on an arm day.
+const ARM_DAY_REPEATS = ['elbow-flexion', 'elbow-extension']
+const CHEST_DAY_REPEATS = ['horizontal-push']
 
 // One body part a day. The lists are deliberately NARROW — a chest day asks for
 // chest and nothing else — because the generator credits every muscle a movement
@@ -117,9 +166,9 @@ export const SESSION_TYPES = [
   { id: 'push', label: 'Push', muscles: PUSH, perWeek: 2, direct: ['Triceps', 'Side Delts'] },
   { id: 'pull', label: 'Pull', muscles: PULL, perWeek: 2, direct: ['Biceps'] },
   { id: 'chest-back', label: 'Chest & back', muscles: CHEST_BACK, perWeek: 2, direct: [] },
-  { id: 'shoulders-arms', label: 'Shoulders & arms', muscles: SHOULDERS_ARMS, perWeek: 2, direct: ['Side Delts', 'Biceps', 'Triceps'] },
-  { id: 'arms', label: 'Arms', muscles: BRO_ARMS, perWeek: 1, direct: ['Biceps', 'Triceps'] },
-  { id: 'chest', label: 'Chest', muscles: BRO_CHEST, perWeek: 1, direct: [] },
+  { id: 'shoulders-arms', label: 'Shoulders & arms', muscles: SHOULDERS_ARMS, perWeek: 2, direct: ['Side Delts', 'Biceps', 'Triceps'], repeatJobs: ARM_DAY_REPEATS },
+  { id: 'arms', label: 'Arms', muscles: BRO_ARMS, perWeek: 1, direct: ['Biceps', 'Triceps'], repeatJobs: ARM_DAY_REPEATS },
+  { id: 'chest', label: 'Chest', muscles: BRO_CHEST, perWeek: 1, direct: [], repeatJobs: CHEST_DAY_REPEATS },
   { id: 'back', label: 'Back', muscles: BRO_BACK, perWeek: 1, direct: [] },
   { id: 'shoulders', label: 'Shoulders', muscles: BRO_SHOULDERS, perWeek: 1, direct: ['Side Delts'] },
 ]
@@ -189,23 +238,23 @@ export const TEMPLATES = {
     {
       id: 'upper-lower',
       name: 'Upper / Lower',
-      note: 'Everything twice a week. Upper A leads with presses and rows, Upper B with shoulders and arms.',
+      note: 'Everything twice a week. One upper day leads with presses and rows, the other with shoulders and arms; one lower day is quads, the other glutes and hamstrings.',
       days: [
-        { name: 'Upper A', muscles: UPPER },
-        { name: 'Lower A', muscles: LOWER },
-        { name: 'Upper B', muscles: UPPER_B, sizedAs: UPPER },
-        { name: 'Lower B', muscles: LOWER },
+        { name: 'Upper · Chest & back', muscles: UPPER, emphasis: ['Chest', 'Lats', 'Upper Back'] },
+        { name: 'Lower · Quads', ...QUAD_DAY },
+        { name: 'Upper · Shoulders & arms', muscles: UPPER_B, sizedAs: UPPER, emphasis: ['Side Delts', 'Biceps', 'Triceps'] },
+        { name: 'Lower · Glutes & hams', ...GLUTE_DAY },
       ],
     },
     {
       id: 'arnold-4',
       name: 'Arnold',
-      note: 'Chest with back, delts with arms. Chest and back get two sessions.',
+      note: 'Chest with back, delts with arms. Chest and back get two sessions — one opens on the chest, the other on the back.',
       days: [
-        { name: 'Chest & Back A', muscles: CHEST_BACK },
-        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS },
+        { name: 'Chest & Back A', muscles: CHEST_BACK, emphasis: ['Chest'] },
+        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS, repeatJobs: ARM_DAY_REPEATS },
         { name: 'Legs', muscles: LEGS },
-        { name: 'Chest & Back B', muscles: CHEST_BACK },
+        { name: 'Chest & Back B', muscles: BACK_CHEST, emphasis: ['Lats', 'Upper Back'] },
       ],
     },
     {
@@ -213,9 +262,9 @@ export const TEMPLATES = {
       name: 'Bro split',
       note: 'One body part a day, once a week. Weekly volume lands lower for it.',
       days: [
-        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Chest', muscles: BRO_CHEST, repeatJobs: CHEST_DAY_REPEATS },
         { name: 'Back', muscles: BRO_BACK },
-        { name: 'Shoulders & Arms', muscles: [...BRO_SHOULDERS, ...BRO_ARMS] },
+        { name: 'Shoulders & Arms', muscles: [...BRO_SHOULDERS, ...BRO_ARMS], repeatJobs: ARM_DAY_REPEATS },
         { name: 'Legs', muscles: BRO_LEGS },
       ],
     },
@@ -224,13 +273,13 @@ export const TEMPLATES = {
     {
       id: 'upper-lower-ppl',
       name: 'Upper / Lower + PPL',
-      note: 'Most muscles twice a week, with the extra day spent on the split.',
+      note: 'Most muscles twice a week. Upper and Lower lead with chest, lats and quads; Push, Pull and Legs with shoulders, arms, upper back and glutes.',
       days: [
-        { name: 'Upper', muscles: UPPER },
-        { name: 'Lower', muscles: LOWER },
-        { name: 'Push', muscles: PUSH },
-        { name: 'Pull', muscles: PULL },
-        { name: 'Legs', muscles: LEGS },
+        { name: 'Upper', muscles: UPPER, emphasis: ['Chest', 'Lats'] },
+        { name: 'Lower · Quads', ...QUAD_DAY },
+        { name: 'Push · Shoulders & triceps', ...SHOULDER_PUSH },
+        { name: 'Pull · Upper back', ...BACK_PULL },
+        { name: 'Legs · Glutes & hams', ...GLUTE_DAY },
       ],
     },
     {
@@ -238,23 +287,23 @@ export const TEMPLATES = {
       name: 'Bro split',
       note: 'The classic five. One body part a day, once a week — volume lands lower.',
       days: [
-        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Chest', muscles: BRO_CHEST, repeatJobs: CHEST_DAY_REPEATS },
         { name: 'Back', muscles: BRO_BACK },
         { name: 'Shoulders', muscles: BRO_SHOULDERS },
-        { name: 'Arms', muscles: BRO_ARMS },
+        { name: 'Arms', muscles: BRO_ARMS, repeatJobs: ARM_DAY_REPEATS },
         { name: 'Legs', muscles: BRO_LEGS },
       ],
     },
     {
       id: 'arnold-5',
       name: 'Arnold',
-      note: 'Arnold pairing with a second legs day.',
+      note: 'Arnold pairing with a second legs day: one for quads, one for glutes and hamstrings.',
       days: [
-        { name: 'Chest & Back A', muscles: CHEST_BACK },
-        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS },
-        { name: 'Legs A', muscles: LEGS },
-        { name: 'Chest & Back B', muscles: CHEST_BACK },
-        { name: 'Legs B', muscles: LEGS },
+        { name: 'Chest & Back A', muscles: CHEST_BACK, emphasis: ['Chest'] },
+        { name: 'Shoulders & Arms', muscles: SHOULDERS_ARMS, repeatJobs: ARM_DAY_REPEATS },
+        { name: 'Legs · Quads', ...QUAD_DAY },
+        { name: 'Chest & Back B', muscles: BACK_CHEST, emphasis: ['Lats', 'Upper Back'] },
+        { name: 'Legs · Glutes & hams', ...GLUTE_DAY },
       ],
     },
   ],
@@ -262,14 +311,14 @@ export const TEMPLATES = {
     {
       id: 'ppl-x2',
       name: 'Push / Pull / Legs ×2',
-      note: 'Everything twice a week across six shorter sessions.',
+      note: 'Everything twice a week, each pair of days with its own lead: chest or shoulders, lats or upper back, quads or glutes.',
       days: [
-        { name: 'Push A', muscles: PUSH },
-        { name: 'Pull A', muscles: PULL },
-        { name: 'Legs A', muscles: LEGS },
-        { name: 'Push B', muscles: PUSH },
-        { name: 'Pull B', muscles: PULL },
-        { name: 'Legs B', muscles: LEGS },
+        { name: 'Push · Chest', ...CHEST_PUSH },
+        { name: 'Pull · Lats', ...LAT_PULL },
+        { name: 'Legs · Quads', ...QUAD_DAY },
+        { name: 'Push · Shoulders & triceps', ...SHOULDER_PUSH },
+        { name: 'Pull · Upper back', ...BACK_PULL },
+        { name: 'Legs · Glutes & hams', ...GLUTE_DAY },
       ],
     },
     {
@@ -277,12 +326,12 @@ export const TEMPLATES = {
       name: 'Arnold ×2',
       note: 'The full Arnold split — every muscle twice a week.',
       days: [
-        { name: 'Chest & Back A', muscles: CHEST_BACK },
-        { name: 'Shoulders & Arms A', muscles: SHOULDERS_ARMS },
-        { name: 'Legs A', muscles: LEGS },
-        { name: 'Chest & Back B', muscles: CHEST_BACK },
-        { name: 'Shoulders & Arms B', muscles: SHOULDERS_ARMS },
-        { name: 'Legs B', muscles: LEGS },
+        { name: 'Chest & Back A', muscles: CHEST_BACK, emphasis: ['Chest'] },
+        { name: 'Shoulders & Arms A', muscles: SHOULDERS_ARMS, emphasis: ['Side Delts', 'Front Delts', 'Rear Delts'], repeatJobs: ARM_DAY_REPEATS },
+        { name: 'Legs · Quads', ...QUAD_DAY },
+        { name: 'Chest & Back B', muscles: BACK_CHEST, emphasis: ['Lats', 'Upper Back'] },
+        { name: 'Shoulders & Arms B', muscles: ARMS_SHOULDERS, emphasis: ['Biceps', 'Triceps', 'Forearms'], repeatJobs: ARM_DAY_REPEATS },
+        { name: 'Legs · Glutes & hams', ...GLUTE_DAY },
       ],
     },
     {
@@ -290,15 +339,15 @@ export const TEMPLATES = {
       name: 'Bro + arms',
       note: 'One body part a day, with a second arms and delts session.',
       days: [
-        { name: 'Chest', muscles: BRO_CHEST },
+        { name: 'Chest', muscles: BRO_CHEST, repeatJobs: CHEST_DAY_REPEATS },
         { name: 'Back', muscles: BRO_BACK },
         { name: 'Shoulders', muscles: BRO_SHOULDERS },
-        { name: 'Arms', muscles: BRO_ARMS },
+        { name: 'Arms', muscles: BRO_ARMS, repeatJobs: ARM_DAY_REPEATS },
         { name: 'Legs', muscles: BRO_LEGS },
         // Not a second arm day for its own sake: arms and delts are the groups
         // that suffer most from once-a-week frequency, and a second exposure is
         // the only thing that lifts them inside this shape.
-        { name: 'Arms & Delts', muscles: [...BRO_ARMS, ...BRO_SHOULDERS] },
+        { name: 'Arms & Delts', muscles: [...BRO_ARMS, ...BRO_SHOULDERS], repeatJobs: ARM_DAY_REPEATS },
       ],
     },
   ],
@@ -565,7 +614,45 @@ export const GYM_WEIGHTS = {
   sfr: 2.2,
   overload: 1.8,
   stability: 1.2,
+  implement: 1.0,
 }
+
+// What you hold or sit in, ranked the way Hani programs a gym (2026-10-03):
+// machines first, then barbells, then dumbbells — and an EZ or straight bar over
+// the H-bar. A machine is braced, loads in small steps and takes the balance out
+// of the set; a barbell still loads further than a pair of dumbbells. Weighted
+// (`GYM_WEIGHTS.implement`) at about one rating step, so it decides between
+// movements the database rates alike — a chest-supported row on a machine over
+// the same row with dumbbells — without overruling one it rates clearly better.
+// Gym only: at home there is nothing to rank. `implement` is derived from the
+// name at build time (scripts/lint-exercises.mjs).
+export const IMPLEMENT_SCORE = {
+  machine: 1, cable: 0.9,
+  barbell: 0.6, 'ez-bar': 0.6, weighted: 0.6,
+  landmine: 0.5,
+  dumbbell: 0.3, 'h-bar': 0.3, bodyweight: 0.3, other: 0.3,
+  kettlebell: 0, band: 0,
+}
+
+// One movement per JOB per day (Hani, 2026-10-03): with a back squat in the day
+// there's no need for a lunge, with a shoulder press no need for an upright row,
+// with one chest-supported row no need for a second row. A job is a movement
+// pattern, except these pairs, which do the same job down slightly different
+// paths. The variation the day can't take is left for the week's other day.
+// Days built around one muscle may repeat the jobs they list (`repeatJobs`).
+export const SAME_JOB = {
+  'split-squat': 'squat', // quad compound
+  'upright-row': 'vertical-push', // shoulder press
+  'incline-push': 'horizontal-push', // chest press
+}
+// When a day already has a movement for a job, a slot only takes a movement
+// from another job if that one trains its muscle at least this directly — a
+// secondary mover or better.
+export const JOB_ALTERNATIVE_MIN = 0.5
+// Failing that, its sets go onto what the day already has — but only if the day
+// trains the muscle at least this hard already. A lat-biased row is half a set
+// of upper back; that doesn't make a second row redundant for it.
+export const JOB_COVERED_MIN = 0.75
 
 // What a full gym takes OFF the table. Bands are strictly redundant next to
 // cables and dumbbells, and a movement the database rates `low` for progressive
@@ -657,13 +744,11 @@ export const PENALTIES = {
   // bite only where it runs out — at home — and in swap suggestions.
   sameFamily: 1.6, // another variant of this movement is already in the week
   sameSignature: 1.0, // a near-identical movement is already in the week
-  // A second movement down the SAME PATH in the same day — a second row after a
-  // pulldown, a second press after a bench. Soft on purpose, and much softer
-  // than the week-level penalties above: a back day genuinely wants two rows,
-  // and a hard block here would leave the day unable to spend its volume. This
-  // only has to lose ties, so a day reaches for a second angle before it
-  // reaches for the same one twice.
-  samePatternInDay: 1.2,
+  // A second movement for the same JOB in the same day (SAME_JOB) — a second
+  // row, a lunge after a squat. The generator never writes one outside a day
+  // built for it (`repeatJobs`), so this bites on those days and in swap
+  // suggestions, where a second row is still offered, just ranked lower.
+  sameJobInDay: 1.2,
   repeatExercise: 2.2, // this exact movement is already in the week
   skillOverreach: 1.0, // one tier above the user's cap (two tiers is a hard filter)
   // Scaled by the WEIGHTED injury risk (injuries.js): raw risk × how much the
@@ -729,6 +814,21 @@ export const DIRECT_WORK = {
 // trimOvershoot takes sets back. A guaranteed slot spends a muscle's sets on its
 // own movement; it must not quietly raise what the volume setting asked for.
 export const DIRECT_WORK_TARGET_SLACK = 0.5
+
+// The path a muscle's first movement of the day comes down, on every day (a
+// day's own `leadPaths` win). The back is two jobs: the lats get a vertical
+// pull and the upper back a row. Left to the scorer, the lats took a
+// lat-biased row, and with one row a day (SAME_JOB) the upper back was left
+// with half a set of it — 2 sets a week on a bro split.
+//
+// `unlessShort`: the lats' pulldown only when the day still owes the upper
+// back a movement of its own (two slots' worth). A tight day — two full-body
+// sessions, a beginner on lower volume — has room for ONE back movement, and a
+// row pays both muscles where a pulldown pays one.
+export const LEAD_PATHS = {
+  Lats: { paths: ['vertical-pull'], unlessShort: 'Upper Back' },
+  'Upper Back': { paths: ['horizontal-pull'] },
+}
 
 // A suggested SWAP has to be a real stand-in, so it must land at least this
 // share of what the movement it's replacing landed on the target muscle. Without
