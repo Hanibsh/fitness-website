@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -39,6 +39,9 @@ import { adviseTraining } from '../lib/advisor'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 import Card from '../components/Card'
+import Collapse from '../components/Collapse'
+import Reveal from '../components/Reveal'
+import ActivePill from '../components/ActivePill'
 import SectionHeading from '../components/SectionHeading'
 import MiniStat from '../components/MiniStat'
 import { useInjuries } from '../lib/useInjuries'
@@ -836,11 +839,12 @@ export default function Dashboard() {
                 <button
                   key={r.days}
                   onClick={() => setVolumeRangeDays(r.days)}
-                  className={`px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
-                    volumeRangeDays === r.days ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+                  className={`relative px-3 py-1.5 text-[12px] font-medium cursor-pointer transition-colors ${
+                    volumeRangeDays === r.days ? 'bg-white text-cream' : 'bg-white text-text-muted hover:text-text-primary'
                   }`}
                 >
-                  {r.label}
+                  {volumeRangeDays === r.days && <ActivePill id="volume-range" />}
+                  <span className="relative">{r.label}</span>
                 </button>
               ))}
             </div>
@@ -892,7 +896,7 @@ export default function Dashboard() {
                       </div>
                     </button>
                   </div>
-                  {open && (
+                  <Collapse open={open}>
                     <div className="mt-1.5 ml-3 pl-3 border-l border-border space-y-1.5">
                       {v.atoms.map((a) => (
                         <div key={a.atom} className="flex justify-between items-center text-[11px]">
@@ -901,7 +905,7 @@ export default function Dashboard() {
                         </div>
                       ))}
                     </div>
-                  )}
+                  </Collapse>
                 </div>
               )
             })}
@@ -979,7 +983,7 @@ export default function Dashboard() {
                         </div>
                       </button>
                     </div>
-                    {open && (
+                    <Collapse open={open}>
                       <div className="mt-1.5 ml-3 pl-3 border-l border-border space-y-1.5">
                         {m.atoms.map((a) => (
                           <div key={a.atom}>
@@ -996,7 +1000,7 @@ export default function Dashboard() {
                           </div>
                         ))}
                       </div>
-                    )}
+                    </Collapse>
                   </div>
                 )
               })}
@@ -1330,11 +1334,11 @@ export default function Dashboard() {
         {layoutRows(layout, (id) => cards[id] != null).map((row) =>
           row.length === 2 ? (
             <div key={row.join('+')} className="grid lg:grid-cols-2 gap-6">
-              {cards[row[0]]}
-              {cards[row[1]]}
+              <Reveal className="grid">{cards[row[0]]}</Reveal>
+              <Reveal className="grid">{cards[row[1]]}</Reveal>
             </div>
           ) : (
-            <Fragment key={row[0]}>{cards[row[0]]}</Fragment>
+            <Reveal key={row[0]}>{cards[row[0]]}</Reveal>
           )
         )}
 

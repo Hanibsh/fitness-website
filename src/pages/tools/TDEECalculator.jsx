@@ -4,6 +4,7 @@ import { ArrowLeft, Minus, Plus, Lock, LockOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import UnitHelp from '../../components/UnitHelp'
 import PrefillNote from '../../components/PrefillNote'
+import ActivePill from '../../components/ActivePill'
 import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { convertMassText, convertLengthText } from '../../lib/units'
@@ -222,11 +223,12 @@ export default function TDEECalculator() {
   const targetCard = (id, title, sub) => {
     const on = selected?.id === id
     return (
-      <button key={id} type="button" aria-pressed={on} onClick={() => setTargetId(id)} className={`px-1.5 py-4 sm:p-4 text-center border cursor-pointer transition-colors ${on ? 'bg-text-primary border-text-primary' : 'bg-cream border-border hover:border-border-hover'}`}>
-        <p className={`text-[10px] sm:text-[11px] uppercase sm:tracking-wider mb-2 ${on ? 'text-cream-70' : 'text-text-muted'}`}>{title}{sub && <><br /><span className={on ? 'text-cream-50' : 'text-text-light'}>{sub}</span></>}</p>
-        <p className={`text-xl font-medium ${on ? 'text-cream' : 'text-text-primary'}`}>{targets[id].kcal}</p>
-        <p className={`text-[10px] ${on ? 'text-cream-50' : 'text-text-light'}`}>cal/day</p>
-        {targets[id].floored && <p className={`text-[10px] uppercase sm:tracking-wider mt-1 ${on ? 'text-cream-70' : 'text-text-muted'}`}>Floor</p>}
+      <button key={id} type="button" aria-pressed={on} onClick={() => setTargetId(id)} className={`relative px-1.5 py-4 sm:p-4 text-center border cursor-pointer transition-colors ${on ? 'bg-cream border-text-primary' : 'bg-cream border-border hover:border-border-hover'}`}>
+        {on && <ActivePill id="tdee-target" />}
+        <p className={`relative text-[10px] sm:text-[11px] uppercase sm:tracking-wider mb-2 ${on ? 'text-cream-70' : 'text-text-muted'}`}>{title}{sub && <><br /><span className={on ? 'text-cream-50' : 'text-text-light'}>{sub}</span></>}</p>
+        <p className={`relative text-xl font-medium ${on ? 'text-cream' : 'text-text-primary'}`}>{targets[id].kcal}</p>
+        <p className={`relative text-[10px] ${on ? 'text-cream-50' : 'text-text-light'}`}>cal/day</p>
+        {targets[id].floored && <p className={`relative text-[10px] uppercase sm:tracking-wider mt-1 ${on ? 'text-cream-70' : 'text-text-muted'}`}>Floor</p>}
       </button>
     )
   }
@@ -373,9 +375,9 @@ export default function TDEECalculator() {
                 </div>
                 <div className="flex gap-2 mb-6">
                   {burnBy === 'kcal' ? burnOptions.map(o => (
-                    <button key={o.value} type="button" aria-pressed={burn === o.value} onClick={() => setBurnChoice(o.value)} className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burn === o.value ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{o.label}</button>
+                    <button key={o.value} type="button" aria-pressed={burn === o.value} onClick={() => setBurnChoice(o.value)} className={`relative flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burn === o.value ? 'bg-white text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{burn === o.value && <ActivePill id="tdee-burn" />}<span className="relative">{o.label}</span></button>
                   )) : minuteOptions.map(m => (
-                    <button key={m} type="button" aria-pressed={burnMinutes === m} onClick={() => setBurnMinutes(m)} className={`flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burnMinutes === m ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{m} min</button>
+                    <button key={m} type="button" aria-pressed={burnMinutes === m} onClick={() => setBurnMinutes(m)} className={`relative flex-1 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${burnMinutes === m ? 'bg-white text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'}`}>{burnMinutes === m && <ActivePill id="tdee-burn-minutes" />}<span className="relative">{m} min</span></button>
                   ))}
                 </div>
                 <div className="space-y-3">

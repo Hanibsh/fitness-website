@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarRange, Plus, ChevronRight, Sparkles } from 'lucide-react'
 import Modal from './Modal'
+import Collapse from './Collapse'
 import { hasPlannedWork } from '../lib/program'
 
 // "New workout" from the dashboard: the ways to start one, side by side, like
@@ -39,7 +40,7 @@ export default function NewWorkoutModal({ program, todayId = null, onClose }) {
         </span>
         <ChevronRight className={`w-4 h-4 shrink-0 mt-1 text-text-light transition-transform ${extra ? 'rotate-90' : ''}`} />
       </button>
-      {extra}
+      <Collapse open={!!extra}>{extra}</Collapse>
     </div>
   )
 

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import Reveal from '../components/Reveal'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { categoryExercises, subcategoryExercises, subcategoryTiles, EXERCISE_COUNT } from '../lib/exerciseBank'
@@ -43,7 +44,9 @@ function ExerciseGrid({ rows }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {rows.map((e) => (
-        <ExerciseCard key={e.id} e={e} />
+        <Reveal key={e.id} className="grid">
+          <ExerciseCard e={e} />
+        </Reveal>
       ))}
     </div>
   )
@@ -170,7 +173,9 @@ export default function ExerciseCategory() {
                   <p className="text-text-secondary text-[13px] font-medium mb-3">Pick a muscle</p>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-10">
                     {tiles.map((t) => (
-                      <SubTile key={t.slug} parentSlug={cat} sub={t} />
+                      <Reveal key={t.slug} className="grid">
+                        <SubTile parentSlug={cat} sub={t} />
+                      </Reveal>
                     ))}
                   </div>
                 </>

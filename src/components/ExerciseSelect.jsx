@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { searchNames } from '../lib/exerciseLibrary'
 import SearchField from './SearchField'
+import { DURATION, EASE } from '../lib/motion'
 
 // A dropdown of exercise names you can type into — the stand-in for a native
 // <select> once the list is long enough to scroll (everything someone has ever
@@ -90,7 +92,12 @@ export default function ExerciseSelect({ value, options, onChange, ariaLabel = '
       </button>
 
       {open && (
-        <div className="absolute z-30 left-0 mt-1 w-full min-w-[16rem] max-w-[calc(100vw-2rem)] bg-white border border-border shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DURATION.fast, ease: EASE }}
+          className="absolute z-30 left-0 mt-1 w-full min-w-[16rem] max-w-[calc(100vw-2rem)] bg-white border border-border shadow-lg"
+        >
           <div className="p-2 border-b border-border">
             <SearchField
               value={query}
@@ -128,7 +135,7 @@ export default function ExerciseSelect({ value, options, onChange, ariaLabel = '
               </li>
             )}
           </ul>
-        </div>
+        </motion.div>
       )}
     </div>
   )

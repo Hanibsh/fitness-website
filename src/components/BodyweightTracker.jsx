@@ -7,6 +7,7 @@ import { fetchRemoteBodyweight, upsertRemoteBodyweight, deleteRemoteBodyweight }
 import { BODYWEIGHT_RANGES, bodyweightSeries, convertWeight } from '../lib/workoutStats'
 import ProgressChart from './ProgressChart'
 import Modal from './Modal'
+import ActivePill from './ActivePill'
 import AuthModal from './AuthModal'
 import NumberField from './NumberField'
 
@@ -229,13 +230,14 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
                     <button
                       key={r.id}
                       onClick={() => { setRangeId(r.id); setHovered(null) }}
-                      className={`px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
+                      className={`relative px-2.5 py-1 text-[11px] font-medium border cursor-pointer transition-colors ${
                         r.id === rangeId
-                          ? 'bg-cream-dark text-text-primary border-border-hover'
+                          ? 'bg-white text-text-primary border-border-hover'
                           : 'bg-white text-text-light border-border hover:border-border-hover'
                       }`}
                     >
-                      {r.label}
+                      {r.id === rangeId && <ActivePill id="bodyweight-range" className="bg-cream-dark" />}
+                      <span className="relative">{r.label}</span>
                     </button>
                   ))}
                 </div>

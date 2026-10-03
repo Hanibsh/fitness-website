@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
+import Reveal from '../components/Reveal'
 import { Link } from 'react-router-dom'
 import { Home, Dumbbell } from 'lucide-react'
 import { searchExercises } from '../lib/exerciseLibrary'
@@ -207,7 +208,9 @@ export default function Exercises() {
                 </h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {rows.map((e) => (
-                    <ExerciseCard key={e.id} e={e} />
+                    <Reveal key={e.id} className="grid">
+                      <ExerciseCard e={e} />
+                    </Reveal>
                   ))}
                 </div>
               </section>
