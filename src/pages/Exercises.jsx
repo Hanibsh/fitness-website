@@ -123,9 +123,10 @@ export default function Exercises() {
           </p>
         </motion.div>
 
-        {/* Search */}
+        {/* Search — floats under the navbar once you scroll past it */}
         <SearchField
           variant="pill"
+          floating
           value={query}
           onChange={setQuery}
           placeholder="Search exercises, muscles…"

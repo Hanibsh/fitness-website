@@ -54,11 +54,13 @@ function ExerciseGrid({ rows }) {
 
 // Search box for a hub's exercises. It sits under the title rather than over
 // the grid: the muscle guide above the grid is long, and on a phone the box
-// would otherwise be a long scroll away from where you land.
+// would otherwise be a long scroll away from where you land. It floats once
+// you scroll past it, so it's still there at the bottom of the grid.
 function HubSearch({ name, query, setQuery }) {
   return (
     <SearchField
       variant="pill"
+      floating
       value={query}
       onChange={setQuery}
       placeholder={`Search ${name.toLowerCase()}…`}
