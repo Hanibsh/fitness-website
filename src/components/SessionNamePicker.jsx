@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { Tag } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { DURATION, EASE } from '../lib/motion'
 
 // Common split labels — the user can pick one or type their own name.
 const SESSION_TYPES = [
@@ -42,12 +40,7 @@ export default function SessionNamePicker({ value, onChange }) {
       </div>
 
       {open && matches.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: DURATION.fast, ease: EASE }}
-          className="absolute z-30 left-0 right-0 mt-1 bg-white border border-border max-h-56 overflow-y-auto shadow-lg"
-        >
+        <div className="drop-in absolute z-30 left-0 right-0 mt-1 bg-white border border-border max-h-56 overflow-y-auto shadow-lg">
           {matches.map((t) => (
             <button
               key={t}
@@ -59,7 +52,7 @@ export default function SessionNamePicker({ value, onChange }) {
               {t}
             </button>
           ))}
-        </motion.div>
+        </div>
       )}
     </div>
   )

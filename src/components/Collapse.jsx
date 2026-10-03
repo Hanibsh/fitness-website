@@ -1,31 +1,15 @@
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { DURATION, EASE } from '../lib/motion'
-
-// A fold that slides open and shut instead of jumping. Drop-in for
-// `{open && <div>…</div>}`: keep padding, borders and margins on the child, not
-// on this wrapper, or they'd still show when it's folded to zero height.
+// A fold: drop-in for `{open && <div>…</div>}`. Opening fades the content in
+// and slides it down a touch (.fold-in in index.css); closing is instant.
 //
-// Clips only while it moves — once open, overflow goes back to visible, so a
-// focus ring or a dropdown inside isn't cut off at the edge.
-//
-// The app-wide reduced-motion setting (main.jsx) only stills transforms; height
-// isn't one, so this checks for itself and snaps instead.
+// Its height deliberately isn't animated. A growing height re-lays out
+// everything below it on every frame, which is what made folds stutter on a
+// phone; this way the page moves once and only the content animates, on the
+// GPU.
 export default function Collapse({ open, id, children }) {
-  const reduce = useReducedMotion()
+  if (!open) return null
   return (
-    <AnimatePresence initial={false}>
-      {open && (
-        <motion.div
-          key="collapse"
-          id={id}
-          initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
-          animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
-          exit={{ height: 0, opacity: 0, overflow: 'hidden', transition: { duration: reduce ? 0 : DURATION.fast, ease: EASE } }}
-          transition={{ duration: reduce ? 0 : DURATION.base, ease: EASE }}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div id={id} className="fold-in">
+      {children}
+    </div>
   )
 }

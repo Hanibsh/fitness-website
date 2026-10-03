@@ -1,18 +1,16 @@
-// The site's motion, in one place, so a popup, a fold and a card reveal all
-// move at the same pace. Short on purpose: an animation that makes you wait
-// for the thing you tapped is worse than none.
+// The site's motion, in one place. The animations themselves are CSS (the
+// Motion block at the end of index.css) or a WAAPI `el.animate()` — never a
+// per-frame JS loop — and move only opacity and transform, so the GPU runs
+// them even while the page is busy. That's what keeps them smooth on a phone.
 
-// A soft ease-out — fast start, gentle landing.
-export const EASE = [0.22, 1, 0.36, 1]
+// A soft ease-out — fast start, gentle landing. Same curve as the CSS.
+export const EASE_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
-export const DURATION = {
-  fast: 0.15, // closing things, dropdowns
-  base: 0.22, // opening things, folds
-}
+// Gap between cards rising in together — the "wave".
+export const WAVE_STEP = 0.04
 
-// Gap between neighbours rising in together — the "wave". The rise itself is
-// CSS ([data-reveal] in index.css): 0.4s on the same EASE.
-export const WAVE_STEP = 0.05
+// The toggle highlight sliding to the option you tapped (ActivePill.jsx).
+export const PILL_MS = 200
 
-// The spring the sliding toggle highlight rides on.
-export const PILL_SPRING = { type: 'spring', stiffness: 500, damping: 40 }
+export const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches

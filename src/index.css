@@ -455,39 +455,83 @@ body {
   }
 }
 
-/* Cards rising in as they scroll into view (components/Reveal.jsx). A CSS
-   animation rather than a framer one: the exercise bank wraps ~285 cards, and
-   a plain attribute flip costs next to nothing per card. The delay is set
-   inline per card, which is what staggers a row into a wave. The curve is
-   EASE from lib/motion.js. */
+/* ---- Motion -------------------------------------------------------------
+   Every animation the site adds lives here, and every one moves only opacity
+   and transform. That is the rule that keeps them smooth on a phone: those two
+   run on the GPU, even while the page is busy rendering. Never animate height,
+   width, margins or a blurred layer — each frame of those is redone on the
+   main thread, and it stutters. The easing is EASE_CSS in lib/motion.js.
+
+   Entrances fill `backwards` (hold the first frame through any delay, then
+   let go), so a finished one leaves no transform behind — a leftover one would
+   quietly become the containing block for anything position: fixed inside.
+   Exits fill `both`, so they stay gone until React unmounts them. */
+
+/* Cards rising in as they scroll into view (components/Reveal.jsx). The delay
+   is set inline per card, which is what staggers a row into a wave. */
 [data-reveal='pending'] {
   opacity: 0;
 }
 [data-reveal='in'] {
-  animation: reveal-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
-@keyframes reveal-rise {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+
+/* Popups (components/Modal.jsx): in, and out again on [data-closing]. */
+.modal-backdrop {
+  animation: fade-in 0.2s ease-out backwards;
 }
-/* Reduced motion: a plain fade, no travel — the same rule framer follows
-   everywhere else (MotionConfig in main.jsx). */
-@keyframes reveal-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.modal-panel {
+  animation: modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
+[data-closing] .modal-backdrop {
+  animation: fade-out 0.15s ease-in both;
+}
+[data-closing] .modal-panel {
+  animation: modal-out 0.15s ease-in both;
+}
+
+/* A fold opening (components/Collapse.jsx) and a dropdown dropping in. */
+.fold-in {
+  animation: drop-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.drop-in {
+  animation: drop-in 0.12s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes modal-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(6px); }
+}
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Reduced motion: fades only, nothing travels. */
 @media (prefers-reduced-motion: reduce) {
-  [data-reveal='in'] {
-    animation-name: reveal-fade;
+  [data-reveal='in'],
+  .modal-panel,
+  .fold-in,
+  .drop-in {
+    animation-name: fade-in;
+  }
+  [data-closing] .modal-panel {
+    animation-name: fade-out;
   }
 }

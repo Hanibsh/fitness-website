@@ -7,7 +7,7 @@ import { WAVE_STEP } from '../lib/motion'
 // a grid, top to bottom down a phone's single column. Capped, so a fast scroll
 // past many items never leaves the last one waiting.
 const BATCH_WINDOW_MS = 80
-const MAX_STEPS = 8
+const MAX_STEPS = 4
 let batchStart = -Infinity
 let batchIndex = 0
 function nextDelay() {
@@ -19,22 +19,21 @@ function nextDelay() {
   return Math.min(batchIndex++, MAX_STEPS) * WAVE_STEP
 }
 
-// One observer for every card on the page, not one each.
+// One observer for every card on the page, not one each. It fires the moment
+// a card's first pixel is on screen, so the rise is under way as it scrolls in
+// rather than trailing behind.
 const onEnter = new WeakMap()
 let observer = null
 function observe(el, callback) {
   if (!observer) {
-    observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          observer.unobserve(entry.target)
-          onEnter.get(entry.target)?.()
-          onEnter.delete(entry.target)
-        }
-      },
-      { rootMargin: '0px 0px -24px 0px' },
-    )
+    observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        observer.unobserve(entry.target)
+        onEnter.get(entry.target)?.()
+        onEnter.delete(entry.target)
+      }
+    })
   }
   onEnter.set(el, callback)
   observer.observe(el)
