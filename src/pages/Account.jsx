@@ -263,8 +263,8 @@ export default function Account() {
 
   // Rendered in both branches below — it's device settings, not account data,
   // so it has to survive the logged-out short-circuit.
-  const loggingSection = (
-    <ProfileSection id="logging" title="Logging" {...sec('logging')}>
+  const restTimerSection = (
+    <ProfileSection id="rest-timer" title="Rest timer" {...sec('rest-timer')}>
       <div>
         <label className="flex items-start gap-3 cursor-pointer">
           <input
@@ -292,7 +292,7 @@ export default function Account() {
     </ProfileSection>
   )
 
-  // Device setting like Logging, so in both branches too.
+  // Device setting like the rest timer, so in both branches too.
   const appearanceSection = (
     <ProfileSection id="appearance" title="Appearance" {...sec('appearance')}>
       <p className="text-[13px] text-text-muted mb-4">Saved on this device.</p>
@@ -319,7 +319,7 @@ export default function Account() {
               <div className="space-y-3">
                 {dashboardSection}
                 {appearanceSection}
-                {loggingSection}
+                {restTimerSection}
               </div>
             </>
           ) : loading ? (
@@ -559,8 +559,8 @@ export default function Account() {
                 {/* ---- Appearance -------------------------------------------------- */}
                 {appearanceSection}
 
-                {/* ---- Logging ----------------------------------------------------- */}
-                {loggingSection}
+                {/* ---- Rest timer -------------------------------------------------- */}
+                {restTimerSection}
 
                 {/* ---- Privacy ----------------------------------------------------- */}
                 <ProfileSection id="privacy" title="Privacy" {...sec('privacy')}>
