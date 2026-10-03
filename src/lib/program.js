@@ -217,6 +217,30 @@ export function moveDayTo(program, from, to) {
   return clampPointer({ ...program, days: moveItem(program.days, from, to) })
 }
 
+// A day with fresh ids throughout — the day, every row, its superset pairings
+// (still paired, under new ids) — so the same day can be dropped into more than
+// one split, or twice into one, without two rows sharing an id.
+export function copyDay(day) {
+  const pairs = new Map()
+  const pair = (id) => {
+    if (!id) return id
+    if (!pairs.has(id)) pairs.set(id, newSupersetId())
+    return pairs.get(id)
+  }
+  return {
+    ...day,
+    id: newId(),
+    exercises: (day.exercises || []).map((e) => ({ ...e, id: newId(), supersetId: pair(e.supersetId) })),
+  }
+}
+
+// Put `day` in slot `index`, replacing what's there — how a day lands on one
+// weekday of a fixed week, which has exactly seven slots to fill.
+export function placeDay(program, index, day) {
+  if (index < 0 || index >= program.days.length) return program
+  return clampPointer({ ...program, days: program.days.map((d, i) => (i === index ? day : d)) })
+}
+
 export function setDayName(program, dayId, name) {
   return withDay(program, dayId, (d) => ({ ...d, name: name.slice(0, 40) }))
 }

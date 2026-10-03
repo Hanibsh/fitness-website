@@ -727,6 +727,21 @@ export default function WorkoutTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loadingHistory, program])
 
+  // Arriving from the session generator: the day itself rides along in the
+  // navigation state (it belongs to no split). Same guard as above — a session
+  // in progress outranks the link.
+  useEffect(() => {
+    const day = location.state?.startSession
+    if (!day || loadingHistory) return
+    const safe = !draftHasWork(draft) || willStashDraft(draft, staleDraft)
+    if (hasPlannedWork(day)) {
+      if (safe) startPlannedSession(day, { fromSplit: false })
+      else setBlockedStart(day.name || 'that session')
+    }
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, loadingHistory])
+
   // The notice above is only true while the session that caused it is in the
   // way. Finished, discarded, or emptied out, it stops being an explanation and
   // starts being clutter.
@@ -1571,7 +1586,10 @@ export default function WorkoutTracker() {
   // `date` is the day the session BELONGS to, which is today for every button on
   // this page but a past date when the calendar sends you here to log a workout
   // you missed.
-  function startPlannedSession(day, { date = Date.now() } = {}) {
+  // `fromSplit: false` is a day that isn't one of the active split's — a
+  // generated session (pages/SessionGenerator.jsx). It logs exactly the same,
+  // but finishing it must not move the rotation on as if a split day were done.
+  function startPlannedSession(day, { date = Date.now(), fromSplit = true } = {}) {
     const backdated = !isSameDay(date, Date.now())
     setDraft((cur) => {
       if (willStashDraft(cur, isLeftoverDraft(cur))) stashDraft(cur)
@@ -1604,8 +1622,8 @@ export default function WorkoutTracker() {
         name: day.name || '',
         exercises,
         bodyweight,
-        programId: program.id,
-        programDayId: day.id,
+        programId: fromSplit ? program.id : null,
+        programDayId: fromSplit ? day.id : null,
       }
     })
     setEditingDate(false)

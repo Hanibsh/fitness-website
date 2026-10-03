@@ -100,6 +100,45 @@ const BRO_SHOULDERS = ['Side Delts', 'Rear Delts', 'Front Delts']
 const BRO_ARMS = ['Biceps', 'Triceps', 'Forearms']
 const BRO_LEGS = ['Quads', 'Hamstrings', 'Glutes', 'Calves', 'Abs']
 
+// ---- One-off sessions (generateSession) ---------------------------------------
+//
+// The kinds of single session the session generator builds — each one of the
+// split templates' days, so a generated Push is the same Push a PPL split
+// would write. `perWeek` is how often a split normally trains that day's
+// muscles, which sizes the session's share of each weekly target: twice for the
+// usual days, once for the bro days (the whole week's work for that muscle in
+// one go, capped per session like any other). `direct` is the DIRECT_WORK the
+// session guarantees: a split places each guarantee on one day of the week,
+// but a single session has no other day to leave it to.
+export const SESSION_TYPES = [
+  { id: 'full', label: 'Full body', muscles: FULL_A, perWeek: 2, direct: [] },
+  { id: 'upper', label: 'Upper', muscles: UPPER, perWeek: 2, direct: [] },
+  { id: 'lower', label: 'Lower', muscles: LOWER, perWeek: 2, direct: ['Calves'] },
+  { id: 'push', label: 'Push', muscles: PUSH, perWeek: 2, direct: ['Triceps', 'Side Delts'] },
+  { id: 'pull', label: 'Pull', muscles: PULL, perWeek: 2, direct: ['Biceps'] },
+  { id: 'chest-back', label: 'Chest & back', muscles: CHEST_BACK, perWeek: 2, direct: [] },
+  { id: 'shoulders-arms', label: 'Shoulders & arms', muscles: SHOULDERS_ARMS, perWeek: 2, direct: ['Side Delts', 'Biceps', 'Triceps'] },
+  { id: 'arms', label: 'Arms', muscles: BRO_ARMS, perWeek: 1, direct: ['Biceps', 'Triceps'] },
+  { id: 'chest', label: 'Chest', muscles: BRO_CHEST, perWeek: 1, direct: [] },
+  { id: 'back', label: 'Back', muscles: BRO_BACK, perWeek: 1, direct: [] },
+  { id: 'shoulders', label: 'Shoulders', muscles: BRO_SHOULDERS, perWeek: 1, direct: ['Side Delts'] },
+]
+
+// What "Pick for me" chooses between: the broad sessions. The narrow ones are
+// there to be asked for by name, not suggested.
+export const SESSION_RECOMMENDABLE = ['full', 'upper', 'lower', 'push', 'pull']
+
+// A one-off session doesn't know when each muscle is trained next, which the
+// split generator uses to score heavy movements down before a short gap. Three
+// days is the typical gap of a twice-a-week split, so a session plans as if it
+// sat in one.
+export const SESSION_GAP_HOURS = 72
+
+// A muscle whose recovery is under this (the engine's recovery %, 0–100) gets
+// only a token slot in a generated session — the recovery card would call it
+// still recovering.
+export const SESSION_FATIGUED_BELOW = 70
+
 // daysPerWeek → the shapes on offer, each a named set of training days in order.
 //
 // The FIRST shape at each count is the recommended one and what "Pick for me"

@@ -30,7 +30,7 @@ import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId, donutRows, isCo
 import { newSupersetId } from './workoutStats'
 import { cardioOf } from './cardio'
 import { injuryRiskMap } from './injuries'
-import { effectiveWeeklyVolume } from './engine'
+import { effectiveWeeklyVolume, muscleRecovery } from './engine'
 import { exerciseIdForName } from './exerciseLibrary'
 import { repRangeFor } from './splitFromHistory'
 import { equipmentValuesFor } from './profileFields'
@@ -54,6 +54,7 @@ import {
   REP_RANGES, MAX_REPS, MIN_REP_SPAN, SWAP_MIN_CONTRIBUTION_RATIO,
   PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
   corePlacement, CORE_MUSCLES, SUPERSET_MAX_COMPOUND_FATIGUE,
+  SESSION_TYPES, SESSION_RECOMMENDABLE, SESSION_GAP_HOURS, SESSION_FATIGUED_BELOW,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -2115,4 +2116,136 @@ function holdSessions(trainingDays, sessionCap) {
 function hasDirectMovement(day, muscle) {
   const paths = DIRECT_WORK[muscle] || []
   return day.exercises.some((e) => paths.includes(DB_BY_ID.get(plannedExerciseDbId(e) || '')?.pattern))
+}
+
+// ---- A single session -----------------------------------------------------------
+//
+// The session generator (pages/SessionGenerator.jsx): one day, built by the
+// same fillDay that writes a split's days, sized against the WEEK it lands in.
+// Each muscle gets the share of its weekly target a split would give one of its
+// sessions (SESSION_TYPES perWeek), trimmed where the last 7 days already paid
+// for it — to what's still owed, but never under half the usual share (and not
+// at all on a one-muscle day: a Chest day asked for by name is a chest day) —
+// and where the muscle is still recovering, to a token slot (never to nothing).
+
+const DAY_7 = 7
+const SESSION_LEAD_MUSCLES = 3
+
+// Where each muscle stands this week: its target, what the last 7 days already
+// credited, and how recovered it is right now (100 when never trained).
+function weekStanding(inputs, sessions, now) {
+  const targets = weeklyTargets(inputs)
+  const done = new Map(effectiveWeeklyVolume(sessions, { days: DAY_7, now }).map((r) => [r.muscle, r.sets]))
+  const recovery = new Map(muscleRecovery(sessions, { now }).muscles.map((m) => [m.muscle, m.recoveryPct]))
+  return {
+    targets,
+    owed: (m) => Math.max(0, (targets[m] || 0) - (done.get(m) || 0)),
+    need: (m) => (targets[m] ? clamp(Math.max(0, targets[m] - (done.get(m) || 0)) / targets[m], 0, 1) : 0),
+    ready: (m) => (recovery.has(m) ? recovery.get(m) : 100),
+  }
+}
+
+export function sessionType(id) {
+  return SESSION_TYPES.find((t) => t.id === id) || null
+}
+
+// "Pick for me": the broad session whose muscles are most both owed this week
+// and recovered, averaged over the session so a big day isn't favoured for its
+// size. The day's lead muscles (its first SESSION_LEAD_MUSCLES) count triple:
+// a Lower day is about quads, hamstrings and glutes, and fresh calves don't make
+// it a good idea while those are still recovering. A brand-new log ties
+// everything, and the order breaks it — full body. The reason names the two
+// muscles that won it, and a fatigued one it avoids.
+export function recommendSession({ sessions = [], answers = {}, profile = null, injuries = [], now = Date.now() } = {}) {
+  const inputs = resolveInputs({ answers, profile, sessions, injuries, now })
+  const week = weekStanding(inputs, sessions, now)
+  const programmed = (t) => t.muscles.filter((m) => week.targets[m])
+  const value = (m) => week.need(m) * (week.ready(m) / 100)
+  let best = null
+  for (const id of SESSION_RECOMMENDABLE) {
+    const t = sessionType(id)
+    const muscles = programmed(t)
+    if (!muscles.length) continue
+    const weight = (m) => (t.muscles.indexOf(m) < SESSION_LEAD_MUSCLES ? 3 : 1)
+    const score = muscles.reduce((sum, m) => sum + weight(m) * value(m), 0) / muscles.reduce((sum, m) => sum + weight(m), 0)
+    if (!best || score > best.score + 1e-9) best = { type: t, score, muscles }
+  }
+  if (!best) return { type: sessionType('full'), reason: null }
+  // Only muscles that really are recovered get named as the reason.
+  const lead = best.muscles.filter((m) => best.type.muscles.indexOf(m) < SESSION_LEAD_MUSCLES && week.ready(m) >= SESSION_FATIGUED_BELOW)
+  const fresh = [...lead].sort((a, b) => value(b) - value(a)).slice(0, 2)
+  const tired = ENGINE_MUSCLES
+    .filter((m) => !best.muscles.includes(m) && week.targets[m] && week.ready(m) < SESSION_FATIGUED_BELOW)
+    .sort((a, b) => week.ready(a) - week.ready(b))[0]
+  const untouched = sessions.length === 0
+  const reason = untouched
+    ? 'Nothing logged yet, so a full body session to start.'
+    : !fresh.length
+      ? `Everything is still recovering a little, so a lighter ${best.type.label.toLowerCase()} session.`
+      : `${fresh.join(' and ')} ${fresh.length > 1 ? 'are' : 'is'} recovered and still owed sets this week` +
+        (tired ? `; ${tired.toLowerCase()} ${tired.endsWith('s') ? 'are' : 'is'} still recovering.` : '.')
+  return { type: best.type, reason }
+}
+
+// Build one session. `type` is a SESSION_TYPES id, or 'auto' for the
+// recommendation. Returns { program, day, type, recommendation, inputs,
+// trimmed } — `program` is a one-day split holding the day, so the split
+// editor's pieces (DayEditor, swapProposedRow) work on it unchanged, and
+// nothing is persisted. `trimmed` lists the muscles held to a token slot, and
+// why, for the preview to say.
+export function generateSession({ type = 'auto', answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
+  const inputs = resolveInputs({ answers: { ...answers, focus: [] }, profile, sessions, injuries, now })
+  const recommendation = type === 'auto' ? recommendSession({ sessions, answers, profile, injuries, now }) : null
+  const t = recommendation?.type || sessionType(type) || sessionType('full')
+  const week = weekStanding(inputs, sessions, now)
+
+  const alloc = {}
+  const trimmed = []
+  for (const m of t.muscles) {
+    const target = week.targets[m]
+    if (!target) continue
+    const share = Math.min(target / t.perWeek, MAX_SETS_PER_MUSCLE_PER_SESSION)
+    let sets = share
+    if (week.ready(m) < SESSION_FATIGUED_BELOW) {
+      sets = MIN_SLOT_SETS
+      trimmed.push({ muscle: m, why: 'recovering' })
+    } else if (week.owed(m) < share) {
+      const floor = t.perWeek === 1 ? share : share / 2
+      sets = Math.max(week.owed(m), floor, MIN_SLOT_SETS)
+      if (sets < share * 0.75) trimmed.push({ muscle: m, why: 'done' })
+    }
+    alloc[m] = sets
+  }
+
+  const gaps = Object.fromEntries(t.muscles.map((m) => [m, SESSION_GAP_HOURS]))
+  const ctx = {
+    posture: inputs.posture,
+    allowedEquipment: inputs.allowedEquipment,
+    excludedEquipment: inputs.excludedEquipment,
+    excludedOverload: inputs.excludedOverload,
+    limiterPenalty: inputs.limiterPenalty,
+    excludeLimited: inputs.excludeLimited,
+    weights: inputs.weights,
+    maxSkillRank: SKILL_RANK[inputs.posture.maxSkill] ?? 2,
+    focus: [],
+    history: inputs.history,
+    injuryRisk: inputs.injuryRisk,
+    openSlots: inputs.openSlots,
+    experience: inputs.experience,
+    volumePref: inputs.volumePref,
+    setCap: inputs.volumePref.setCap,
+    weekIds: new Set(),
+    weekFamilies: new Set(),
+    weekSignatures: new Set(),
+    weekAtoms: new Set(),
+    noWeekRepeats: false,
+  }
+  const template = { name: t.label, muscles: [...t.muscles], direct: t.direct.filter((m) => week.targets[m]) }
+  const day = fillDay(template, alloc, gaps, ctx)
+  placeCore([day], inputs.core, [])
+
+  const program = emptyProgram(`${t.label} session`)
+  program.days = [day]
+  program.settings = { volume: inputs.volumePref.value, experience: inputs.experience, session: t.id, core: inputs.core }
+  return { program, day, type: t, recommendation, inputs, trimmed }
 }

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarRange, Plus, ChevronRight } from 'lucide-react'
+import { CalendarRange, Plus, ChevronRight, Sparkles } from 'lucide-react'
 import Modal from './Modal'
 import { hasPlannedWork } from '../lib/program'
 
 // "New workout" from the dashboard: the ways to start one, side by side, like
 // the three ways to start a split on Programs.
 //
+//   Generate a session — one workout built by the split generator's own
+//                        machinery, around your week (pages/SessionGenerator.jsx)
 //   A day from my split — any training day of the active split, pre-filled the
 //                        same way "Start <today's day>" is; the rotation moves on
 //                        from whichever day you actually did
@@ -47,6 +49,7 @@ export default function NewWorkoutModal({ program, todayId = null, onClose }) {
         <h3 className="font-heading text-xl font-medium text-text-primary mb-1 pr-8">New workout</h3>
         <p className="text-[13px] text-text-muted mb-5">How do you want to start?</p>
         <div className="space-y-2.5">
+          {card('generate', Sparkles, 'Generate a session', 'Upper, push, arms… or let your week pick. Built around what’s recovered.', () => go('/session/new'))}
           {days.length > 0 &&
             card(
               'split',

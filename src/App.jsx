@@ -25,6 +25,7 @@ const SplitLayout = lazy(() => import('./pages/SplitLayout'))
 const SplitOverview = lazy(() => import('./pages/SplitOverview'))
 const SplitDay = lazy(() => import('./pages/SplitDay'))
 const ImportSplit = lazy(() => import('./pages/ImportSplit'))
+const SessionGenerator = lazy(() => import('./pages/SessionGenerator'))
 // The coach's client area — only reachable on the coach's account (CoachLayout).
 const CoachLayout = lazy(() => import('./pages/CoachLayout'))
 const Clients = lazy(() => import('./pages/Clients'))
@@ -82,6 +83,7 @@ function App() {
             deliberately does. */}
         <Route path="/split/generate" element={<Navigate to="/programs?start=build" replace />} />
         <Route path="/import" element={<ImportSplit />} />
+        <Route path="/session/new" element={<SessionGenerator />} />
         <Route path="/split/:id" element={<SplitLayout />}>
           <Route index element={<SplitOverview />} />
           <Route path="day/:dayId" element={<SplitDay />} />

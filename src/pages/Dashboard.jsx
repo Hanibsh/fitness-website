@@ -11,7 +11,7 @@ import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
-import { scheduleMode, plannedDayForDate, todayPlan, hasPlannedWork } from '../lib/program'
+import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
 import { liveDraft } from '../lib/draftState'
 import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -520,9 +520,9 @@ export default function Dashboard() {
   // Engine v3: the advisor's targeted volume-trimming recommendations.
   const advice = useMemo(() => adviseTraining(sessions, { blocks, annotations, injuries }), [sessions, blocks, annotations, injuries])
 
-  // The New workout chooser only earns its tap when it offers more than the
-  // blank log — today, another day of the active split.
-  const canChooseWorkout = !!program?.days?.some((d) => d.kind !== 'rest' && hasPlannedWork(d))
+  // The New workout chooser always has more than the blank log to offer: a
+  // generated session, and another day of the split when there is one.
+  const canChooseWorkout = true
 
   const exerciseNames = useMemo(() => loggedExerciseNames(sessions), [sessions])
   // Best working-set weight per exercise (display unit) — the "current" value
