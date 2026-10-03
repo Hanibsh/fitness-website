@@ -132,7 +132,7 @@ export default function StrengthStandards() {
                 ) : (
                   groups.map((g) => (
                     <div key={g.cat}>
-                      <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-light bg-cream-dark sticky top-0">{g.cat}</p>
+                      <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-text-muted bg-cream-dark sticky top-0">{g.cat}</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2">
                         {g.entries.map(([key, l]) => (
                           <button

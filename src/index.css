@@ -2,8 +2,9 @@
 
 /* Let `dark:` utilities key off the same data-theme attribute the token
    overrides below use — for the few spots (status chips) that need raw palette
-   colors rather than a semantic token. */
-@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+   colors rather than a semantic token. Every theme on a dark page counts
+   (lib/theme.js THEMES, tone 'dark'). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *, [data-theme='burgundy'], [data-theme='burgundy'] *, [data-theme='gold'], [data-theme='gold'] *));
 
 @theme {
   --color-cream: #FAF9F6;
@@ -143,6 +144,220 @@
 
 :root[data-theme='dark'] ::selection {
   background: rgba(240, 239, 235, 0.18);
+  color: var(--color-text-primary);
+}
+
+/* The old-money themes (picked on the profile page, lib/theme.js). Matte by
+   design: every chart colour sits at the low-chroma end of what still passes
+   the categorical checks (OKLCH C ≈ 0.106, the floor is 0.10), with hues
+   anchored to the light/dark families so a muscle keeps its colour family in
+   every theme. Validated per theme against that theme's card surface with the
+   dataviz validator: muscles CVD ≥ 11 / normal-vision ≥ 15 on legend
+   neighbours, series CVD ≥ 9.8, tiers monotone with the light end ≥ 2:1.
+   Adductors stays the one desaturated step, as in light/dark.
+
+   One token does two jobs here, as everywhere: text-primary is the heading
+   colour AND the filled-button / hero colour (bg-text-primary text-cream). So
+   each theme's "main" colour has to read as text on its own cards — which is
+   why burgundy lives in the page and the inverted text, not in the headings.
+
+   The cream-N steps are faded ink on those inverted blocks (dashboard hero,
+   coaching block). On olive, burgundy and gold their alphas are raised a
+   little so each step lands at least where the dark theme's does — gold
+   most, since it is a mid-tone and fading its ink toward black costs
+   contrast fastest (cream-50 was 2.9:1 at a plain 0.5). */
+
+/* Olive & cream — parchment page, deep olive ink. A light theme. */
+:root[data-theme='olive'] {
+  --color-cream: #EFE9DA;
+  --color-cream-dark: #E6DEC9;
+  --color-white: #F8F4E9;
+  --color-muscle-chest: #557ab9;
+  --color-muscle-back: #529c6a;
+  --color-muscle-shoulders: #9668a6;
+  --color-muscle-biceps: #b1843a;
+  --color-muscle-triceps: #95483d;
+  --color-muscle-forearms: #199d91;
+  --color-muscle-quads: #853d23;
+  --color-muscle-hamstrings: #899343;
+  --color-muscle-glutes: #884268;
+  --color-muscle-calves: #00608a;
+  --color-muscle-abs: #7c7cc3;
+  --color-muscle-adductors: #8a7f6c;
+  --color-series-1: #4c7fb9;
+  --color-series-2: #c07a4f;
+  --color-series-3: #226531;
+  --color-series-4: #a38634;
+  --color-series-5: #883d54;
+  --color-series-6: #788b3d;
+  --color-tier-1: #a0ab79;
+  --color-tier-2: #828d54;
+  --color-tier-3: #656f37;
+  --color-tier-4: #49521f;
+  --color-tier-5: #333a0e;
+  --color-border: #D8CEB6;
+  --color-border-hover: #C6BA9E;
+  --color-text-primary: #3A4628;
+  --color-text-secondary: #4E4A39;
+  --color-text-muted: #67614D;
+  --color-text-light: #7D7660;
+  --color-accent: #3A4628;
+  --color-accent-hover: #4A5934;
+  --color-surface-nav: rgba(230, 222, 201, 0.9);
+  --color-cream-90: rgba(239, 233, 218, 0.9);
+  --color-cream-80: rgba(239, 233, 218, 0.8);
+  --color-cream-70: rgba(239, 233, 218, 0.76);
+  --color-cream-60: rgba(239, 233, 218, 0.66);
+  --color-cream-50: rgba(239, 233, 218, 0.52);
+  --color-cream-30: rgba(239, 233, 218, 0.3);
+  --color-cream-20: rgba(239, 233, 218, 0.2);
+  --color-cream-10: rgba(239, 233, 218, 0.1);
+  --color-border-soft: rgba(216, 206, 182, 0.6);
+  --color-accent-soft: rgba(58, 70, 40, 0.4);
+}
+
+/* Burgundy & black — wine page, black cards, ivory ink. A dark theme. */
+:root[data-theme='burgundy'] {
+  --color-cream: #2B1016;
+  --color-cream-dark: #1F0B0F;
+  --color-white: #150F10;
+  --color-muscle-chest: #577dbc;
+  --color-muscle-back: #53a679;
+  --color-muscle-shoulders: #986aa9;
+  --color-muscle-biceps: #b38b3e;
+  --color-muscle-triceps: #96493f;
+  --color-muscle-forearms: #01968c;
+  --color-muscle-quads: #954c31;
+  --color-muscle-hamstrings: #80994e;
+  --color-muscle-glutes: #8e486f;
+  --color-muscle-calves: #006e93;
+  --color-muscle-abs: #8785cd;
+  --color-muscle-adductors: #8a7f6c;
+  --color-series-1: #4e81bc;
+  --color-series-2: #c57f52;
+  --color-series-3: #33733e;
+  --color-series-4: #b08c3e;
+  --color-series-5: #a15470;
+  --color-series-6: #819243;
+  --color-tier-1: #863e49;
+  --color-tier-2: #a65a65;
+  --color-tier-3: #c37b83;
+  --color-tier-4: #da9fa5;
+  --color-tier-5: #edc6c9;
+  --color-border: #3E1E24;
+  --color-border-hover: #57303A;
+  --color-text-primary: #EFE4D4;
+  --color-text-secondary: #D2C3B3;
+  --color-text-muted: #A8968A;
+  --color-text-light: #948276;
+  --color-accent: #EFE4D4;
+  --color-accent-hover: #FBF4EA;
+  --color-surface-nav: rgba(31, 11, 15, 0.9);
+  --color-cream-90: rgba(43, 16, 22, 0.9);
+  --color-cream-80: rgba(43, 16, 22, 0.8);
+  --color-cream-70: rgba(43, 16, 22, 0.7);
+  --color-cream-60: rgba(43, 16, 22, 0.62);
+  --color-cream-50: rgba(43, 16, 22, 0.5);
+  --color-cream-30: rgba(43, 16, 22, 0.3);
+  --color-cream-20: rgba(43, 16, 22, 0.2);
+  --color-cream-10: rgba(43, 16, 22, 0.1);
+  --color-border-soft: rgba(62, 30, 36, 0.6);
+  --color-accent-soft: rgba(239, 228, 212, 0.4);
+}
+
+/* Gold & black — black page, matte gold ink, warm parchment body text. */
+:root[data-theme='gold'] {
+  --color-cream: #0F0E0C;
+  --color-cream-dark: #15130F;
+  --color-white: #1A1814;
+  --color-muscle-chest: #577dbc;
+  --color-muscle-back: #53a679;
+  --color-muscle-shoulders: #986aa9;
+  --color-muscle-biceps: #b38b3e;
+  --color-muscle-triceps: #9a4b48;
+  --color-muscle-forearms: #01968c;
+  --color-muscle-quads: #9c592c;
+  --color-muscle-hamstrings: #879d4f;
+  --color-muscle-glutes: #8e486f;
+  --color-muscle-calves: #006e93;
+  --color-muscle-abs: #8785cd;
+  --color-muscle-adductors: #8a7f6c;
+  --color-series-1: #4e81bc;
+  --color-series-2: #c57f52;
+  --color-series-3: #33733e;
+  --color-series-4: #b08c3e;
+  --color-series-5: #ab5e7b;
+  --color-series-6: #819243;
+  --color-tier-1: #715a2c;
+  --color-tier-2: #93753b;
+  --color-tier-3: #b49355;
+  --color-tier-4: #d3b378;
+  --color-tier-5: #ecd4ab;
+  --color-border: #353027;
+  --color-border-hover: #4A4337;
+  --color-text-primary: #C8AB6E;
+  --color-text-secondary: #C9C0AC;
+  --color-text-muted: #A39A88;
+  --color-text-light: #8C846F;
+  --color-accent: #C8AB6E;
+  --color-accent-hover: #D6BC84;
+  --color-surface-nav: rgba(21, 19, 15, 0.9);
+  --color-cream-90: rgba(15, 14, 12, 0.94);
+  --color-cream-80: rgba(15, 14, 12, 0.88);
+  --color-cream-70: rgba(15, 14, 12, 0.8);
+  --color-cream-60: rgba(15, 14, 12, 0.68);
+  --color-cream-50: rgba(15, 14, 12, 0.56);
+  --color-cream-30: rgba(15, 14, 12, 0.3);
+  --color-cream-20: rgba(15, 14, 12, 0.2);
+  --color-cream-10: rgba(15, 14, 12, 0.1);
+  --color-border-soft: rgba(53, 48, 39, 0.6);
+  --color-accent-soft: rgba(200, 171, 110, 0.4);
+}
+
+/* Color-blind friendly — the light theme's page with chart colours chosen for
+   separation alone, not mood. Hues stay in each muscle's family, chroma is
+   free. Validated on the white card: muscles worst adjacent CVD ΔE 14.9 (light
+   is 7.4), normal-vision 18.2, all ≥ 3:1; series separate on EVERY pair, not
+   just neighbours (CVD 8.7 all-pairs — Okabe-Ito manages 7.6), all ≥ 3:1. Two
+   steps sit a hair under the 0.10 chroma floor (quads 0.097, series-3 0.098)
+   — the sRGB gamut edge at that lightness; they read as colour, not grey.
+   Tiers keep the light theme's blue ramp: one hue, monotone lightness, which
+   colour vision deficiency doesn't disturb. Muted and light text are darker
+   than in light so every text step clears 4.5:1. */
+:root[data-theme='colorblind'] {
+  --color-muscle-chest: #2a61b1;
+  --color-muscle-back: #399d57;
+  --color-muscle-shoulders: #7e479c;
+  --color-muscle-biceps: #a58d15;
+  --color-muscle-triceps: #a43b35;
+  --color-muscle-forearms: #009f9c;
+  --color-muscle-quads: #765100;
+  --color-muscle-hamstrings: #78931d;
+  --color-muscle-glutes: #732886;
+  --color-muscle-calves: #004ca7;
+  --color-muscle-abs: #777ad8;
+  --color-muscle-adductors: #69737d;
+  --color-series-1: #2b7cb9;
+  --color-series-2: #f0687e;
+  --color-series-3: #00745a;
+  --color-series-4: #9a3c00;
+  --color-series-5: #7e2aa0;
+  --color-series-6: #9e7f00;
+  --color-text-secondary: #474747;
+  --color-text-muted: #5c5c5c;
+  --color-text-light: #6a6a6a;
+}
+
+:root[data-theme='olive'] ::selection {
+  background: rgba(58, 70, 40, 0.14);
+  color: var(--color-text-primary);
+}
+:root[data-theme='burgundy'] ::selection {
+  background: rgba(239, 228, 212, 0.18);
+  color: var(--color-text-primary);
+}
+:root[data-theme='gold'] ::selection {
+  background: rgba(200, 171, 110, 0.22);
   color: var(--color-text-primary);
 }
 

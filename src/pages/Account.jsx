@@ -15,6 +15,7 @@ import { asset } from '../lib/assets'
 import { trainingYearsFromStart } from '../lib/profilePrefill'
 import FocusPicker from '../components/FocusPicker'
 import DashboardSettings from '../components/DashboardSettings'
+import ThemePicker from '../components/ThemePicker'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
@@ -280,6 +281,15 @@ export default function Account() {
     </section>
   )
 
+  // Device setting like Logging, so in both branches too.
+  const appearanceSection = (
+    <section>
+      <h2 className="font-heading text-xl font-medium text-text-primary mb-1">Appearance</h2>
+      <p className="text-[13px] text-text-muted mb-4">Saved on this device, straight away.</p>
+      <ThemePicker />
+    </section>
+  )
+
   return (
     <div className="pt-28 pb-24 px-6">
       <div className="max-w-2xl mx-auto">
@@ -298,6 +308,7 @@ export default function Account() {
               </p>
               <div className="space-y-10">
                 {dashboardSection}
+                {appearanceSection}
                 {loggingSection}
               </div>
             </>
@@ -542,6 +553,9 @@ export default function Account() {
 
                 {/* ---- Dashboard --------------------------------------------------- */}
                 {dashboardSection}
+
+                {/* ---- Appearance -------------------------------------------------- */}
+                {appearanceSection}
 
                 {/* ---- Logging ----------------------------------------------------- */}
                 {loggingSection}
