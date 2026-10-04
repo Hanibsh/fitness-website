@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput } from 'lucide-react'
@@ -9,8 +9,10 @@ import ExportModal from '../components/ExportModal'
 import Modal from '../components/Modal'
 import ImportReview from '../components/ImportReview'
 import ClientLinkCard from '../components/ClientLinkCard'
-import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
-import { blankClientProgram, withProgram, withoutProgram, CLIENT_NAME_MAX } from '../lib/clients'
+import ClientTrainingSummary from '../components/ClientTrainingSummary'
+import { useLinkedClient } from '../lib/useClientData'
+import { InjuryScope } from '../lib/useInjuries'
+import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
 import { convertMassText, convertLengthText } from '../lib/units'
 
@@ -26,6 +28,16 @@ export default function ClientDetail() {
   const [exporting, setExporting] = useState(null) // program | null
   const [importing, setImporting] = useState(false)
   const client = clients.find((c) => c.id === clientId) || null
+  // Linked to their real account: their training, and their own profile
+  // answers, which fill in (and lock) the matching fields here.
+  const { linked, data: linkedData, loading: linkedLoading, injuries } = useLinkedClient(clientId)
+  const account = linked ? linkedData?.profile || null : null
+  const { profile: synced, fromAccount } = useMemo(() => withAccountProfile(client?.profile, account), [client?.profile, account])
+  useEffect(() => {
+    if (client && account && !sameProfile(client.profile, synced)) {
+      updateClient(client.id, (c) => ({ ...c, profile: synced }))
+    }
+  }, [client, account, synced, updateClient])
 
   if (!client) {
     return (
@@ -98,6 +110,8 @@ export default function ClientDetail() {
   const cardCls = 'bg-white border border-border p-5 sm:p-7'
   const headCls = 'font-heading text-xl font-medium text-text-primary mb-1'
   // Tap a picked option again to clear it — the same convention as the profile.
+  // A field their account filled in is theirs to change, not yours.
+  const locked = (key) => fromAccount.has(key)
   const choices = (key, options) => (
     // Same grids as the profile page: three across only from sm up ("Intermediate"
     // doesn't fit a third of a phone), four across for the four goals.
@@ -110,7 +124,8 @@ export default function ClientDetail() {
             type="button"
             onClick={() => setField(key, on ? '' : o.value)}
             aria-pressed={on}
-            className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors text-center leading-tight ${
+            disabled={locked(key)}
+            className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors text-center leading-tight disabled:cursor-not-allowed disabled:opacity-60 ${
               on ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
             }`}
           >
@@ -129,7 +144,8 @@ export default function ClientDetail() {
         value={p[key] ?? ''}
         onValueChange={(v) => setField(key, v)}
         placeholder={opts.placeholder}
-        className={inputCls}
+        disabled={locked(key)}
+        className={`${inputCls} disabled:opacity-60 disabled:cursor-not-allowed`}
       />
     </div>
   )
@@ -163,6 +179,7 @@ export default function ClientDetail() {
 
         {/* ---- Their account ------------------------------------------------- */}
         <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
+        {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
 
         {/* ---- Programs ------------------------------------------------------ */}
         <section className={cardCls}>
@@ -225,7 +242,9 @@ export default function ClientDetail() {
         <section className={cardCls}>
           <h2 className={headCls}>Profile</h2>
           <p className="text-[12px] text-text-light mb-6">
-            All optional. What&apos;s filled in seeds the generator and heads the export; what&apos;s blank is left out.
+            {account
+              ? 'Greyed-out fields come from their account. Fill in the rest.'
+              : 'All optional. What’s filled in seeds the generator and heads the export; what’s blank is left out.'}
           </p>
           <div className="space-y-6">
             <div>
@@ -237,7 +256,8 @@ export default function ClientDetail() {
                     type="button"
                     onClick={() => switchUnit(o.value)}
                     aria-pressed={unit === o.value}
-                    className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${
+                    disabled={!!account}
+                    className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                       unit === o.value ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
                     }`}
                   >
@@ -278,7 +298,11 @@ export default function ClientDetail() {
             </div>
             <div>
               <span className={labelCls}>Muscles to bring up</span>
-              <FocusPicker value={cleanFocus(p.focus_muscles)} onChange={(next) => setField('focus_muscles', next)} />
+              {locked('focus_muscles') ? (
+                <p className="text-[13px] text-text-secondary">{cleanFocus(p.focus_muscles).join(', ')}</p>
+              ) : (
+                <FocusPicker value={cleanFocus(p.focus_muscles)} onChange={(next) => setField('focus_muscles', next)} />
+              )}
             </div>
           </div>
         </section>
@@ -368,7 +392,7 @@ export default function ClientDetail() {
               Paste an exported split. Its days become one of their programs; tick which profile details to keep.
             </p>
             {/* Their picker, not yours: no injury badges of your own. */}
-            <InjuryScope.Provider value={NO_INJURIES}>
+            <InjuryScope.Provider value={injuries}>
               <ImportReview currentProfile={client.profile} withExtras importLabel={`Import for ${client.name || 'this client'}`} onImport={importForClient} />
             </InjuryScope.Provider>
           </div>

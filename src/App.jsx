@@ -33,6 +33,7 @@ const Clients = lazy(() => import('./pages/Clients'))
 const ClientDetail = lazy(() => import('./pages/ClientDetail'))
 const ClientGenerate = lazy(() => import('./pages/ClientGenerate'))
 const ClientSplitLayout = lazy(() => import('./pages/ClientSplitLayout'))
+const ClientTraining = lazy(() => import('./pages/ClientTraining'))
 // A coach's invite: open it, sign in, accept.
 const Join = lazy(() => import('./pages/Join'))
 
@@ -112,6 +113,7 @@ function App() {
           <Route index element={<Clients />} />
           <Route path=":clientId" element={<ClientDetail />} />
           <Route path=":clientId/generate" element={<ClientGenerate />} />
+          <Route path=":clientId/training" element={<ClientTraining />} />
           <Route path=":clientId/split/:id" element={<ClientSplitLayout />}>
             <Route index element={<SplitOverview />} />
             <Route path="day/:dayId" element={<SplitDay />} />

@@ -2,7 +2,8 @@ import { Link, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { scheduleMode } from '../lib/program'
 import { withProgram, withoutProgram } from '../lib/clients'
-import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
+import { InjuryScope } from '../lib/useInjuries'
+import { useLinkedClient } from '../lib/useClientData'
 
 // One of a client's programs, in the SAME editor as your own splits
 // (SplitOverview + SplitDay). This layout is SplitLayout's twin: it hands those
@@ -11,12 +12,13 @@ import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
 // follow yourself — Active, Today, Up next, Start session, your shared notes.
 //
 // Wrapped in an InjuryScope so the swap panels and pickers steer around the
-// client, not around you.
+// client (their real injuries once their account is linked), not around you.
 export default function ClientSplitLayout() {
   const { clientId, id } = useParams()
   const { user, clients, updateClient } = useOutletContext()
   const client = clients.find((c) => c.id === clientId) || null
   const program = client?.programs.find((p) => p.id === id) || null
+  const { injuries } = useLinkedClient(clientId)
 
   if (!client || !program) {
     return (
@@ -40,7 +42,7 @@ export default function ClientSplitLayout() {
   }
 
   return (
-    <InjuryScope.Provider value={NO_INJURIES}>
+    <InjuryScope.Provider value={injuries}>
       <Outlet
         context={{
           user,

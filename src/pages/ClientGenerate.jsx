@@ -3,17 +3,19 @@ import { ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import SplitWizard from '../components/SplitWizard'
 import { withProgram } from '../lib/clients'
-import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
+import { InjuryScope } from '../lib/useInjuries'
+import { useLinkedClient } from '../lib/useClientData'
 
 // The split generator, writing for a client — /coach/:clientId/generate. Same
 // wizard as the Programs page's; the client's profile seeds it, and the program it
-// saves goes into the client's record, not your own splits. Scoped so your
-// injuries don't steer someone else's program.
+// saves goes into the client's record, not your own splits. Scoped to the
+// client's injuries (none unless their account is linked), never yours.
 export default function ClientGenerate() {
   const { clientId } = useParams()
   const { clients, updateClient } = useOutletContext()
   const navigate = useNavigate()
   const client = clients.find((c) => c.id === clientId) || null
+  const { injuries } = useLinkedClient(clientId)
 
   if (!client) {
     return (
@@ -47,7 +49,7 @@ export default function ClientGenerate() {
         <p className="text-text-muted text-[15px] mb-10 leading-relaxed">
           Training age, equipment and focus start from their profile. Nothing here reads your own log or injuries.
         </p>
-        <InjuryScope.Provider value={NO_INJURIES}>
+        <InjuryScope.Provider value={injuries}>
           <SplitWizard client={client} onCreate={save} />
         </InjuryScope.Provider>
       </motion.div>

@@ -22,8 +22,9 @@ import { injuryRiskMap } from './injuries'
 import { fetchRemoteInjuries, upsertRemoteInjury, deleteRemoteInjury } from './workoutRemote'
 
 // Whose injuries a screen is about. Unset everywhere except the coach's client
-// pages, which wrap themselves in it with the CLIENT's list (none, for now —
-// a client's injuries are free text, see lib/clients.js) so the swap panels,
+// pages, which wrap themselves in it with the CLIENT's list (their own records
+// once their account is linked — lib/useClientData.js; none for an unlinked
+// card, whose injuries are free text, see lib/clients.js) so the swap panels,
 // the path picker, the exercise picker's badges and the generator steer around
 // the client's body, never the coach's. Inside a scope nothing is loaded or
 // written: the save surface is inert.

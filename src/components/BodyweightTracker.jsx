@@ -54,8 +54,13 @@ function isSameDay(a, b) {
 // + trend); tap it to open the full panel — chart, ranges, and logging.
 // Local-first: guests store in localStorage; logged-in users sync to Supabase,
 // falling back to local if the table isn't there yet.
-export default function BodyweightTracker({ user, unit = 'kg' }) {
-  const [entries, setEntries] = useState([])
+//
+// Given `entries`, it's someone else's weigh-ins (the coach's view of a
+// client): read-only — nothing loaded, added or deleted.
+export default function BodyweightTracker({ user, unit = 'kg', entries: given = null }) {
+  const readOnly = given != null
+  const [ownEntries, setEntries] = useState([])
+  const entries = readOnly ? given : ownEntries
   const [rangeId, setRangeId] = useState('3m')
   const [hovered, setHovered] = useState(null)
   const [input, setInput] = useState('')
@@ -68,11 +73,12 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
 
   // Bodyweight tracking requires an account (it syncs to your profile), so
   // logged-out visitors get a locked teaser that prompts login.
-  const locked = !user
+  const locked = !user && !readOnly
 
   useEffect(() => {
     let cancelled = false
     async function load() {
+      if (readOnly) return
       if (!user) { setEntries([]); return }
       try {
         const remote = await fetchRemoteBodyweight(user.id)
@@ -85,7 +91,7 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
     }
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [user, readOnly])
 
   const useRemote = !!user && remoteOk
 
@@ -180,7 +186,7 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
             )}
           </div>
         ) : (
-          <p className="text-[13px] text-text-muted mt-2">Tap to log your weight and track your trend.</p>
+          <p className="text-[13px] text-text-muted mt-2">{readOnly ? 'No weigh-ins yet.' : 'Tap to log your weight and track your trend.'}</p>
         )}
       </button>
 
@@ -196,30 +202,32 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
             </div>
 
             {/* add today's weight */}
-            <div className="flex gap-2 mb-5">
-              <div className="relative flex-1 max-w-[220px]">
-                <NumberField
-                  value={input}
-                  onValueChange={setInput}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addEntry() }}
-                  placeholder={`Today's weight (${unit})`}
-                  className="w-full bg-cream border border-border px-3 py-2 pr-10 text-[13px] text-text-primary outline-none focus:border-text-primary transition-colors"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-light pointer-events-none">{unit}</span>
+            {!readOnly && (
+              <div className="flex gap-2 mb-5">
+                <div className="relative flex-1 max-w-[220px]">
+                  <NumberField
+                    value={input}
+                    onValueChange={setInput}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addEntry() }}
+                    placeholder={`Today's weight (${unit})`}
+                    className="w-full bg-cream border border-border px-3 py-2 pr-10 text-[13px] text-text-primary outline-none focus:border-text-primary transition-colors"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-text-light pointer-events-none">{unit}</span>
+                </div>
+                <button
+                  onClick={addEntry}
+                  disabled={!(Number(input) > 0) || saving}
+                  className="inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 border-none cursor-pointer hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </button>
               </div>
-              <button
-                onClick={addEntry}
-                disabled={!(Number(input) > 0) || saving}
-                className="inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 border-none cursor-pointer hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add
-              </button>
-            </div>
+            )}
 
             {series.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-border">
                 <p className="text-[13px] text-text-muted">No weigh-ins in this range yet.</p>
-                <p className="text-[12px] text-text-light mt-1">Add today's weight above to start your chart.</p>
+                {!readOnly && <p className="text-[12px] text-text-light mt-1">Add today's weight above to start your chart.</p>}
               </div>
             ) : (
               <>
@@ -271,7 +279,7 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
                   <ProgressChart points={series} hoveredIndex={hovered} onHover={setHovered} />
                 </div>
 
-                {series.length === 1 && (
+                {series.length === 1 && !readOnly && (
                   <p className="text-[12px] text-text-light mt-3">Log your weight on another day to see a trend line.</p>
                 )}
 
@@ -283,13 +291,15 @@ export default function BodyweightTracker({ user, unit = 'kg' }) {
                         <span className="text-text-secondary">{fullDate(e.date)}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-text-primary font-medium">{fmt(Number(e.weight), e.unit || unit)}</span>
-                          <button
-                            onClick={() => removeEntry(e.id)}
-                            aria-label="Delete weigh-in"
-                            className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-0.5"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          {!readOnly && (
+                            <button
+                              onClick={() => removeEntry(e.id)}
+                              aria-label="Delete weigh-in"
+                              className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-0.5"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
