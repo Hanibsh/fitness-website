@@ -247,7 +247,7 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew, onNewWorkout 
               state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
               className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> {label}
+              {!plannedDay && <Plus className="w-3.5 h-3.5" />}{label}
             </Link>
           ) : (
             <button
@@ -262,16 +262,16 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew, onNewWorkout 
             <button
               type="button"
               onClick={onNewWorkout}
-              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
             >
-              New workout
+              <Plus className="w-3.5 h-3.5" /> New workout
             </button>
           ) : (
             <Link
               to="/log"
-              className="text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 no-underline cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 no-underline cursor-pointer transition-colors"
             >
-              New workout
+              <Plus className="w-3.5 h-3.5" /> New workout
             </Link>
           ))}
         </div>
