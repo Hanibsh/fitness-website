@@ -15,7 +15,7 @@ import ClientTargetsCard from '../components/ClientTargetsCard'
 import ClientCheckinsCard from '../components/ClientCheckinsCard'
 import { useLinkedClient } from '../lib/useClientData'
 import { InjuryScope } from '../lib/useInjuries'
-import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX } from '../lib/clients'
+import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX, CLIENT_STATUSES, clientStatus } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
 import { convertMassText, convertLengthText } from '../lib/units'
 
@@ -183,6 +183,53 @@ export default function ClientDetail() {
             className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
           />
           <p className="text-[11px] text-text-light mt-2">Added {fmt(client.createdAt)} · their name heads every export.</p>
+
+          {/* Your own bookkeeping: never exported, never shown to them. */}
+          <div className="mt-6">
+            <span className={labelCls}>Status</span>
+            <div className="grid grid-cols-3 gap-2">
+              {CLIENT_STATUSES.map((st) => {
+                const on = clientStatus(client) === st.id
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => edit((c) => ({ ...c, status: st.id }))}
+                    aria-pressed={on}
+                    className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${
+                      on ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Stacked on a phone: a date field half of 320px clips its own text. */}
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className={labelCls} htmlFor="client-start">Started</label>
+                <input
+                  id="client-start"
+                  type="date"
+                  value={client.startDate || ''}
+                  onChange={(e) => edit((c) => ({ ...c, startDate: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls} htmlFor="client-renewal">Renews</label>
+                <input
+                  id="client-renewal"
+                  type="date"
+                  value={client.renewalDate || ''}
+                  onChange={(e) => edit((c) => ({ ...c, renewalDate: e.target.value }))}
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-text-light mt-2">Only you see these.</p>
+          </div>
         </div>
 
         {/* ---- Their account ------------------------------------------------- */}

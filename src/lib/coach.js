@@ -374,6 +374,52 @@ export async function fetchClientCheckins(clientUserId) {
   return data || []
 }
 
+// ---- The client list at a glance -------------------------------------------------
+// One line per linked client on /coach: their recent sessions and weigh-ins
+// (for the last workout, the no-training flag and the weight trend) and whether
+// a check-in is waiting for a reply. Three small batched queries for everyone,
+// only the columns those need.
+
+export const SUMMARY_DAYS = 60
+
+// { clientUserId: { sessions: [{date}], bodyweight: [{date, weight, unit}], waitingCheckin: bool } }
+export async function fetchClientSummaries(coachId, clientUserIds) {
+  const ids = [...new Set(clientUserIds)].filter(Boolean)
+  const out = Object.fromEntries(ids.map((id) => [id, { sessions: [], bodyweight: [], waitingCheckin: false }]))
+  if (!ids.length) return out
+  const since = new Date(Date.now() - SUMMARY_DAYS * 86400000).toISOString()
+
+  if (ids.includes(DEV_CLIENT_ID)) {
+    out[DEV_CLIENT_ID] = {
+      sessions: getHistory().map((x) => ({ date: x.date })),
+      bodyweight: getBodyweightLog(),
+      waitingCheckin: devCheckins().some((c) => !devNotes().some((n) => n.kind === 'checkin' && n.target_id === c.id)),
+    }
+  }
+  const real = ids.filter((id) => id !== DEV_CLIENT_ID)
+  if (!real.length || !supabase) return out
+
+  const [sessions, weights, checkins, replies] = await Promise.all([
+    supabase.from('sessions').select('user_id, date').in('user_id', real).gte('date', since),
+    supabase.from('bodyweight_log').select('user_id, date, weight, unit').in('user_id', real).gte('date', since),
+    supabase.from('checkins').select('id, user_id, updated_at').in('user_id', real).gte('updated_at', since),
+    supabase.from('coach_notes').select('target_id, created_at').eq('coach_id', coachId).eq('kind', 'checkin'),
+  ])
+  for (const r of sessions.data || []) out[r.user_id]?.sessions.push({ date: new Date(r.date).getTime() })
+  for (const r of weights.data || []) out[r.user_id]?.bodyweight.push({ date: new Date(r.date).getTime(), weight: Number(r.weight), unit: r.unit || 'kg' })
+  // A check-in is waiting when nothing you've written replies to it since it
+  // was last saved.
+  const lastReply = new Map()
+  for (const n of replies.data || []) {
+    const t = Date.parse(n.created_at)
+    if (t > (lastReply.get(n.target_id) || 0)) lastReply.set(n.target_id, t)
+  }
+  for (const c of checkins.data || []) {
+    if ((lastReply.get(c.id) || 0) < Date.parse(c.updated_at) && out[c.user_id]) out[c.user_id].waitingCheckin = true
+  }
+  return out
+}
+
 // ---- Invites (client side) ----------------------------------------------------
 
 // What the coach sees once you accept — said on the invite, before you do, and

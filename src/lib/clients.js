@@ -3,7 +3,11 @@
 //
 // A client is:
 //
-//   { id, name, profile, extra, injuries, notes, programs, createdAt, updatedAt }
+//   { id, name, profile, extra, injuries, notes, programs, status, startDate,
+//     renewalDate, createdAt, updatedAt }
+//
+// `status` (active | paused | ended) and the two dates ('YYYY-MM-DD' or '')
+// are the coach's own bookkeeping — never exported, never seen by the client.
 //
 // `profile` uses the SAME keys as a profiles row (sex, birth_year, unit, height,
 // bodyweight, …) so everything that reads a profile — the split generator, the
@@ -24,6 +28,17 @@ function newId() {
 }
 
 export const CLIENT_NAME_MAX = 60
+
+export const CLIENT_STATUSES = [
+  { id: 'active', label: 'Active' },
+  { id: 'paused', label: 'Paused' },
+  { id: 'ended', label: 'Ended' },
+]
+
+// Cards made before statuses existed read as active.
+export function clientStatus(client) {
+  return CLIENT_STATUSES.some((s) => s.id === client?.status) ? client.status : 'active'
+}
 
 export function createClient(name = '') {
   const now = Date.now()
