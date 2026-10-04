@@ -28,6 +28,13 @@ const sections = [
     ],
   },
   {
+    title: 'Coaching',
+    body: [
+      "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, injuries, profile and weekly check-ins. I can't change any of it.",
+      'You can stop sharing any time on your profile page. I stop seeing your data straight away.',
+    ],
+  },
+  {
     title: 'Who processes your data',
     body: [
       'Supabase — provides the login and database where account data is stored.',
@@ -53,7 +60,7 @@ const sections = [
   {
     title: 'Data security & retention',
     body: [
-      'Account data is protected so that each user can only access their own — your workouts are visible to you alone. I keep your account data for as long as your account exists; delete your account and it\'s removed.',
+      'Account data is protected so that each user can only access their own — your workouts are visible to you alone, unless you link your account to me for coaching. I keep your account data for as long as your account exists; delete your account and it\'s removed.',
     ],
   },
   {
@@ -86,7 +93,7 @@ export default function Privacy() {
 
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="font-heading text-4xl font-medium text-text-primary mb-2">Privacy</h1>
-          <p className="text-[12px] text-text-light mb-10">Last updated: July 2026</p>
+          <p className="text-[12px] text-text-light mb-10">Last updated: October 2026</p>
 
           <div className="space-y-8">
             {sections.map((s) => (

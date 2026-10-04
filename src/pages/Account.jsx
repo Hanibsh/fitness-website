@@ -21,6 +21,8 @@ import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import NumberField from '../components/NumberField'
 import { useCoachAccess } from '../lib/useClientsState'
+import { useMyCoach } from '../lib/useMyCoach'
+import CoachSection from '../components/CoachSection'
 import { useReturnLink } from '../lib/returnPath'
 
 const NOW_YEAR = new Date().getFullYear()
@@ -36,6 +38,8 @@ const outOfBounds = (v, b) => v !== '' && !(Number.isFinite(Number(v)) && Number
 export default function Account() {
   const { user, signOut, setNickname: setAuthNickname, refreshProfile } = useAuth()
   const { isCoach } = useCoachAccess()
+  // The coach this account is linked to, if any (null for nearly everyone).
+  const { coach, stopCoaching } = useMyCoach()
   const back = useReturnLink('account', { to: '/log', label: 'Back to workout log' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -292,6 +296,9 @@ export default function Account() {
     </ProfileSection>
   )
 
+  // Only for a linked client. Signed out it only ever shows the dev sample.
+  const coachSection = coach && <CoachSection coach={coach} onStop={stopCoaching} sectionProps={sec('coach')} />
+
   // Works signed out too (device only), so in both branches.
   const appearanceSection = (
     <ProfileSection id="appearance" title="Appearance" {...sec('appearance')}>
@@ -317,6 +324,7 @@ export default function Account() {
                 <span className="text-text-primary font-medium">Log in</span> to see your profile.
               </p>
               <div className="space-y-3">
+                {coachSection}
                 {dashboardSection}
                 {appearanceSection}
                 {restTimerSection}
@@ -328,7 +336,7 @@ export default function Account() {
             <>
               <div className="flex items-center gap-2 flex-wrap mb-3">
                 <p className="text-text-muted text-[15px]">{user.email}</p>
-                {coachingStatus === 'client' && (
+                {(coach || coachingStatus === 'client') && (
                   <span className="text-[11px] font-medium text-cream bg-text-primary px-2 py-0.5">Coaching client</span>
                 )}
               </div>
@@ -350,6 +358,9 @@ export default function Account() {
               </p>
 
               <div className="space-y-3">
+                {/* ---- Coach (linked clients only) ---------------------------------- */}
+                {coachSection}
+
                 {/* ---- About you ---------------------------------------------------- */}
                 <ProfileSection id="about" title="About you" {...sec('about')}>
                   <div className="space-y-7">

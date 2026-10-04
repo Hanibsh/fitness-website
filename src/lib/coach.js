@@ -1,0 +1,205 @@
+// Coaching — a client card linked to the client's real account (schema.sql
+// section 2i). Every remote call for both sides lives here: the coach's
+// (invites, the client's data, sent programs, notes, targets, check-ins) and
+// the client's (accepting, their coach, what the coach sent them).
+//
+// The client's own data is read with the SAME fetchers the app uses for your
+// own (workoutRemote.js), just with their user id — the database's coach-read
+// policies are what let those through, and only while the link is active.
+//
+// Everything degrades to "no coaching" when schema.sql hasn't been run yet:
+// a missing table or function reads as empty, never as an error.
+import { supabase } from './supabase'
+import {
+  fetchRemoteHistory, fetchRemoteBodyweight, fetchRemoteInjuries, fetchRemoteDayAnnotations, fetchRemoteProgramsState,
+} from './workoutRemote'
+import { fetchProfile } from './profile'
+import { getHistory, getBodyweightLog, getInjuries, getDayAnnotations, getProgramsState } from './workoutStore'
+
+// A table or function that isn't in the database yet.
+function missing(error) {
+  if (!error) return false
+  return ['42P01', 'PGRST205', 'PGRST202', '42883'].includes(error.code)
+}
+
+// ---- Dev samples -------------------------------------------------------------
+// In local development only, two localStorage switches stand in for real
+// accounts, so every coaching screen can be worked on signed out:
+//   leon_dev_coach  = '1' → the coach area (useCoachAccess), and the FIRST
+//                           client card reads as linked, its "training" being
+//                           this device's own log, weight and injuries.
+//   leon_dev_client = '1' → this device is a linked client of "Leon".
+// Production builds drop these branches entirely (import.meta.env.DEV).
+function devFlag(key) {
+  if (!import.meta.env.DEV) return false
+  try {
+    return localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+export const devCoachSample = () => devFlag('leon_dev_coach')
+export const devClientSample = () => devFlag('leon_dev_client')
+const DEV_CLIENT_ID = 'dev-client'
+const DEV_COACH_LINK = 'dev-coach-link'
+const DEV_INVITE_CODE = 'devcode0000'
+const DEV_STORE = 'leon_dev_coaching'
+
+function devRead() {
+  try {
+    return JSON.parse(localStorage.getItem(DEV_STORE)) || {}
+  } catch {
+    return {}
+  }
+}
+function devWrite(patch) {
+  try {
+    localStorage.setItem(DEV_STORE, JSON.stringify({ ...devRead(), ...patch }))
+  } catch {
+    // storage unavailable — the sample just won't remember
+  }
+}
+
+// ---- Links (coach side) ----------------------------------------------------
+
+export const INVITE_DAYS = 7
+
+// The dev sample stands in only while signed out — signed in, it's all real.
+const devCoach = (coachId) => !coachId && devCoachSample()
+
+// Every link this coach has made, newest first.
+export async function fetchCoachLinks(coachId, cards = []) {
+  if (devCoach(coachId)) return devLinks(cards)
+  if (!supabase || !coachId) return []
+  const { data, error } = await supabase
+    .from('coach_links')
+    .select('*')
+    .eq('coach_id', coachId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    if (missing(error)) return []
+    throw error
+  }
+  return data || []
+}
+
+// The first card reads as linked until the sample is unlinked or re-invited.
+function devLinks(cards) {
+  const first = cards[0]
+  if (!first) return []
+  const stored = devRead().link
+  if (stored) return [{ ...stored, card_id: first.id }]
+  const day = 86400000
+  return [{ id: 'dev-link', card_id: first.id, client_id: DEV_CLIENT_ID, status: 'active', code: 'dev', created_at: new Date(Date.now() - 21 * day).toISOString(), accepted_at: new Date(Date.now() - 20 * day).toISOString(), expires_at: new Date(Date.now() - 14 * day).toISOString() }]
+}
+
+// The link that matters for one card: an active one, else an open invite.
+export function linkForCard(links, cardId, now = Date.now()) {
+  const forCard = links.filter((l) => l.card_id === cardId)
+  const active = forCard.find((l) => l.status === 'active')
+  if (active) return { state: 'linked', link: active }
+  const pending = forCard.find((l) => l.status === 'pending' && new Date(l.expires_at).getTime() > now)
+  if (pending) return { state: 'pending', link: pending }
+  return { state: 'none', link: null }
+}
+
+export async function createInvite(coachId, cardId) {
+  if (devCoach(coachId)) {
+    const link = { id: 'dev-link', card_id: cardId, client_id: null, status: 'pending', code: DEV_INVITE_CODE, created_at: new Date().toISOString(), expires_at: new Date(Date.now() + INVITE_DAYS * 86400000).toISOString() }
+    devWrite({ link })
+    return link
+  }
+  const { data, error } = await supabase.rpc('create_coach_invite', { p_card_id: cardId })
+  if (error) throw error
+  return data
+}
+
+// Ends a link from either side, or withdraws an open invite.
+export async function endLink(linkId) {
+  if (linkId === 'dev-link') {
+    devWrite({ link: { ...devRead().link, id: 'dev-link', status: 'ended' } })
+    return
+  }
+  if (linkId === DEV_COACH_LINK) {
+    devWrite({ clientEnded: true })
+    return
+  }
+  const { error } = await supabase.rpc('end_coach_link', { p_id: linkId })
+  if (error) throw error
+}
+
+// The address the client opens. BASE_URL keeps it right on a sub-path host.
+export function inviteUrl(code) {
+  return `${window.location.origin}${import.meta.env.BASE_URL}join/${code}`
+}
+
+// ---- The client's data, as the coach reads it ---------------------------------
+
+// Everything the coach's view of one client needs, in one go. Any piece that
+// fails comes back empty rather than sinking the rest.
+export async function fetchClientData(clientUserId) {
+  if (clientUserId === DEV_CLIENT_ID) {
+    const state = getProgramsState()
+    return {
+      sessions: getHistory(),
+      bodyweight: getBodyweightLog(),
+      injuries: getInjuries(),
+      annotations: getDayAnnotations(),
+      program: state.programs.find((p) => p.id === state.activeId) || null,
+      profile: { sex: 'male', unit: 'kg', bodyweight: 82, height: 180, birth_year: 1996, goal: 'gain_muscle', experience_level: 'intermediate' },
+    }
+  }
+  const safe = (p, fallback) => p.catch(() => fallback)
+  const [sessions, bodyweight, injuries, annotations, programsState, profile] = await Promise.all([
+    safe(fetchRemoteHistory(clientUserId), []),
+    safe(fetchRemoteBodyweight(clientUserId), []),
+    safe(fetchRemoteInjuries(clientUserId), []),
+    safe(fetchRemoteDayAnnotations(clientUserId), []),
+    safe(fetchRemoteProgramsState(clientUserId), { programs: [], activeId: null }),
+    safe(fetchProfile(clientUserId), null),
+  ])
+  const program = programsState.programs.find((p) => p.id === programsState.activeId) || null
+  return { sessions, bodyweight, injuries, annotations, program, profile }
+}
+
+// ---- Invites (client side) ----------------------------------------------------
+
+// What the coach sees once you accept — said on the invite, before you do, and
+// again on your profile's Coach section.
+export const COACH_SEES = ['Your workout log, past and future', 'Your bodyweight and injuries', 'Your profile and weekly check-ins']
+
+// { state: 'open' | 'used' | 'expired' | 'invalid', coach_name, is_self }
+export async function inviteInfo(code) {
+  if (import.meta.env.DEV && code === DEV_INVITE_CODE) return { state: 'open', coach_name: 'Leon', is_self: false }
+  if (!supabase) return { state: 'invalid' }
+  const { data, error } = await supabase.rpc('invite_info', { p_code: code })
+  if (error) {
+    if (missing(error)) return { state: 'invalid' }
+    throw error
+  }
+  return data || { state: 'invalid' }
+}
+
+export async function acceptInvite(code) {
+  if (import.meta.env.DEV && code === DEV_INVITE_CODE) {
+    try { localStorage.setItem('leon_dev_client', '1') } catch { /* no storage */ }
+    devWrite({ clientEnded: false })
+    return
+  }
+  const { error } = await supabase.rpc('accept_coach_invite', { p_code: code })
+  if (error) throw error
+}
+
+// Who coaches this account: { link_id, coach_name, since } or null.
+export async function fetchMyCoach(userId) {
+  if (!userId && devClientSample()) {
+    return devRead().clientEnded ? null : { link_id: DEV_COACH_LINK, coach_name: 'Leon', since: new Date(Date.now() - 20 * 86400000).toISOString() }
+  }
+  if (!supabase || !userId) return null
+  const { data, error } = await supabase.rpc('my_coach')
+  if (error) {
+    if (missing(error)) return null
+    throw error
+  }
+  return data || null
+}

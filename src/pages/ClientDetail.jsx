@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import Modal from '../components/Modal'
 import ImportReview from '../components/ImportReview'
+import ClientLinkCard from '../components/ClientLinkCard'
 import { InjuryScope, NO_INJURIES } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, CLIENT_NAME_MAX } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
@@ -19,7 +20,7 @@ import { convertMassText, convertLengthText } from '../lib/units'
 // export, never printed empty.
 export default function ClientDetail() {
   const { clientId } = useParams()
-  const { clients, updateClient, deleteClient } = useOutletContext()
+  const { clients, updateClient, deleteClient, links, invite, unlink } = useOutletContext()
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
   const [exporting, setExporting] = useState(null) // program | null
@@ -159,6 +160,9 @@ export default function ClientDetail() {
           />
           <p className="text-[11px] text-text-light mt-2">Added {fmt(client.createdAt)} · their name heads every export.</p>
         </div>
+
+        {/* ---- Their account ------------------------------------------------- */}
+        <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
 
         {/* ---- Programs ------------------------------------------------------ */}
         <section className={cardCls}>

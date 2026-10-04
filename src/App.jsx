@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import InstallPrompt from './components/InstallPrompt'
 import { useAuth } from './lib/auth'
 import { useTrackReturnPaths } from './lib/returnPath'
+import { pendingInvite, forgetInvite } from './lib/pendingInvite'
 
 // Every page except the landing page is lazy-loaded so first paint doesn't
 // pay for calculators and the tracker up front.
@@ -32,6 +33,8 @@ const Clients = lazy(() => import('./pages/Clients'))
 const ClientDetail = lazy(() => import('./pages/ClientDetail'))
 const ClientGenerate = lazy(() => import('./pages/ClientGenerate'))
 const ClientSplitLayout = lazy(() => import('./pages/ClientSplitLayout'))
+// A coach's invite: open it, sign in, accept.
+const Join = lazy(() => import('./pages/Join'))
 
 // The routine builder became the "Training split" tab of the log (2026-07).
 // Old /routine URLs (bookmarks, synced devices mid-deploy) land on the new ones.
@@ -48,11 +51,26 @@ const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
 const CalendarPage = lazy(() => import('./pages/CalendarPage'))
 const Injuries = lazy(() => import('./pages/Injuries'))
 
+// Signing in from an invite leaves it (Google lands on the home page, an
+// emailed confirmation opens a new tab) — once you're in, go back to it, once.
+function useResumeInvite(user) {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!user) return
+    const code = pendingInvite()
+    if (!code) return
+    forgetInvite()
+    if (!pathname.startsWith('/join/')) navigate(`/join/${code}`, { replace: true })
+  }, [user, pathname, navigate])
+}
+
 function App() {
   const { user, loading } = useAuth()
   // Remembers where you were before opening a page that's a tap away from
   // everywhere (Clients, your profile, Import), so its back link returns there.
   useTrackReturnPaths()
+  useResumeInvite(user)
   // Logged-in users land on their dashboard; everyone else gets the marketing
   // home. While auth is resolving, show Home to avoid a flash of empty state.
   const homeElement = user && !loading ? <Dashboard /> : <Home />
@@ -99,6 +117,7 @@ function App() {
             <Route path="day/:dayId" element={<SplitDay />} />
           </Route>
         </Route>
+        <Route path="/join/:code" element={<Join />} />
         <Route path="/routine" element={<Navigate to="/programs" replace />} />
         <Route path="/routine/:id" element={<LegacyRoutineRedirect />} />
         <Route path="/account" element={<Account />} />
