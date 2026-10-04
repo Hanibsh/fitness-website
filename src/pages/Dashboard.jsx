@@ -43,8 +43,10 @@ import SectionHeading from '../components/SectionHeading'
 import MiniStat from '../components/MiniStat'
 import { useInjuries } from '../lib/useInjuries'
 import { useMyCoach } from '../lib/useMyCoach'
-import { useFromCoach } from '../lib/useCoachNotes'
+import { useFromCoach, useMyCheckins } from '../lib/useCoachNotes'
+import { thisWeeksCheckin } from '../lib/checkins'
 import FromCoachCard from '../components/FromCoachCard'
+import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
 import StatusChip from '../components/StatusChip'
@@ -374,6 +376,9 @@ export default function Dashboard() {
   // Coached by Leon: his card (notes, targets, check-in) replaces the coaching ad.
   const { coach } = useMyCoach()
   const fromCoach = useFromCoach(!!coach)
+  const { checkins, saveCheckin } = useMyCheckins(!!coach)
+  const thisWeek = thisWeeksCheckin(checkins)
+  const [checkinOpen, setCheckinOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1327,6 +1332,7 @@ export default function Dashboard() {
             unread={fromCoach.unread}
             targets={fromCoach.targets}
             sessions={sessions}
+            checkin={{ done: !!thisWeek, open: () => setCheckinOpen(true) }}
           />
         ) : (
           <CoachingBanner />
@@ -1400,6 +1406,15 @@ export default function Dashboard() {
 
       {/* Opened from the calendar's day panel. Editing lives in the log, so
           Edit navigates there — the card is the way in, not a second editor. */}
+      {checkinOpen && (
+        <CheckinModal
+          coachName={coach?.coach_name}
+          initial={thisWeek?.answers}
+          onSave={saveCheckin}
+          onClose={() => setCheckinOpen(false)}
+        />
+      )}
+
       {summarySession && (
         <SessionSummary
           session={summarySession}

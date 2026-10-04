@@ -15,7 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
 const { mergeCoachPrograms, isLockedProgram } = await server.ssrLoadModule('/src/lib/coachSync.js')
 const stats = await server.ssrLoadModule('/src/lib/coachStats.js')
-const checkins = await server.ssrLoadModule('/src/lib/checkins.js').catch(() => null)
+const checkins = await server.ssrLoadModule('/src/lib/checkins.js')
 
 let passed = 0
 function check(name, ok, detail = '') {
@@ -140,10 +140,10 @@ check('tiny change reads flat', stats.weightTrend([weigh(10, 80), weigh(1, 80.2)
   check('mixed units converted', Math.abs(t.latest - 81.6) < 0.05, JSON.stringify(t))
 }
 
-// ---- check-ins (once lib/checkins.js exists) ----------------------------------------
+// ---- check-ins ------------------------------------------------------------------------
 
-if (checkins) {
-  const { weekStart, checkinDue } = checkins
+{
+  const { weekStart, checkinDue, checkinComplete } = checkins
   const sun = new Date(2026, 9, 4, 20, 0).getTime() // a Sunday
   const mon = new Date(2026, 9, 5, 8, 0).getTime()
   check('week starts Monday', weekStart(sun) === '2026-09-28', weekStart(sun))
@@ -151,6 +151,9 @@ if (checkins) {
   check('due with none', checkinDue([], sun) === true)
   check('not due once done this week', checkinDue([{ week_start: '2026-09-28' }], sun) === false)
   check('due again next week', checkinDue([{ week_start: '2026-09-28' }], mon) === true)
+  check('complete needs all six', !checkinComplete({ sleep: 3, energy: 3, stress: 3, training: 3, hunger: 3 }))
+  check('complete with all six', checkinComplete({ sleep: 3, energy: 3, stress: 3, training: 3, hunger: 3, diet: 1, note: '' }))
+  check('out-of-range answer rejected', !checkinComplete({ sleep: 6, energy: 3, stress: 3, training: 3, hunger: 3, diet: 3 }))
 }
 
 console.log(`coaching checks: ${passed} passed`)

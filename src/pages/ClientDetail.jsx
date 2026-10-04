@@ -12,6 +12,7 @@ import ClientLinkCard from '../components/ClientLinkCard'
 import ClientTrainingSummary from '../components/ClientTrainingSummary'
 import SendProgramModal from '../components/SendProgramModal'
 import ClientTargetsCard from '../components/ClientTargetsCard'
+import ClientCheckinsCard from '../components/ClientCheckinsCard'
 import { useLinkedClient } from '../lib/useClientData'
 import { InjuryScope } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX } from '../lib/clients'
@@ -187,6 +188,7 @@ export default function ClientDetail() {
         {/* ---- Their account ------------------------------------------------- */}
         <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
         {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
+        {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} />}
         {linked && <ClientTargetsCard clientName={client.name} clientUserId={link.client_id} unit={unit} />}
 
         {/* ---- Programs ------------------------------------------------------ */}

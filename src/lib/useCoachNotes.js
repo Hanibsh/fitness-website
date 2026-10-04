@@ -2,13 +2,15 @@
 //   useClientNotes / useClientTargets — the coach, about one linked client
 //   useFromCoach                        — the client: what their coach sent them
 //   useSessionComments                  — the client: comments on one session
+//   useMyCheckins / useClientCheckins   — the weekly check-in, both sides
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './auth'
 import { useMyCoach } from './useMyCoach'
 import {
   fetchClientNotes, addCoachNote, deleteCoachNote, fetchClientTargets, saveClientTargets,
-  fetchMyNotes, markNotesRead, fetchMyTargets,
+  fetchMyNotes, markNotesRead, fetchMyTargets, fetchMyCheckins, saveCheckin, fetchClientCheckins,
 } from './coach'
+import { weekStart } from './checkins'
 
 export function useClientNotes(clientUserId) {
   const { user } = useAuth()
@@ -102,4 +104,43 @@ export function useSessionComments() {
   const { notes } = useFromCoach(!!coach, { markRead: false })
   const comments = useCallback((sessionId) => notes.filter((n) => n.kind === 'session' && n.target_id === sessionId), [notes])
   return { comments, coachName: coach?.coach_name }
+}
+
+export function useMyCheckins(enabled) {
+  const { user } = useAuth()
+  const [checkins, setCheckins] = useState([])
+
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    fetchMyCheckins(user?.id)
+      .then((rows) => { if (!cancelled) setCheckins(rows) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [enabled, user])
+
+  // This week's check-in, new or edited.
+  const save = useCallback(
+    async (answers) => {
+      const row = await saveCheckin(user?.id, weekStart(), answers)
+      setCheckins((prev) => [row, ...prev.filter((c) => c.week_start !== row.week_start)])
+      return row
+    },
+    [user]
+  )
+
+  return { checkins, saveCheckin: save }
+}
+
+export function useClientCheckins(clientUserId) {
+  const [checkins, setCheckins] = useState([])
+  useEffect(() => {
+    if (!clientUserId) return
+    let cancelled = false
+    fetchClientCheckins(clientUserId)
+      .then((rows) => { if (!cancelled) setCheckins(rows) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [clientUserId])
+  return checkins
 }

@@ -318,6 +318,62 @@ export async function fetchMyTargets(userId) {
   return data?.data || null
 }
 
+// ---- Check-ins ------------------------------------------------------------------
+// The client's weekly check-in (lib/checkins.js has the questions). Theirs to
+// write; the coach reads them while linked, and replies with a note (kind
+// 'checkin', target_id = the check-in's id).
+
+const devCheckins = () => devRead().checkins || []
+
+export async function fetchMyCheckins(userId) {
+  if (!userId && devClientSample()) return devCheckins()
+  if (!supabase || !userId) return []
+  const { data, error } = await supabase
+    .from('checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .order('week_start', { ascending: false })
+    .limit(12)
+  if (error) {
+    if (missing(error)) return []
+    throw error
+  }
+  return data || []
+}
+
+// One per week: saving again that week updates it.
+export async function saveCheckin(userId, week, answers) {
+  const now = new Date().toISOString()
+  if (!userId && devClientSample()) {
+    const prev = devCheckins().find((c) => c.week_start === week)
+    const row = { id: prev?.id || `dev-${Date.now()}`, user_id: 'dev-client', week_start: week, answers, created_at: prev?.created_at || now, updated_at: now }
+    devWrite({ checkins: [row, ...devCheckins().filter((c) => c.week_start !== week)] })
+    return row
+  }
+  const { data, error } = await supabase
+    .from('checkins')
+    .upsert({ user_id: userId, week_start: week, answers, updated_at: now }, { onConflict: 'user_id,week_start' })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+// The coach's side: a linked client's check-ins, newest first.
+export async function fetchClientCheckins(clientUserId) {
+  if (clientUserId === DEV_CLIENT_ID) return devCheckins()
+  const { data, error } = await supabase
+    .from('checkins')
+    .select('*')
+    .eq('user_id', clientUserId)
+    .order('week_start', { ascending: false })
+  if (error) {
+    if (missing(error)) return []
+    throw error
+  }
+  return data || []
+}
+
 // ---- Invites (client side) ----------------------------------------------------
 
 // What the coach sees once you accept — said on the invite, before you do, and
