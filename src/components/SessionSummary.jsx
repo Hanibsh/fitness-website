@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Trophy, Timer, Dumbbell, Lightbulb, LineChart } from 'lucide-react'
+import { Trophy, Timer, Dumbbell, Lightbulb, LineChart, MessageCircle } from 'lucide-react'
 import Modal from './Modal'
 import {
   sessionAvgRest, avgRestForExercise, formatRest, setSummary, distanceUnit, setHasWork,
@@ -44,6 +44,9 @@ export default function SessionSummary({
   onClose,
   onExerciseProgress = null,
   actions = null,
+  // Your coach's comments on this session, if you have one (lib/coach.js).
+  coachNotes = null,
+  coachName = 'Leon',
 }) {
   const sessionUnit = session.unit || unit
   const stats = sessionStats(session)
@@ -233,6 +236,21 @@ export default function SessionSummary({
             </h3>
             <p className="text-[13px] font-medium text-text-primary">{advice.title}</p>
             <p className="text-[12px] text-text-muted leading-relaxed mt-1">{advice.detail}</p>
+          </div>
+        )}
+
+        {coachNotes?.length > 0 && (
+          <div className="mt-6">
+            <h3 className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-text-light mb-2">
+              <MessageCircle className="w-3.5 h-3.5" /> From {coachName}
+            </h3>
+            <div className="space-y-2">
+              {coachNotes.map((n) => (
+                <p key={n.id} className="text-[13px] text-text-secondary bg-cream border border-border px-3 py-2.5 break-words whitespace-pre-line">
+                  {n.body}
+                </p>
+              ))}
+            </div>
           </div>
         )}
 

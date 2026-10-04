@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CalendarDays, X, BatteryCharging, Pencil, Trash2, Bandage } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { useSessionComments } from '../lib/useCoachNotes'
 import {
   getHistory, getProgram, deleteSession,
   getDayAnnotations, makeDayAnnotation, saveDayAnnotation, deleteDayAnnotation,
@@ -56,6 +57,8 @@ function MiniStat({ label, value, small = false }) {
 // independently, not as alternatives.
 export default function CalendarPage() {
   const { user } = useAuth()
+  // Your coach's comments on past sessions, shown in their summaries.
+  const sessionComments = useSessionComments()
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [program, setProgram] = useState(null)
@@ -412,6 +415,8 @@ export default function CalendarPage() {
             unit={summarySession.unit || 'kg'}
             annotation={annotationForDate(annotations, summarySession.date)}
             onClose={() => setSummarySession(null)}
+            coachNotes={sessionComments.comments(summarySession.id)}
+            coachName={sessionComments.coachName}
             actions={
               <div className="flex flex-wrap items-center gap-4">
                 <button

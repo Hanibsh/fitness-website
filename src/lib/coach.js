@@ -204,6 +204,120 @@ export async function unsendProgram(coachId, programId) {
   if (error && !missing(error)) throw error
 }
 
+// ---- Notes and targets ------------------------------------------------------------
+// What the coach says to a client (coach_notes: a comment on a session, a reply
+// to a check-in, or a general note) and the numbers they set (coach_targets).
+// The dev samples share one store, so a note written on the coach side shows up
+// on the client side.
+
+export const NOTE_MAX = 2000
+
+const devNotes = () => devRead().notes || []
+
+export async function fetchClientNotes(coachId, clientUserId) {
+  if (devCoach(coachId)) return devNotes()
+  const { data, error } = await supabase
+    .from('coach_notes')
+    .select('*')
+    .eq('coach_id', coachId)
+    .eq('client_id', clientUserId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    if (missing(error)) return []
+    throw error
+  }
+  return data || []
+}
+
+export async function addCoachNote(coachId, clientUserId, { kind = 'general', targetId = null, body }) {
+  const text = String(body || '').trim().slice(0, NOTE_MAX)
+  if (!text) return null
+  if (devCoach(coachId)) {
+    const row = { id: `dev-${Date.now()}`, client_id: clientUserId, kind, target_id: targetId, body: text, created_at: new Date().toISOString(), read_at: null }
+    devWrite({ notes: [row, ...devNotes()] })
+    return row
+  }
+  const { data, error } = await supabase
+    .from('coach_notes')
+    .insert({ coach_id: coachId, client_id: clientUserId, kind, target_id: targetId, body: text })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteCoachNote(coachId, id) {
+  if (devCoach(coachId)) {
+    devWrite({ notes: devNotes().filter((n) => n.id !== id) })
+    return
+  }
+  const { error } = await supabase.from('coach_notes').delete().eq('id', id)
+  if (error) throw error
+}
+
+// { goalWeight, unit, calories, protein, carbs, fat } — any of them may be blank.
+export const TARGET_FIELDS = ['goalWeight', 'calories', 'protein', 'carbs', 'fat']
+
+export async function fetchClientTargets(coachId, clientUserId) {
+  if (devCoach(coachId)) return devRead().targets || null
+  const { data, error } = await supabase.from('coach_targets').select('data').eq('client_id', clientUserId).maybeSingle()
+  if (error) {
+    if (missing(error)) return null
+    throw error
+  }
+  return data?.data || null
+}
+
+export async function saveClientTargets(coachId, clientUserId, targets) {
+  if (devCoach(coachId)) {
+    devWrite({ targets })
+    return
+  }
+  const { error } = await supabase
+    .from('coach_targets')
+    .upsert({ client_id: clientUserId, coach_id: coachId, data: targets, updated_at: new Date().toISOString() })
+  if (error) throw error
+}
+
+// The client's side: what their coach has said, newest first, and their targets.
+export async function fetchMyNotes(userId) {
+  if (!userId && devClientSample()) return devNotes()
+  if (!supabase || !userId) return []
+  const { data, error } = await supabase
+    .from('coach_notes')
+    .select('*')
+    .eq('client_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) {
+    if (missing(error)) return []
+    throw error
+  }
+  return data || []
+}
+
+export async function markNotesRead(userId, ids) {
+  if (!ids.length) return
+  if (!userId && devClientSample()) {
+    const now = new Date().toISOString()
+    devWrite({ notes: devNotes().map((n) => (ids.includes(n.id) ? { ...n, read_at: n.read_at || now } : n)) })
+    return
+  }
+  const { error } = await supabase.rpc('mark_coach_notes_read', { p_ids: ids })
+  if (error && !missing(error)) throw error
+}
+
+export async function fetchMyTargets(userId) {
+  if (!userId && devClientSample()) return devRead().targets || null
+  if (!supabase || !userId) return null
+  const { data, error } = await supabase.from('coach_targets').select('data').eq('client_id', userId).maybeSingle()
+  if (error) {
+    if (missing(error)) return null
+    throw error
+  }
+  return data?.data || null
+}
+
 // ---- Invites (client side) ----------------------------------------------------
 
 // What the coach sees once you accept — said on the invite, before you do, and

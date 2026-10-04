@@ -245,6 +245,13 @@ export function setDayName(program, dayId, name) {
   return withDay(program, dayId, (d) => ({ ...d, name: name.slice(0, 40) }))
 }
 
+// A note on the whole day ("Go heavy today"), shown at the top of the logger
+// when that day's session starts. Optional; absent on every older day.
+export const DAY_NOTE_MAX = 300
+export function setDayNote(program, dayId, note) {
+  return withDay(program, dayId, (d) => ({ ...d, note: note.slice(0, DAY_NOTE_MAX) }))
+}
+
 // `sharedNotes: false` is for a split that isn't yours (a client's): its rows
 // keep their own notes and never read the per-movement store, which is yours.
 export function addExercise(program, dayId, { name, category, exerciseId }, { sharedNotes = true } = {}) {

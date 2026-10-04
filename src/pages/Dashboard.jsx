@@ -42,6 +42,9 @@ import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
 import MiniStat from '../components/MiniStat'
 import { useInjuries } from '../lib/useInjuries'
+import { useMyCoach } from '../lib/useMyCoach'
+import { useFromCoach } from '../lib/useCoachNotes'
+import FromCoachCard from '../components/FromCoachCard'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
 import StatusChip from '../components/StatusChip'
@@ -368,6 +371,9 @@ export default function Dashboard() {
   const { layout } = useDashboardLayout()
   // Bodyweight for the strength and cardio cards: the profile's, else the latest weigh-in.
   const person = usePlanPerson()
+  // Coached by Leon: his card (notes, targets, check-in) replaces the coaching ad.
+  const { coach } = useMyCoach()
+  const fromCoach = useFromCoach(!!coach)
 
   useEffect(() => {
     let cancelled = false
@@ -1312,8 +1318,19 @@ export default function Dashboard() {
   return (
     <div className="pt-24 pb-24 px-4 sm:px-6" style={{ paddingBottom: 'max(6rem, env(safe-area-inset-bottom))' }}>
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* SECTION 0 — COACHING BANNER (coaching-first: the point of the brand) */}
-        <CoachingBanner />
+        {/* SECTION 0 — COACHING BANNER (coaching-first: the point of the brand).
+            Someone already coached gets their coach's card instead. */}
+        {coach ? (
+          <FromCoachCard
+            coachName={coach.coach_name}
+            notes={fromCoach.notes}
+            unread={fromCoach.unread}
+            targets={fromCoach.targets}
+            sessions={sessions}
+          />
+        ) : (
+          <CoachingBanner />
+        )}
 
         {/* Anything unfinished comes before the stats: "where was I?" is the
             question someone opening this mid-workout is actually asking. */}
@@ -1390,6 +1407,8 @@ export default function Dashboard() {
           unit={unit}
           annotation={annotationForDate(annotations, summarySession.date)}
           onClose={() => setSummarySession(null)}
+          coachNotes={fromCoach.notes.filter((n) => n.kind === 'session' && n.target_id === summarySession.id)}
+          coachName={coach?.coach_name}
           actions={
             <div className="flex flex-wrap items-center gap-4">
               <button

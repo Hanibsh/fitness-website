@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, BarChart3, BatteryCharging, TrendingUp, Bandage, ChevronRight, History } from 'lucide-react'
+import { ArrowLeft, BarChart3, BatteryCharging, TrendingUp, Bandage, ChevronRight, History, MessageCircle } from 'lucide-react'
 import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
 import BodyweightTracker from '../components/BodyweightTracker'
@@ -9,10 +9,12 @@ import ExerciseProgress from '../components/ExerciseProgress'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import SessionSummary from '../components/SessionSummary'
 import ClientTrainingSummary from '../components/ClientTrainingSummary'
+import CoachComments from '../components/CoachComments'
 import {
   AdherenceCard, StalledLiftsCard, StrengthLevelCard, EffortCard, TrainingTimeCard,
 } from '../components/DashboardInsightCards'
 import { useLinkedClient } from '../lib/useClientData'
+import { useClientNotes } from '../lib/useCoachNotes'
 import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/engine'
 import { loggedExerciseNames, convertWeight } from '../lib/workoutStats'
 import { sessionStats } from '../lib/workoutStore'
@@ -25,7 +27,7 @@ export default function ClientTraining() {
   const { clientId } = useParams()
   const { clients } = useOutletContext()
   const client = clients.find((c) => c.id === clientId) || null
-  const { linked, data, loading } = useLinkedClient(clientId)
+  const { linked, link, data, loading } = useLinkedClient(clientId)
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') === 'log' ? 'log' : 'overview'
   const name = client?.name || 'Client'
@@ -73,7 +75,7 @@ export default function ClientTraining() {
       {loading || !data ? (
         <p className="text-[13px] text-text-muted">Loading…</p>
       ) : tab === 'log' ? (
-        <ClientLog data={data} />
+        <ClientLog data={data} clientUserId={link.client_id} />
       ) : (
         <Overview clientId={client.id} data={data} />
       )}
@@ -244,10 +246,14 @@ function Injuries({ injuries, now }) {
 
 const PAGE = 15
 
-function ClientLog({ data }) {
+function ClientLog({ data, clientUserId }) {
   const unit = useUnit(data)
   const { sessions, annotations, program, injuries } = data
   const [open, setOpen] = useState(null) // session
+  // Your comments on their sessions — they see them on their dashboard.
+  const { notes, addNote, removeNote } = useClientNotes(clientUserId)
+  const commentsOn = (id) => notes.filter((n) => n.kind === 'session' && n.target_id === id)
+  const commented = useMemo(() => new Set(notes.filter((n) => n.kind === 'session').map((n) => n.target_id)), [notes])
   const [shown, setShown] = useState(PAGE)
   const sorted = useMemo(() => [...sessions].sort((a, b) => b.date - a.date), [sessions])
   const fmt = (ts) => new Date(ts).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
@@ -282,6 +288,7 @@ function ClientLog({ data }) {
                       <p className="text-[13px] font-medium text-text-primary break-words group-hover:underline">{s.name || 'Workout'}</p>
                       <p className="text-[11px] text-text-muted">
                         {fmt(s.date)} · {st.exercises} exercise{st.exercises === 1 ? '' : 's'} · {st.sets} set{st.sets === 1 ? '' : 's'}
+                        {commented.has(s.id) && <span className="inline-flex items-center gap-1 ml-1.5 align-middle"><MessageCircle className="w-3 h-3" /></span>}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-text-light shrink-0" />
@@ -307,6 +314,16 @@ function ClientLog({ data }) {
           unit={unit}
           annotation={annotationForDate(annotations, open.date)}
           onClose={() => setOpen(null)}
+          actions={
+            <div className="w-full">
+              <CoachComments
+                notes={commentsOn(open.id)}
+                onAdd={(body) => addNote({ kind: 'session', targetId: open.id, body })}
+                onRemove={removeNote}
+                placeholder="Comment on this workout"
+              />
+            </div>
+          }
         />
       )}
     </div>

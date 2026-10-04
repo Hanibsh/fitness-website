@@ -6,7 +6,7 @@ import LockedDay from '../components/LockedDay'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats } from '../lib/planStats'
-import { setDayName, splitSetCap, hasPlannedWork } from '../lib/program'
+import { setDayName, setDayNote, splitSetCap, hasPlannedWork, DAY_NOTE_MAX } from '../lib/program'
 import { usePlanPerson } from '../lib/profilePrefill'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -144,6 +144,21 @@ export default function SplitDay() {
                 </div>
               )}
             </>
+          )}
+
+          {/* A note for the whole day: read-only on a split your coach sent. */}
+          {locked ? (
+            day.note && <p className="text-[13px] text-text-secondary bg-cream border border-border px-3 py-2.5 mt-4 break-words whitespace-pre-line">{day.note}</p>
+          ) : (
+            <textarea
+              value={day.note || ''}
+              onChange={(e) => update((p) => setDayNote(p, day.id, e.target.value))}
+              maxLength={DAY_NOTE_MAX}
+              rows={2}
+              aria-label="Day note"
+              placeholder="Note for this day"
+              className="w-full bg-cream border border-border px-3 py-2.5 mt-4 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors resize-y"
+            />
           )}
 
           {/* Straight into the logger with this day already loaded. The badge

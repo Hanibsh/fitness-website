@@ -51,6 +51,7 @@ import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, superset
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { isLockedProgram } from '../lib/coachSync'
+import { useSessionComments } from '../lib/useCoachNotes'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
@@ -378,6 +379,8 @@ function confidentDay(program, draft) {
 
 export default function WorkoutTracker() {
   const { user } = useAuth()
+  // Your coach's comments on past sessions, shown in their summaries.
+  const sessionComments = useSessionComments()
   const location = useLocation()
   const navigate = useNavigate()
   // Rolls over on its own at midnight, so a phone that was only resumed rather
@@ -3083,6 +3086,15 @@ export default function WorkoutTracker() {
               </div>
             )}
 
+            {/* The split day's own note ("Go heavy today") — on a split your
+                coach sent, what they want from this session. */}
+            {planDayForDraft?.note && draft.programDayId === planDayForDraft.id && (
+              <div className="w-full flex items-start gap-2 bg-cream border border-border py-2.5 px-3 mb-6">
+                <StickyNote className="w-3.5 h-3.5 text-text-light shrink-0 mt-0.5" />
+                <p className="text-[12px] text-text-secondary min-w-0 break-words whitespace-pre-line">{planDayForDraft.note}</p>
+              </div>
+            )}
+
             {splitChanges.length > 0 && (
               <button
                 type="button"
@@ -3336,6 +3348,8 @@ export default function WorkoutTracker() {
               // March it would read present-tense advice onto old work.
               advice={openSessionData.id === sortedHistory[0]?.id ? topAdvice : null}
               onClose={() => { setOpenSession(null); setEditingSessionDate(null); setEditingSessionTime(null) }}
+              coachNotes={sessionComments.comments(openSessionData.id)}
+              coachName={sessionComments.coachName}
               // Swaps the summary for the progress chart rather than stacking a
               // second dialog on top of the first.
               onExerciseProgress={(ex) => { setOpenSession(null); setProgressExercise(ex) }}
