@@ -4,6 +4,7 @@ import { Trash2, Copy, Users, CalendarRange } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
 import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { useCoachAccess } from '../lib/useClientsState'
+import { isLockedProgram } from '../lib/coachSync'
 
 // Your saved splits: drag to reorder (the ⋮⋮ grip), with Set active / Duplicate / Delete, and a
 // tap-through to the full-page editor at /split/:id. Lives on the Programs page
@@ -57,6 +58,10 @@ export default function SplitList({ programs }) {
                     {isActive && (
                       <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Active</span>
                     )}
+                    {/* Sent by your coach, who keeps it up to date (lib/coachSync.js). */}
+                    {isLockedProgram(p) && (
+                      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5">From Leon</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-text-light mt-0.5 truncate">{shapeLabel(p)}</p>
                 </div>
@@ -78,14 +83,18 @@ export default function SplitList({ programs }) {
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: p.id, name: p.name }) }}
-                    aria-label={`Delete ${p.name}`}
-                    title="Delete"
-                    className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Your coach's split comes back on the next load if deleted —
+                      it goes when they stop sending it or you unlink. */}
+                  {!isLockedProgram(p) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: p.id, name: p.name }) }}
+                      aria-label={`Delete ${p.name}`}
+                      title="Delete"
+                      className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </SortableItem>
             )

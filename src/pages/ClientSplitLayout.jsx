@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { scheduleMode } from '../lib/program'
@@ -15,10 +16,19 @@ import { useLinkedClient } from '../lib/useClientData'
 // client (their real injuries once their account is linked), not around you.
 export default function ClientSplitLayout() {
   const { clientId, id } = useParams()
-  const { user, clients, updateClient } = useOutletContext()
+  const { user, clients, updateClient, sent, pushProgram, unsend } = useOutletContext()
   const client = clients.find((c) => c.id === clientId) || null
   const program = client?.programs.find((p) => p.id === id) || null
   const { injuries } = useLinkedClient(clientId)
+
+  // Sent to their account: every edit here follows it there. The first render
+  // is skipped — opening the editor isn't an edit.
+  const seen = useRef(program?.updatedAt)
+  useEffect(() => {
+    if (!program || program.updatedAt === seen.current) return
+    seen.current = program.updatedAt
+    if (sent[program.id]) pushProgram(program)
+  }, [program, sent, pushProgram])
 
   if (!client || !program) {
     return (
@@ -50,7 +60,10 @@ export default function ClientSplitLayout() {
           update,
           isActive: false,
           setActiveRoutine: () => {},
-          deleteRoutine: (programId) => updateClient(client.id, (c) => withoutProgram(c, programId), { now: true }),
+          deleteRoutine: (programId) => {
+            if (sent[programId]) unsend(programId).catch(() => {})
+            updateClient(client.id, (c) => withoutProgram(c, programId), { now: true })
+          },
           isWeekly: scheduleMode(program) === 'weekly',
           // Nothing is "today" on someone else's plan.
           todayWeekdayIndex: -1,
@@ -58,6 +71,7 @@ export default function ClientSplitLayout() {
           highlightIndex: -1,
           mode: 'client',
           client,
+          liveOnAccount: !!sent[program.id],
           basePath: `/coach/${client.id}/split/${program.id}`,
           listPath: `/coach/${client.id}`,
           listLabel: `Back to ${client.name || 'client'}`,

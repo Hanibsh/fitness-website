@@ -50,6 +50,7 @@ import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
+import { isLockedProgram } from '../lib/coachSync'
 import { draftHasWork, isStaleProgramDraft, isStaleEditDraft, liveDraft } from '../lib/draftState'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
 import { fetchProfile } from '../lib/profile'
@@ -1060,15 +1061,19 @@ export default function WorkoutTracker() {
 
   // How this session has drifted from its split day — drives the "Update split"
   // row and the review modal. Empty when they already agree, when the session
-  // isn't linked to a split, or when there's no split at all.
+  // isn't linked to a split, when there's no split at all, or when the split is
+  // one your coach sent (theirs to change — a swap stays in this session).
+  const splitLocked = isLockedProgram(program)
   const splitChanges = useMemo(
     () =>
-      diffSessionAgainstDay(draft.exercises, planDayForDraft, {
-        complete: isEditing,
-        droppedPlannedIds: draft.droppedPlannedIds || [],
-        ignoreSwaps: draft.declinedSwaps || [],
-      }),
-    [draft.exercises, draft.droppedPlannedIds, draft.declinedSwaps, planDayForDraft, isEditing]
+      splitLocked
+        ? []
+        : diffSessionAgainstDay(draft.exercises, planDayForDraft, {
+            complete: isEditing,
+            droppedPlannedIds: draft.droppedPlannedIds || [],
+            ignoreSwaps: draft.declinedSwaps || [],
+          }),
+    [draft.exercises, draft.droppedPlannedIds, draft.declinedSwaps, planDayForDraft, isEditing, splitLocked]
   )
 
   // Write the accepted changes into the split. Exercises added to the plan are
@@ -1092,7 +1097,7 @@ export default function WorkoutTracker() {
   // is a real signal rather than "not there yet", and an exercise with nothing
   // logged didn't happen.
   function splitSyncPlan() {
-    if (!program) return null
+    if (!program || isLockedProgram(program)) return null
     const sure = confidentDay(program, draft)
     const day = sure || dayForSession(program, draft)
     if (!day) return null

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
 import { emptyProgram, scheduleMode, effectiveRotation } from '../lib/program'
 import { getDayAnnotations } from '../lib/workoutStore'
+import { isLockedProgram } from '../lib/coachSync'
 
 // Shell for ONE training split. Owns the split's data and hands it to whichever
 // level is showing: the overview (a card per day) at /split/:id, or one day's
@@ -20,7 +21,7 @@ export default function SplitLayout() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { user, programsState, loading, saveProgram, addRoutine, setActiveRoutine, deleteRoutine } = useProgramsState()
+  const { user, programsState, loading, saveProgram, addRoutine, duplicateRoutine, setActiveRoutine, deleteRoutine } = useProgramsState()
   const isNew = id === 'new'
   const creatingRef = useRef(false)
 
@@ -111,6 +112,9 @@ export default function SplitLayout() {
             todayWeekdayIndex,
             pointerIndex,
             highlightIndex,
+            // Sent by your coach: read-only here, with a way to a copy of your own.
+            locked: isLockedProgram(program),
+            duplicateRoutine,
           }}
         />
       </div>

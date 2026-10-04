@@ -3,6 +3,7 @@
 // workoutStore.js but talks to the `sessions` table. Row-level security means
 // each user only ever touches their own rows.
 import { supabase } from './supabase'
+import { mergeCoachPrograms, isLockedProgram } from './coachSync'
 
 // DB row <-> app session shape (dates are ms in the app, timestamptz in the DB).
 function fromRow(row) {
@@ -147,13 +148,36 @@ function migrateLegacyProgramShape(data) {
   return { programs: [], activeId: null }
 }
 
-export async function fetchRemoteProgramsState(userId) {
+// Your splits, with any your coach has sent merged in (lib/coachSync.js) and
+// saved back when that changed something. `coach: false` reads the row as it
+// is — the coach reading a CLIENT's splits must never merge or write.
+export async function fetchRemoteProgramsState(userId, { coach = true } = {}) {
   const { data, error } = await supabase.from('programs').select('data').eq('user_id', userId).maybeSingle()
   if (error) {
     if (error.code === 'PGRST116' || missingProgramsTable(error)) return { programs: [], activeId: null } // no row / no table yet
     throw error
   }
-  return migrateLegacyProgramShape(data?.data)
+  const state = migrateLegacyProgramShape(data?.data)
+  if (!coach) return state
+  const rows = await fetchRemoteCoachPrograms(userId)
+  // Couldn't ask (offline, or no coaching tables yet): leave everything as it
+  // is — reading a failure as "no programs" would unlock every sent split.
+  if (rows === null) return state
+  if (!rows.length && !state.programs.some(isLockedProgram)) return state
+  const merged = mergeCoachPrograms(state, rows)
+  if (merged !== state) upsertRemoteProgramsState(userId, merged).catch(() => {})
+  return merged
+}
+
+// The programs this account's CURRENT coach has sent it (RLS hides any from a
+// coach it's no longer linked to), or null when the question couldn't be asked.
+export async function fetchRemoteCoachPrograms(userId) {
+  try {
+    const { data, error } = await supabase.from('coach_programs').select('id, data, make_active, updated_at').eq('client_id', userId)
+    return error ? null : data || []
+  } catch {
+    return null
+  }
 }
 
 export async function upsertRemoteProgramsState(userId, state) {

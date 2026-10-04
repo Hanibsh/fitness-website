@@ -155,11 +155,53 @@ export async function fetchClientData(clientUserId) {
     safe(fetchRemoteBodyweight(clientUserId), []),
     safe(fetchRemoteInjuries(clientUserId), []),
     safe(fetchRemoteDayAnnotations(clientUserId), []),
-    safe(fetchRemoteProgramsState(clientUserId), { programs: [], activeId: null }),
+    safe(fetchRemoteProgramsState(clientUserId, { coach: false }), { programs: [], activeId: null }),
     safe(fetchProfile(clientUserId), null),
   ])
   const program = programsState.programs.find((p) => p.id === programsState.activeId) || null
   return { sessions, bodyweight, injuries, annotations, program, profile }
+}
+
+// ---- Sent programs (coach side) ------------------------------------------------
+// A program the coach sends lives in coach_programs; the client's app copies it
+// into their splits, locked (lib/coachSync.js). Every later edit is pushed to
+// the same row.
+
+// { programId: { client_id, make_active, updated_at } } for everything this
+// coach has sent.
+export async function fetchSentPrograms(coachId) {
+  if (devCoach(coachId)) return devRead().sent || {}
+  if (!supabase || !coachId) return {}
+  const { data, error } = await supabase.from('coach_programs').select('id, client_id, make_active, updated_at').eq('coach_id', coachId)
+  if (error) {
+    if (missing(error)) return {}
+    throw error
+  }
+  return Object.fromEntries((data || []).map((r) => [r.id, r]))
+}
+
+// Sends (or re-sends) a program. `makeActive` only matters the first time the
+// client's app sees it.
+export async function sendProgram(coachId, clientUserId, program, makeActive = true) {
+  const row = { id: program.id, client_id: clientUserId, data: program, make_active: makeActive, updated_at: new Date().toISOString() }
+  if (devCoach(coachId)) {
+    devWrite({ sent: { ...(devRead().sent || {}), [program.id]: row } })
+    return row
+  }
+  const { error } = await supabase.from('coach_programs').upsert({ ...row, coach_id: coachId })
+  if (error) throw error
+  return row
+}
+
+export async function unsendProgram(coachId, programId) {
+  if (devCoach(coachId)) {
+    const sent = { ...(devRead().sent || {}) }
+    delete sent[programId]
+    devWrite({ sent })
+    return
+  }
+  const { error } = await supabase.from('coach_programs').delete().eq('id', programId).eq('coach_id', coachId)
+  if (error && !missing(error)) throw error
 }
 
 // ---- Invites (client side) ----------------------------------------------------

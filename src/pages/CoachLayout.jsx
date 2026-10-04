@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useClientsState, useCoachAccess } from '../lib/useClientsState'
-import { useCoachLinks } from '../lib/useCoachLinks'
+import { useCoachLinks, useSentPrograms } from '../lib/useCoachLinks'
 
 // The coach area's shell: the gate, the page frame, and the client list every
 // page under /coach shares.
@@ -27,7 +27,8 @@ export default function CoachLayout() {
 function CoachArea() {
   const clientsState = useClientsState()
   const linksState = useCoachLinks(clientsState.user, clientsState.clients, !clientsState.loading)
-  const state = { ...clientsState, ...linksState }
+  const sentState = useSentPrograms(clientsState.user, !clientsState.loading)
+  const state = { ...clientsState, ...linksState, ...sentState }
   const { pathname } = useLocation()
 
   // No ScrollRestoration in this app — without this, opening a client from

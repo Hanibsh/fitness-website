@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput, Send } from 'lucide-react'
 import NumberField from '../components/NumberField'
 import FocusPicker from '../components/FocusPicker'
 import ConfirmModal from '../components/ConfirmModal'
@@ -10,6 +10,7 @@ import Modal from '../components/Modal'
 import ImportReview from '../components/ImportReview'
 import ClientLinkCard from '../components/ClientLinkCard'
 import ClientTrainingSummary from '../components/ClientTrainingSummary'
+import SendProgramModal from '../components/SendProgramModal'
 import { useLinkedClient } from '../lib/useClientData'
 import { InjuryScope } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX } from '../lib/clients'
@@ -22,15 +23,16 @@ import { convertMassText, convertLengthText } from '../lib/units'
 // export, never printed empty.
 export default function ClientDetail() {
   const { clientId } = useParams()
-  const { clients, updateClient, deleteClient, links, invite, unlink } = useOutletContext()
+  const { clients, updateClient, deleteClient, links, invite, unlink, sent, send, unsend } = useOutletContext()
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
   const [exporting, setExporting] = useState(null) // program | null
+  const [sending, setSending] = useState(null) // program | null
   const [importing, setImporting] = useState(false)
   const client = clients.find((c) => c.id === clientId) || null
   // Linked to their real account: their training, and their own profile
   // answers, which fill in (and lock) the matching fields here.
-  const { linked, data: linkedData, loading: linkedLoading, injuries } = useLinkedClient(clientId)
+  const { linked, link, data: linkedData, loading: linkedLoading, injuries } = useLinkedClient(clientId)
   const account = linked ? linkedData?.profile || null : null
   const { profile: synced, fromAccount } = useMemo(() => withAccountProfile(client?.profile, account), [client?.profile, account])
   useEffect(() => {
@@ -49,6 +51,10 @@ export default function ClientDetail() {
   }
 
   const edit = (mutator) => updateClient(client.id, mutator)
+  // Out on their account right now: sent, to the account this card is linked to.
+  const isSent = (prog) => linked && sent[prog.id]?.client_id === link.client_id
+  // Deleting a program (or the whole card) takes it off their account too.
+  const stopSending = (ids) => ids.filter((id) => sent[id]).forEach((id) => unsend(id).catch(() => {}))
   const setField = (key, value) => edit((c) => ({ ...c, profile: { ...c.profile, [key]: value } }))
   const p = client.profile || {}
   const unit = p.unit === 'lbs' ? 'lbs' : 'kg'
@@ -193,8 +199,22 @@ export default function ClientDetail() {
                 <div key={prog.id} className="flex items-center gap-2 px-3 py-2.5">
                   <Link to={`/coach/${client.id}/split/${prog.id}`} className="flex-1 min-w-0 no-underline group">
                     <span className="block text-[13px] font-medium text-text-primary break-words group-hover:text-accent-hover transition-colors">{prog.name}</span>
-                    <span className="block text-[11px] text-text-light mt-0.5 truncate">{shapeLabel(prog)}</span>
+                    <span className="block text-[11px] text-text-light mt-0.5 truncate">
+                      {isSent(prog) && <span className="text-green-600 font-medium">Live · </span>}
+                      {shapeLabel(prog)}
+                    </span>
                   </Link>
+                  {linked && (
+                    <button
+                      onClick={() => setSending(prog)}
+                      disabled={!prog.days.some((d) => d.kind !== 'rest')}
+                      aria-label={isSent(prog) ? `${prog.name} is on their account` : `Send ${prog.name} to their account`}
+                      title={isSent(prog) ? 'On their account' : 'Send to their account'}
+                      className={`shrink-0 bg-transparent border-none cursor-pointer p-1 disabled:opacity-30 disabled:cursor-not-allowed ${isSent(prog) ? 'text-green-600' : 'text-text-light hover:text-text-primary'}`}
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setExporting(prog)}
                     disabled={!prog.days.some((d) => d.kind !== 'rest')}
@@ -384,6 +404,17 @@ export default function ClientDetail() {
 
       {exporting && <ExportModal program={exporting} client={client} onClose={() => setExporting(null)} />}
 
+      {sending && (
+        <SendProgramModal
+          program={sending}
+          clientName={client.name}
+          isSent={isSent(sending)}
+          onSend={(makeActive) => send(link.client_id, sending, makeActive)}
+          onStop={() => unsend(sending.id)}
+          onClose={() => setSending(null)}
+        />
+      )}
+
       {importing && (
         <Modal onClose={() => setImporting(false)} maxWidth="max-w-2xl">
           <div className="p-5 sm:p-7">
@@ -402,8 +433,10 @@ export default function ClientDetail() {
       {confirm?.kind === 'client' && (
         <ConfirmModal
           title={`Delete ${client.name || 'this client'}?`}
-          message="This removes their profile and every program written for them. This can't be undone."
+          message={`This removes their profile and every program written for them${linked ? ', and unlinks their account' : ''}. This can't be undone.`}
           onConfirm={() => {
+            stopSending(client.programs.map((p) => p.id))
+            if (linked) unlink(link.id).catch(() => {})
             deleteClient(client.id)
             navigate('/coach')
           }}
@@ -414,7 +447,10 @@ export default function ClientDetail() {
         <ConfirmModal
           title={`Delete "${confirm.program.name}"?`}
           message="This removes all its days and exercises. This can't be undone."
-          onConfirm={() => updateClient(client.id, (c) => withoutProgram(c, confirm.program.id), { now: true })}
+          onConfirm={() => {
+            stopSending([confirm.program.id])
+            updateClient(client.id, (c) => withoutProgram(c, confirm.program.id), { now: true })
+          }}
           onClose={() => setConfirm(null)}
         />
       )}

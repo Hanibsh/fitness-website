@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Dumbbell, Moon, Trash2, Locate, FileOutput } from 'lucide-react'
+import { ArrowLeft, Plus, X, Dumbbell, Moon, Trash2, Locate, FileOutput, Copy } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
@@ -24,10 +24,14 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 // 'client' there, and everything about running a split yourself — Active, Set
 // as today, Up next — is left out, since a client's split is never yours to
 // follow. `basePath`/`listPath` say where this split and its list live.
+//
+// `locked` is a split your coach sent (lib/coachSync.js): you follow it, but its
+// days are theirs to change — no editing here, just a way to a copy of your own.
 export default function SplitOverview() {
   const {
     program, update, isActive, setActiveRoutine, deleteRoutine, isWeekly, todayWeekdayIndex, pointerIndex, highlightIndex,
     mode = 'own', client = null, basePath = `/split/${program.id}`, listPath = '/programs', listLabel = 'Back to programs',
+    locked = false, duplicateRoutine = null, liveOnAccount = false,
   } = useOutletContext()
   const own = mode !== 'client'
   const navigate = useNavigate()
@@ -49,6 +53,11 @@ export default function SplitOverview() {
     navigate(listPath)
   }
 
+  function makeOwnCopy() {
+    const copy = duplicateRoutine(program)
+    navigate(`/split/${copy.id}`)
+  }
+
   return (
     <>
       <Link to={listPath} className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-10 transition-colors">
@@ -61,7 +70,11 @@ export default function SplitOverview() {
           <div className="flex items-center justify-between gap-3 mb-2">
             <label className="text-[11px] uppercase tracking-wider text-text-light">Split name</label>
             {!own ? (
-              client && <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5 truncate max-w-[50%]">For {client.name}</span>
+              client && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted border border-border px-1.5 py-0.5 truncate max-w-[50%]">
+                  For {client.name}{liveOnAccount ? ' · live' : ''}
+                </span>
+              )
             ) : isActive ? (
               <span className="text-[10px] font-semibold uppercase tracking-wider text-cream bg-text-primary px-1.5 py-0.5">Active split</span>
             ) : (
@@ -73,18 +86,33 @@ export default function SplitOverview() {
               </button>
             )}
           </div>
-          <input
-            value={program.name}
-            onChange={(e) => update((p) => setProgramName(p, e.target.value))}
-            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
-          />
+          {locked ? (
+            <p className="font-heading text-[18px] font-medium text-text-primary break-words">{program.name}</p>
+          ) : (
+            <input
+              value={program.name}
+              onChange={(e) => update((p) => setProgramName(p, e.target.value))}
+              className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+            />
+          )}
+          {locked && (
+            <div className="flex items-center justify-between gap-3 flex-wrap bg-cream border border-border px-3 py-2.5 mt-3">
+              <p className="text-[12px] text-text-secondary">From Leon. He keeps it up to date.</p>
+              <button
+                onClick={makeOwnCopy}
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-3 py-1.5 cursor-pointer transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" /> Make my own copy
+              </button>
+            </div>
+          )}
           <p className="text-[12px] text-text-muted mt-3">
             {trainingDays} training day{trainingDays !== 1 ? 's' : ''}
             {isWeekly
               ? ' · fixed weekly schedule — day 1 is Monday, day 7 is Sunday. Missing a day never shifts it.'
               : ' · rotates in order, advancing as you log.'}
           </p>
-          {!isWeekly && program.days.length > 0 && (
+          {!isWeekly && !locked && program.days.length > 0 && (
             <p className="text-[11px] text-text-light mt-1.5">
               Tip: make it exactly 7 days (rest days included) and it becomes a fixed weekly schedule instead.
             </p>
@@ -123,7 +151,9 @@ export default function SplitOverview() {
                     rest
                       ? day.exercises.length
                         ? `${isWeekly ? 'A rest day' : 'A rest slot'} with optional cardio.`
-                        : `${isWeekly ? 'A rest day' : 'A rest slot in the rotation'} — tap to add optional cardio.`
+                        : locked
+                          ? `${isWeekly ? 'A rest day' : 'A rest slot in the rotation'}.`
+                          : `${isWeekly ? 'A rest day' : 'A rest slot in the rotation'} — tap to add optional cardio.`
                       : stats.exercises === 0
                         ? 'No exercises yet — tap to add some.'
                         : null
@@ -159,12 +189,14 @@ export default function SplitOverview() {
                           <Locate className="w-3 h-3" /> Set as today
                         </button>
                       )}
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <DragHandle label={`Reorder ${day.name || 'this day'}`} />
-                        <button onClick={() => update((p) => removeDay(p, day.id))} aria-label="Remove day" className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {!locked && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <DragHandle label={`Reorder ${day.name || 'this day'}`} />
+                          <button onClick={() => update((p) => removeDay(p, day.id))} aria-label="Remove day" className="text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer p-1">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </>
                   }
                 />
@@ -175,18 +207,22 @@ export default function SplitOverview() {
         </SortableList>
 
         {/* Add day / delete split */}
-        <div className="flex flex-wrap gap-3 mt-5">
-          <button onClick={() => addDay('train')} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-cream bg-text-primary px-4 py-2.5 border-none cursor-pointer hover:bg-accent-hover transition-colors">
-            <Plus className="w-4 h-4" /> Training day
-          </button>
-          <button onClick={() => addDay('rest')} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors">
-            <Plus className="w-4 h-4" /> Rest day
-          </button>
-        </div>
+        {!locked && (
+          <>
+            <div className="flex flex-wrap gap-3 mt-5">
+              <button onClick={() => addDay('train')} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-cream bg-text-primary px-4 py-2.5 border-none cursor-pointer hover:bg-accent-hover transition-colors">
+                <Plus className="w-4 h-4" /> Training day
+              </button>
+              <button onClick={() => addDay('rest')} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2.5 cursor-pointer transition-colors">
+                <Plus className="w-4 h-4" /> Rest day
+              </button>
+            </div>
 
-        <button onClick={() => setConfirmDelete(true)} className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer mt-8 transition-colors">
-          <Trash2 className="w-3.5 h-3.5" /> Delete this split
-        </button>
+            <button onClick={() => setConfirmDelete(true)} className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-red-600 bg-transparent border-none cursor-pointer mt-8 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" /> Delete this split
+            </button>
+          </>
+        )}
       </motion.div>
 
       {exporting && <ExportModal program={program} client={client} onClose={() => setExporting(false)} />}

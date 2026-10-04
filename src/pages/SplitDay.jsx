@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, Play } from 'lucide-react'
 import DayEditor from '../components/DayEditor'
+import LockedDay from '../components/LockedDay'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats } from '../lib/planStats'
@@ -21,7 +22,7 @@ const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 export default function SplitDay() {
   const { dayId } = useParams()
   const { state } = useLocation()
-  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex, mode = 'own', client = null, basePath = `/split/${program.id}` } = useOutletContext()
+  const { user, program, update, isActive, isWeekly, todayWeekdayIndex, pointerIndex, mode = 'own', client = null, basePath = `/split/${program.id}`, locked = false } = useOutletContext()
   // A client's split (ClientSplitLayout) keeps its notes on its own rows and
   // never reads your log: the shared per-movement notes and your history are
   // yours, and neither belongs on — or should steer — someone else's plan.
@@ -90,12 +91,16 @@ export default function SplitDay() {
               </span>
             )}
           </div>
-          <input
-            value={day.name}
-            onChange={(e) => update((p) => setDayName(p, day.id, e.target.value))}
-            aria-label="Day name"
-            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
-          />
+          {locked ? (
+            <p className="font-heading text-[18px] font-medium text-text-primary break-words">{day.name}</p>
+          ) : (
+            <input
+              value={day.name}
+              onChange={(e) => update((p) => setDayName(p, day.id, e.target.value))}
+              aria-label="Day name"
+              className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
+            />
+          )}
 
           {rest ? (
             <p className="text-[12px] text-text-light mt-3 leading-relaxed">
@@ -103,7 +108,7 @@ export default function SplitDay() {
               rest of your split{isWeekly ? '' : ', and the day still passes on its own'}.
             </p>
           ) : stats.exercises === 0 ? (
-            <p className="text-[12px] text-text-light mt-3">Nothing planned yet — add your first exercise below.</p>
+            <p className="text-[12px] text-text-light mt-3">{locked ? 'Nothing planned yet.' : 'Nothing planned yet — add your first exercise below.'}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-3 text-[12px] text-text-muted">
@@ -156,18 +161,23 @@ export default function SplitDay() {
           )}
         </div>
 
-        {/* Exercises — or, on a rest day, its optional cardio */}
-        <DayEditor
-          program={program}
-          day={day}
-          update={update}
-          user={user}
-          notes={sharedNotes ? 'shared' : 'row'}
-          sessions={sharedNotes ? undefined : []}
-          unit={person.unit}
-          weightKg={person.weightKg}
-          cardioOnly={rest}
-        />
+        {/* Exercises — or, on a rest day, its optional cardio. A split your
+            coach sent is theirs to edit, so it's only listed. */}
+        {locked ? (
+          <LockedDay day={day} unit={person.unit} weightKg={person.weightKg} />
+        ) : (
+          <DayEditor
+            program={program}
+            day={day}
+            update={update}
+            user={user}
+            notes={sharedNotes ? 'shared' : 'row'}
+            sessions={sharedNotes ? undefined : []}
+            unit={person.unit}
+            weightKg={person.weightKg}
+            cardioOnly={rest}
+          />
+        )}
       </motion.div>
     </>
   )
