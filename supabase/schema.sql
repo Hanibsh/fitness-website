@@ -118,6 +118,32 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- is_coach and coaching_status are set by hand in the SQL editor, never by the
+-- app — but the "update their own profile" policy above covers every column,
+-- so without this anyone could make themselves a coach and send invites
+-- (section 2i). A request from the app always carries a signed-in user
+-- (auth.uid() set); the SQL editor and Table Editor don't, so they still can.
+create or replace function public.protect_profile_flags()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if auth.uid() is not null then
+    if tg_op = 'INSERT' then
+      new.is_coach := false;
+      new.coaching_status := 'none';
+    else
+      new.is_coach := old.is_coach;
+      new.coaching_status := old.coaching_status;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_profile_flags on public.profiles;
+create trigger protect_profile_flags
+  before insert or update on public.profiles
+  for each row execute function public.protect_profile_flags();
+
 -- ---------------------------------------------------------------------------
 -- 2) SESSIONS — each user's workout log. Exercises/sets stored as JSON so the
 --    shape matches the app; protected so users only see their own.
@@ -402,6 +428,296 @@ create policy "Users can update their own clients"
 drop policy if exists "Users can delete their own clients" on public.clients;
 create policy "Users can delete their own clients"
   on public.clients for delete using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- 2i) COACHING — a client card (2h) linked to the client's real account.
+--
+--     The coach makes an invite for one card; the client opens the link,
+--     signs in and accepts. While that link is ACTIVE the coach can read the
+--     client's log, weight, injuries, day markers, program and profile — never
+--     write to them — and the client can end it any time. Every coach-read
+--     policy goes through is_coach_of(), so ending the link cuts access on the
+--     very next request.
+--
+--     coach_links is written only through the functions below (no insert /
+--     update policies), so a status or client_id can't be forged from the app.
+--     card_id is the id of the card inside the coach's clients.data array.
+-- ---------------------------------------------------------------------------
+create table if not exists public.coach_links (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid references auth.users(id) on delete cascade,
+  card_id text not null,
+  code text not null unique,
+  status text not null default 'pending' check (status in ('pending', 'active', 'ended')),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '7 days',
+  accepted_at timestamptz,
+  ended_at timestamptz
+);
+
+-- One coach at a time per client.
+create unique index if not exists coach_links_one_active_per_client
+  on public.coach_links (client_id) where status = 'active';
+create index if not exists coach_links_coach_idx on public.coach_links (coach_id, status);
+
+alter table public.coach_links enable row level security;
+
+drop policy if exists "Coach and client can view their links" on public.coach_links;
+create policy "Coach and client can view their links"
+  on public.coach_links for select using (auth.uid() = coach_id or auth.uid() = client_id);
+
+-- True while the signed-in user is the ACTIVE coach of `target`. Security
+-- definer so the policies that call it don't run coach_links' own RLS.
+create or replace function public.is_coach_of(target uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.coach_links
+    where coach_id = auth.uid() and client_id = target and status = 'active'
+  );
+$$;
+
+-- A fresh invite for one card. Only the coach account (profiles.is_coach,
+-- which the app can't set — see protect_profile_flags). A new invite replaces
+-- the card's open one; a card that's already linked can't get another.
+create or replace function public.create_coach_invite(p_card_id text)
+returns public.coach_links language plpgsql security definer set search_path = public as $$
+declare
+  l public.coach_links;
+begin
+  if auth.uid() is null or not exists (select 1 from public.profiles where id = auth.uid() and is_coach) then
+    raise exception 'Only the coach can invite' using errcode = '42501';
+  end if;
+  if p_card_id is null or char_length(p_card_id) = 0 or char_length(p_card_id) > 100 then
+    raise exception 'Bad card id' using errcode = '22023';
+  end if;
+  if exists (select 1 from public.coach_links where coach_id = auth.uid() and card_id = p_card_id and status = 'active') then
+    raise exception 'Already linked' using errcode = '23505';
+  end if;
+  update public.coach_links set status = 'ended', ended_at = now()
+    where coach_id = auth.uid() and card_id = p_card_id and status = 'pending';
+  -- gen_random_uuid() is 122 random bits: unguessable, and built in.
+  insert into public.coach_links (coach_id, card_id, code)
+    values (auth.uid(), p_card_id, replace(gen_random_uuid()::text, '-', ''))
+    returning * into l;
+  return l;
+end;
+$$;
+
+-- What the invite page shows before anyone accepts: whose invite it is and
+-- whether it still works. Callable signed out, so the page can say who's
+-- asking before the sign-in prompt. Says nothing about any client.
+create or replace function public.invite_info(p_code text)
+returns json language plpgsql stable security definer set search_path = public as $$
+declare
+  l public.coach_links;
+  coach_name text;
+begin
+  select * into l from public.coach_links where code = p_code;
+  if not found then
+    return json_build_object('state', 'invalid');
+  end if;
+  select display_name into coach_name from public.profiles where id = l.coach_id;
+  return json_build_object(
+    'state', case when l.status <> 'pending' then 'used' when l.expires_at < now() then 'expired' else 'open' end,
+    'coach_name', coalesce(nullif(coach_name, ''), 'Leon'),
+    'is_self', auth.uid() is not null and l.coach_id = auth.uid()
+  );
+end;
+$$;
+
+-- The client says yes. Ends any coach they already had (one at a time).
+create or replace function public.accept_coach_invite(p_code text)
+returns public.coach_links language plpgsql security definer set search_path = public as $$
+declare
+  l public.coach_links;
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in first' using errcode = '42501';
+  end if;
+  select * into l from public.coach_links where code = p_code for update;
+  if not found or l.status <> 'pending' or l.expires_at < now() then
+    raise exception 'Invite not valid' using errcode = 'P0002';
+  end if;
+  if l.coach_id = auth.uid() then
+    raise exception 'That is your own invite' using errcode = '22023';
+  end if;
+  update public.coach_links set status = 'ended', ended_at = now()
+    where client_id = auth.uid() and status = 'active';
+  update public.coach_links set client_id = auth.uid(), status = 'active', accepted_at = now()
+    where id = l.id
+    returning * into l;
+  return l;
+end;
+$$;
+
+-- Either side ends a link (or the coach withdraws an open invite).
+create or replace function public.end_coach_link(p_id uuid)
+returns void language sql security definer set search_path = public as $$
+  update public.coach_links set status = 'ended', ended_at = now()
+    where id = p_id and status in ('pending', 'active')
+      and (coach_id = auth.uid() or client_id = auth.uid());
+$$;
+
+-- The client's side: who coaches me, and since when. The coach's name lives
+-- in their profile, which the client can't read directly.
+create or replace function public.my_coach()
+returns json language sql stable security definer set search_path = public as $$
+  select json_build_object(
+    'link_id', l.id,
+    'coach_name', coalesce(nullif(p.display_name, ''), 'Leon'),
+    'since', l.accepted_at
+  )
+  from public.coach_links l
+  left join public.profiles p on p.id = l.coach_id
+  where l.client_id = auth.uid() and l.status = 'active'
+  limit 1;
+$$;
+
+-- The coach READS a linked client's data. These sit beside each table's
+-- "view their own" policy (policies OR together); there are no coach write
+-- policies on any of them.
+drop policy if exists "Coach can view a linked client's profile" on public.profiles;
+create policy "Coach can view a linked client's profile"
+  on public.profiles for select using (public.is_coach_of(id));
+drop policy if exists "Coach can view a linked client's sessions" on public.sessions;
+create policy "Coach can view a linked client's sessions"
+  on public.sessions for select using (public.is_coach_of(user_id));
+drop policy if exists "Coach can view a linked client's bodyweight" on public.bodyweight_log;
+create policy "Coach can view a linked client's bodyweight"
+  on public.bodyweight_log for select using (public.is_coach_of(user_id));
+drop policy if exists "Coach can view a linked client's program" on public.programs;
+create policy "Coach can view a linked client's program"
+  on public.programs for select using (public.is_coach_of(user_id));
+drop policy if exists "Coach can view a linked client's injuries" on public.injuries;
+create policy "Coach can view a linked client's injuries"
+  on public.injuries for select using (public.is_coach_of(user_id));
+drop policy if exists "Coach can view a linked client's day annotations" on public.day_annotations;
+create policy "Coach can view a linked client's day annotations"
+  on public.day_annotations for select using (public.is_coach_of(user_id));
+
+-- COACH_PROGRAMS — a split the coach sends to a linked client. The client's
+-- app copies it into their own programs (2c), locked, and picks up every later
+-- edit; `id` is the program's id on both sides. The client only sees rows from
+-- their CURRENT coach, so ending the link unlocks their copy.
+create table if not exists public.coach_programs (
+  id text primary key,
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null,
+  make_active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists coach_programs_client_idx on public.coach_programs (client_id);
+
+alter table public.coach_programs enable row level security;
+
+drop policy if exists "Coach and client can view sent programs" on public.coach_programs;
+create policy "Coach and client can view sent programs"
+  on public.coach_programs for select using (
+    auth.uid() = coach_id
+    or (auth.uid() = client_id and exists (
+      select 1 from public.coach_links l
+      where l.client_id = auth.uid() and l.coach_id = coach_programs.coach_id and l.status = 'active'
+    ))
+  );
+drop policy if exists "Coach can send programs" on public.coach_programs;
+create policy "Coach can send programs"
+  on public.coach_programs for insert with check (auth.uid() = coach_id and public.is_coach_of(client_id));
+drop policy if exists "Coach can update sent programs" on public.coach_programs;
+create policy "Coach can update sent programs"
+  on public.coach_programs for update using (auth.uid() = coach_id)
+  with check (auth.uid() = coach_id and public.is_coach_of(client_id));
+drop policy if exists "Coach can stop sending programs" on public.coach_programs;
+create policy "Coach can stop sending programs"
+  on public.coach_programs for delete using (auth.uid() = coach_id);
+
+-- COACH_NOTES — what the coach says to a client: a comment on a session
+-- (target_id = session id), a reply to a check-in (target_id = check-in id),
+-- or a general note. The client marks them read through the function below.
+create table if not exists public.coach_notes (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid not null references auth.users(id) on delete cascade,
+  kind text not null default 'general' check (kind in ('session', 'checkin', 'general')),
+  target_id text,
+  body text not null check (char_length(body) between 1 and 2000),
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+create index if not exists coach_notes_client_idx on public.coach_notes (client_id, created_at desc);
+
+alter table public.coach_notes enable row level security;
+
+drop policy if exists "Coach and client can view notes" on public.coach_notes;
+create policy "Coach and client can view notes"
+  on public.coach_notes for select using (auth.uid() = coach_id or auth.uid() = client_id);
+drop policy if exists "Coach can write notes" on public.coach_notes;
+create policy "Coach can write notes"
+  on public.coach_notes for insert
+  with check (auth.uid() = coach_id and public.is_coach_of(client_id) and read_at is null);
+drop policy if exists "Coach can delete notes" on public.coach_notes;
+create policy "Coach can delete notes"
+  on public.coach_notes for delete using (auth.uid() = coach_id);
+
+create or replace function public.mark_coach_notes_read(p_ids uuid[])
+returns void language sql security definer set search_path = public as $$
+  update public.coach_notes set read_at = now()
+    where client_id = auth.uid() and id = any(p_ids) and read_at is null;
+$$;
+
+-- COACH_TARGETS — the numbers the coach sets for a client: goal weight,
+-- calories, protein, carbs, fat ({ goalWeight, unit, calories, protein,
+-- carbs, fat }). One row per client.
+create table if not exists public.coach_targets (
+  client_id uuid primary key references auth.users(id) on delete cascade,
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.coach_targets enable row level security;
+
+drop policy if exists "Coach and client can view targets" on public.coach_targets;
+create policy "Coach and client can view targets"
+  on public.coach_targets for select using (auth.uid() = client_id or public.is_coach_of(client_id));
+drop policy if exists "Coach can set targets" on public.coach_targets;
+create policy "Coach can set targets"
+  on public.coach_targets for insert with check (auth.uid() = coach_id and public.is_coach_of(client_id));
+drop policy if exists "Coach can change targets" on public.coach_targets;
+create policy "Coach can change targets"
+  on public.coach_targets for update using (public.is_coach_of(client_id))
+  with check (auth.uid() = coach_id and public.is_coach_of(client_id));
+
+-- CHECKINS — the client's weekly check-in: 1-5 scores and a note
+-- ({ sleep, energy, stress, training, hunger, diet, note }). One per week,
+-- keyed by the week's Monday. The client's own; the coach reads while linked.
+create table if not exists public.checkins (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week_start date not null,
+  answers jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, week_start)
+);
+
+alter table public.checkins enable row level security;
+
+drop policy if exists "Client and coach can view check-ins" on public.checkins;
+create policy "Client and coach can view check-ins"
+  on public.checkins for select using (auth.uid() = user_id or public.is_coach_of(user_id));
+drop policy if exists "Users can insert their own check-ins" on public.checkins;
+create policy "Users can insert their own check-ins"
+  on public.checkins for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own check-ins" on public.checkins;
+create policy "Users can update their own check-ins"
+  on public.checkins for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete their own check-ins" on public.checkins;
+create policy "Users can delete their own check-ins"
+  on public.checkins for delete using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.
