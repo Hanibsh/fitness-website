@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
 import { useClientsState, useCoachAccess } from '../lib/useClientsState'
 import { useCoachLinks, useSentPrograms } from '../lib/useCoachLinks'
 import { joinedCards } from '../lib/coach'
@@ -48,6 +49,16 @@ function CoachArea() {
 
   return (
     <Frame>
+      {/* Level with every page's back link. The installed app also has pull
+          to refresh (PullToRefresh); this is for a computer. */}
+      <button
+        onClick={() => window.location.reload()}
+        aria-label="Refresh"
+        title="Refresh"
+        className="absolute right-0 top-0 inline-flex items-center gap-1.5 text-[13px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer p-0 transition-colors"
+      >
+        <RefreshCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Refresh</span>
+      </button>
       {state.loading ? <p className="text-[13px] text-text-muted">Loading…</p> : <Outlet context={state} />}
     </Frame>
   )
@@ -56,7 +67,7 @@ function CoachArea() {
 function Frame({ children }) {
   return (
     <div className="pt-28 pb-24 px-6">
-      <div className="max-w-2xl mx-auto">{children}</div>
+      <div className="max-w-2xl mx-auto relative">{children}</div>
     </div>
   )
 }

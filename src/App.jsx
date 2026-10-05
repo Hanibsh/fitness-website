@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import PullToRefresh from './components/PullToRefresh'
 import Home from './pages/Home'
 import InstallPrompt from './components/InstallPrompt'
 import { useAuth } from './lib/auth'
@@ -139,6 +140,7 @@ function App() {
       </Routes>
       </Suspense>
       <InstallPrompt />
+      <PullToRefresh />
     </div>
   )
 }
