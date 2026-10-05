@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useClientsState, useCoachAccess } from '../lib/useClientsState'
 import { useCoachLinks, useSentPrograms } from '../lib/useCoachLinks'
+import { joinedCards } from '../lib/coach'
 
 // The coach area's shell: the gate, the page frame, and the client list every
 // page under /coach shares.
@@ -30,6 +31,14 @@ function CoachArea() {
   const sentState = useSentPrograms(clientsState.user, !clientsState.loading)
   const state = { ...clientsState, ...linksState, ...sentState }
   const { pathname } = useLocation()
+
+  // Someone accepted the join link since the list last loaded: give them a card.
+  const { links, clients, loading, addClient } = state
+  useEffect(() => {
+    if (loading) return
+    const fresh = joinedCards(links, clients)
+    if (fresh.length) addClient(fresh)
+  }, [links, clients, loading, addClient])
 
   // No ScrollRestoration in this app — without this, opening a client from
   // halfway down the list lands halfway down their page.

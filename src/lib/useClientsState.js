@@ -12,6 +12,9 @@ export function useClientsState() {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const remoteTimer = useRef(null)
+  // Cards deleted this visit. Their link is still ending in the background, so
+  // the join-link auto-add (CoachLayout) mustn't bring them straight back.
+  const removed = useRef(new Set())
 
   useEffect(() => {
     let cancelled = false
@@ -66,10 +69,14 @@ export function useClientsState() {
     [persist]
   )
 
+  // One card or several; a card already in the list (or just deleted) is skipped.
   const addClient = useCallback(
     (client) => {
       setClients((prev) => {
-        const next = [...prev, client]
+        const have = new Set([...prev.map((c) => c.id), ...removed.current])
+        const fresh = (Array.isArray(client) ? client : [client]).filter((c) => !have.has(c.id))
+        if (!fresh.length) return prev
+        const next = [...prev, ...fresh]
         persist(next, { now: true })
         return next
       })
@@ -79,6 +86,7 @@ export function useClientsState() {
 
   const deleteClient = useCallback(
     (id) => {
+      removed.current.add(id)
       setClients((prev) => {
         const next = prev.filter((c) => c.id !== id)
         persist(next, { now: true })

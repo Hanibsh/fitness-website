@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { ArrowLeft, Plus, ChevronRight, Users, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import StatusChip from '../components/StatusChip'
+import JoinLinkCard from '../components/JoinLinkCard'
 import { createClient, CLIENT_NAME_MAX, CLIENT_STATUSES, clientStatus } from '../lib/clients'
 import { linkForCard, fetchClientSummaries, SUMMARY_DAYS } from '../lib/coach'
 import { lastWorkoutLabel, noTrainingFlag, weightTrend } from '../lib/coachStats'
@@ -97,6 +98,8 @@ export default function Clients() {
           Programs you write for other people — each with their own profile, built by the same generator and
           editor as your splits, and exported with their name on it. Only you can see this page.
         </p>
+
+        <JoinLinkCard user={user} />
 
         <form onSubmit={add} className="bg-white border border-border p-5 sm:p-6 mb-6">
           <label htmlFor="new-client" className="text-[11px] uppercase tracking-wider text-text-light block mb-2">

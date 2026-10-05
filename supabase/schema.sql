@@ -477,6 +477,49 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- The name the client goes by, saved when they accept — the coach can't read
+-- an email, and a card made from the join link needs something to be called.
+alter table public.coach_links add column if not exists client_name text;
+
+-- COACH_JOIN_CODES — the coach's one permanent link (/join/<code>), for anyone.
+-- Whoever accepts it gets a brand-new card in the coach's list, already
+-- linked. Resetting replaces the code, so a link that got around stops
+-- working. Read by the coach only; written only through the functions below.
+create table if not exists public.coach_join_codes (
+  coach_id uuid primary key references auth.users(id) on delete cascade,
+  code text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.coach_join_codes enable row level security;
+
+drop policy if exists "Coach can view their join code" on public.coach_join_codes;
+create policy "Coach can view their join code"
+  on public.coach_join_codes for select using (auth.uid() = coach_id);
+
+-- The coach's join code, made on first ask. `p_reset` swaps in a new one.
+create or replace function public.coach_join_code(p_reset boolean default false)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  c text;
+begin
+  if auth.uid() is null or not exists (select 1 from public.profiles where id = auth.uid() and is_coach) then
+    raise exception 'Only the coach can invite' using errcode = '42501';
+  end if;
+  if not p_reset then
+    select code into c from public.coach_join_codes where coach_id = auth.uid();
+    if found then
+      return c;
+    end if;
+  end if;
+  insert into public.coach_join_codes (coach_id, code)
+    values (auth.uid(), replace(gen_random_uuid()::text, '-', ''))
+    on conflict (coach_id) do update set code = excluded.code, created_at = now()
+    returning code into c;
+  return c;
+end;
+$$;
+
 -- A fresh invite for one card. Only the coach account (profiles.is_coach,
 -- which the app can't set — see protect_profile_flags). A new invite replaces
 -- the card's open one; a card that's already linked can't get another.
@@ -511,8 +554,22 @@ create or replace function public.invite_info(p_code text)
 returns json language plpgsql stable security definer set search_path = public as $$
 declare
   l public.coach_links;
+  j public.coach_join_codes;
   coach_name text;
 begin
+  -- The coach's permanent join link: always open.
+  select * into j from public.coach_join_codes where code = p_code;
+  if found then
+    select display_name into coach_name from public.profiles where id = j.coach_id;
+    return json_build_object(
+      'state', case when exists (
+        select 1 from public.coach_links
+        where coach_id = j.coach_id and client_id = auth.uid() and status = 'active'
+      ) then 'linked' else 'open' end,
+      'coach_name', coalesce(nullif(coach_name, ''), 'Leon'),
+      'is_self', auth.uid() is not null and j.coach_id = auth.uid()
+    );
+  end if;
   select * into l from public.coach_links where code = p_code;
   if not found then
     return json_build_object('state', 'invalid');
@@ -531,10 +588,39 @@ create or replace function public.accept_coach_invite(p_code text)
 returns public.coach_links language plpgsql security definer set search_path = public as $$
 declare
   l public.coach_links;
+  j public.coach_join_codes;
+  me text;
 begin
   if auth.uid() is null then
     raise exception 'Sign in first' using errcode = '42501';
   end if;
+  -- What the coach will call this client: their nickname, else the part of
+  -- their email before the @.
+  select coalesce(nullif(p.display_name, ''), split_part(u.email, '@', 1)) into me
+    from auth.users u left join public.profiles p on p.id = u.id
+    where u.id = auth.uid();
+
+  -- The coach's permanent join link: a new card, linked straight away.
+  select * into j from public.coach_join_codes where code = p_code;
+  if found then
+    if j.coach_id = auth.uid() then
+      raise exception 'That is your own invite' using errcode = '22023';
+    end if;
+    -- Already this coach's client: nothing to do.
+    select * into l from public.coach_links
+      where coach_id = j.coach_id and client_id = auth.uid() and status = 'active';
+    if found then
+      return l;
+    end if;
+    update public.coach_links set status = 'ended', ended_at = now()
+      where client_id = auth.uid() and status = 'active';
+    insert into public.coach_links (coach_id, client_id, card_id, code, status, accepted_at, expires_at, client_name)
+      values (j.coach_id, auth.uid(), 'join-' || replace(gen_random_uuid()::text, '-', ''),
+              replace(gen_random_uuid()::text, '-', ''), 'active', now(), now(), me)
+      returning * into l;
+    return l;
+  end if;
+
   select * into l from public.coach_links where code = p_code for update;
   if not found or l.status <> 'pending' or l.expires_at < now() then
     raise exception 'Invite not valid' using errcode = 'P0002';
@@ -544,7 +630,7 @@ begin
   end if;
   update public.coach_links set status = 'ended', ended_at = now()
     where client_id = auth.uid() and status = 'active';
-  update public.coach_links set client_id = auth.uid(), status = 'active', accepted_at = now()
+  update public.coach_links set client_id = auth.uid(), status = 'active', accepted_at = now(), client_name = me
     where id = l.id
     returning * into l;
   return l;

@@ -16,6 +16,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { mergeCoachPrograms, isLockedProgram } = await server.ssrLoadModule('/src/lib/coachSync.js')
 const stats = await server.ssrLoadModule('/src/lib/coachStats.js')
 const checkins = await server.ssrLoadModule('/src/lib/checkins.js')
+const { joinedCards } = await server.ssrLoadModule('/src/lib/coach.js')
 
 let passed = 0
 function check(name, ok, detail = '') {
@@ -154,6 +155,23 @@ check('tiny change reads flat', stats.weightTrend([weigh(10, 80), weigh(1, 80.2)
   check('complete needs all six', !checkinComplete({ sleep: 3, energy: 3, stress: 3, training: 3, hunger: 3 }))
   check('complete with all six', checkinComplete({ sleep: 3, energy: 3, stress: 3, training: 3, hunger: 3, diet: 1, note: '' }))
   check('out-of-range answer rejected', !checkinComplete({ sleep: 6, energy: 3, stress: 3, training: 3, hunger: 3, diet: 3 }))
+}
+
+// ---- Join link: who gets a new card ----
+{
+  const links = [
+    { card_id: 'join-a', status: 'active', client_name: 'Sam', accepted_at: '2026-10-05T10:00:00Z' },
+    { card_id: 'join-b', status: 'active', client_name: null, accepted_at: '2026-10-05T10:00:00Z' },
+    { card_id: 'join-c', status: 'ended', client_name: 'Gone' },
+    { card_id: 'join-d', status: 'active', client_name: 'Has card' },
+    { card_id: 'card-1', status: 'active', client_name: 'Per-card invite' },
+  ]
+  const fresh = joinedCards(links, [{ id: 'join-d' }])
+  check('join: only active join links without a card', fresh.map((c) => c.id).join() === 'join-a,join-b', fresh.map((c) => c.id).join())
+  check('join: card named after the client', fresh[0].name === 'Sam')
+  check('join: unnamed client gets a placeholder', fresh[1].name === 'New client')
+  check('join: start date is the accept day', /^2026-10-0[45]$/.test(fresh[0].startDate), fresh[0].startDate)
+  check('join: nothing new once every card exists', joinedCards(links, fresh.concat([{ id: 'join-d' }])).length === 0)
 }
 
 console.log(`coaching checks: ${passed} passed`)

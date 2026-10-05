@@ -15,6 +15,7 @@ import {
 } from './workoutRemote'
 import { fetchProfile } from './profile'
 import { getHistory, getBodyweightLog, getInjuries, getDayAnnotations, getProgramsState } from './workoutStore'
+import { createClient } from './clients'
 
 // A table or function that isn't in the database yet.
 function missing(error) {
@@ -43,6 +44,8 @@ export const devClientSample = () => devFlag('leon_dev_client')
 const DEV_CLIENT_ID = 'dev-client'
 const DEV_COACH_LINK = 'dev-coach-link'
 const DEV_INVITE_CODE = 'devcode0000'
+const DEV_JOIN_CODE = 'devjoin0000'
+const isDevCode = (code) => import.meta.env.DEV && (code === DEV_INVITE_CODE || code === DEV_JOIN_CODE)
 const DEV_STORE = 'leon_dev_coaching'
 
 function devRead() {
@@ -131,6 +134,35 @@ export async function endLink(linkId) {
 // The address the client opens. BASE_URL keeps it right on a sub-path host.
 export function inviteUrl(code) {
   return `${window.location.origin}${import.meta.env.BASE_URL}join/${code}`
+}
+
+// ---- The join link (coach side) ------------------------------------------------
+// One permanent link for anyone: whoever accepts gets a new card in the list,
+// already linked. Those links' card ids start with JOIN_PREFIX (set by
+// accept_coach_invite), and the card itself is made on the coach's side the
+// next time the list loads — the client can't write to the coach's list.
+
+const JOIN_PREFIX = 'join-'
+
+// The coach's join code (made on first ask); `reset` swaps in a new one.
+export async function fetchJoinCode(coachId, { reset = false } = {}) {
+  if (devCoach(coachId)) return DEV_JOIN_CODE
+  if (!supabase || !coachId) return null
+  const { data, error } = await supabase.rpc('coach_join_code', { p_reset: reset })
+  if (error) throw error
+  return data
+}
+
+// Cards for people who joined through the link and aren't in the list yet.
+export function joinedCards(links, clients) {
+  const have = new Set(clients.map((c) => c.id))
+  return links
+    .filter((l) => l.status === 'active' && l.card_id?.startsWith(JOIN_PREFIX) && !have.has(l.card_id))
+    .map((l) => {
+      const at = l.accepted_at ? new Date(l.accepted_at) : new Date()
+      const day = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
+      return { ...createClient(l.client_name || 'New client'), id: l.card_id, startDate: day }
+    })
 }
 
 // ---- The client's data, as the coach reads it ---------------------------------
@@ -426,9 +458,10 @@ export async function fetchClientSummaries(coachId, clientUserIds) {
 // again on your profile's Coach section.
 export const COACH_SEES = ['Your workout log, past and future', 'Your bodyweight and injuries', 'Your profile and weekly check-ins']
 
-// { state: 'open' | 'used' | 'expired' | 'invalid', coach_name, is_self }
+// { state: 'open' | 'linked' | 'used' | 'expired' | 'invalid', coach_name, is_self }
+// ('linked': you already accepted this coach's join link.)
 export async function inviteInfo(code) {
-  if (import.meta.env.DEV && code === DEV_INVITE_CODE) return { state: 'open', coach_name: 'Leon', is_self: false }
+  if (isDevCode(code)) return { state: 'open', coach_name: 'Leon', is_self: false }
   if (!supabase) return { state: 'invalid' }
   const { data, error } = await supabase.rpc('invite_info', { p_code: code })
   if (error) {
@@ -439,7 +472,7 @@ export async function inviteInfo(code) {
 }
 
 export async function acceptInvite(code) {
-  if (import.meta.env.DEV && code === DEV_INVITE_CODE) {
+  if (isDevCode(code)) {
     try { localStorage.setItem('leon_dev_client', '1') } catch { /* no storage */ }
     devWrite({ clientEnded: false })
     return

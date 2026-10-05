@@ -30,7 +30,7 @@ const sections = [
   {
     title: 'Coaching',
     body: [
-      "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, injuries, profile and weekly check-ins. I can't change any of it.",
+      "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, injuries, profile and weekly check-ins, plus the name you go by (your nickname, or the part of your email before the @). I can't change any of it.",
       'You can stop sharing any time on your profile page. I stop seeing your data straight away.',
     ],
   },

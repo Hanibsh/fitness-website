@@ -79,6 +79,15 @@ export default function Join() {
         <button onClick={() => window.location.reload()} className={secondary}>Try again</button>
       </>
     )
+  } else if (info.state === 'linked') {
+    body = (
+      <>
+        <Check className="w-6 h-6 text-text-primary mb-4" />
+        <h1 className="font-heading text-3xl sm:text-4xl font-medium text-text-primary mb-3">You’re already linked</h1>
+        <p className="text-text-muted text-[15px] mb-8">{coach} can see your training.</p>
+        <Link to="/" className={primary}>Go to your dashboard</Link>
+      </>
+    )
   } else if (info.state !== 'open') {
     body = (
       <>
