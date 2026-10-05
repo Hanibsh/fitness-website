@@ -14,6 +14,18 @@ function GoogleIcon() {
   )
 }
 
+// Supabase's raw auth errors, reworded so they say what to do next.
+function friendlyError(err) {
+  const msg = err?.message || ''
+  if (/invalid login credentials/i.test(msg))
+    return 'Wrong email or password. Signed up with Google? Use Continue with Google.'
+  if (/email not confirmed/i.test(msg))
+    return 'Confirm your email first — check your inbox and spam.'
+  if (/rate limit/i.test(msg))
+    return 'Too many tries. Wait a bit and try again.'
+  return msg || 'Something went wrong. Please try again.'
+}
+
 // Email + password sign up / log in, plus "Continue with Google".
 export default function AuthModal({ onClose }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
@@ -46,17 +58,25 @@ export default function AuthModal({ onClose }) {
     setBusy(true)
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password })
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
+        })
         if (error) throw error
-        if (data.session) onClose() // auto-confirmed → straight in
-        else setInfo('Almost there — check your email to confirm your account, then log in.')
+        // Supabase fakes success for an email that's already registered (no
+        // email is sent) — the tell is a user with no identities.
+        if (data.user && data.user.identities?.length === 0) {
+          setError('This email already has an account. Log in, or use Continue with Google.')
+        } else if (data.session) onClose() // auto-confirmed → straight in
+        else setInfo('Check your email (and spam) to confirm, then log in.')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         onClose()
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError(friendlyError(err))
     } finally {
       setBusy(false)
     }
