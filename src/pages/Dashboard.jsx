@@ -9,8 +9,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
-import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge } from '../lib/workoutStore'
-import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations } from '../lib/workoutRemote'
+import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge, getBodyweightLog } from '../lib/workoutStore'
+import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations, fetchRemoteBodyweight } from '../lib/workoutRemote'
 import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
 import { liveDraft } from '../lib/draftState'
 import { shouldSuggestSplit } from '../lib/splitFromHistory'
@@ -46,6 +46,7 @@ import { useMyCoach } from '../lib/useMyCoach'
 import { useFromCoach, useMyCheckins } from '../lib/useCoachNotes'
 import { thisWeeksCheckin } from '../lib/checkins'
 import FromCoachCard from '../components/FromCoachCard'
+import GetStarted from '../components/GetStarted'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
@@ -379,6 +380,9 @@ export default function Dashboard() {
   const { checkins, saveCheckin } = useMyCheckins(!!coach)
   const thisWeek = thisWeeksCheckin(checkins)
   const [checkinOpen, setCheckinOpen] = useState(false)
+  // Before the first workout, the bodyweight card shows only once there's a
+  // weigh-in to show.
+  const [hasWeighIns, setHasWeighIns] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -405,6 +409,15 @@ export default function Dashboard() {
     load()
     return () => { cancelled = true }
   }, [user])
+
+  useEffect(() => {
+    if (loading || sessions.length) return
+    let cancelled = false
+    const local = () => getBodyweightLog().length > 0
+    const check = user ? fetchRemoteBodyweight(user.id).then((r) => r.length > 0).catch(local) : Promise.resolve(local())
+    check.then((has) => { if (!cancelled) setHasWeighIns(has) })
+    return () => { cancelled = true }
+  }, [user, loading, sessions.length])
 
   async function saveNickname(value) {
     await saveProfile(user.id, { display_name: value || null })
@@ -568,16 +581,30 @@ export default function Dashboard() {
     )
   }
 
-  // Empty state — no workouts yet.
+  // Empty state — no workouts yet: a short "get started" list instead of
+  // empty stats. A session in progress still comes first; weigh-ins already
+  // logged keep their card.
   if (!stats) {
+    const firstPlan = todayPlan(program, { now: today, annotations, trainedToday: false })
     return (
       <div className="pt-24 pb-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto space-y-6">
-          <CoachingBanner />
-          <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null} />
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
+          {coach ? (
+            <FromCoachCard
+              coachName={coach.coach_name}
+              notes={fromCoach.notes}
+              unread={fromCoach.unread}
+              targets={fromCoach.targets}
+              sessions={sessions}
+              checkin={{ done: !!thisWeek, open: () => setCheckinOpen(true) }}
+            />
+          ) : (
+            <CoachingBanner />
+          )}
+          {live && <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null} />}
+          <div>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2">
               <h1 className={`font-heading text-4xl font-medium text-text-primary ${nameClass}`}>{displayName}</h1>
               {user && (
                 <button
@@ -589,13 +616,13 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <p className="text-text-muted text-[15px] mb-8">
-              Your dashboard comes to life once you start logging. Track your first session and you'll see your streak,
-              volume, records, and trends here.
-            </p>
-
-          </motion.div>
-          <BodyweightTracker user={user} unit={unit} />
+          </div>
+          <GetStarted
+            hasProgram={!!program}
+            plannedDay={firstPlan.status === 'train' ? firstPlan.day : null}
+            profileDone={!!profile?.sex && profile?.bodyweight != null}
+          />
+          {hasWeighIns && <BodyweightTracker user={user} unit={unit} />}
         </div>
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
@@ -603,6 +630,14 @@ export default function Dashboard() {
         {newWorkoutOpen && <NewWorkoutModal program={program} onClose={() => setNewWorkoutOpen(false)} />}
         {confirmStartNew && live && (
           <StartNewConfirm live={live} stashOccupied={stashOccupied} onConfirm={startNewSession} onClose={() => setConfirmStartNew(false)} />
+        )}
+        {checkinOpen && (
+          <CheckinModal
+            coachName={coach?.coach_name}
+            initial={thisWeek?.answers}
+            onSave={saveCheckin}
+            onClose={() => setCheckinOpen(false)}
+          />
         )}
       </div>
     )
