@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { MessageCircle, ClipboardCheck, Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { MessageCircle, ClipboardCheck, Check, MessagesSquare } from 'lucide-react'
 import MiniStat from './MiniStat'
 
 const fmt = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -9,7 +10,7 @@ const COLS = { 1: 'sm:grid-cols-1', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4:
 
 // A coached client's dashboard opens on this instead of the coaching ad: the
 // coach's targets, their latest notes and comments, and the weekly check-in.
-export default function FromCoachCard({ coachName = 'Leon', notes, unread, targets, sessions, checkin = null }) {
+export default function FromCoachCard({ coachName = 'Leon', notes, unread, targets, sessions, checkin = null, unreadMessages = 0 }) {
   const [all, setAll] = useState(false)
   const sessionName = useMemo(() => new Map(sessions.map((s) => [s.id, s])), [sessions])
 
@@ -45,6 +46,17 @@ export default function FromCoachCard({ coachName = 'Leon', notes, unread, targe
           <p className="text-[10px] uppercase tracking-wider text-text-light">Your coach</p>
           <h2 className="font-heading text-lg font-medium text-text-primary">From {coachName}</h2>
         </div>
+        <Link
+          to="/messages"
+          className="ml-auto shrink-0 inline-flex items-center gap-1.5 text-[13px] font-medium text-text-primary bg-white border border-border hover:border-border-hover px-3 py-2 no-underline transition-colors"
+        >
+          <MessagesSquare className="w-4 h-4" /> Chat
+          {unreadMessages > 0 && (
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-text-primary text-cream text-[10px] font-medium inline-flex items-center justify-center" aria-label={`${unreadMessages} unread`}>
+              {unreadMessages}
+            </span>
+          )}
+        </Link>
       </div>
 
       {stats.length > 0 && (

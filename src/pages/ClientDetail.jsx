@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput, Send } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput, Send, MessageCircle, ChevronRight } from 'lucide-react'
 import NumberField from '../components/NumberField'
 import FocusPicker from '../components/FocusPicker'
 import ConfirmModal from '../components/ConfirmModal'
@@ -13,6 +13,7 @@ import ClientTrainingSummary from '../components/ClientTrainingSummary'
 import SendProgramModal from '../components/SendProgramModal'
 import ClientTargetsCard from '../components/ClientTargetsCard'
 import ClientCheckinsCard from '../components/ClientCheckinsCard'
+import StatusChip from '../components/StatusChip'
 import { useLinkedClient } from '../lib/useClientData'
 import { InjuryScope } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX, CLIENT_STATUSES, clientStatus } from '../lib/clients'
@@ -25,7 +26,7 @@ import { convertMassText, convertLengthText } from '../lib/units'
 // export, never printed empty.
 export default function ClientDetail() {
   const { clientId } = useParams()
-  const { clients, updateClient, deleteClient, links, invite, unlink, sent, send, unsend } = useOutletContext()
+  const { clients, updateClient, deleteClient, links, invite, unlink, sent, send, unsend, unread = {} } = useOutletContext()
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
   const [exporting, setExporting] = useState(null) // program | null
@@ -234,6 +235,7 @@ export default function ClientDetail() {
 
         {/* ---- Their account ------------------------------------------------- */}
         <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
+        {linked && <MessagesRow clientId={client.id} unread={unread[link.client_id] || 0} />}
         {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
         {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} />}
         {linked && <ClientTargetsCard clientName={client.name} clientUserId={link.client_id} unit={unit} />}
@@ -506,6 +508,21 @@ export default function ClientDetail() {
         />
       )}
     </>
+  )
+}
+
+// The way into the chat with a linked client, with how many are unread.
+function MessagesRow({ clientId, unread }) {
+  return (
+    <Link
+      to={`/coach/${clientId}/messages`}
+      className="flex items-center gap-3 bg-white border border-border px-5 py-4 sm:px-7 no-underline hover:border-border-hover transition-colors"
+    >
+      <MessageCircle className="w-4 h-4 text-text-primary shrink-0" />
+      <span className="flex-1 text-[14px] font-medium text-text-primary">Messages</span>
+      {unread > 0 && <StatusChip tone="dark">{unread} new</StatusChip>}
+      <ChevronRight className="w-4 h-4 text-text-light shrink-0" />
+    </Link>
   )
 }
 

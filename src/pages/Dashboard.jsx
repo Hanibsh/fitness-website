@@ -47,6 +47,7 @@ import { useFromCoach, useMyCheckins } from '../lib/useCoachNotes'
 import { thisWeeksCheckin } from '../lib/checkins'
 import FromCoachCard from '../components/FromCoachCard'
 import GetStarted from '../components/GetStarted'
+import { useMyUnreadMessages } from '../lib/useChat'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
@@ -380,6 +381,7 @@ export default function Dashboard() {
   const { checkins, saveCheckin } = useMyCheckins(!!coach)
   const thisWeek = thisWeeksCheckin(checkins)
   const [checkinOpen, setCheckinOpen] = useState(false)
+  const unreadMessages = useMyUnreadMessages(user?.id, !!coach)
   // Before the first workout, the bodyweight card shows only once there's a
   // weigh-in to show.
   const [hasWeighIns, setHasWeighIns] = useState(false)
@@ -597,6 +599,7 @@ export default function Dashboard() {
               targets={fromCoach.targets}
               sessions={sessions}
               checkin={{ done: !!thisWeek, open: () => setCheckinOpen(true) }}
+              unreadMessages={unreadMessages}
             />
           ) : (
             <CoachingBanner />
@@ -1368,6 +1371,7 @@ export default function Dashboard() {
             targets={fromCoach.targets}
             sessions={sessions}
             checkin={{ done: !!thisWeek, open: () => setCheckinOpen(true) }}
+            unreadMessages={unreadMessages}
           />
         ) : (
           <CoachingBanner />

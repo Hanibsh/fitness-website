@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogOut, Users } from 'lucide-react'
+import { Menu, X, LogOut, Users, MessagesSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useCoachAccess } from '../lib/useClientsState'
+import { useMyCoach } from '../lib/useMyCoach'
+import { useMyUnreadMessages } from '../lib/useChat'
 import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
 
@@ -49,6 +51,12 @@ export default function Navbar() {
   // page only it can reach, and the one it opens most.
   const { isCoach } = useCoachAccess()
   const onCoach = location.pathname.startsWith('/coach')
+  // A coached client gets their chat in the bar itself, at every width, so an
+  // unread message shows without opening the menu.
+  const { coach } = useMyCoach()
+  const showChat = !!user && !!coach && !isCoach
+  const unreadMessages = useMyUnreadMessages(user?.id, showChat, location.pathname)
+  const onChat = location.pathname === '/messages'
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-nav backdrop-blur-md border-b border-border">
@@ -62,6 +70,23 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-1">
+          {showChat && (
+            <Link
+              to="/messages"
+              aria-label={unreadMessages ? `Messages, ${unreadMessages} unread` : 'Messages'}
+              title="Messages"
+              className={`relative mr-4 lg:mr-6 inline-flex items-center no-underline transition-colors ${
+                onChat ? 'text-text-primary' : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <MessagesSquare className="w-[18px] h-[18px]" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-text-primary text-cream text-[9px] font-semibold flex items-center justify-center">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* The full row from 1024px; the menu below that. Eight links plus
               (for the coach) Clients don't fit a 768px bar — six only just

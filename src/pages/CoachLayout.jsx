@@ -4,6 +4,7 @@ import { RefreshCw } from 'lucide-react'
 import { useClientsState, useCoachAccess } from '../lib/useClientsState'
 import { useCoachLinks, useSentPrograms } from '../lib/useCoachLinks'
 import { joinedCards } from '../lib/coach'
+import { useCoachUnread } from '../lib/useChat'
 
 // The coach area's shell: the gate, the page frame, and the client list every
 // page under /coach shares.
@@ -30,8 +31,11 @@ function CoachArea() {
   const clientsState = useClientsState()
   const linksState = useCoachLinks(clientsState.user, clientsState.clients, !clientsState.loading)
   const sentState = useSentPrograms(clientsState.user, !clientsState.loading)
-  const state = { ...clientsState, ...linksState, ...sentState }
+  // Unread messages per client account ({ clientUserId: n }), for the list
+  // and each client's page.
   const { pathname } = useLocation()
+  const unread = useCoachUnread(clientsState.user?.id, !clientsState.loading, pathname)
+  const state = { ...clientsState, ...linksState, ...sentState, unread }
 
   // Someone accepted the join link since the list last loaded: give them a card.
   const { links, clients, loading, addClient } = state

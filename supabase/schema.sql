@@ -651,6 +651,7 @@ create or replace function public.my_coach()
 returns json language sql stable security definer set search_path = public as $$
   select json_build_object(
     'link_id', l.id,
+    'coach_id', l.coach_id,
     'coach_name', coalesce(nullif(p.display_name, ''), 'Leon'),
     'since', l.accepted_at
   )
@@ -804,6 +805,103 @@ create policy "Users can update their own check-ins"
 drop policy if exists "Users can delete their own check-ins" on public.checkins;
 create policy "Users can delete their own check-ins"
   on public.checkins for delete using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
+-- 2j) MESSAGES — a chat between the coach and one linked client, with photos
+--     and short videos. Only the two of them, and only while their link is
+--     ACTIVE: unlinking hides the whole conversation from both sides.
+--     A message is text, a file in the private chat-media bucket, or both.
+--     read_at is set only through mark_messages_read (no update policy).
+-- ---------------------------------------------------------------------------
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid not null references auth.users(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  body text check (char_length(body) <= 4000),
+  media_path text,
+  media_type text check (media_type in ('image', 'video')),
+  created_at timestamptz not null default now(),
+  read_at timestamptz,
+  check (body is not null or media_path is not null)
+);
+
+create index if not exists messages_pair_idx on public.messages (coach_id, client_id, created_at desc);
+
+alter table public.messages enable row level security;
+
+-- True while the signed-in user is one of the two people in an ACTIVE link.
+-- Takes text so the storage policies can pass folder names straight in.
+create or replace function public.chat_member(p_coach text, p_client text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null
+    and auth.uid()::text in (p_coach, p_client)
+    and exists (
+      select 1 from public.coach_links
+      where coach_id::text = p_coach and client_id::text = p_client and status = 'active'
+    );
+$$;
+
+drop policy if exists "Chat members can view messages" on public.messages;
+create policy "Chat members can view messages"
+  on public.messages for select using (public.chat_member(coach_id::text, client_id::text));
+drop policy if exists "Chat members can send messages" on public.messages;
+create policy "Chat members can send messages"
+  on public.messages for insert with check (
+    sender_id = auth.uid() and read_at is null and public.chat_member(coach_id::text, client_id::text)
+  );
+drop policy if exists "Senders can delete their messages" on public.messages;
+create policy "Senders can delete their messages"
+  on public.messages for delete using (sender_id = auth.uid());
+
+-- Everything the other person sent in this chat, marked read.
+create or replace function public.mark_messages_read(p_coach uuid, p_client uuid)
+returns void language sql security definer set search_path = public as $$
+  update public.messages set read_at = now()
+    where coach_id = p_coach and client_id = p_client
+      and sender_id <> auth.uid() and read_at is null
+      and public.chat_member(p_coach::text, p_client::text);
+$$;
+
+-- New messages arrive live (Supabase Realtime, which applies the select
+-- policy above). Added only once — adding twice is an error.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end;
+$$;
+
+-- CHAT-MEDIA — the photos and videos. Private: every file is fetched through
+-- a short-lived signed link. Path: <coach_id>/<client_id>/<file>, so the
+-- policies can check the link from the folder names. 50 MB a file (the free
+-- plan's cap).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('chat-media', 'chat-media', false, 52428800, array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Chat members can view chat media" on storage.objects;
+create policy "Chat members can view chat media"
+  on storage.objects for select using (
+    bucket_id = 'chat-media'
+    and public.chat_member((storage.foldername(name))[1], (storage.foldername(name))[2])
+  );
+drop policy if exists "Chat members can upload chat media" on storage.objects;
+create policy "Chat members can upload chat media"
+  on storage.objects for insert with check (
+    bucket_id = 'chat-media'
+    and public.chat_member((storage.foldername(name))[1], (storage.foldername(name))[2])
+  );
+drop policy if exists "Uploaders can delete their chat media" on storage.objects;
+create policy "Uploaders can delete their chat media"
+  on storage.objects for delete using (bucket_id = 'chat-media' and owner_id = auth.uid()::text);
 
 -- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.

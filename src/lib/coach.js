@@ -481,10 +481,10 @@ export async function acceptInvite(code) {
   if (error) throw error
 }
 
-// Who coaches this account: { link_id, coach_name, since } or null.
+// Who coaches this account: { link_id, coach_id, coach_name, since } or null.
 export async function fetchMyCoach(userId) {
   if (!userId && devClientSample()) {
-    return devRead().clientEnded ? null : { link_id: DEV_COACH_LINK, coach_name: 'Leon', since: new Date(Date.now() - 20 * 86400000).toISOString() }
+    return devRead().clientEnded ? null : { link_id: DEV_COACH_LINK, coach_id: 'dev-coach', coach_name: 'Leon', since: new Date(Date.now() - 20 * 86400000).toISOString() }
   }
   if (!supabase || !userId) return null
   const { data, error } = await supabase.rpc('my_coach')

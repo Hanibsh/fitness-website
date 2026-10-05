@@ -18,7 +18,7 @@ const STATUS_ORDER = Object.fromEntries(CLIENT_STATUSES.map((s, i) => [s.id, i])
 // written for them; tapping one opens all of that. A client whose account is
 // linked also shows how they're doing at a glance.
 export default function Clients() {
-  const { user, clients, addClient, links } = useOutletContext()
+  const { user, clients, addClient, links, unread = {} } = useOutletContext()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [summaries, setSummaries] = useState({})
@@ -80,6 +80,7 @@ export default function Clients() {
             {Trend && <Trend className="w-3 h-3" />}
           </span>
         )}
+        {unread[linkedIds[c.id]] > 0 && <StatusChip tone="dark">{unread[linkedIds[c.id]]} new message{unread[linkedIds[c.id]] === 1 ? '' : 's'}</StatusChip>}
         {s.waitingCheckin && <StatusChip tone="dark">New check-in</StatusChip>}
         {idle != null && <StatusChip tone="amber">{idle} days no training</StatusChip>}
       </span>
