@@ -43,7 +43,11 @@ export default function AuthModal({ onClose }) {
     // /fitness-website/, not the origin root (which would 404).
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + import.meta.env.BASE_URL },
+      options: {
+        redirectTo: window.location.origin + import.meta.env.BASE_URL,
+        // Always show Google's account picker, even with one account signed in.
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (error) {
       setError(error.message)
