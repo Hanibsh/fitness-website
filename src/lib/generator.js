@@ -918,15 +918,24 @@ export function fillDay(template, alloc, gaps, ctx) {
     // is placed even when earlier days have already paid its sets: "more often"
     // is the point of a focus, and a week that front-loads the volume and then
     // skips the third session hasn't delivered it.
-    const owedASlot = first && (pending.has(muscle) || ctx.focus.includes(muscle))
+    // An ab focus is owed its SECOND ab movement too (see coreMax below) while
+    // the day still owes the abs anything: ab sets sit outside the day's cap,
+    // so it costs the rest of the day nothing, but a long week of two ab
+    // movements a day would run past the abs' weekly ceiling.
+    const coreCount = chosen.filter((c) => isCoreMovement(c.db)).length
+    const secondCore = CORE_MUSCLES.includes(muscle) && ctx.focus.includes(muscle) && coreCount === 1 && (remaining[muscle] || 0) > 0
+    const owedASlot = (first && (pending.has(muscle) || ctx.focus.includes(muscle))) || secondCore
     if (!owedASlot && (remaining[muscle] || 0) < minOwed) return false
     // The day's movement count and set budget bind everything but its ab
-    // movement, which counts toward neither — so a full day can still take one,
-    // and only one: a second ab movement is just more crunches.
+    // movements, which count toward neither — so a full day can still take one,
+    // and only one: a second ab movement is just more crunches. Unless the abs
+    // are a focus: then two different ones (Hani, 2026-10-06), each paired with
+    // a light movement by placeCore.
     const budgetFull =
       chosen.filter((c) => !isCoreMovement(c.db)).length + 1 + held(muscle) > ctx.posture.exerciseCap ||
       !setRoom(MIN_SETS_PER_EXERCISE * (1 + held(muscle)))
-    const coreFree = !chosen.some((c) => isCoreMovement(c.db))
+    const coreMax = CORE_MUSCLES.some((m) => ctx.focus.includes(m)) ? 2 : 1
+    const coreFree = coreCount < coreMax
     if (budgetFull && !coreFree) return false
     if (!ignoreLoadCap && !loadRoom()) return false
 
@@ -1978,7 +1987,8 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
       if (!makeRoom(trainingDays, weekly, focusOpts)) break
     }
   }
-  placeCore(trainingDays, inputs.core, inputs.focus)
+  placeCore(trainingDays, inputs.core)
+  trimSecondCore(trainingDays, perWeek)
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
   program.schedule = inputs.schedule === 'weekly' ? 'weekly' : 'rotating'
@@ -2104,49 +2114,76 @@ function isCoreRow(planned) {
   return isCoreMovement(DB_BY_ID.get(plannedExerciseDbId(planned) || ''))
 }
 
-// Where each day's ab movement goes, as the user asked (CORE_PLACEMENTS):
+// Where each day's ab movements go, as the user asked (CORE_PLACEMENTS):
 // paired as a superset with a light movement, or after everything else. Run on
-// the finished week, so nothing a later pass adds can land between a pair. An
-// ab movement that is itself a focus stays at the front, where the focus put it.
+// the finished week, so nothing a later pass adds can land between a pair. A
+// focus on the abs is paired too (Hani, 2026-10-06): its two movements take
+// the lightest partner and the next lightest.
 //
 // Partners in a superset do the same number of sets — you go back and forth
 // between them, so 2 sets can't pair with 4 (Hani). The partner is the light
 // movement (supersetPartnerOk) whose set count is closest to the ab row's, ties
 // to the lowest per-set systemic cost and then the later one, where the day's
 // heavy work is already done; the ab row then takes the partner's count. Ab
-// sets sit outside the day's cap, so matching them moves nothing else. A day
-// with nothing light to pair with puts its abs last.
-function placeCore(trainingDays, placement, focus) {
+// sets sit outside the day's cap, so matching them moves nothing else. Each
+// partner takes one ab movement; one left with nothing light to pair with goes
+// last.
+function placeCore(trainingDays, placement) {
   for (const day of trainingDays) {
-    const core = day.exercises.find(isCoreRow)
-    if (!core || focus.includes(core.slot?.muscle)) continue
-    const rest = day.exercises.filter((e) => e !== core)
-    let partner = null
-    let lightest = Infinity
-    let closest = Infinity
-    if (placement === 'superset') {
-      for (const e of rest) {
-        const db = DB_BY_ID.get(plannedExerciseDbId(e) || '')
-        if (!supersetPartnerOk(db)) continue
-        const cost = setLoad(db)
-        const gap = Math.abs((Number(e.sets) || 0) - (Number(core.sets) || 0))
-        if (gap < closest || (gap === closest && cost <= lightest)) {
-          partner = e
-          lightest = cost
-          closest = gap
+    const cores = day.exercises.filter(isCoreRow)
+    if (!cores.length) continue
+    let rest = day.exercises.filter((e) => !cores.includes(e))
+    const last = []
+    for (const core of cores) {
+      let partner = null
+      let lightest = Infinity
+      let closest = Infinity
+      if (placement === 'superset') {
+        for (const e of rest) {
+          if (e.supersetId) continue
+          const db = DB_BY_ID.get(plannedExerciseDbId(e) || '')
+          if (!supersetPartnerOk(db)) continue
+          const cost = setLoad(db)
+          const gap = Math.abs((Number(e.sets) || 0) - (Number(core.sets) || 0))
+          if (gap < closest || (gap === closest && cost <= lightest)) {
+            partner = e
+            lightest = cost
+            closest = gap
+          }
         }
       }
+      if (!partner) {
+        last.push(core)
+        continue
+      }
+      core.sets = partner.sets
+      const id = newSupersetId()
+      partner.supersetId = id
+      core.supersetId = id
+      rest = [...rest]
+      rest.splice(rest.indexOf(partner) + 1, 0, core)
     }
-    if (partner) core.sets = partner.sets
-    if (!partner) {
-      day.exercises = [...rest, core]
-      continue
+    day.exercises = [...rest, ...last]
+  }
+}
+
+// An ab focus gives a day two ab movements, and each takes its partner's set
+// count — on a long week that can carry the abs past their ceiling. Then the
+// second ab movement comes off, latest day first, until they fit; its partner
+// goes back to being a plain movement.
+function trimSecondCore(trainingDays, perWeek) {
+  for (const muscle of CORE_MUSCLES) {
+    const limit = ceilingFor(muscle) * ADVISOR_BLOCK_SLACK
+    for (const day of [...trainingDays].reverse()) {
+      if ((weeklyMuscleSets(trainingDays, perWeek)[muscle] || 0) <= limit) break
+      const cores = day.exercises.filter(isCoreRow)
+      if (cores.length < 2) continue
+      const drop = cores[cores.length - 1]
+      if (drop.supersetId) {
+        for (const e of day.exercises) if (e !== drop && e.supersetId === drop.supersetId) e.supersetId = null
+      }
+      day.exercises = day.exercises.filter((e) => e !== drop)
     }
-    const id = newSupersetId()
-    partner.supersetId = id
-    core.supersetId = id
-    rest.splice(rest.indexOf(partner) + 1, 0, core)
-    day.exercises = rest
   }
 }
 
@@ -2407,7 +2444,7 @@ export function generateSession({ type = 'auto', answers = {}, profile = null, s
   }
   const template = { name: t.label, muscles: [...t.muscles], direct: t.direct.filter((m) => week.targets[m]), repeatJobs: t.repeatJobs || null }
   const day = fillDay(template, alloc, gaps, ctx)
-  placeCore([day], inputs.core, [])
+  placeCore([day], inputs.core)
 
   const program = emptyProgram(`${t.label} session`)
   program.days = [day]

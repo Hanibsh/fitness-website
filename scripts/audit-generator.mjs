@@ -31,7 +31,7 @@ const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
 const EXERCISES = (await server.ssrLoadModule('/src/data/exercises.json')).default.exercises
 
-const FOCUS_CASES = [[], ['Side Delts'], ['Chest', 'Lats', 'Glutes']]
+const FOCUS_CASES = [[], ['Side Delts'], ['Chest', 'Lats', 'Glutes'], ['Abs']]
 const EQUIPMENT_CASES = ['gym', 'bodyweight']
 const EXPERIENCE_CASES = ['beginner', 'intermediate', 'advanced']
 const SCHEDULE_CASES = ['weekly', 'rotation']
@@ -193,28 +193,30 @@ function audit(label, program, summary, inputs, opts) {
     }
   })
 
-  // ---- abs (Hani, 2026-10-02): one ab movement a day at most, outside the set
-  // cap and the movement count (checked below), and where the user asked for
-  // it — supersetted with a light movement doing the SAME number of sets, or
-  // last. A day with nothing light to pair with puts it last either way. An ab
-  // movement that is itself a focus leads instead, like any focus.
+  // ---- abs (Hani, 2026-10-02): one ab movement a day at most — two different
+  // ones when the abs are a focus (2026-10-06) — outside the set cap and the
+  // movement count (checked below), and where the user asked for them: each
+  // supersetted with its OWN light movement doing the SAME number of sets, or
+  // last. One with nothing light left to pair with goes last either way.
+  const absFocus = opts.focus.some((m) => m === 'Abs' || m === 'Obliques')
   for (const day of training) {
     const core = day.exercises.filter(isCoreRow)
-    check(label, core.length <= 1, `"${day.name}" has ${core.length} ab movements`)
-    const row = core[0]
-    if (!row || opts.focus.includes(row.slot?.muscle)) continue
-    const at = day.exercises.indexOf(row)
-    const canPair = day.exercises.some((e) => e !== row && supersetPartnerOk(getFullExercise(e.exerciseId)))
-    if (opts.core === 'end' || !canPair) {
-      check(label, at === day.exercises.length - 1 && !row.supersetId, `"${day.name}" has its ab movement at ${at + 1} of ${day.exercises.length}, not last`)
-      continue
-    }
-    const partner = day.exercises[at - 1]
-    const pair = day.exercises.filter((e) => row.supersetId && e.supersetId === row.supersetId)
-    check(label, !!partner && pair.length === 2 && partner.supersetId === row.supersetId, `"${day.name}" ab movement isn't supersetted with the movement before it`)
-    if (!partner) continue
-    check(label, supersetPartnerOk(getFullExercise(partner.exerciseId)), `"${day.name}" pairs its abs with ${partner.name}, which is too heavy to superset`)
-    check(label, partner.sets === row.sets, `"${day.name}" supersets ${partner.sets} sets of ${partner.name} with ${row.sets} of ${row.name}`)
+    check(label, core.length <= (absFocus ? 2 : 1), `"${day.name}" has ${core.length} ab movements`)
+    if (core.length === 2) check(label, core[0].exerciseId !== core[1].exerciseId, `"${day.name}" repeats ${core[0].name}`)
+    const partners = day.exercises.filter((e) => !isCoreRow(e) && supersetPartnerOk(getFullExercise(e.exerciseId)))
+    core.forEach((row, i) => {
+      const at = day.exercises.indexOf(row)
+      if (opts.core === 'end' || i >= partners.length) {
+        check(label, at >= day.exercises.length - core.length && !row.supersetId, `"${day.name}" has ${row.name} at ${at + 1} of ${day.exercises.length}, not last`)
+        return
+      }
+      const partner = day.exercises[at - 1]
+      const pair = day.exercises.filter((e) => row.supersetId && e.supersetId === row.supersetId)
+      check(label, !!partner && pair.length === 2 && partner.supersetId === row.supersetId, `"${day.name}" ab movement isn't supersetted with the movement before it`)
+      if (!partner) return
+      check(label, supersetPartnerOk(getFullExercise(partner.exerciseId)), `"${day.name}" pairs its abs with ${partner.name}, which is too heavy to superset`)
+      check(label, partner.sets === row.sets, `"${day.name}" supersets ${partner.sets} sets of ${partner.name} with ${row.sets} of ${row.name}`)
+    })
   }
 
   // ---- reps (Hani, 2026-10-02): never above 12. With no history to borrow a
@@ -360,7 +362,8 @@ function audit(label, program, summary, inputs, opts) {
       // more often than that (through other movements) keeps at least that many.
       check(label, r.sessions >= Math.min(r.sessionsBefore, FOCUS_TARGET_FREQUENCY), `focus ${r.muscle} lost sessions: ${r.sessionsBefore} → ${r.sessions}`)
       sessionsGained += Math.max(0, r.sessions - r.sessionsBefore)
-      if (r.sessionCap == null) continue
+      // Ab sets sit outside the cap and follow their superset partner's count.
+      if (r.sessionCap == null || r.muscle === 'Abs' || r.muscle === 'Obliques') continue
       for (const day of training) {
         const own = day.exercises.filter((e) => e.slot?.muscle === r.muscle).reduce((n, e) => n + e.sets, 0)
         check(label, own <= r.sessionCap, `"${day.name}" gives focus ${r.muscle} ${own} sets, its per-session cap is ${r.sessionCap}`)
@@ -385,7 +388,9 @@ function audit(label, program, summary, inputs, opts) {
   if (opts.focus.length) {
     for (const day of training) {
       if (!day.exercises.some((e) => opts.focus.includes(e.slot?.muscle))) continue
-      const targets = day.exercises.map((e) => opts.focus.filter((m) => hitsMuscle(e, m, 0.5)))
+      // An ab focus is paired with light work rather than leading (2026-10-06).
+      const leadFocus = opts.focus.filter((m) => m !== 'Abs' && m !== 'Obliques')
+      const targets = day.exercises.map((e) => leadFocus.filter((m) => hitsMuscle(e, m, 0.5)))
       if (!targets.some((t) => t.length)) continue
       check(label, targets[0].length > 0, `"${day.name}" opens on non-focus work (${day.exercises[0].name})`)
     }
