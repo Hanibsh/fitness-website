@@ -417,6 +417,7 @@ export function parseExportText(input, { now = Date.now() } = {}) {
           return h ? train(h) : createDay('rest')
         })
       : headers.map(train)
+    program.schedule = weekly ? 'weekly' : 'rotating'
     // A shape is named for its training days; rest days holding cardio don't count.
     const settings = programLine ? readProgramLine(programLine, headers.filter((h) => !isRest(h)).length) : {}
     if (settings.volume) {

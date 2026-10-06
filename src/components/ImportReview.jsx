@@ -5,6 +5,7 @@ import { parseExportText, resolveUnmatched, measuresInUnit } from '../lib/progra
 import { PROFILE_EXPORT_FIELDS, WEEKDAY_NAMES, COACH_NOTES_HEADING } from '../lib/programExport'
 import { supersetLabels } from '../lib/workoutStats'
 import { cardioTargetText } from '../lib/cardio'
+import { scheduleMode } from '../lib/program'
 
 // Paste (or open) an exported split and see what it would bring in before
 // anything is written: the split, day by day, and each profile field as
@@ -70,6 +71,7 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
     return name == null ? p : { ...p, name: name.slice(0, 60) }
   }, [parsed, picks, name])
   const unresolved = parsed.unmatched.filter((u) => !picks[u.exId])
+  const weekly = !!program && scheduleMode(program) === 'weekly'
 
   // The file's measurements, in the units the profile already uses.
   const unit = currentProfile?.unit || parsed.profile.unit || 'kg'
@@ -154,9 +156,9 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
             className="w-full bg-cream border border-border px-3 py-2 text-text-primary text-[14px] font-heading font-medium outline-none focus:border-text-primary transition-colors mb-2"
           />
           <p className="text-[11px] text-text-light mb-3">
-            {program.days.length === 7 ? 'Fixed week' : `${program.days.length}-day rotation`} ·{' '}
+            {weekly ? 'Fixed week' : `${program.days.length}-day rotation`} ·{' '}
             {program.days.filter((d) => d.kind !== 'rest').length} training days
-            {program.days.length !== 7 && ' — a rotation comes back without its rest days, which the text leaves out (except ones holding cardio).'}
+            {!weekly && ' — a rotation comes back without its rest days, which the text leaves out (except ones holding cardio).'}
           </p>
           <div className="border border-border divide-y divide-border">
             {program.days.map((d, dayIndex) => {
@@ -168,7 +170,7 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
                   <div className="flex items-center gap-2 mb-1.5">
                     {d.kind === 'rest' ? <Moon className="w-3.5 h-3.5 text-text-light shrink-0" /> : <Dumbbell className="w-3.5 h-3.5 text-text-light shrink-0" />}
                     <span className="text-[13px] font-medium text-text-primary break-words">{d.kind === 'rest' ? 'Rest day · cardio' : d.name}</span>
-                    {program.days.length === 7 && <span className="text-[11px] text-text-light">{WEEKDAY_NAMES[dayIndex]}</span>}
+                    {weekly && <span className="text-[11px] text-text-light">{WEEKDAY_NAMES[dayIndex]}</span>}
                   </div>
                   <ul className="list-none p-0 m-0 space-y-1">
                     {d.exercises.map((e) => {

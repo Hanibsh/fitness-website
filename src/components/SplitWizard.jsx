@@ -12,7 +12,7 @@ import DayEditor from './DayEditor'
 import CardioFields from './CardioFields'
 import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus } from '../lib/program'
+import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus, scheduleMode } from '../lib/program'
 import { getHistory, saveExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
 import { fetchRemoteHistory, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { donutRows } from '../lib/planStats'
@@ -547,7 +547,7 @@ function CardioSection({ plan, onChange, program, person, client, signedIn }) {
     rest: program.days.filter((d) => d.kind === 'rest').length,
   }
   const week = weeklyCardio(program, person.weightKg)
-  const weekly = program.days.length === 7
+  const weekly = scheduleMode(program) === 'weekly'
   const pill = (active) =>
     `min-w-9 px-2.5 py-1.5 text-[12px] font-medium border cursor-pointer transition-colors ${
       active ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'

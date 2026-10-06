@@ -21,6 +21,7 @@ import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIS
 import { convertMassText, convertLengthText } from '../lib/units'
 import { sendMessage, DEV_COACH_ID } from '../lib/messages'
 import { splitCard } from '../lib/chatCards'
+import { scheduleMode } from '../lib/program'
 
 // One client: the programs written for them, and everything about them the
 // generator and the export read. Every field is optional except the name, and
@@ -166,7 +167,7 @@ export default function ClientDetail() {
     const train = prog.days.filter((d) => d.kind !== 'rest').length
     if (!prog.days.length) return 'Empty — add days'
     const days = `${train} training day${train !== 1 ? 's' : ''}`
-    return prog.days.length === 7 ? `Fixed week · ${days}` : `${prog.days.length}-day rotation · ${days}`
+    return scheduleMode(prog) === 'weekly' ? `Fixed week · ${days}` : `${prog.days.length}-day rotation · ${days}`
   }
 
   return (

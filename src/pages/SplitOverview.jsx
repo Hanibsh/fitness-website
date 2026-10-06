@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, X, Dumbbell, Moon, Trash2, Locate, FileOutput, Copy } 
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
+import ScheduleSwitch from '../components/ScheduleSwitch'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { createDay, appendDay, removeDay, moveDayTo, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork } from '../lib/program'
 import { cardioOf, cardioTargetText } from '../lib/cardio'
@@ -108,15 +109,9 @@ export default function SplitOverview() {
           )}
           <p className="text-[12px] text-text-muted mt-3">
             {trainingDays} training day{trainingDays !== 1 ? 's' : ''}
-            {isWeekly
-              ? ' · fixed weekly schedule — day 1 is Monday, day 7 is Sunday. Missing a day never shifts it.'
-              : ' · rotates in order, advancing as you log.'}
+            {isWeekly ? ' · day 1 is Monday, day 7 is Sunday' : ''}
           </p>
-          {!isWeekly && !locked && program.days.length > 0 && (
-            <p className="text-[11px] text-text-light mt-1.5">
-              Tip: make it exactly 7 days (rest days included) and it becomes a fixed weekly schedule instead.
-            </p>
-          )}
+          {program.days.length > 0 && <ScheduleSwitch program={program} locked={locked} onSwitch={(next) => update(() => next)} />}
           {trainingDays > 0 && (
             <button
               onClick={() => setExporting(true)}

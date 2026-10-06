@@ -1303,8 +1303,8 @@ function giveBack(trainingDays, total, { perWeek, targets, floors = {} }) {
 // ---- Assembling the program --------------------------------------------------
 
 // Lay the training days out over the cycle, with rest days in the gaps. A fixed
-// week comes out as exactly 7 days Mon→Sun, which is how program.js infers a
-// weekly schedule — there's no mode flag to set.
+// week comes out as exactly 7 days Mon→Sun; generateProgram stamps the chosen
+// `schedule` on it (program.js scheduleMode).
 export function buildProgram(trainingDays, { length, offsets }, name) {
   const program = emptyProgram(name)
   const byOffset = new Map(offsets.map((o, i) => [o, trainingDays[i]]))
@@ -1980,6 +1980,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   placeCore(trainingDays, inputs.core, inputs.focus)
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
+  program.schedule = inputs.schedule === 'weekly' ? 'weekly' : 'rotating'
   // What the split was built FOR, kept on it: the day cap the split editor
   // measures against, and what the wizard reopens with next time. Focus and
   // shape are kept for the NEXT program — a split runs for months, and knowing

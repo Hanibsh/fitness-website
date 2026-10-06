@@ -307,8 +307,8 @@ function weekdayIndex(ts) {
 
 // Does this history look like a FIXED WEEK — the same workouts on the same
 // weekdays, week after week? That's a different claim from "trains 4x a week",
-// and it's the one that decides whether the split should be 7 days (which is
-// how scheduleMode infers weekly) or a rotation.
+// and it's the one that decides whether the split should be a fixed week or a
+// rotation.
 //
 // Requires: at least two weeks of data, at least two distinct training
 // weekdays, every cluster landing on a consistent weekday, and no two clusters
@@ -380,9 +380,8 @@ export function programFromHistory(sessions, opts = {}) {
   const summaryDays = []
 
   if (weekly) {
-    // A fixed week is exactly 7 days, Mon→Sun, with rest in the gaps —
-    // scheduleMode reads weekly off the length alone, so there's no mode flag
-    // to set and nothing for the user to configure.
+    // A fixed week is exactly 7 days, Mon→Sun, with rest in the gaps, stamped
+    // 'weekly' (program.js scheduleMode) — nothing for the user to configure.
     const byWeekday = new Map()
     for (const p of weekly) {
       const day = days[p.index]
@@ -400,6 +399,7 @@ export function programFromHistory(sessions, opts = {}) {
           summaryDays.push(daySummary(rest, null, WEEKDAY_NAMES[wd]))
         }
       }
+      program.schedule = 'weekly'
       return { program, summary: buildSummary('weekly', program, summaryDays, inWindow, opts) }
     }
   }
@@ -420,6 +420,8 @@ export function programFromHistory(sessions, opts = {}) {
     }
   })
 
+  // Stamped, so a cycle that happens to come out 7 days long stays a rotation.
+  program.schedule = 'rotating'
   return { program, summary: buildSummary('cycle', program, summaryDays, inWindow, opts) }
 }
 

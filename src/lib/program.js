@@ -1,13 +1,14 @@
 // Training program + schedule.
 //
 // Pure, portable logic (same pattern as dashboard.js / workoutStats.js). A
-// program is an ordered list of days; HOW it schedules is inferred from its
-// shape — no mode setting for the user to understand:
+// program is an ordered list of days that schedules one of two ways —
+// `program.schedule`, chosen when it's made and switchable in the editor
+// (scheduleMode below; a split from before the field reads 7 days as weekly):
 //
-//   - Exactly 7 days ⇒ a FIXED WEEKLY schedule, day 1 = Monday … day 7 =
+//   - A FIXED WEEK is exactly 7 days, day 1 = Monday … day 7 =
 //     Sunday (rest days are ordinary rest slots among the 7). The same day
 //     always lands on the same weekday; missing a day never shifts anything.
-//   - Any other length ⇒ a rotating CYCLE: `pointer` is the index of the next
+//   - A ROTATION, any length (7 included): `pointer` is the index of the next
 //     day up. Completing a day advances the pointer (mod the cycle length).
 //     Training days WAIT for you — a missed day shifts the plan forward, it
 //     never skips a workout — while rest days pass on their own, one per
@@ -454,9 +455,58 @@ export function unpairSuperset(program, dayId, exId) {
 
 const DAY_MS = 86400000
 
-// How this program schedules — inferred from its shape, never stored.
+// How this program schedules. `program.schedule` ('weekly' | 'rotating') is
+// the user's choice, set when a split is made and by the Fixed week | Rotation
+// switch (toFixedWeek / toRotation). A fixed week still needs exactly 7 days —
+// one with a day added or removed runs as a rotation until it's 7 again.
+// Splits from before the field existed keep the old rule: 7 days ⇒ weekly.
 export function scheduleMode(program) {
-  return program?.days?.length === 7 ? 'weekly' : 'rotating'
+  const seven = program?.days?.length === 7
+  if (program?.schedule === 'rotating') return 'rotating'
+  return seven ? 'weekly' : 'rotating'
+}
+
+// A fixed week that has lost (or gained) a day: chosen weekly, running as a
+// rotation until it's back to 7.
+export function brokenFixedWeek(program) {
+  return program?.schedule === 'weekly' && program.days.length !== 7
+}
+
+// Rotation → fixed week. The training days land on `weekdays` (Mon=0 … Sun=6,
+// one per training day) in their rotation order; the gaps are filled with the
+// rotation's own rest days — so one holding cardio keeps it — then fresh ones.
+// Both are walked from the first training day on, so a rest day that followed
+// Upper in the rotation lands in the first gap after Upper in the week.
+// Returns { program, droppedCardio }: how many rest days holding cardio found
+// no gap. Null when the counts don't match.
+export function toFixedWeek(program, weekdays) {
+  const training = program.days.filter((d) => d.kind !== 'rest')
+  const picked = [...new Set(weekdays)].filter((w) => w >= 0 && w <= 6).sort((a, b) => a - b)
+  if (picked.length !== training.length) return null
+  // The rotation's rest days, in order from its first training day.
+  const start = Math.max(0, program.days.findIndex((d) => d.kind !== 'rest'))
+  const rests = [...program.days.slice(start), ...program.days.slice(0, start)].filter((d) => d.kind === 'rest')
+  // Rest days with cardio first, so they're the ones that find a gap.
+  const pool = [...rests.filter((d) => d.exercises?.length), ...rests.filter((d) => !d.exercises?.length)]
+  const gapDays = [0, 1, 2, 3, 4, 5, 6]
+    .map((i) => ((picked[0] ?? 0) + 1 + i) % 7)
+    .filter((wd) => !picked.includes(wd))
+  const kept = new Set(pool.slice(0, gapDays.length))
+  const reused = rests.filter((d) => kept.has(d)) // back in rotation order
+  const fill = new Map(gapDays.map((wd, i) => [wd, reused[i] || createDay('rest')]))
+  const days = []
+  let t = 0
+  for (let wd = 0; wd < 7; wd++) days.push(picked.includes(wd) ? training[t++] : fill.get(wd))
+  const droppedCardio = pool.slice(gapDays.length).filter((d) => d.exercises?.length).length
+  return { program: { ...program, days, schedule: 'weekly', pointer: 0, updatedAt: Date.now() }, droppedCardio }
+}
+
+// Fixed week → rotation: the 7 days keep their order and today's weekday is
+// up next, so nothing jumps on the day you switch.
+export function toRotation(program, { now = Date.now() } = {}) {
+  const rotating = { ...program, schedule: 'rotating', updatedAt: Date.now() }
+  const today = program.days.length === 7 ? program.days[mondayIndex(now)] : null
+  return today ? setPointerToDay(rotating, today.id, { now }) : rotating
 }
 
 // Monday-first weekday index (Mon=0 … Sun=6), matching the weekly-streak

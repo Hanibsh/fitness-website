@@ -5,6 +5,7 @@ import ConfirmModal from './ConfirmModal'
 import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { useCoachAccess } from '../lib/useClientsState'
 import { isLockedProgram } from '../lib/coachSync'
+import { scheduleMode } from '../lib/program'
 
 // Your saved splits: drag to reorder (the ⋮⋮ grip), with Set active / Duplicate / Delete, and a
 // tap-through to the full-page editor at /split/:id. Lives on the Programs page
@@ -25,13 +26,13 @@ export default function SplitList({ programs }) {
     navigate(`/split/${copy.id}`)
   }
 
-  // "Fixed week · 4 training days" / "5-day rotation · 3 training days" — the
-  // same 7-days-means-weekly rule as scheduleMode in lib/program.js.
+  // "Fixed week · 4 training days" / "5-day rotation · 3 training days" —
+  // scheduleMode in lib/program.js decides which.
   function shapeLabel(p) {
     if (!p.days.length) return 'Empty — add days'
     const train = p.days.filter((d) => d.kind !== 'rest').length
     const days = `${train} training day${train !== 1 ? 's' : ''}`
-    return p.days.length === 7 ? `Fixed week · ${days}` : `${p.days.length}-day rotation · ${days}`
+    return scheduleMode(p) === 'weekly' ? `Fixed week · ${days}` : `${p.days.length}-day rotation · ${days}`
   }
 
   return (
