@@ -201,7 +201,7 @@ export default function ChatProfile({ name, about, media, onClose }) {
               (about.loading ? (
                 <p className="text-[13px] text-text-muted">Loading…</p>
               ) : (
-                <ProgressView sessions={sessions} bodyweight={bodyweight} weekly={weekly} targets={about.targets || null} unit={about.unit} />
+                <ProgressView sessions={sessions} bodyweight={bodyweight} weekly={weekly} targets={about.targets || null} unit={about.unit} compareKey={about.compareKey} />
               ))}
             {tab === 'split' &&
               (about.loading ? (

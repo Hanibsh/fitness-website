@@ -37,6 +37,10 @@ export function topLiftChange(sessions = [], unit = 'kg', rangeId = '3m') {
 }
 
 // ---- Compare: several lines on one chart -------------------------------------------
+// Where Compare remembers its picks on this device: your own, or — given a
+// client card's id — that client's, so each client keeps their own lines.
+export const compareStoreKey = (cardId) => (cardId ? `leon_progress_compare:${cardId}` : 'leon_progress_compare')
+
 // `lines`: [{ id, label, unit, points: [{ date, value }] }], points oldest first.
 // Lines that share a unit keep their real values on one axis; mixed units are
 // each drawn as % change from their own first point in the range — one axis,

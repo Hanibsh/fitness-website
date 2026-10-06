@@ -17,6 +17,7 @@ import {
 import { useLinkedClient } from '../lib/useClientData'
 import { useClientNotes, useClientTargets } from '../lib/useCoachNotes'
 import { pickTargets } from '../lib/useDailyTargets'
+import { compareStoreKey } from '../lib/progress'
 import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/engine'
 import { loggedExerciseNames, convertWeight } from '../lib/workoutStats'
 import { sessionStats } from '../lib/workoutStore'
@@ -89,6 +90,7 @@ export default function ClientTraining() {
             weekly={data.weekly || []}
             targets={pickTargets(targets, null)}
             unit={data.profile?.unit === 'lbs' ? 'lbs' : 'kg'}
+            compareKey={compareStoreKey(client.id)}
           />
         </section>
       ) : (

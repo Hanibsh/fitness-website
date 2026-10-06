@@ -8,6 +8,7 @@ import { copyOfSharedSplit } from '../lib/chatCards'
 import { useLinkedClient } from '../lib/useClientData'
 import { useClientCheckins, useClientTargets } from '../lib/useCoachNotes'
 import { pickTargets } from '../lib/useDailyTargets'
+import { compareStoreKey } from '../lib/progress'
 
 // The coach's chat with one linked client — /coach/:clientId/messages. The
 // programs written for them are there to share; a split they share can be
@@ -41,6 +42,8 @@ export default function ClientMessages() {
     targets: pickTargets(targets, null),
     annotations: data?.annotations || [],
     unit: data?.profile?.unit === 'lbs' ? 'lbs' : 'kg',
+    // Compare keeps this client's own lines, same as on their page.
+    compareKey: client ? compareStoreKey(client.id) : undefined,
     program,
     splitPath: yours ? `/coach/${client.id}/split/${program.id}` : null,
     checkins,

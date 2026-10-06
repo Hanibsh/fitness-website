@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import ExerciseSelect from './ExerciseSelect'
-import { compareLines, valueAt } from '../lib/progress'
+import { compareLines, compareStoreKey, valueAt } from '../lib/progress'
 import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
 
 // Two or more of the Progress lines on one chart — a lift's est. 1RM next to
@@ -14,11 +14,10 @@ import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
 // Up to four lines: the first four chart-series colours, which every theme
 // re-picks (index.css --color-series-*). A line keeps its colour until it's
 // switched off, so removing one never repaints the others. The picks are
-// remembered on this device.
+// remembered on this device, under `storeKey` (lib/progress.js compareStoreKey).
 
 const MAX_LINES = 4
 const SLOT_CLASS = ['text-series-1', 'text-series-2', 'text-series-3', 'text-series-4']
-const STORE = 'leon_progress_compare'
 // Lines this dense are drawn without their dots — a year of weigh-ins would
 // otherwise be a smear.
 const DOTS_UP_TO = 30
@@ -31,9 +30,9 @@ const axisDate = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'sh
 const liftId = (name) => `lift:${name}`
 
 // One entry per colour slot: an id or null. null = never picked here.
-function readPicks() {
+function readPicks(key) {
   try {
-    const v = JSON.parse(localStorage.getItem(STORE))
+    const v = JSON.parse(localStorage.getItem(key))
     if (!Array.isArray(v)) return null
     return Array.from({ length: MAX_LINES }, (_, i) => (typeof v[i] === 'string' ? v[i] : null))
   } catch {
@@ -44,8 +43,14 @@ function readPicks() {
 // `metrics`: the body and food lines this person has ever logged,
 // [{ id, label, unit, points }] for the chosen range. `lifts`: logged lift
 // names, most-trained first. `liftSeries(name)`: that lift's est. 1RM points.
-export default function CompareChart({ metrics, lifts, liftSeries, unit }) {
-  const [stored, setStored] = useState(readPicks)
+export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKey = compareStoreKey() }) {
+  const [stored, setStored] = useState(() => readPicks(storeKey))
+  // Another client's page reuses this chart: their own picks, not the last one's.
+  const [storedFor, setStoredFor] = useState(storeKey)
+  if (storedFor !== storeKey) {
+    setStoredFor(storeKey)
+    setStored(readPicks(storeKey))
+  }
   const [addingLift, setAddingLift] = useState(false)
   const [hovered, setHovered] = useState(null) // a date
 
@@ -86,7 +91,7 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit }) {
     }
     setStored(next)
     try {
-      localStorage.setItem(STORE, JSON.stringify(next))
+      localStorage.setItem(storeKey, JSON.stringify(next))
     } catch {
       // no storage — the picks just aren't remembered
     }

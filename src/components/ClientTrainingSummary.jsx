@@ -1,17 +1,23 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import MiniStat from './MiniStat'
 import StatusChip from './StatusChip'
+import CompareChart from './CompareChart'
+import RangeTabs from './RangeTabs'
 import { planAdherence } from '../lib/dashboardInsights'
 import { lastWorkoutLabel, noTrainingFlag, weightTrend } from '../lib/coachStats'
+import { compareStoreKey } from '../lib/progress'
+import { useProgressLines } from '../lib/useProgressLines'
 
 const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus }
+const NONE = []
 
 // A linked client's week at a glance: on their page (ClientDetail), with the
 // whole picture one tap away, and heading that picture (ClientTraining,
-// `hideOpen`).
-export default function ClientTrainingSummary({ clientId, data, loading, hideOpen = false }) {
+// `hideOpen`). `withChart` adds Compare under the numbers — any of their
+// lines side by side (ClientDetail).
+export default function ClientTrainingSummary({ clientId, data, loading, hideOpen = false, withChart = false }) {
   const now = useMemo(() => Date.now(), [])
   const unit = data?.profile?.unit === 'lbs' ? 'lbs' : 'kg'
   const adherence = useMemo(
@@ -70,8 +76,28 @@ export default function ClientTrainingSummary({ clientId, data, loading, hideOpe
               }
             />
           </div>
+          {withChart && <Compare clientId={clientId} data={data} unit={unit} />}
         </>
       )}
     </section>
+  )
+}
+
+// Two to four of their lines on one chart — a lift's strength, bodyweight,
+// body fat, calories — over a range you pick. Each client keeps their own picks.
+function Compare({ clientId, data, unit }) {
+  const [rangeId, setRangeId] = useState('3m')
+  const { lifts, liftSeries, metrics } = useProgressLines({ sessions: data.sessions, bodyweight: data.bodyweight, weekly: data.weekly || NONE, unit, rangeId })
+  return (
+    <div className="border-t border-border mt-6 pt-6">
+      {lifts.length + metrics.length >= 2 ? (
+        <>
+          <RangeTabs value={rangeId} onChange={setRangeId} className="mb-5" />
+          <CompareChart metrics={metrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareStoreKey(clientId)} />
+        </>
+      ) : (
+        <p className="text-[13px] text-text-muted">The chart shows once they log lifts, weigh-ins or food.</p>
+      )}
+    </div>
   )
 }

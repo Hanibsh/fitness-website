@@ -203,7 +203,7 @@ export default function ClientDetail() {
           unlink={unlink}
           unread={linked ? unread[link.client_id] || 0 : 0}
         />
-        {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
+        {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} withChart />}
 
         {/* ---- Programs ------------------------------------------------------ */}
         <section className={cardCls}>

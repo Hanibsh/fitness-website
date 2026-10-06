@@ -1,26 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TrendingUp } from 'lucide-react'
 import MiniStat from './MiniStat'
 import ExerciseSelect from './ExerciseSelect'
 import ProgressChart from './ProgressChart'
 import CompareChart from './CompareChart'
-import { buildSeries, bodyweightSeries, metricById } from '../lib/workoutStats'
+import RangeTabs from './RangeTabs'
+import { buildSeries, metricById } from '../lib/workoutStats'
 import { recentPRs } from '../lib/dashboard'
 import { weightTrend } from '../lib/coachStats'
-import { liftsByUse } from '../lib/progress'
-import { intakeAverages, bodyFatTrend, weeklySeries, leanMassSeries } from '../lib/weeklyLog'
-
-const DAY = 86400000
-
-// One range for the whole view. Each id is one the lift and bodyweight series
-// both know (workoutStats RANGES / BODYWEIGHT_RANGES).
-const PROGRESS_RANGES = [
-  { id: '1m', label: '1M', days: 30 },
-  { id: '3m', label: '3M', days: 91 },
-  { id: '6m', label: '6M', days: 182 },
-  { id: '1y', label: '1Y', days: 365 },
-  { id: 'all', label: 'All', days: Infinity },
-]
+import { useProgressLines } from '../lib/useProgressLines'
+import { intakeAverages, bodyFatTrend } from '../lib/weeklyLog'
 
 const round1 = (v) => Math.round(v * 10) / 10
 const signed = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('en-US')}`
@@ -71,13 +60,11 @@ function Chart({ title, points, unit, empty, target = null, sub = null }) {
 //
 // `weekly`: their weekly food log (lib/weeklyLog.js); `targets`: calories and
 // protein a day to aim for (lib/useDailyTargets.js pickTargets), or null.
-export default function ProgressView({ sessions = [], bodyweight = [], weekly = [], targets = null, unit = 'kg' }) {
+// `compareKey`: where Compare remembers its picks (lib/progress.js
+// compareStoreKey) — one per client on the coach's side.
+export default function ProgressView({ sessions = [], bodyweight = [], weekly = [], targets = null, unit = 'kg', compareKey }) {
   const [rangeId, setRangeId] = useState('3m')
-  const range = PROGRESS_RANGES.find((r) => r.id === rangeId)
-  const now = useMemo(() => Date.now(), [])
-  const cutoff = range.days === Infinity ? 0 : now - range.days * DAY
-
-  const lifts = useMemo(() => liftsByUse(sessions), [sessions])
+  const { range, now, cutoff, lifts, weightPoints, food, liftSeries, metrics: compareMetrics } = useProgressLines({ sessions, bodyweight, weekly, unit, rangeId })
   const [lift, setLift] = useState('')
   useEffect(() => {
     if (lifts.length && !lifts.includes(lift)) setLift(lifts[0])
@@ -95,52 +82,11 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
     () => (lift ? buildSeries(sessions, lift, metricById('e1rm'), rangeId, unit) : []),
     [sessions, lift, rangeId, unit]
   )
-  const weightPoints = useMemo(() => bodyweightSeries(bodyweight, rangeId, unit), [bodyweight, rangeId, unit])
-  const food = useMemo(
-    () => ({
-      fat: weeklySeries(weekly, 'bodyFat', cutoff),
-      lean: leanMassSeries(weekly, bodyweight, unit, cutoff),
-      calories: weeklySeries(weekly, 'calories', cutoff),
-      protein: weeklySeries(weekly, 'protein', cutoff),
-    }),
-    [weekly, bodyweight, unit, cutoff]
-  )
   const targetLine = (n, unitLabel) => (n ? `Dashed: target ${withUnit(n, unitLabel)}` : null)
-
-  // What Compare can draw: any logged lift's est. 1RM, and each body or food
-  // line this person has ever logged (in or out of this range).
-  const liftSeries = useCallback((name) => buildSeries(sessions, name, metricById('e1rm'), rangeId, unit), [sessions, rangeId, unit])
-  const compareMetrics = useMemo(
-    () =>
-      [
-        { id: 'bw', label: 'Bodyweight', unit, points: weightPoints, ever: bodyweight.length > 0 },
-        { id: 'fat', label: 'Body fat', unit: '%', points: food.fat, ever: weeklySeries(weekly, 'bodyFat').length > 0 },
-        { id: 'lean', label: 'Lean mass', unit, points: food.lean, ever: leanMassSeries(weekly, bodyweight, unit).length > 0 },
-        { id: 'cal', label: 'Calories', unit: 'cal', points: food.calories, ever: weeklySeries(weekly, 'calories').length > 0 },
-        { id: 'protein', label: 'Protein', unit: 'g', points: food.protein, ever: weeklySeries(weekly, 'protein').length > 0 },
-      ]
-        .filter((m) => m.ever)
-        .map(({ ever: _ever, ...m }) => m),
-    [weightPoints, food, weekly, bodyweight, unit]
-  )
 
   return (
     <div>
-      <div className="flex border border-border mb-5" role="group" aria-label="Time range">
-        {PROGRESS_RANGES.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => setRangeId(r.id)}
-            aria-pressed={r.id === rangeId}
-            className={`flex-1 py-1.5 text-[12px] font-medium border-none cursor-pointer transition-colors ${
-              r.id === rangeId ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
+      <RangeTabs value={rangeId} onChange={setRangeId} className="mb-5" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-7">
         <MiniStat label="Workouts" value={stats.workouts} />
@@ -169,7 +115,7 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
 
       <div className="space-y-7">
         {lifts.length + compareMetrics.length >= 2 && (
-          <CompareChart metrics={compareMetrics} lifts={lifts} liftSeries={liftSeries} unit={unit} />
+          <CompareChart metrics={compareMetrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareKey} />
         )}
         <div>
           {lifts.length > 0 && (
