@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Plus, SendHorizontal, X, Trash2, Loader2, Reply, Image as ImageIcon, Dumbbell, CalendarRange, Activity } from 'lucide-react'
+import { Plus, SendHorizontal, X, Trash2, Loader2, Reply, Image as ImageIcon, Dumbbell, CalendarRange, Activity, ChevronRight } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
 import Modal from './Modal'
 import ChatCard from './ChatCard'
+import ChatProfile from './ChatProfile'
 import ExercisePicker from './ExercisePicker'
 import { useChat } from '../lib/useChat'
 import { prepareMedia, MESSAGE_MAX, REACTIONS } from '../lib/messages'
@@ -77,7 +78,10 @@ function PickerList({ title, empty, items, onClose }) {
 // photo or video, an exercise, one of `splits`, or a workout from `sessions`
 // ({ list, unit }) — each only offered when the page passes it. `saveSplit`
 // and `sentSplitPath`: see ChatCard.
-export default function Chat({ coachId, clientId, meId, otherName, splits = null, sessions = null, saveSplit = null, sentSplitPath = null }) {
+//
+// The page's title is drawn here: `title`, tapped, opens the profile panel
+// (ChatProfile) with `about` and this chat's photos and videos.
+export default function Chat({ coachId, clientId, meId, otherName, title = otherName, about = null, splits = null, sessions = null, saveSplit = null, sentSplitPath = null }) {
   const { messages, loading, error, send, remove, react, typing, otherTyping, urlFor } = useChat(coachId, clientId, meId)
   const [text, setText] = useState('')
   // What goes with the text: { media } (a prepared file + preview URL) or { card }.
@@ -98,6 +102,15 @@ export default function Chat({ coachId, clientId, meId, otherName, splits = null
 
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
   const lastMineId = useMemo(() => [...messages].reverse().find((m) => m.sender_id === meId)?.id || null, [messages, meId])
+  const [profileOpen, setProfileOpen] = useState(false)
+  const sharedMedia = useMemo(
+    () =>
+      messages
+        .filter((m) => m.media_path && m.media_type)
+        .map((m) => ({ id: m.id, type: m.media_type, url: urlFor(m), date: m.created_at }))
+        .reverse(),
+    [messages, urlFor]
+  )
   const media = attachment?.media || null
 
   // Tracks the composer's height (an attachment preview or a long message
@@ -208,6 +221,21 @@ export default function Chat({ coachId, clientId, meId, otherName, splits = null
 
   return (
     <div className="flex flex-col">
+      {about ? (
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          className="self-start text-left bg-transparent border-none cursor-pointer p-0 mb-2 group"
+        >
+          <span className="flex items-center gap-1 font-heading text-3xl font-medium text-text-primary break-words">
+            {title} <ChevronRight className="w-6 h-6 shrink-0 text-text-light group-hover:text-text-primary transition-colors" />
+          </span>
+          <span className="block text-[12px] text-text-muted mt-0.5">Progress, split, media</span>
+        </button>
+      ) : (
+        <h1 className="font-heading text-3xl font-medium text-text-primary mb-2 break-words">{title}</h1>
+      )}
+      {profileOpen && about && <ChatProfile name={title} about={about} media={sharedMedia} onClose={() => setProfileOpen(false)} />}
       <div className="space-y-1.5 pb-4">
         {loading && <p className="text-[13px] text-text-muted">Loading…</p>}
         {error && <p className="text-[13px] text-red-600">{error}</p>}

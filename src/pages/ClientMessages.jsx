@@ -5,18 +5,40 @@ import { linkForCard } from '../lib/coach'
 import { withProgram } from '../lib/clients'
 import { DEV_COACH_ID } from '../lib/messages'
 import { copyOfSharedSplit } from '../lib/chatCards'
+import { useLinkedClient } from '../lib/useClientData'
+import { useClientCheckins } from '../lib/useCoachNotes'
 
 // The coach's chat with one linked client — /coach/:clientId/messages. The
 // programs written for them are there to share; a split they share can be
-// kept as one of their programs, to edit and send back.
+// kept as one of their programs, to edit and send back. Their name opens
+// their progress, split, check-ins and the chat's media.
 export default function ClientMessages() {
   const { clientId } = useParams()
   const { user, clients, links, updateClient } = useOutletContext()
   const client = clients.find((c) => c.id === clientId) || null
   const { state, link } = linkForCard(links, clientId)
+  const { data, loading } = useLinkedClient(clientId)
+  const checkins = useClientCheckins(state === 'linked' ? link.client_id : null)
   const name = client?.name || 'Client'
   // Signed out, only the dev sample gets here (CoachLayout's gate).
   const coachId = user?.id || DEV_COACH_ID
+
+  // Their current split opens in your editor only when it's one you sent.
+  const program = data?.program || null
+  const yours = program && client?.programs.some((p) => p.id === program.id)
+  const about = {
+    since: link?.accepted_at || null,
+    sinceLabel: 'Client since',
+    loading: loading || !data,
+    sessions: data?.sessions || [],
+    bodyweight: data?.bodyweight || [],
+    annotations: data?.annotations || [],
+    unit: data?.profile?.unit === 'lbs' ? 'lbs' : 'kg',
+    program,
+    splitPath: yours ? `/coach/${client.id}/split/${program.id}` : null,
+    checkins,
+    checkinsPath: client ? `/coach/${client.id}` : null,
+  }
 
   async function saveSplit(program) {
     const copy = copyOfSharedSplit(program)
@@ -32,7 +54,6 @@ export default function ClientMessages() {
       >
         <ArrowLeft className="w-3.5 h-3.5" /> {client ? `Back to ${name}` : 'All clients'}
       </Link>
-      <h1 className="font-heading text-3xl font-medium text-text-primary mb-2 break-words">{name}</h1>
       {state === 'linked' ? (
         // -mb-24 cancels the coach frame's bottom padding, so the composer
         // sits on the bottom edge rather than floating above a gap.
@@ -42,14 +63,18 @@ export default function ClientMessages() {
             clientId={link.client_id}
             meId={coachId}
             otherName={name}
+            about={about}
             splits={client?.programs || []}
             saveSplit={client ? saveSplit : null}
           />
         </div>
       ) : (
-        <p className="text-[13px] text-text-muted">
-          {client ? `Link ${name}’s account to message them.` : 'That client couldn’t be found.'}
-        </p>
+        <>
+          <h1 className="font-heading text-3xl font-medium text-text-primary mb-2 break-words">{name}</h1>
+          <p className="text-[13px] text-text-muted">
+            {client ? `Link ${name}’s account to message them.` : 'That client couldn’t be found.'}
+          </p>
+        </>
       )}
     </>
   )

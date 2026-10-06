@@ -70,6 +70,15 @@ check('workout label', cards.cardLabel(workout) === 'Workout: Upper')
 const ci = cards.checkinCard({ week_start: '2026-10-05', answers: { sleep: 4 } }, { updated: true })
 check('check-in card', ci.type === 'checkin' && ci.answers.sleep === 4 && cards.cardLabel(ci) === 'Check-in updated')
 
+// ---- Lifts by use ------------------------------------------------------------------
+const withRow = (id, date, names) => ({ id, date, exercises: names.map((n) => ({ name: n, kind: n === 'Incline Walk' ? 'cardio' : 'strength', sets: [] })) })
+const lifts = cards.liftsByUse([
+  withRow('1', now - 3 * DAY, ['Squat', 'Bench Press']),
+  withRow('2', now - 2 * DAY, ['bench press', 'Incline Walk']),
+  withRow('3', now - DAY, ['Row', 'Row']),
+])
+check('most-trained lift first, cardio out, a repeat counts once', JSON.stringify(lifts) === JSON.stringify(['bench press', 'Row', 'Squat']), JSON.stringify(lifts))
+
 // ---- Unknown -----------------------------------------------------------------------
 check('unknown card is not a card', !cards.isCard({ type: 'poll' }) && !cards.isCard(null))
 check('unknown card still labels', cards.cardLabel({ type: 'poll' }) === 'Shared item')

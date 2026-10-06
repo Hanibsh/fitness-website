@@ -49,30 +49,39 @@ function ActionRow({ children, ...props }) {
 // sent, open it where it already is).
 export function SplitPreview({ program, footer, onClose }) {
   const model = useMemo(() => buildExportModel({ program }), [program])
-  const prefs = { ...DEFAULT_EXPORT_PREFS, weights: false }
   return (
     <Modal onClose={onClose} maxWidth="max-w-xl">
       <div className="p-6 sm:p-8">
         <h2 className="font-heading text-2xl font-medium text-text-primary pr-8 break-words">{model.title}</h2>
         {model.programLine && <p className="text-[13px] text-text-muted mt-1">{model.programLine}</p>}
-        <div className="space-y-6 mt-6">
-          {model.days.map((day) => (
-            <div key={day.id}>
-              <h3 className="text-[13px] font-medium text-text-primary mb-2">{dayHeading(day)}</h3>
-              <ol className="space-y-1.5 list-none p-0 m-0">
-                {day.rows.map((r) => (
-                  <li key={r.number} className="text-[13px] text-text-secondary break-words">
-                    <span className="text-text-light tabular-nums">{r.number}.</span> {r.parts.map((p) => partText(p, prefs)).join(' + ')}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-          {!model.days.length && <p className="text-[13px] text-text-muted">No days in it yet.</p>}
-        </div>
+        <SplitDays program={program} className="mt-6" />
         {footer && <div className="mt-6 pt-5 border-t border-border">{footer}</div>}
       </div>
     </Modal>
+  )
+}
+
+// A split's days, each with its numbered movements — the export's text, laid
+// out. Also the chat profile's Split tab.
+export function SplitDays({ program, className = '' }) {
+  const model = useMemo(() => buildExportModel({ program }), [program])
+  const prefs = { ...DEFAULT_EXPORT_PREFS, weights: false }
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {model.days.map((day) => (
+        <div key={day.id}>
+          <h3 className="text-[13px] font-medium text-text-primary mb-2">{dayHeading(day)}</h3>
+          <ol className="space-y-1.5 list-none p-0 m-0">
+            {day.rows.map((r) => (
+              <li key={r.number} className="text-[13px] text-text-secondary break-words">
+                <span className="text-text-light tabular-nums">{r.number}.</span> {r.parts.map((p) => partText(p, prefs)).join(' + ')}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      {!model.days.length && <p className="text-[13px] text-text-muted">No days in it yet.</p>}
+    </div>
   )
 }
 
