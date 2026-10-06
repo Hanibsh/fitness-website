@@ -42,34 +42,30 @@ export function topLiftChange(sessions = [], unit = 'kg', rangeId = '3m') {
 export const compareStoreKey = (cardId) => (cardId ? `leon_progress_compare:${cardId}` : 'leon_progress_compare')
 
 // `lines`: [{ id, label, unit, points: [{ date, value }] }], points oldest first.
-// Lines that share a unit keep their real values on one axis; mixed units are
-// each drawn as % change from their own first point in the range — one axis,
-// never two. Lines with nothing to draw are left out (they're still picked).
+// Every line keeps its real values. Lines that share a unit share a scale; each
+// other unit gets its own strip, all strips on one timeline — never two scales
+// on one plot (where they'd cross would be an accident of the scales) and never
+// % change. Lines with nothing to draw are left out (they're still picked).
 //
-// Returns { mode: 'value' | 'pct', unit, lines: [{ ...line, plot, change }] }:
-// `plot` is [{ date, value, y }] (`y` is what's drawn), `change` is the last
-// point against the first, in the line's unit or in % to match the axis.
+// Returns { mode: 'value' | 'strips', unit, strips: [{ unit, lines }], lines }:
+// one strip per unit, in the order the lines came in; `unit` only when there's
+// one. Each line gains `plot` ([{ date, value }]) and `change` (the last point
+// against the first, in its unit).
 export function compareLines(lines = []) {
-  const drawable = lines.filter((l) => l.points?.length)
-  const units = new Set(drawable.map((l) => l.unit))
-  const mode = units.size > 1 ? 'pct' : 'value'
   const round1 = (v) => Math.round(v * 10) / 10
-  const out = []
-  for (const line of drawable) {
-    if (mode === 'value') {
-      const plot = line.points.map((p) => ({ date: p.date, value: p.value, y: p.value }))
-      const change = plot.length >= 2 ? round1(plot[plot.length - 1].value - plot[0].value) : null
-      out.push({ ...line, plot, change })
-      continue
-    }
-    // % change needs a base above zero: start from the first point that has one.
-    const start = line.points.findIndex((p) => p.value > 0)
-    if (start === -1) continue
-    const base = line.points[start].value
-    const plot = line.points.slice(start).map((p) => ({ date: p.date, value: p.value, y: ((p.value - base) / base) * 100 }))
-    out.push({ ...line, plot, change: plot.length >= 2 ? round1(plot[plot.length - 1].y) : null })
+  const out = lines
+    .filter((l) => l.points?.length)
+    .map((line) => {
+      const plot = line.points.map((p) => ({ date: p.date, value: p.value }))
+      return { ...line, plot, change: plot.length >= 2 ? round1(plot[plot.length - 1].value - plot[0].value) : null }
+    })
+  const strips = []
+  for (const line of out) {
+    const strip = strips.find((s) => s.unit === line.unit)
+    if (strip) strip.lines.push(line)
+    else strips.push({ unit: line.unit, lines: [line] })
   }
-  return { mode, unit: mode === 'pct' ? '%' : [...units][0] || null, lines: out }
+  return { mode: strips.length > 1 ? 'strips' : 'value', unit: strips.length === 1 ? strips[0].unit : null, strips, lines: out }
 }
 
 // A line's reading on a date: its latest point on or before it, or null.

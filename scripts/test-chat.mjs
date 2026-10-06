@@ -98,25 +98,30 @@ const sameUnit = progress.compareLines([
   { id: 'lift', unit: 'kg', points: pts(100, 105, 110) },
   { id: 'bw', unit: 'kg', points: pts(80, 81) },
 ])
-check('same unit keeps real values', sameUnit.mode === 'value' && sameUnit.unit === 'kg' && sameUnit.lines[0].plot[2].y === 110)
+check('same unit keeps real values', sameUnit.mode === 'value' && sameUnit.unit === 'kg' && sameUnit.lines[0].plot[2].value === 110)
+check('same unit is one strip', sameUnit.strips.length === 1 && sameUnit.strips[0].lines.length === 2)
 check('same unit change in the unit', sameUnit.lines[0].change === 10 && sameUnit.lines[1].change === 1)
 const mixed = progress.compareLines([
   { id: 'bw', unit: 'kg', points: pts(80, 84) },
   { id: 'cal', unit: 'cal', points: pts(2500, 2000) },
   { id: 'fat', unit: '%', points: [] },
 ])
-check('mixed units go to % change', mixed.mode === 'pct' && mixed.unit === '%')
-check('each line starts at 0%', mixed.lines.every((l) => l.plot[0].y === 0))
-check('% change keeps the real value', mixed.lines[0].plot[1].value === 84 && mixed.lines[0].change === 5 && mixed.lines[1].change === -20, JSON.stringify(mixed.lines.map((l) => l.change)))
+check('mixed units go to strips', mixed.mode === 'strips' && mixed.unit === null && mixed.strips.map((s) => s.unit).join() === 'kg,cal')
+check('strips keep real values and changes', mixed.lines[0].plot[1].value === 84 && mixed.lines[0].change === 4 && mixed.lines[1].change === -500, JSON.stringify(mixed.lines.map((l) => l.change)))
 check('a line with no points is left out', mixed.lines.length === 2)
-const zeroStart = progress.compareLines([
+const grouped = progress.compareLines([
+  { id: 'lift', unit: 'kg', points: pts(100, 110) },
+  { id: 'fat', unit: '%', points: pts(19, 16) },
+  { id: 'bw', unit: 'kg', points: pts(84, 82) },
+])
+check('a unit shares one strip, first-picked first', grouped.strips.map((s) => `${s.unit}:${s.lines.map((l) => l.id)}`).join(' ') === 'kg:lift,bw %:fat')
+const single = progress.compareLines([
   { id: 'cal', unit: 'cal', points: pts(0, 2000, 2200) },
   { id: 'bw', unit: 'kg', points: pts(80) },
 ])
-check('a zero first value is skipped as the base', zeroStart.lines[0].plot.length === 2 && zeroStart.lines[0].change === 10)
-check('a single point has no change', zeroStart.lines[1].change === null)
-check('all zeros draws nothing', progress.compareLines([{ id: 'a', unit: 'g', points: pts(0, 0) }, { id: 'b', unit: 'kg', points: pts(1) }]).lines.length === 1)
-check('nothing to compare', progress.compareLines([]).lines.length === 0)
+check('zeros are real values', single.lines[0].plot.length === 3 && single.lines[0].change === 2200)
+check('a single point has no change', single.lines[1].change === null)
+check('nothing to compare', progress.compareLines([]).lines.length === 0 && progress.compareLines([]).strips.length === 0)
 
 const series = pts(1, 2, 3)
 check('valueAt: before the first point', progress.valueAt(series, series[0].date - 1) === null)

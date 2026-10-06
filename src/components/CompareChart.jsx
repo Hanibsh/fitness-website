@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import ExerciseSelect from './ExerciseSelect'
 import { compareLines, compareStoreKey, valueAt } from '../lib/progress'
-import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
+import { W, niceTicks, useChartAxis } from '../lib/chartAxis'
 
 // Two or more of the Progress lines on one chart — a lift's est. 1RM next to
 // bodyweight, calories next to body fat. Chips pick the lines; the rows under
 // the chart read them out (latest, or on the tapped date).
 //
-// Lines that share a unit keep their real values; mixed units are each drawn as
-// % change from their own start (lib/progress.js compareLines) — one axis.
+// Every line keeps its real values. Lines that share a unit share a scale;
+// mixed units stack as strips, one per unit, on one timeline with one shared
+// crosshair (lib/progress.js compareLines) — never two scales on one plot.
 //
 // Up to four lines: the first four chart-series colours, which every theme
 // re-picks (index.css --color-series-*). A line keeps its colour until it's
@@ -21,6 +22,10 @@ const SLOT_CLASS = ['text-series-1', 'text-series-2', 'text-series-3', 'text-ser
 // Lines this dense are drawn without their dots — a year of weigh-ins would
 // otherwise be a smear.
 const DOTS_UP_TO = 30
+// A stacked strip's height on screen, at any width; the last one adds its
+// date row.
+const STRIP_PX = 116
+const DATE_ROW_PX = 20
 
 const round1 = (v) => Math.round(v * 10) / 10
 const signed = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('en-US')}`
@@ -102,10 +107,7 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-2">
-        <div className="min-w-0">
-          <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-light">Compare</h3>
-          {chart.mode === 'pct' && <p className="text-[11px] text-text-light mt-0.5">% change since the start</p>}
-        </div>
+        <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-light">Compare</h3>
         {hovered != null && <p className="shrink-0 text-[12px] text-text-muted tabular-nums">{shortDate(hovered)}</p>}
       </div>
 
@@ -169,10 +171,9 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
           {picked.map((p) => {
             const line = chart.lines.find((l) => l.id === p.id)
             const at = line && (hovered != null ? valueAt(line.plot, hovered) : line.plot[line.plot.length - 1])
-            // Not hovering: the change over the range. Hovering: in % mode,
-            // where that point sits against the start.
-            const delta = !line ? null : hovered != null ? (chart.mode === 'pct' && at ? round1(at.y) : null) : line.change
-            const deltaUnit = chart.mode === 'pct' || p.unit === '%' ? '%' : ` ${p.unit}`
+            // The change over the range — not while reading one date.
+            const delta = !line || hovered != null ? null : line.change
+            const deltaUnit = p.unit === '%' ? '%' : ` ${p.unit}`
             return (
               <li key={p.id} className="flex items-baseline gap-2 text-[12px] min-w-0">
                 <span className={`w-3.5 h-0.5 shrink-0 self-center bg-current ${SLOT_CLASS[p.slot]}`} aria-hidden="true" />
@@ -192,41 +193,93 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
   )
 }
 
-// The chart itself: one axis, a line per pick in its slot's colour, and a
-// crosshair that snaps to the nearest date any line has. Tap or hover to read
-// a date; ←/→ step through them.
+// The chart itself: a strip per unit (one, when every line shares it), all on
+// one timeline, and a crosshair that snaps to the nearest date any line has
+// and runs through every strip. Tap or hover to read a date; ←/→ step through
+// them.
 function Plot({ chart, hovered, onHover }) {
-  const { mode, lines } = chart
+  const { strips, lines } = chart
+  const stacked = strips.length > 1
   const dates = [...new Set(lines.flatMap((l) => l.plot.map((p) => p.date)))].sort((a, b) => a - b)
-  const minDate = dates[0]
-  const maxDate = dates[dates.length - 1]
-  const span = maxDate - minDate
+  const time = { dates, minDate: dates[0], span: dates[dates.length - 1] - dates[0] }
 
-  const ys = lines.flatMap((l) => l.plot.map((p) => p.y))
-  let min = Math.min(...ys)
-  let max = Math.max(...ys)
-  if (mode === 'pct') {
-    // 0% — where every line starts — always in view.
-    min = Math.min(0, min)
-    max = Math.max(0, max)
+  // Each strip's own scale, padded a tenth either side and never below zero.
+  const scales = strips.map((s) => {
+    const values = s.lines.flatMap((l) => l.plot.map((p) => p.value))
+    let min = Math.min(...values)
+    let max = Math.max(...values)
+    if (min === max) {
+      const pad = Math.max(1, Math.abs(min) * 0.1)
+      min -= pad
+      max += pad
+    } else {
+      const range = max - min
+      min -= range * 0.1
+      max += range * 0.1
+    }
+    min = Math.max(0, min)
+    const { values: grid, labels } = niceTicks(min, max, stacked ? 3 : 4)
+    return { min, max, grid, labels }
+  })
+  // One left margin for every strip, so a date sits at the same x in each.
+  const allLabels = scales.flatMap((s) => s.labels)
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') return onHover(null)
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    const step = e.key === 'ArrowRight' ? 1 : -1
+    const i = hovered == null ? (step > 0 ? -1 : dates.length) : dates.indexOf(hovered)
+    onHover(dates[Math.min(dates.length - 1, Math.max(0, i + step))])
   }
-  if (min === max) {
-    const pad = Math.max(1, Math.abs(min) * 0.1)
-    min -= pad
-    max += pad
-  } else {
-    const range = max - min
-    min -= range * 0.1
-    max += range * 0.1
-  }
-  if (mode === 'value') min = Math.max(0, min)
 
-  const pctTick = (r) => `${r > 0 ? '+' : ''}${r === 0 ? 0 : r}%`
-  const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
-  const gridLabels =
-    mode === 'pct' ? tickLabels(gridValues, pctTick, max - min < 6 ? 1 : 0) : tickLabels(gridValues)
-  const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
+  return (
+    <div
+      role="group"
+      tabIndex={0}
+      aria-label="Compare chart — arrow keys step through the dates"
+      className="select-none outline-none focus-visible:ring-2 focus-visible:ring-text-primary"
+      style={{ touchAction: 'pan-y' }}
+      onKeyDown={onKeyDown}
+      onPointerLeave={(e) => e.pointerType === 'mouse' && onHover(null)}
+    >
+      {strips.map((s, i) => {
+        const last = i === strips.length - 1
+        return (
+          <div key={s.unit} className={i ? 'mt-2' : ''}>
+            {stacked && (
+              <p className="flex items-center gap-x-2.5 flex-wrap text-[11px] text-text-light mb-0.5">
+                {s.lines.map((l) => (
+                  <span key={l.id} className="inline-flex items-center gap-1 min-w-0">
+                    <span className={`w-2.5 h-0.5 shrink-0 bg-current ${SLOT_CLASS[l.slot]}`} aria-hidden="true" />
+                    <span className="truncate">{l.label}</span>
+                  </span>
+                ))}
+                <span>· {s.unit}</span>
+              </p>
+            )}
+            <Strip
+              strip={s}
+              scale={scales[i]}
+              allLabels={allLabels}
+              heightPx={stacked ? STRIP_PX + (last ? DATE_ROW_PX : 0) : null}
+              showDates={last}
+              time={time}
+              hovered={hovered}
+              onHover={onHover}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
+// One unit's lines on their own scale.
+function Strip({ strip, scale, allLabels, heightPx, showDates, time, hovered, onHover }) {
+  const { ref, h, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(allLabels, { heightPx, dates: showDates })
+  const { dates, minDate, span } = time
+  const { min, max, grid, labels } = scale
   const xFor = (d) => (span === 0 ? pad.l + plotW / 2 : pad.l + (plotW * (d - minDate)) / span)
   const yFor = (v) => pad.t + plotH * (1 - (v - min) / (max - min))
 
@@ -239,58 +292,46 @@ function Plot({ chart, hovered, onHover }) {
     onHover(best)
   }
 
-  function onKeyDown(e) {
-    if (e.key === 'Escape') return onHover(null)
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-    e.preventDefault()
-    const step = e.key === 'ArrowRight' ? 1 : -1
-    const i = hovered == null ? (step > 0 ? -1 : dates.length) : dates.indexOf(hovered)
-    onHover(dates[Math.min(dates.length - 1, Math.max(0, i + step))])
-  }
-
   return (
     <svg
       ref={ref}
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-auto select-none outline-none focus-visible:ring-2 focus-visible:ring-text-primary"
-      style={{ touchAction: 'pan-y' }}
-      tabIndex={0}
-      aria-label="Compare chart — arrow keys step through the dates"
+      viewBox={`0 0 ${W} ${h}`}
+      className="block w-full h-auto"
+      aria-hidden="true"
       onPointerDown={pick}
       onPointerMove={(e) => e.pointerType === 'mouse' && pick(e)}
-      onPointerLeave={(e) => e.pointerType === 'mouse' && onHover(null)}
-      onKeyDown={onKeyDown}
     >
-      {gridValues.map((v, i) => {
+      {grid.map((v, i) => {
         const y = yFor(v)
         return (
           <g key={i}>
             <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="currentColor" className="text-border" strokeWidth="1" />
             <text x={yLabelX} y={y + yLabelDy} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
-              {gridLabels[i]}
+              {labels[i]}
             </text>
           </g>
         )
       })}
-      {mode === 'pct' && (
-        <line x1={pad.l} y1={yFor(0)} x2={W - pad.r} y2={yFor(0)} stroke="currentColor" className="text-border-hover" strokeWidth="1.25" />
-      )}
 
-      <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
-        {axisDate(minDate)}
-      </text>
-      {span > 0 && (
-        <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
-          {axisDate(maxDate)}
-        </text>
+      {showDates && (
+        <>
+          <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
+            {axisDate(minDate)}
+          </text>
+          {span > 0 && (
+            <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
+              {axisDate(minDate + span)}
+            </text>
+          )}
+        </>
       )}
 
       {hovered != null && (
         <line x1={xFor(hovered)} y1={pad.t} x2={xFor(hovered)} y2={pad.t + plotH} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
       )}
 
-      {lines.map((l) => {
-        const coords = l.plot.map((p) => ({ x: xFor(p.date), y: yFor(p.y) }))
+      {strip.lines.map((l) => {
+        const coords = l.plot.map((p) => ({ x: xFor(p.date), y: yFor(p.value) }))
         const path = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
         const at = hovered != null ? valueAt(l.plot, hovered) : null
         return (
@@ -298,7 +339,7 @@ function Plot({ chart, hovered, onHover }) {
             {coords.length > 1 && <path d={path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />}
             {(coords.length <= DOTS_UP_TO || coords.length === 1) &&
               coords.map((c, i) => <circle key={i} cx={c.x} cy={c.y} r="3" fill="currentColor" stroke="var(--color-white)" strokeWidth="1" />)}
-            {at && <circle cx={xFor(at.date)} cy={yFor(at.y)} r="4.5" fill="currentColor" stroke="var(--color-white)" strokeWidth="1.5" />}
+            {at && <circle cx={xFor(at.date)} cy={yFor(at.value)} r="4.5" fill="currentColor" stroke="var(--color-white)" strokeWidth="1.5" />}
           </g>
         )
       })}

@@ -53,11 +53,35 @@ export function tickLabels(values, format = (r) => r.toLocaleString(), minDecima
   return labels
 }
 
+// Round-number gridlines inside [min, max]: the smallest 1 / 2 / 2.5 / 5 × 10ⁿ
+// step that fits at most `most` of them, each labelled with only the decimals
+// that step needs — 16 | 18 for body fat, 90 | 95 | 100 for a lift.
+export function niceTicks(min, max, most = 4) {
+  const range = max - min
+  if (!(range > 0)) return { values: [min], labels: [min.toLocaleString('en-US')] }
+  for (let e = Math.floor(Math.log10(range / most)); ; e++) {
+    for (const m of [1, 2, 2.5, 5]) {
+      const step = m * 10 ** e
+      const first = Math.ceil(min / step - 1e-9)
+      const last = Math.floor(max / step + 1e-9)
+      if (last - first + 1 > most) continue
+      const decimals = Math.max(0, -e + (m === 2.5 ? 1 : 0))
+      const values = []
+      for (let i = first; i <= last; i++) values.push(Number((i * step).toFixed(decimals)))
+      return { values, labels: values.map((v) => v.toLocaleString('en-US', { maximumFractionDigits: decimals })) }
+    }
+  }
+}
+
 // `yLabels`: the y tick strings, so the left margin fits the widest. Put the
-// returned ref on the <svg>.
-export function useChartAxis(yLabels) {
+// returned ref on the <svg>, with a viewBox of W × the returned `h`.
+// `heightPx`: a fixed on-screen height instead of the 560×200 shape — the
+// Compare chart's stacked strips stay readable on a phone that way.
+// `dates: false` leaves out the date row (every strip but the last).
+export function useChartAxis(yLabels, { heightPx = null, dates = true } = {}) {
   const ref = useRef(null)
   const k = useUnitsPerPx(ref)
+  const h = heightPx ? heightPx * k : H
   const fontSize = LABEL_PX * k
   const widest = Math.max(0, ...yLabels.map(emWidth)) * fontSize
   const pad = {
@@ -65,17 +89,19 @@ export function useChartAxis(yLabels) {
     r: 14,
     // room for half the top label above the top gridline
     t: Math.max(16, (ASCENT - MID) * fontSize + k),
-    // the date row, 4px clear of the plot and 2px clear of the bottom edge
-    b: Math.max(26, (ASCENT + DESCENT) * fontSize + 6 * k),
+    // the date row, 4px clear of the plot and 2px clear of the bottom edge —
+    // or, without one, half the bottom label
+    b: dates ? Math.max(26, (ASCENT + DESCENT) * fontSize + 6 * k) : Math.max(8, MID * fontSize + 2 * k),
   }
   return {
     ref,
+    h,
     fontSize,
     pad,
     plotW: W - pad.l - pad.r,
-    plotH: H - pad.t - pad.b,
+    plotH: h - pad.t - pad.b,
     yLabelX: pad.l - GAP_PX * k,
     yLabelDy: MID * fontSize, // centres a y label's figures on its gridline
-    dateY: H - DESCENT * fontSize - 2 * k,
+    dateY: h - DESCENT * fontSize - 2 * k,
   }
 }
