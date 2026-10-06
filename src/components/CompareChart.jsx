@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import ExerciseSelect from './ExerciseSelect'
 import { compareLines, valueAt } from '../lib/progress'
+import { W, H, useChartAxis } from '../lib/chartAxis'
 
 // Two or more of the Progress lines on one chart — a lift's est. 1RM next to
 // bodyweight, calories next to body fat. Chips pick the lines; the rows under
@@ -21,12 +22,6 @@ const STORE = 'leon_progress_compare'
 // Lines this dense are drawn without their dots — a year of weigh-ins would
 // otherwise be a smear.
 const DOTS_UP_TO = 30
-
-const W = 560
-const H = 200
-const PAD = { l: 46, r: 14, t: 16, b: 26 }
-const PLOT_W = W - PAD.l - PAD.r
-const PLOT_H = H - PAD.t - PAD.b
 
 const round1 = (v) => Math.round(v * 10) / 10
 const signed = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('en-US')}`
@@ -221,8 +216,6 @@ function Plot({ chart, hovered, onHover }) {
   }
   if (mode === 'value') min = Math.max(0, min)
 
-  const xFor = (d) => (span === 0 ? PAD.l + PLOT_W / 2 : PAD.l + (PLOT_W * (d - minDate)) / span)
-  const yFor = (v) => PAD.t + PLOT_H * (1 - (v - min) / (max - min))
   const decimals = mode === 'pct' && max - min < 6 ? 1 : 0
   const tick = (v) => {
     if (mode !== 'pct') return Math.round(v).toLocaleString()
@@ -230,11 +223,16 @@ function Plot({ chart, hovered, onHover }) {
     return `${r > 0 ? '+' : ''}${r === 0 ? 0 : r}%`
   }
   const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
+  const gridLabels = gridValues.map(tick)
+  const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
+
+  const xFor = (d) => (span === 0 ? pad.l + plotW / 2 : pad.l + (plotW * (d - minDate)) / span)
+  const yFor = (v) => pad.t + plotH * (1 - (v - min) / (max - min))
 
   function pick(e) {
     const box = e.currentTarget.getBoundingClientRect()
     const vx = ((e.clientX - box.left) / box.width) * W
-    const d = span === 0 ? minDate : minDate + ((vx - PAD.l) / PLOT_W) * span
+    const d = span === 0 ? minDate : minDate + ((vx - pad.l) / plotW) * span
     let best = dates[0]
     for (const x of dates) if (Math.abs(x - d) < Math.abs(best - d)) best = x
     onHover(best)
@@ -251,6 +249,7 @@ function Plot({ chart, hovered, onHover }) {
 
   return (
     <svg
+      ref={ref}
       viewBox={`0 0 ${W} ${H}`}
       className="w-full h-auto select-none outline-none focus-visible:ring-2 focus-visible:ring-text-primary"
       style={{ touchAction: 'pan-y' }}
@@ -265,28 +264,28 @@ function Plot({ chart, hovered, onHover }) {
         const y = yFor(v)
         return (
           <g key={i}>
-            <line x1={PAD.l} y1={y} x2={W - PAD.r} y2={y} stroke="currentColor" className="text-border" strokeWidth="1" />
-            <text x={PAD.l - 8} y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
-              {tick(v)}
+            <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="currentColor" className="text-border" strokeWidth="1" />
+            <text x={yLabelX} y={y + yLabelDy} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
+              {gridLabels[i]}
             </text>
           </g>
         )
       })}
       {mode === 'pct' && (
-        <line x1={PAD.l} y1={yFor(0)} x2={W - PAD.r} y2={yFor(0)} stroke="currentColor" className="text-border-hover" strokeWidth="1.25" />
+        <line x1={pad.l} y1={yFor(0)} x2={W - pad.r} y2={yFor(0)} stroke="currentColor" className="text-border-hover" strokeWidth="1.25" />
       )}
 
-      <text x={PAD.l} y={H - 8} textAnchor="start" fontSize="9" fill="currentColor" className="text-text-light">
+      <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
         {axisDate(minDate)}
       </text>
       {span > 0 && (
-        <text x={W - PAD.r} y={H - 8} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
+        <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
           {axisDate(maxDate)}
         </text>
       )}
 
       {hovered != null && (
-        <line x1={xFor(hovered)} y1={PAD.t} x2={xFor(hovered)} y2={PAD.t + PLOT_H} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
+        <line x1={xFor(hovered)} y1={pad.t} x2={xFor(hovered)} y2={pad.t + plotH} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
       )}
 
       {lines.map((l) => {

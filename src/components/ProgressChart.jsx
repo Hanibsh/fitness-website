@@ -1,12 +1,9 @@
+import { W, H, useChartAxis } from '../lib/chartAxis'
+
 // Hand-rolled SVG line chart. No dependency — draws a clean line of points
 // scaled by date (x) and value (y), with a hover/tap highlight driven from
-// the parent via hoveredIndex / onHover.
-
-const W = 560
-const H = 200
-const PAD = { l: 46, r: 14, t: 16, b: 26 }
-const PLOT_W = W - PAD.l - PAD.r
-const PLOT_H = H - PAD.t - PAD.b
+// the parent via hoveredIndex / onHover. Axis labels stay 11px at any width
+// (lib/chartAxis.js).
 
 function axisDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
@@ -19,7 +16,9 @@ function axisDate(ts) {
 //
 // `target` draws a dashed line at that value (calories or protein to aim for),
 // and the auto fit stretches to keep it in view.
-export default function ProgressChart({ points, hoveredIndex, onHover, domain = null, target = null }) {
+//
+// No `onHover` (the injuries pain chart) = read-only.
+export default function ProgressChart({ points, hoveredIndex, onHover = () => {}, domain = null, target = null }) {
   const values = points.map((p) => p.value)
   if (target != null && !domain) values.push(target)
   let min = domain ? domain[0] : Math.min(...values)
@@ -39,6 +38,10 @@ export default function ProgressChart({ points, hoveredIndex, onHover, domain = 
     min = Math.max(0, min)
   }
 
+  const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
+  const gridLabels = gridValues.map((v) => Math.round(v).toLocaleString())
+  const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
+
   const minDate = points[0].date
   const maxDate = points[points.length - 1].date
 
@@ -46,40 +49,39 @@ export default function ProgressChart({ points, hoveredIndex, onHover, domain = 
   // to noon) — a zero date span would divide by zero and NaN the whole chart.
   const dateSpan = maxDate - minDate
   const xFor = (d) =>
-    dateSpan === 0 ? PAD.l + PLOT_W / 2 : PAD.l + (PLOT_W * (d - minDate)) / dateSpan
-  const yFor = (v) => PAD.t + PLOT_H * (1 - (v - min) / (max - min))
+    dateSpan === 0 ? pad.l + plotW / 2 : pad.l + (plotW * (d - minDate)) / dateSpan
+  const yFor = (v) => pad.t + plotH * (1 - (v - min) / (max - min))
 
   const coords = points.map((p) => ({ x: xFor(p.date), y: yFor(p.value), p }))
   const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
   const areaPath =
     coords.length > 1
-      ? `${linePath} L ${coords[coords.length - 1].x} ${PAD.t + PLOT_H} L ${coords[0].x} ${PAD.t + PLOT_H} Z`
+      ? `${linePath} L ${coords[coords.length - 1].x} ${pad.t + plotH} L ${coords[0].x} ${pad.t + plotH} Z`
       : ''
 
-  const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
   const active = hoveredIndex != null && coords[hoveredIndex] ? coords[hoveredIndex] : null
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" onMouseLeave={() => onHover(null)}>
+    <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" onMouseLeave={() => onHover(null)}>
       {/* horizontal gridlines + y labels */}
       {gridValues.map((v, i) => {
         const y = yFor(v)
         return (
           <g key={i}>
-            <line x1={PAD.l} y1={y} x2={W - PAD.r} y2={y} stroke="currentColor" className="text-border" strokeWidth="1" />
-            <text x={PAD.l - 8} y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
-              {Math.round(v).toLocaleString()}
+            <line x1={pad.l} y1={y} x2={W - pad.r} y2={y} stroke="currentColor" className="text-border" strokeWidth="1" />
+            <text x={yLabelX} y={y + yLabelDy} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
+              {gridLabels[i]}
             </text>
           </g>
         )
       })}
 
       {/* x labels */}
-      <text x={PAD.l} y={H - 8} textAnchor="start" fontSize="9" fill="currentColor" className="text-text-light">
+      <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
         {axisDate(minDate)}
       </text>
       {dateSpan > 0 && (
-        <text x={W - PAD.r} y={H - 8} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
+        <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
           {axisDate(maxDate)}
         </text>
       )}
@@ -87,9 +89,9 @@ export default function ProgressChart({ points, hoveredIndex, onHover, domain = 
       {/* target */}
       {target != null && (
         <line
-          x1={PAD.l}
+          x1={pad.l}
           y1={yFor(target)}
-          x2={W - PAD.r}
+          x2={W - pad.r}
           y2={yFor(target)}
           stroke="currentColor"
           className="text-text-muted"
@@ -100,7 +102,7 @@ export default function ProgressChart({ points, hoveredIndex, onHover, domain = 
 
       {/* hover guide */}
       {active && (
-        <line x1={active.x} y1={PAD.t} x2={active.x} y2={PAD.t + PLOT_H} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
+        <line x1={active.x} y1={pad.t} x2={active.x} y2={pad.t + plotH} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
       )}
 
       {areaPath && <path d={areaPath} fill="currentColor" className="text-text-primary" opacity="0.06" />}
