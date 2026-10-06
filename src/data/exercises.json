@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-03",
+  "generatedAt": "2026-10-06",
   "count": 285,
   "exercises": [
     {
@@ -8275,7 +8275,7 @@
         "Glute Max": 0.5,
         "Abductors": 0.5
       },
-      "fatigueScore": 5,
+      "fatigueScore": 4,
       "recoveryWindowHours": [
         48,
         72
@@ -8287,7 +8287,7 @@
       "progressiveOverload": "very high",
       "stability": "very stable",
       "hypertrophyPotential": "excellent",
-      "sfr": "good",
+      "sfr": "excellent",
       "stretchMediated": "yes",
       "resistanceProfile": "lengthened",
       "equipment": "machine",

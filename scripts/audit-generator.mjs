@@ -36,6 +36,8 @@ const EQUIPMENT_CASES = ['gym', 'bodyweight']
 const EXPERIENCE_CASES = ['beginner', 'intermediate', 'advanced']
 const SCHEDULE_CASES = ['weekly', 'rotation']
 const TIGHT_WEEK_SETS = 48
+// In a tight week these can live on indirect work from the big lifts (Hani).
+const INDIRECT_OK_IN_TIGHT_WEEK = ['Rear Delts', 'Upper Back']
 const VOLUME_ONLY =process.argv.find((a) => a.startsWith('--volume='))?.slice('--volume='.length)
 const VOLUME_CASES = VOLUME_PREFERENCES.map((p) => p.value).filter((v) => !VOLUME_ONLY || v === VOLUME_ONLY)
 const DAYS_CASES = [2, 3, 4, 5, 6]
@@ -278,7 +280,12 @@ function audit(label, program, summary, inputs, opts) {
       check(label, row.sessions >= 1, `${row.muscle} not trained at all in a tight week`)
       // Focus muscles take the lion's share of a tight week by design, so the
       // "real work" bar only applies when nothing was asked to be brought up.
-      if (!opts.focus.length) check(label, row.sets >= 2, `${row.muscle} at ${row.sets} sets in a tight week — nothing to speak of`)
+      // Rear delts and upper back may ride on indirect work there — Hani tunes
+      // them himself (2026-10-06). Abs sit outside the set cap, so they're never
+      // squeezed.
+      if (!opts.focus.length && !INDIRECT_OK_IN_TIGHT_WEEK.includes(row.muscle)) {
+        check(label, row.sets >= 2, `${row.muscle} at ${row.sets} sets in a tight week — nothing to speak of`)
+      }
     } else if (PROGRAMMED_MUSCLES.includes(row.muscle) && trainable(row.muscle, opts.equipment)) {
       check(label, row.sessions >= 2, `${row.muscle} trained ${row.sessions}×/wk`)
       // Clearing the minimum effective dose on all thirteen muscles is only

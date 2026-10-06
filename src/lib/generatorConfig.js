@@ -777,6 +777,13 @@ export const PENALTIES = {
   perNameChar: 0.03,
 }
 
+// Leon's own calls where the database rates two movements the same: a small
+// lift that wins the tie and nothing more. Pendulum squat over hack squat
+// (Hani, 2026-10-06) — same ratings, but the shorter name won it before.
+export const PREFERRED_BONUS = {
+  'pendulum-squat': 0.2,
+}
+
 // A muscle's first movement of the day is a compound whenever the database
 // actually has one that trains it this directly. Structure, not a weighting:
 // the columns rate a cable fly above a bench press per set — honestly, on
