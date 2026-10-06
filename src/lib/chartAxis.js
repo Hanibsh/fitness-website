@@ -41,37 +41,78 @@ function useUnitsPerPx(ref) {
   return k
 }
 
-// y tick strings with the fewest decimals (from `minDecimals`, up to 2) that
-// keep them distinct — a 16–18% body fat axis otherwise reads 16 | 17 | 18 | 18.
-// `format` gets each tick already rounded; Number() drops a trailing ".0".
-export function tickLabels(values, format = (r) => r.toLocaleString(), minDecimals = 0) {
-  let labels = []
-  for (let d = minDecimals; d <= Math.max(minDecimals, 2); d++) {
-    labels = values.map((v) => format(Number(v.toFixed(d))))
-    if (new Set(labels).size === labels.length) break
+// A round-number scale around [lo, hi]: the bounds snap out to a 1 / 2 / 2.5 /
+// 5 × 10ⁿ step that gives about `target` gaps, and every gridline sits on that
+// step — 85 · 90 · 95 · 100 · 105 for a lift, 15 · 16 · … · 20 for body fat.
+// Labels carry only the decimals the step needs. Data never goes below zero,
+// so neither does a scale that starts at or above it. `pad: false` keeps the
+// bounds as given (a fixed 0–10 rating) and only picks the step.
+// Returns { min, max, values, labels }.
+export function niceScale(lo, hi, target = 4, { pad = true } = {}) {
+  const floor = lo >= 0 ? 0 : -Infinity
+  if (lo === hi) {
+    const p = Math.max(1, Math.abs(lo) * 0.1)
+    lo -= p
+    hi += p
+  } else if (pad) {
+    const p = (hi - lo) * 0.05
+    lo -= p
+    hi += p
   }
-  return labels
+  const raw = (hi - lo) / target
+  const e = Math.floor(Math.log10(raw))
+  const m = [1, 2, 2.5, 5, 10].find((x) => x * 10 ** e >= raw - 1e-9)
+  const step = m * 10 ** e
+  const decimals = Math.max(0, -e + (m === 2.5 ? 1 : 0) - (m === 10 ? 1 : 0))
+  const round = (v) => Number(v.toFixed(decimals))
+  const min = pad ? Math.max(floor, round(Math.floor(lo / step + 1e-9) * step)) : lo
+  const max = pad ? round(Math.ceil(hi / step - 1e-9) * step) : hi
+  const values = []
+  for (let i = Math.ceil(min / step - 1e-9); i * step <= max + 1e-9; i++) values.push(round(i * step))
+  return { min, max, values, labels: values.map((v) => v.toLocaleString('en-US', { maximumFractionDigits: decimals })) }
 }
 
-// Round-number gridlines inside [min, max]: the smallest 1 / 2 / 2.5 / 5 × 10ⁿ
-// step that fits at most `most` of them, each labelled with only the decimals
-// that step needs — 16 | 18 for body fat, 90 | 95 | 100 for a lift.
-export function niceTicks(min, max, most = 4) {
-  const range = max - min
-  if (!(range > 0)) return { values: [min], labels: [min.toLocaleString('en-US')] }
-  for (let e = Math.floor(Math.log10(range / most)); ; e++) {
-    for (const m of [1, 2, 2.5, 5]) {
-      const step = m * 10 ** e
-      const first = Math.ceil(min / step - 1e-9)
-      const last = Math.floor(max / step + 1e-9)
-      if (last - first + 1 > most) continue
-      const decimals = Math.max(0, -e + (m === 2.5 ? 1 : 0))
-      const values = []
-      for (let i = first; i <= last; i++) values.push(Number((i * step).toFixed(decimals)))
-      return { values, labels: values.map((v) => v.toLocaleString('en-US', { maximumFractionDigits: decimals })) }
+// Calendar gridlines between two dates — Mondays, the 1st of a month or of a
+// year — at the finest step that fits `most` labels. Months read "Sep",
+// January reads its year; weeks read "12 Sep". [{ date, label }], or null
+// when fewer than two would show (a few days of data): the caller then
+// labels just the two ends.
+const TIME_STEPS = [
+  ['week', 1], ['week', 2], ['month', 1], ['month', 2], ['month', 3], ['month', 6], ['year', 1], ['year', 2], ['year', 5],
+]
+export function timeTicks(minDate, maxDate, most) {
+  if (!(maxDate > minDate) || most < 2) return null
+  for (const [kind, n] of TIME_STEPS) {
+    const d = new Date(minDate)
+    d.setHours(0, 0, 0, 0)
+    if (kind === 'week') d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    else if (kind === 'month') d.setMonth(d.getMonth() - (d.getMonth() % n), 1)
+    else d.setFullYear(d.getFullYear() - (d.getFullYear() % n), 0, 1)
+    const ticks = []
+    while (d.getTime() <= maxDate && ticks.length <= most) {
+      if (d.getTime() >= minDate) ticks.push(d.getTime())
+      if (kind === 'week') d.setDate(d.getDate() + 7 * n)
+      else if (kind === 'month') d.setMonth(d.getMonth() + n)
+      else d.setFullYear(d.getFullYear() + n)
     }
+    if (ticks.length > most) continue
+    if (ticks.length < 2) return null
+    return ticks.map((t) => {
+      const day = new Date(t)
+      const label =
+        kind === 'week'
+          ? day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+          : kind === 'year' || day.getMonth() === 0
+            ? String(day.getFullYear())
+            : day.toLocaleDateString('en-GB', { month: 'short' })
+      return { date: t, label }
+    })
   }
+  return null
 }
+
+// A label's rough width in viewBox units, at `fontSize`.
+export const labelWidth = (s, fontSize) => emWidth(s) * fontSize
 
 // `yLabels`: the y tick strings, so the left margin fits the widest. Put the
 // returned ref on the <svg>, with a viewBox of W × the returned `h`.
@@ -91,10 +132,11 @@ export function useChartAxis(yLabels, { heightPx = null, dates = true } = {}) {
     t: Math.max(16, (ASCENT - MID) * fontSize + k),
     // the date row, 4px clear of the plot and 2px clear of the bottom edge —
     // or, without one, half the bottom label
-    b: dates ? Math.max(26, (ASCENT + DESCENT) * fontSize + 6 * k) : Math.max(8, MID * fontSize + 2 * k),
+    b: dates ? Math.max(26, (ASCENT + DESCENT) * fontSize + 6 * k) : Math.max(8, (MID + DESCENT) * fontSize + 2 * k),
   }
   return {
     ref,
+    k, // viewBox units per screen pixel
     h,
     fontSize,
     pad,

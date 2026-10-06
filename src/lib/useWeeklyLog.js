@@ -12,6 +12,21 @@ import { devClientSample } from './coach'
 import { getWeeklyLog, saveWeeklyEntry } from './workoutStore'
 import { fetchRemoteWeeklyLog, upsertRemoteWeeklyLog } from './workoutRemote'
 import { saveProfile } from './profile'
+import { weekStart } from './checkins'
+
+// A body fat typed on the profile page is a measurement too: it becomes this
+// week's body fat in the weekly log, keeping whatever food the week already
+// has, so it shows on the Progress charts. Falls back to this device when the
+// account's log can't be reached, like the hook below.
+export async function logBodyFatThisWeek(userId, bodyFat) {
+  const week = weekStart()
+  const merged = (rows) => ({ calories: null, protein: null, ...rows.find((e) => e.weekStart === week), weekStart: week, bodyFat })
+  try {
+    await upsertRemoteWeeklyLog(userId, merged(await fetchRemoteWeeklyLog(userId)))
+  } catch {
+    saveWeeklyEntry(merged(getWeeklyLog()))
+  }
+}
 
 export function useWeeklyLog() {
   const { user } = useAuth()

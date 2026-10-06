@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowLeft, LogOut, Check, Users, FileInput } from 'lucide-react'
@@ -19,6 +19,7 @@ import ThemePicker from '../components/ThemePicker'
 import ProfileSection from '../components/ProfileSection'
 import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
+import { logBodyFatThisWeek } from '../lib/useWeeklyLog'
 import NumberField from '../components/NumberField'
 import { useCoachAccess } from '../lib/useClientsState'
 import { useMyCoach } from '../lib/useMyCoach'
@@ -60,6 +61,8 @@ export default function Account() {
   const [bodyweight, setBodyweight] = useState('')
   const [height, setHeight] = useState('')
   const [bodyFat, setBodyFat] = useState('')
+  // The body fat as last loaded or saved, so only a changed one is logged.
+  const savedBodyFat = useRef(null)
   const [wrist, setWrist] = useState('')
   const [ankle, setAnkle] = useState('')
   const [showBfChart, setShowBfChart] = useState(false)
@@ -130,6 +133,7 @@ export default function Account() {
           setBodyweight(p.bodyweight != null ? String(p.bodyweight) : '')
           setHeight(p.height != null ? String(p.height) : '')
           setBodyFat(p.body_fat != null ? String(p.body_fat) : '')
+          savedBodyFat.current = p.body_fat != null ? Number(p.body_fat) : null
           setWrist(p.wrist != null ? String(p.wrist) : '')
           setAnkle(p.ankle != null ? String(p.ankle) : '')
           setDailySteps(p.daily_steps != null ? String(p.daily_steps) : '')
@@ -234,6 +238,11 @@ export default function Account() {
       setNickname(nick.value)
       setAuthNickname(nick.value)
       setSaved(true)
+      // A changed body fat is this week's measurement too — it joins the
+      // Progress charts (lib/useWeeklyLog.js).
+      const fat = bodyFat === '' ? null : Number(bodyFat)
+      if (fat != null && fat !== savedBodyFat.current) logBodyFatThisWeek(user.id, fat).catch(() => {})
+      savedBodyFat.current = fat
       // Re-read the shared profile so the anatomy map's sex default and the
       // calculators' prefill pick up this save without a reload.
       refreshProfile()

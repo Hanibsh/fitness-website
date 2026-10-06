@@ -20,8 +20,8 @@ export const PROGRESS_RANGES = [
 
 // `lifts`: logged lift names, most-trained first; `liftSeries(name)`: that
 // lift's est. 1RM points. `metrics`: what Compare can draw besides lifts —
-// each body or food line this person has ever logged (in or out of this
-// range), [{ id, label, unit, points }].
+// every body and food line, [{ id, label, unit, points, ever }]; `ever`: this
+// person has logged it at all, in or out of this range.
 export function useProgressLines({ sessions = [], bodyweight = [], weekly = [], unit = 'kg', rangeId = '3m' }) {
   const range = PROGRESS_RANGES.find((r) => r.id === rangeId) || PROGRESS_RANGES[1]
   const now = useMemo(() => Date.now(), [])
@@ -47,9 +47,7 @@ export function useProgressLines({ sessions = [], bodyweight = [], weekly = [], 
         { id: 'lean', label: 'Lean mass', unit, points: food.lean, ever: leanMassSeries(weekly, bodyweight, unit).length > 0 },
         { id: 'cal', label: 'Calories', unit: 'cal', points: food.calories, ever: weeklySeries(weekly, 'calories').length > 0 },
         { id: 'protein', label: 'Protein', unit: 'g', points: food.protein, ever: weeklySeries(weekly, 'protein').length > 0 },
-      ]
-        .filter((m) => m.ever)
-        .map(({ ever: _ever, ...m }) => m),
+      ],
     [weightPoints, food, weekly, bodyweight, unit]
   )
 

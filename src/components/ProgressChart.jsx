@@ -1,17 +1,14 @@
-import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
+import { W, H, niceScale, useChartAxis } from '../lib/chartAxis'
+import DateGrid from './DateGrid'
 
 // Hand-rolled SVG line chart. No dependency — draws a clean line of points
 // scaled by date (x) and value (y), with a hover/tap highlight driven from
-// the parent via hoveredIndex / onHover. Axis labels stay 11px at any width
-// (lib/chartAxis.js).
-
-function axisDate(ts) {
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
-}
+// the parent via hoveredIndex / onHover. Gridlines sit on round numbers and
+// on calendar dates; axis labels stay 11px at any width (lib/chartAxis.js).
 
 // `domain` fixes the y-axis instead of fitting it to the data. Weights want the
-// auto fit — the interesting part of a bodyweight series is its shape, and 78-82
-// tells you more than 0-82. A bounded rating does not: pain is a 0-10 scale, and
+// auto fit (snapped out to round numbers) — the interesting part of a
+// bodyweight series is its shape, and 78-82 tells you more than 0-82. A bounded rating does not: pain is a 0-10 scale, and
 // auto-fitting it would draw a 4-then-5 week as a dramatic climb.
 //
 // `target` draws a dashed line at that value (calories or protein to aim for),
@@ -21,26 +18,11 @@ function axisDate(ts) {
 export default function ProgressChart({ points, hoveredIndex, onHover = () => {}, domain = null, target = null }) {
   const values = points.map((p) => p.value)
   if (target != null && !domain) values.push(target)
-  let min = domain ? domain[0] : Math.min(...values)
-  let max = domain ? domain[1] : Math.max(...values)
-
-  if (!domain) {
-    if (min === max) {
-      // Flat line — pad so it sits in the middle instead of on an edge.
-      const pad = Math.max(1, Math.abs(min) * 0.1)
-      min -= pad
-      max += pad
-    } else {
-      const range = max - min
-      min -= range * 0.1
-      max += range * 0.1
-    }
-    min = Math.max(0, min)
-  }
-
-  const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
-  const gridLabels = tickLabels(gridValues)
-  const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
+  const { min, max, values: gridValues, labels: gridLabels } = domain
+    ? niceScale(domain[0], domain[1], 4, { pad: false })
+    : niceScale(Math.min(...values), Math.max(...values))
+  const axis = useChartAxis(gridLabels)
+  const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy } = axis
 
   const minDate = points[0].date
   const maxDate = points[points.length - 1].date
@@ -76,15 +58,8 @@ export default function ProgressChart({ points, hoveredIndex, onHover = () => {}
         )
       })}
 
-      {/* x labels */}
-      <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
-        {axisDate(minDate)}
-      </text>
-      {dateSpan > 0 && (
-        <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
-          {axisDate(maxDate)}
-        </text>
-      )}
+      {/* dates: a faint line and a label per week / month / year */}
+      <DateGrid minDate={minDate} maxDate={maxDate} xFor={xFor} axis={axis} />
 
       {/* target */}
       {target != null && (

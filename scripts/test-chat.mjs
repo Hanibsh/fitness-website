@@ -16,6 +16,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
 const cards = await server.ssrLoadModule('/src/lib/chatCards.js')
 const progress = await server.ssrLoadModule('/src/lib/progress.js')
+const axis = await server.ssrLoadModule('/src/lib/chartAxis.js')
 
 let passed = 0
 function check(name, ok, detail = '') {
@@ -128,6 +129,21 @@ check('valueAt: before the first point', progress.valueAt(series, series[0].date
 check('valueAt: on a point', progress.valueAt(series, series[1].date).value === 2)
 check('valueAt: between points holds the last', progress.valueAt(series, series[1].date + 1000).value === 2)
 check('valueAt: after the last', progress.valueAt(series, now + DAY).value === 3)
+
+// ---- Chart scales and dates ----------------------------------------------------------
+const scale = (lo, hi, opt) => axis.niceScale(lo, hi, 4, opt).labels.join(' ')
+check('a lift snaps to round fives', scale(89, 102) === '85 90 95 100 105', scale(89, 102))
+check('body fat steps by one', scale(16, 19) === '15 16 17 18 19 20', scale(16, 19))
+check('calories get thousands commas', scale(2050, 2440) === '2,000 2,200 2,400 2,600', scale(2050, 2440))
+check('a scale from zero never goes below it', axis.niceScale(0, 5).min === 0)
+check('a tiny range keeps its decimal', scale(81.4, 81.6) === '81.3 81.4 81.5 81.6 81.7', scale(81.4, 81.6))
+check('a fixed 0–10 keeps its ends', scale(0, 10, { pad: false }) === '0 2.5 5 7.5 10', scale(0, 10, { pad: false }))
+const ticks = (from, to, most) => (axis.timeTicks(new Date(from).getTime(), new Date(to).getTime(), most) || []).map((t) => t.label).join(' ')
+check('6 months reads as months', ticks('2026-04-10T12:00', '2026-10-06T12:00', 6) === 'May Jun Jul Aug Sept Oct', ticks('2026-04-10T12:00', '2026-10-06T12:00', 6))
+check('January reads its year', ticks('2025-10-20T12:00', '2026-03-10T12:00', 6).includes('2026'), ticks('2025-10-20T12:00', '2026-03-10T12:00', 6))
+check('a month reads as weeks', ticks('2026-09-06T12:00', '2026-10-06T12:00', 6) === '7 Sept 14 Sept 21 Sept 28 Sept 5 Oct', ticks('2026-09-06T12:00', '2026-10-06T12:00', 6))
+check('a narrow chart takes fewer, wider steps', ticks('2026-07-07T12:00', '2026-10-06T12:00', 3) === 'Aug Sept Oct', ticks('2026-07-07T12:00', '2026-10-06T12:00', 3))
+check('a few days fall back to the ends', axis.timeTicks(new Date('2026-10-01').getTime(), new Date('2026-10-04').getTime(), 6) === null)
 
 // ---- Unknown -----------------------------------------------------------------------
 check('unknown card is not a card', !cards.isCard({ type: 'poll' }) && !cards.isCard(null))

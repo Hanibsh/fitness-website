@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import ExerciseSelect from './ExerciseSelect'
 import { compareLines, compareStoreKey, valueAt } from '../lib/progress'
-import { W, niceTicks, useChartAxis } from '../lib/chartAxis'
+import { W, niceScale, labelWidth, useChartAxis } from '../lib/chartAxis'
+import DateGrid from './DateGrid'
 
 // Two or more of the Progress lines on one chart — a lift's est. 1RM next to
 // bodyweight, calories next to body fat. Chips pick the lines; the rows under
@@ -16,22 +17,39 @@ import { W, niceTicks, useChartAxis } from '../lib/chartAxis'
 // re-picks (index.css --color-series-*). A line keeps its colour until it's
 // switched off, so removing one never repaints the others. The picks are
 // remembered on this device, under `storeKey` (lib/progress.js compareStoreKey).
+//
+// Every body and food line has a chip, logged or not: one with nothing logged
+// is greyed and, tapped, says where it gets logged — so nobody wonders why
+// body fat isn't there.
 
 const MAX_LINES = 4
 const SLOT_CLASS = ['text-series-1', 'text-series-2', 'text-series-3', 'text-series-4']
 // Lines this dense are drawn without their dots — a year of weigh-ins would
 // otherwise be a smear.
 const DOTS_UP_TO = 30
-// A stacked strip's height on screen, at any width; the last one adds its
-// date row.
-const STRIP_PX = 116
+// Heights on screen, at any width: one chart, or each stacked strip (the
+// last adds its date row).
+const SINGLE_PX = 220
+const STRIP_PX = 150
 const DATE_ROW_PX = 20
+
+// Where a line nobody has logged yet comes from — yours, or a client's.
+const WHERE = {
+  self: {
+    bw: 'Log a weigh-in in the Bodyweight card on your dashboard.',
+    food: 'Add it under Food in the Bodyweight card on your dashboard.',
+  },
+  client: {
+    bw: 'They log weigh-ins on their dashboard.',
+    food: 'They add it in their weekly check-in or on their dashboard.',
+  },
+}
+const LEAN_HINT = 'Needs body fat and a weigh-in in the same week.'
 
 const round1 = (v) => Math.round(v * 10) / 10
 const signed = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('en-US')}`
 const withUnit = (v, unit) => `${round1(v).toLocaleString('en-US')}${unit === '%' ? '%' : ` ${unit}`}`
 const shortDate = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
-const axisDate = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
 const liftId = (name) => `lift:${name}`
 
 // One entry per colour slot: an id or null. null = never picked here.
@@ -45,10 +63,11 @@ function readPicks(key) {
   }
 }
 
-// `metrics`: the body and food lines this person has ever logged,
-// [{ id, label, unit, points }] for the chosen range. `lifts`: logged lift
-// names, most-trained first. `liftSeries(name)`: that lift's est. 1RM points.
-export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKey = compareStoreKey() }) {
+// `metrics`: the body and food lines, [{ id, label, unit, points, ever }] for
+// the chosen range — `ever`: logged at all, in or out of it. `lifts`: logged
+// lift names, most-trained first. `liftSeries(name)`: that lift's est. 1RM
+// points. `forClient`: a coach looking at a client (the hints say "they").
+export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKey = compareStoreKey(), forClient = false }) {
   const [stored, setStored] = useState(() => readPicks(storeKey))
   // Another client's page reuses this chart: their own picks, not the last one's.
   const [storedFor, setStoredFor] = useState(storeKey)
@@ -58,6 +77,7 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
   }
   const [addingLift, setAddingLift] = useState(false)
   const [hovered, setHovered] = useState(null) // a date
+  const [hint, setHint] = useState(null) // the id of a greyed chip that was tapped
 
   const known = useMemo(
     () => new Map([...metrics.map((m) => [m.id, m]), ...lifts.map((n) => [liftId(n), { id: liftId(n), label: n, unit, lift: n }])]),
@@ -66,12 +86,13 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
 
   // The picks, one per colour slot. Anything this person hasn't logged drops
   // out (a coach moving between clients); if that leaves nothing, the
-  // defaults — the top lift and bodyweight, else the next lines with data.
+  // defaults — the top lift and body fat, else the next lines with data.
   // Switching every line off is respected.
   const slots = useMemo(() => {
-    const valid = (stored || []).map((id) => (id && known.has(id) ? id : null))
+    const logged = (id) => !!id && known.has(id) && known.get(id).ever !== false
+    const valid = (stored || []).map((id) => (logged(id) ? id : null))
     if (stored && (stored.every((id) => id === null) || valid.some(Boolean))) return valid
-    const defaults = [lifts[0] && liftId(lifts[0]), 'bw', 'cal', 'fat', 'protein', 'lean'].filter((id) => id && known.has(id)).slice(0, 2)
+    const defaults = [lifts[0] && liftId(lifts[0]), 'fat', 'bw', 'cal', 'protein', 'lean', lifts[1] && liftId(lifts[1])].filter(logged).slice(0, 2)
     return Array.from({ length: MAX_LINES }, (_, i) => defaults[i] || null)
   }, [stored, known, lifts])
 
@@ -115,6 +136,19 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
         {chips.map((c) => {
           const slot = slots.indexOf(c.id)
           const on = slot !== -1
+          if (c.ever === false) {
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setHint((h) => (h === c.id ? null : c.id))}
+                aria-expanded={hint === c.id}
+                className="inline-flex items-center max-w-full px-2.5 py-1 text-[12px] bg-transparent border border-dashed border-border text-text-light cursor-pointer transition-colors hover:text-text-muted"
+              >
+                <span className="truncate">{c.label}</span>
+              </button>
+            )
+          }
           return (
             <button
               key={c.id}
@@ -157,6 +191,12 @@ export default function CompareChart({ metrics, lifts, liftSeries, unit, storeKe
         />
       )}
       {full && <p className="text-[11px] text-text-light -mt-1.5 mb-3">Up to 4 lines.</p>}
+      {hint && known.get(hint)?.ever === false && (
+        <p className="text-[12px] text-text-muted -mt-1 mb-3">
+          <span className="font-medium text-text-primary">{known.get(hint).label}:</span> nothing logged yet.{' '}
+          {hint === 'lean' ? LEAN_HINT : WHERE[forClient ? 'client' : 'self'][hint === 'bw' ? 'bw' : 'food']}
+        </p>
+      )}
 
       {picked.length < 2 ? (
         <p className="text-[13px] text-text-muted py-8 text-center border border-dashed border-border">Pick 2 or more.</p>
@@ -203,22 +243,10 @@ function Plot({ chart, hovered, onHover }) {
   const dates = [...new Set(lines.flatMap((l) => l.plot.map((p) => p.date)))].sort((a, b) => a - b)
   const time = { dates, minDate: dates[0], span: dates[dates.length - 1] - dates[0] }
 
-  // Each strip's own scale, padded a tenth either side and never below zero.
+  // Each strip's own scale, snapped out to round numbers.
   const scales = strips.map((s) => {
     const values = s.lines.flatMap((l) => l.plot.map((p) => p.value))
-    let min = Math.min(...values)
-    let max = Math.max(...values)
-    if (min === max) {
-      const pad = Math.max(1, Math.abs(min) * 0.1)
-      min -= pad
-      max += pad
-    } else {
-      const range = max - min
-      min -= range * 0.1
-      max += range * 0.1
-    }
-    min = Math.max(0, min)
-    const { values: grid, labels } = niceTicks(min, max, stacked ? 3 : 4)
+    const { min, max, values: grid, labels } = niceScale(Math.min(...values), Math.max(...values))
     return { min, max, grid, labels }
   })
   // One left margin for every strip, so a date sits at the same x in each.
@@ -262,7 +290,7 @@ function Plot({ chart, hovered, onHover }) {
               strip={s}
               scale={scales[i]}
               allLabels={allLabels}
-              heightPx={stacked ? STRIP_PX + (last ? DATE_ROW_PX : 0) : null}
+              heightPx={stacked ? STRIP_PX + (last ? DATE_ROW_PX : 0) : SINGLE_PX}
               showDates={last}
               time={time}
               hovered={hovered}
@@ -275,9 +303,11 @@ function Plot({ chart, hovered, onHover }) {
   )
 }
 
-// One unit's lines on their own scale.
+// One unit's lines on their own scale, each with its latest value written at
+// its end.
 function Strip({ strip, scale, allLabels, heightPx, showDates, time, hovered, onHover }) {
-  const { ref, h, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(allLabels, { heightPx, dates: showDates })
+  const axis = useChartAxis(allLabels, { heightPx, dates: showDates })
+  const { ref, k, h, fontSize, pad, plotW, plotH, yLabelX, yLabelDy } = axis
   const { dates, minDate, span } = time
   const { min, max, grid, labels } = scale
   const xFor = (d) => (span === 0 ? pad.l + plotW / 2 : pad.l + (plotW * (d - minDate)) / span)
@@ -313,18 +343,7 @@ function Strip({ strip, scale, allLabels, heightPx, showDates, time, hovered, on
         )
       })}
 
-      {showDates && (
-        <>
-          <text x={pad.l} y={dateY} textAnchor="start" fontSize={fontSize} fill="currentColor" className="text-text-light">
-            {axisDate(minDate)}
-          </text>
-          {span > 0 && (
-            <text x={W - pad.r} y={dateY} textAnchor="end" fontSize={fontSize} fill="currentColor" className="text-text-light">
-              {axisDate(minDate + span)}
-            </text>
-          )}
-        </>
-      )}
+      <DateGrid minDate={minDate} maxDate={minDate + span} xFor={xFor} axis={axis} labels={showDates} />
 
       {hovered != null && (
         <line x1={xFor(hovered)} y1={pad.t} x2={xFor(hovered)} y2={pad.t + plotH} stroke="currentColor" className="text-border-hover" strokeWidth="1" strokeDasharray="3 3" />
@@ -343,6 +362,51 @@ function Strip({ strip, scale, allLabels, heightPx, showDates, time, hovered, on
           </g>
         )
       })}
+
+      {endLabels(strip.lines, { xFor, yFor, k, fontSize, h }).map((e) => (
+        <text
+          key={e.id}
+          x={e.x}
+          y={e.y}
+          textAnchor="end"
+          fontSize={fontSize}
+          fontWeight="600"
+          fill="currentColor"
+          stroke="var(--color-white)"
+          strokeWidth={3 * k}
+          strokeLinejoin="round"
+          paintOrder="stroke"
+          className="text-text-primary"
+        >
+          {e.text}
+        </text>
+      ))}
     </svg>
   )
+}
+
+// Where each line's latest value is written: right-aligned on its last point,
+// above it when the line came up to it, below when it came down (so it sits
+// off the line), nudged apart when two would overlap, kept inside the strip.
+function endLabels(lines, { xFor, yFor, k, fontSize, h }) {
+  const gap = 7 * k
+  const rowH = fontSize * 1.15
+  const out = lines
+    .filter((l) => l.plot.length)
+    .map((l) => {
+      const last = l.plot[l.plot.length - 1]
+      const prev = l.plot[l.plot.length - 2]
+      const fell = prev && last.value < prev.value
+      const y0 = yFor(last.value)
+      const text = withUnit(last.value, l.unit)
+      // Baselines: above, the text's bottom sits `gap` over the point.
+      return { id: l.id, text, x: Math.min(W - 2 * k, xFor(last.date) + 3 * k), y: fell ? y0 + gap + fontSize * 0.75 : y0 - gap, w: labelWidth(text, fontSize) }
+    })
+    .sort((a, b) => a.y - b.y)
+  for (let i = 1; i < out.length; i++) {
+    const overlapX = Math.abs(out[i].x - out[i - 1].x) < Math.max(out[i].w, out[i - 1].w)
+    if (overlapX && out[i].y - out[i - 1].y < rowH) out[i].y = out[i - 1].y + rowH
+  }
+  for (const e of out) e.y = Math.min(h - 2 * k, Math.max(fontSize * 0.8, e.y))
+  return out
 }

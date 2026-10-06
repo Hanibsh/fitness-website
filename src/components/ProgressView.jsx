@@ -114,8 +114,9 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
       </div>
 
       <div className="space-y-7">
-        {lifts.length + compareMetrics.length >= 2 && (
-          <CompareChart metrics={compareMetrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareKey} />
+        {/* Only a client's view passes a compareKey, so it doubles as "say they". */}
+        {lifts.length + compareMetrics.filter((m) => m.ever).length > 0 && (
+          <CompareChart metrics={compareMetrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareKey} forClient={!!compareKey} />
         )}
         <div>
           {lifts.length > 0 && (

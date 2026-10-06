@@ -90,10 +90,10 @@ function Compare({ clientId, data, unit }) {
   const { lifts, liftSeries, metrics } = useProgressLines({ sessions: data.sessions, bodyweight: data.bodyweight, weekly: data.weekly || NONE, unit, rangeId })
   return (
     <div className="border-t border-border mt-6 pt-6">
-      {lifts.length + metrics.length >= 2 ? (
+      {lifts.length + metrics.filter((m) => m.ever).length > 0 ? (
         <>
           <RangeTabs value={rangeId} onChange={setRangeId} className="mb-5" />
-          <CompareChart metrics={metrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareStoreKey(clientId)} />
+          <CompareChart metrics={metrics} lifts={lifts} liftSeries={liftSeries} unit={unit} storeKey={compareStoreKey(clientId)} forClient />
         </>
       ) : (
         <p className="text-[13px] text-text-muted">The chart shows once they log lifts, weigh-ins or food.</p>
