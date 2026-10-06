@@ -11,6 +11,8 @@ import {
   fetchMyNotes, markNotesRead, fetchMyTargets, fetchMyCheckins, saveCheckin, fetchClientCheckins,
 } from './coach'
 import { weekStart } from './checkins'
+import { sendMessage, DEV_CLIENT_ID } from './messages'
+import { checkinCard } from './chatCards'
 
 export function useClientNotes(clientUserId) {
   const { user } = useAuth()
@@ -98,15 +100,18 @@ export function useFromCoach(enabled, { markRead = true } = {}) {
 }
 
 // Just the coach's comments on your sessions, for the session summaries opened
-// from the log and the calendar: { comments(sessionId), coachName }.
+// from the log and the calendar: { comments(sessionId), coachName, coachId }.
 export function useSessionComments() {
   const { coach } = useMyCoach()
   const { notes } = useFromCoach(!!coach, { markRead: false })
   const comments = useCallback((sessionId) => notes.filter((n) => n.kind === 'session' && n.target_id === sessionId), [notes])
-  return { comments, coachName: coach?.coach_name }
+  return { comments, coachName: coach?.coach_name, coachId: coach?.coach_id || null }
 }
 
-export function useMyCheckins(enabled) {
+// `coachId`: who coaches this account (null for nobody). Each save also lands
+// in the chat with them as a check-in card.
+export function useMyCheckins(coachId) {
+  const enabled = !!coachId
   const { user } = useAuth()
   const [checkins, setCheckins] = useState([])
 
@@ -122,11 +127,14 @@ export function useMyCheckins(enabled) {
   // This week's check-in, new or edited.
   const save = useCallback(
     async (answers) => {
+      const updated = checkins.some((c) => c.week_start === weekStart())
       const row = await saveCheckin(user?.id, weekStart(), answers)
       setCheckins((prev) => [row, ...prev.filter((c) => c.week_start !== row.week_start)])
+      const me = user?.id || DEV_CLIENT_ID
+      sendMessage({ coachId, clientId: me, senderId: me, card: checkinCard(row, { updated }) }).catch(() => {})
       return row
     },
-    [user]
+    [user, coachId, checkins]
   )
 
   return { checkins, saveCheckin: save }

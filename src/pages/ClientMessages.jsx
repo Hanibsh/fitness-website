@@ -2,17 +2,27 @@ import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import Chat from '../components/Chat'
 import { linkForCard } from '../lib/coach'
+import { withProgram } from '../lib/clients'
 import { DEV_COACH_ID } from '../lib/messages'
+import { copyOfSharedSplit } from '../lib/chatCards'
 
-// The coach's chat with one linked client — /coach/:clientId/messages.
+// The coach's chat with one linked client — /coach/:clientId/messages. The
+// programs written for them are there to share; a split they share can be
+// kept as one of their programs, to edit and send back.
 export default function ClientMessages() {
   const { clientId } = useParams()
-  const { user, clients, links } = useOutletContext()
+  const { user, clients, links, updateClient } = useOutletContext()
   const client = clients.find((c) => c.id === clientId) || null
   const { state, link } = linkForCard(links, clientId)
   const name = client?.name || 'Client'
   // Signed out, only the dev sample gets here (CoachLayout's gate).
   const coachId = user?.id || DEV_COACH_ID
+
+  async function saveSplit(program) {
+    const copy = copyOfSharedSplit(program)
+    updateClient(client.id, (c) => withProgram(c, copy))
+    return `/coach/${client.id}/split/${copy.id}`
+  }
 
   return (
     <>
@@ -27,7 +37,14 @@ export default function ClientMessages() {
         // -mb-24 cancels the coach frame's bottom padding, so the composer
         // sits on the bottom edge rather than floating above a gap.
         <div className="-mb-24">
-          <Chat coachId={coachId} clientId={link.client_id} meId={coachId} otherName={name} />
+          <Chat
+            coachId={coachId}
+            clientId={link.client_id}
+            meId={coachId}
+            otherName={name}
+            splits={client?.programs || []}
+            saveSplit={client ? saveSplit : null}
+          />
         </div>
       ) : (
         <p className="text-[13px] text-text-muted">

@@ -51,6 +51,7 @@ import { useMyUnreadMessages } from '../lib/useChat'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
+import ShareWorkoutButton from '../components/ShareWorkoutButton'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExerciseSelect from '../components/ExerciseSelect'
@@ -378,7 +379,7 @@ export default function Dashboard() {
   // Coached by Leon: his card (notes, targets, check-in) replaces the coaching ad.
   const { coach } = useMyCoach()
   const fromCoach = useFromCoach(!!coach)
-  const { checkins, saveCheckin } = useMyCheckins(!!coach)
+  const { checkins, saveCheckin } = useMyCheckins(coach?.coach_id || null)
   const thisWeek = thisWeeksCheckin(checkins)
   const [checkinOpen, setCheckinOpen] = useState(false)
   const unreadMessages = useMyUnreadMessages(user?.id, !!coach)
@@ -1465,6 +1466,14 @@ export default function Dashboard() {
           coachName={coach?.coach_name}
           actions={
             <div className="flex flex-wrap items-center gap-4">
+              <ShareWorkoutButton
+                key={summarySession.id}
+                session={summarySession}
+                history={sessions}
+                unit={unit}
+                coachId={coach?.coach_id}
+                coachName={coach?.coach_name}
+              />
               <button
                 onClick={() => editDaySession(summarySession)}
                 className="inline-flex items-center gap-1.5 text-[12px] text-text-light hover:text-text-primary bg-transparent border-none cursor-pointer transition-colors"

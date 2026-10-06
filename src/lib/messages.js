@@ -3,6 +3,11 @@
 // open. A chat is named by its two people — (coachId, clientId) — and only
 // exists while their link is active.
 //
+// A message can also answer another (reply_to), carry something shared from
+// the app (card — lib/chatCards.js), and collect one emoji reaction per person
+// (message_reactions). "Typing…" goes over the chat's live channel and is
+// never stored.
+//
 // Photos are shrunk on the device before they go (a phone photo is several MB;
 // 1600px JPEG is a few hundred KB and still sharp on any screen). Videos go as
 // they are, up to 50 MB — the storage bucket's own cap.
@@ -12,6 +17,7 @@ import { supabase } from './supabase'
 
 export const MESSAGE_MAX = 4000
 export const VIDEO_MAX_BYTES = 50 * 1024 * 1024
+export const REACTIONS = ['👍', '🔥', '💪', '❤️', '😂', '👀']
 const PHOTO_MAX_SIDE = 1600
 const BUCKET = 'chat-media'
 const PAGE = 200
@@ -23,7 +29,9 @@ function missing(error) {
 
 // ---- Dev sample ----------------------------------------------------------------
 // In local development, signed out, the coach and client dev samples (see
-// lib/coach.js) share one chat kept in localStorage; media stays as data: URLs.
+// lib/coach.js) share one chat kept in localStorage; media stays as data: URLs
+// and reactions ride on the row. Tabs hear each other over a BroadcastChannel,
+// so a coach tab and a client tab chat live.
 const DEV_STORE = 'leon_dev_messages'
 const isDevChat = (coachId, clientId) => import.meta.env.DEV && (coachId === 'dev-coach' || clientId === 'dev-client')
 function devRead() {
@@ -40,27 +48,38 @@ function devWrite(rows) {
     // storage full (a big data: URL) — the sample just won't remember it
   }
 }
+let devChannel = null
+function devBus() {
+  if (!devChannel && typeof BroadcastChannel !== 'undefined') devChannel = new BroadcastChannel('leon_dev_chat')
+  return devChannel
+}
+const devPost = (event) => devBus()?.postMessage(event)
 export const DEV_COACH_ID = 'dev-coach'
 export const DEV_CLIENT_ID = 'dev-client'
 
 // ---- Reading ---------------------------------------------------------------------
 
-// The latest messages in one chat, oldest first.
+// The latest messages in one chat, oldest first, each with its `reactions`
+// ([{ user_id, emoji }]).
 export async function fetchMessages(coachId, clientId) {
-  if (isDevChat(coachId, clientId)) return devRead()
+  if (isDevChat(coachId, clientId)) return devRead().map((m) => ({ ...m, reactions: m.reactions || [] }))
   if (!supabase) return []
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('coach_id', coachId)
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(PAGE)
+  const query = (select) =>
+    supabase
+      .from('messages')
+      .select(select)
+      .eq('coach_id', coachId)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(PAGE)
+  let { data, error } = await query('*, reactions:message_reactions(user_id, emoji)')
+  // No reactions table yet (schema.sql not re-run): the messages alone.
+  if (error && !missing(error)) ({ data, error } = await query('*'))
   if (error) {
     if (missing(error)) return []
     throw error
   }
-  return (data || []).reverse()
+  return (data || []).map((m) => ({ ...m, reactions: m.reactions || [] })).reverse()
 }
 
 // Signed links for the files in these messages: { media_path: url }. They last
@@ -73,26 +92,73 @@ export async function mediaUrls(messages) {
   return Object.fromEntries((data || []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]))
 }
 
-// Live changes to one chat. Returns the unsubscribe. `onInsert(row)`,
-// `onDelete(id)`; RLS decides what reaches this account.
-export function subscribeToChat(coachId, clientId, { onInsert, onDelete }) {
-  if (isDevChat(coachId, clientId) || !supabase) return () => {}
+// Live changes to one chat. RLS decides what reaches this account. Handlers:
+// onInsert(row), onUpdate(row) — read, or its original deleted —, onDelete(id),
+// onReaction({ message_id, user_id, emoji }), onReactionGone({ message_id,
+// user_id }), onTyping(fromUserId). Returns { unsubscribe, typing } — call
+// typing() while you type.
+export function subscribeToChat(coachId, clientId, meId, handlers) {
+  const { onInsert, onUpdate, onDelete, onReaction, onReactionGone, onTyping } = handlers
+  if (isDevChat(coachId, clientId)) {
+    const bus = devBus()
+    const listen = ({ data: e }) => {
+      if (e.kind === 'insert') onInsert(e.row)
+      else if (e.kind === 'update') onUpdate(e.row)
+      else if (e.kind === 'delete') onDelete(e.id)
+      else if (e.kind === 'reaction') onReaction(e.row)
+      else if (e.kind === 'reaction-gone') onReactionGone(e.row)
+      else if (e.kind === 'typing' && e.from !== meId) onTyping(e.from)
+    }
+    bus?.addEventListener('message', listen)
+    return { unsubscribe: () => bus?.removeEventListener('message', listen), typing: () => devPost({ kind: 'typing', from: meId }) }
+  }
+  if (!supabase) return { unsubscribe: () => {}, typing: () => {} }
+  const mine = (row) => row?.coach_id === coachId
   const channel = supabase
     .channel(`chat:${coachId}:${clientId}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `client_id=eq.${clientId}` }, (p) => {
-      if (p.new?.coach_id === coachId) onInsert(p.new)
+      if (mine(p.new)) onInsert({ ...p.new, reactions: [] })
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `client_id=eq.${clientId}` }, (p) => {
+      if (mine(p.new)) onUpdate(p.new)
     })
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (p) => {
       if (p.old?.id) onDelete(p.old.id)
     })
+    // Not filterable by chat: the handler drops reactions to messages it
+    // doesn't hold.
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_reactions' }, (p) => onReaction(p.new))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'message_reactions' }, (p) => onReaction(p.new))
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_reactions' }, (p) => {
+      if (p.old?.message_id) onReactionGone(p.old)
+    })
+    .on('broadcast', { event: 'typing' }, (p) => {
+      if (p.payload?.from && p.payload.from !== meId) onTyping(p.payload.from)
+    })
     .subscribe()
-  return () => {
-    supabase.removeChannel(channel)
+  return {
+    unsubscribe: () => supabase.removeChannel(channel),
+    typing: () => channel.send({ type: 'broadcast', event: 'typing', payload: { from: meId } }).catch(() => {}),
   }
 }
 
-export async function markChatRead(coachId, clientId) {
-  if (isDevChat(coachId, clientId)) return
+export async function markChatRead(coachId, clientId, meId) {
+  if (isDevChat(coachId, clientId)) {
+    const now = new Date().toISOString()
+    const rows = devRead()
+    const changed = []
+    const next = rows.map((m) => {
+      if (m.sender_id === meId || m.read_at) return m
+      const row = { ...m, read_at: now }
+      changed.push(row)
+      return row
+    })
+    if (changed.length) {
+      devWrite(next)
+      changed.forEach((row) => devPost({ kind: 'update', row }))
+    }
+    return
+  }
   if (!supabase) return
   const { error } = await supabase.rpc('mark_messages_read', { p_coach: coachId, p_client: clientId })
   if (error && !missing(error)) throw error
@@ -173,18 +239,20 @@ function blobToDataUrl(blob) {
   })
 }
 
-// Sends text, a prepared file (from prepareMedia), or both. Returns the row.
-export async function sendMessage({ coachId, clientId, senderId, body, media }) {
+// Sends text, a prepared file (from prepareMedia), a card (lib/chatCards.js),
+// or a mix — optionally as a reply. Returns the row.
+export async function sendMessage({ coachId, clientId, senderId, body, media, card = null, replyTo = null }) {
   const text = String(body || '').trim().slice(0, MESSAGE_MAX) || null
-  if (!text && !media) return null
+  if (!text && !media && !card) return null
 
   if (isDevChat(coachId, clientId)) {
     const row = {
       id: newId(), coach_id: coachId, client_id: clientId, sender_id: senderId, body: text,
       media_path: media ? await blobToDataUrl(media.blob) : null, media_type: media?.type || null,
-      created_at: new Date().toISOString(), read_at: null,
+      card, reply_to: replyTo, created_at: new Date().toISOString(), read_at: null, reactions: [],
     }
     devWrite([...devRead(), row])
+    devPost({ kind: 'insert', row })
     return row
   }
 
@@ -194,23 +262,45 @@ export async function sendMessage({ coachId, clientId, senderId, body, media }) 
     const { error } = await supabase.storage.from(BUCKET).upload(mediaPath, media.blob, { contentType: media.contentType, upsert: false })
     if (error) throw error
   }
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({ coach_id: coachId, client_id: clientId, sender_id: senderId, body: text, media_path: mediaPath, media_type: media?.type || null })
-    .select()
-    .single()
+  const insert = { coach_id: coachId, client_id: clientId, sender_id: senderId, body: text, media_path: mediaPath, media_type: media?.type || null }
+  // Only named when used, so plain messages still send before schema.sql's
+  // newer columns exist.
+  if (card) insert.card = card
+  if (replyTo) insert.reply_to = replyTo
+  const { data, error } = await supabase.from('messages').insert(insert).select().single()
   if (error) {
     // Don't leave an orphaned file behind.
     if (mediaPath) supabase.storage.from(BUCKET).remove([mediaPath]).catch(() => {})
     throw error
   }
-  return data
+  return { ...data, reactions: [] }
+}
+
+// Your reaction to a message: an emoji sets (or swaps) it, null takes it off.
+export async function setReaction(message, userId, emoji) {
+  if (isDevChat(message.coach_id, message.client_id)) {
+    const rows = devRead()
+    const next = rows.map((m) => {
+      if (m.id !== message.id) return m
+      const others = (m.reactions || []).filter((r) => r.user_id !== userId)
+      return { ...m, reactions: emoji ? [...others, { user_id: userId, emoji }] : others }
+    })
+    devWrite(next)
+    devPost(emoji ? { kind: 'reaction', row: { message_id: message.id, user_id: userId, emoji } } : { kind: 'reaction-gone', row: { message_id: message.id, user_id: userId } })
+    return
+  }
+  const table = supabase.from('message_reactions')
+  const { error } = emoji
+    ? await table.upsert({ message_id: message.id, user_id: userId, emoji }, { onConflict: 'message_id,user_id' })
+    : await table.delete().eq('message_id', message.id).eq('user_id', userId)
+  if (error) throw error
 }
 
 // Deletes your own message and its file.
 export async function deleteMessage(message) {
   if (isDevChat(message.coach_id, message.client_id)) {
-    devWrite(devRead().filter((m) => m.id !== message.id))
+    devWrite(devRead().map((m) => (m.reply_to === message.id ? { ...m, reply_to: null } : m)).filter((m) => m.id !== message.id))
+    devPost({ kind: 'delete', id: message.id })
     return
   }
   const { error } = await supabase.from('messages').delete().eq('id', message.id)

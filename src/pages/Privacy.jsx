@@ -31,7 +31,7 @@ const sections = [
     title: 'Coaching',
     body: [
       "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, injuries, profile and weekly check-ins, plus the name you go by (your nickname, or the part of your email before the @). I can't change any of it.",
-      "Messages, photos and videos in our chat are stored privately: only you and I can see them, and only while your account is linked to mine. Either of us can delete what we sent.",
+      "Messages, photos, videos, reactions and anything shared in our chat (a workout, a split, a check-in) are stored privately: only you and I can see them, and only while your account is linked to mine. Either of us can delete what we sent.",
       'You can stop sharing any time on your profile page. I stop seeing your data straight away.',
     ],
   },

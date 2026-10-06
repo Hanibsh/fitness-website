@@ -826,6 +826,34 @@ create table if not exists public.messages (
   check (body is not null or media_path is not null)
 );
 
+-- Added 2026-10-06. reply_to: the message this one answers (a deleted
+-- original leaves the reply standing). card: something from the app shared
+-- into the chat — an exercise, a split, a workout or a weekly check-in — as a
+-- snapshot, so it reads the same later (shape in lib/chatCards.js).
+alter table public.messages add column if not exists reply_to uuid references public.messages(id) on delete set null;
+alter table public.messages add column if not exists card jsonb;
+-- The first version's "text or a file" rule would turn a card-only message
+-- away; drop it whatever Postgres named it.
+do $$
+declare c record;
+begin
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'public.messages'::regclass and contype = 'c'
+      and pg_get_constraintdef(oid) like '%media_path IS NOT NULL%'
+      and pg_get_constraintdef(oid) not like '%card%'
+  loop
+    execute format('alter table public.messages drop constraint %I', c.conname);
+  end loop;
+end;
+$$;
+alter table public.messages drop constraint if exists messages_content_check;
+alter table public.messages add constraint messages_content_check
+  check (body is not null or media_path is not null or card is not null);
+alter table public.messages drop constraint if exists messages_card_size;
+alter table public.messages add constraint messages_card_size
+  check (card is null or octet_length(card::text) <= 100000);
+
 create index if not exists messages_pair_idx on public.messages (coach_id, client_id, created_at desc);
 
 alter table public.messages enable row level security;
@@ -872,6 +900,52 @@ begin
     where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
   ) then
     alter publication supabase_realtime add table public.messages;
+  end if;
+end;
+$$;
+
+-- REACTIONS — one emoji per person per message; picking another replaces it.
+-- Same rule as the messages: only the two people in an active link.
+create table if not exists public.message_reactions (
+  message_id uuid not null references public.messages(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  emoji text not null check (char_length(emoji) between 1 and 16),
+  created_at timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+
+alter table public.message_reactions enable row level security;
+
+create or replace function public.chat_message_member(p_message uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.messages m
+    where m.id = p_message and public.chat_member(m.coach_id::text, m.client_id::text)
+  );
+$$;
+
+drop policy if exists "Chat members can view reactions" on public.message_reactions;
+create policy "Chat members can view reactions"
+  on public.message_reactions for select using (public.chat_message_member(message_id));
+drop policy if exists "Chat members can react" on public.message_reactions;
+create policy "Chat members can react"
+  on public.message_reactions for insert with check (user_id = auth.uid() and public.chat_message_member(message_id));
+drop policy if exists "Chat members can change their reaction" on public.message_reactions;
+create policy "Chat members can change their reaction"
+  on public.message_reactions for update
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid() and public.chat_message_member(message_id));
+drop policy if exists "Chat members can remove their reaction" on public.message_reactions;
+create policy "Chat members can remove their reaction"
+  on public.message_reactions for delete using (user_id = auth.uid());
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'message_reactions'
+  ) then
+    alter publication supabase_realtime add table public.message_reactions;
   end if;
 end;
 $$;

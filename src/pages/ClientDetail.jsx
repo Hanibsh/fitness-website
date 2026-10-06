@@ -19,6 +19,8 @@ import { InjuryScope } from '../lib/useInjuries'
 import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX, CLIENT_STATUSES, clientStatus } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
 import { convertMassText, convertLengthText } from '../lib/units'
+import { sendMessage, DEV_COACH_ID } from '../lib/messages'
+import { splitCard } from '../lib/chatCards'
 
 // One client: the programs written for them, and everything about them the
 // generator and the export read. Every field is optional except the name, and
@@ -26,7 +28,7 @@ import { convertMassText, convertLengthText } from '../lib/units'
 // export, never printed empty.
 export default function ClientDetail() {
   const { clientId } = useParams()
-  const { clients, updateClient, deleteClient, links, invite, unlink, sent, send, unsend, unread = {} } = useOutletContext()
+  const { user, clients, updateClient, deleteClient, links, invite, unlink, sent, send, unsend, unread = {} } = useOutletContext()
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(null) // { kind: 'client' } | { kind: 'program', program }
   const [exporting, setExporting] = useState(null) // program | null
@@ -462,7 +464,12 @@ export default function ClientDetail() {
           program={sending}
           clientName={client.name}
           isSent={isSent(sending)}
-          onSend={(makeActive) => send(link.client_id, sending, makeActive)}
+          onSend={async (makeActive) => {
+            await send(link.client_id, sending, makeActive)
+            // Says so in the chat too; the split itself is already theirs.
+            const coachId = user?.id || DEV_COACH_ID
+            sendMessage({ coachId, clientId: link.client_id, senderId: coachId, card: splitCard(sending, { sent: true }) }).catch(() => {})
+          }}
           onStop={() => unsend(sending.id)}
           onClose={() => setSending(null)}
         />

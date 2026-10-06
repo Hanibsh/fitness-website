@@ -47,6 +47,9 @@ export default function SessionSummary({
   // Your coach's comments on this session, if you have one (lib/coach.js).
   coachNotes = null,
   coachName = 'Leon',
+  // A workout shared in the chat: its PRs as worked out on the sender's side
+  // (the reader doesn't have their log), and no "vs last time" line.
+  sharedPrs = null,
 }) {
   const sessionUnit = session.unit || unit
   const stats = sessionStats(session)
@@ -54,7 +57,7 @@ export default function SessionSummary({
   const duration = formatDuration(session.durationMs)
   const groups = supersetLabels(session.exercises.filter((e) => e.kind !== 'cardio'))
 
-  const prs = useMemo(() => sessionPRs(session, history, sessionUnit), [session, history, sessionUnit])
+  const prs = useMemo(() => sharedPrs || sessionPRs(session, history, sessionUnit), [sharedPrs, session, history, sessionUnit])
 
   const muscles = useMemo(() => [...musclesForExercises(session.exercises)], [session])
 
@@ -69,12 +72,13 @@ export default function SessionSummary({
   }, [session])
 
   const message = useMemo(() => {
+    if (sharedPrs) return null
     const prior = history
       .filter((s) => s.id !== session.id && s.date < session.date)
       .sort((a, b) => b.date - a.date)
       .map(sessionStats)
     return sessionMessage({ session, stats, priorStats: prior, prs, annotation })
-  }, [session, history, stats, prs, annotation])
+  }, [sharedPrs, session, history, stats, prs, annotation])
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-xl">
