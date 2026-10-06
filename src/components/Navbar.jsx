@@ -6,23 +6,21 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useCoachAccess } from '../lib/useClientsState'
 import { useMyCoach } from '../lib/useMyCoach'
-import { useMyUnreadMessages } from '../lib/useChat'
+import { useCoachUnread, useMyUnreadMessages } from '../lib/useChat'
 import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
 
 // `match` is every path a link stands for, so it stays lit across its whole
-// section: Log over the log and injuries (its two tabs), Programs over your
-// splits, their days and Import — not only on its own address. The profile
-// leads the row: the page works signed out too (its logging settings), so
-// it's always there.
+// section: Programs over your splits, their days and Import — not only on its
+// own address. The calendar lives on the dashboard and the log in Tools
+// (2026-10-06), so those light Home and Tools. The profile leads the row: the
+// page works signed out too (its logging settings), so it's always there.
 const navLinks = [
   { to: '/account', label: 'Profile', match: ['/account', '/profile'], profile: true },
-  { to: '/', label: 'Home', match: ['/', '/dashboard'], exact: true },
-  { to: '/calendar', label: 'Calendar', match: ['/calendar'] },
+  { to: '/', label: 'Home', match: ['/', '/dashboard', '/calendar'], exact: true },
   { to: '/programs', label: 'Programs', match: ['/programs', '/split', '/import'] },
-  { to: '/log', label: 'Log', match: ['/log', '/injuries'] },
   { to: '/exercises', label: 'Exercises', match: ['/exercises'] },
-  { to: '/tools', label: 'Tools', match: ['/tools'] },
+  { to: '/tools', label: 'Tools', match: ['/tools', '/log', '/injuries'] },
   { to: '/contact', label: 'Contact', match: ['/contact'] },
 ]
 
@@ -50,13 +48,17 @@ export default function Navbar() {
   // The coach's own account gets its client list beside its name — the one
   // page only it can reach, and the one it opens most.
   const { isCoach } = useCoachAccess()
-  const onCoach = location.pathname.startsWith('/coach')
-  // A coached client gets their chat in the bar itself, at every width, so an
-  // unread message shows without opening the menu.
+  // Chat sits in the bar itself, at every width, so an unread message shows
+  // without opening the menu: a coached client's one chat, or the coach's
+  // inbox with every client's unread added up.
   const { coach } = useMyCoach()
-  const showChat = !!user && !!coach && !isCoach
-  const unreadMessages = useMyUnreadMessages(user?.id, showChat, location.pathname)
-  const onChat = location.pathname === '/messages'
+  const showChat = !!user && (isCoach || !!coach)
+  const chatTo = isCoach ? '/coach/messages' : '/messages'
+  const myUnread = useMyUnreadMessages(user?.id, showChat && !isCoach, location.pathname)
+  const coachUnread = useCoachUnread(user?.id, showChat && isCoach, location.pathname)
+  const unreadMessages = isCoach ? Object.values(coachUnread).reduce((a, n) => a + n, 0) : myUnread
+  const onChat = location.pathname === chatTo || (isCoach && /^\/coach\/[^/]+\/messages$/.test(location.pathname))
+  const onCoach = location.pathname.startsWith('/coach') && !onChat
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-nav backdrop-blur-md border-b border-border">
@@ -72,7 +74,7 @@ export default function Navbar() {
         <div className="flex items-center gap-1">
           {showChat && (
             <Link
-              to="/messages"
+              to={chatTo}
               aria-label={unreadMessages ? `Messages, ${unreadMessages} unread` : 'Messages'}
               title="Messages"
               className={`relative mr-4 lg:mr-6 inline-flex items-center no-underline transition-colors ${
@@ -88,11 +90,8 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* The full row from 1024px; the menu below that. Eight links plus
-              (for the coach) Clients don't fit a 768px bar — six only just
-              did. gap-6 at every width: measured with the widest signed-in bar
-              (coach, a full 150px name, "Dashboard"), it leaves 86px at 1024px
-              and 44px at 1280px, where "Clients" is spelled out. */}
+          {/* The full row from 1024px; the menu below that. gap-6 at every
+              width. */}
           <div className="hidden lg:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link

@@ -10,13 +10,14 @@
 // when signed in, so it follows you between devices.
 
 // `half` cards share a row on a wide screen whenever two sit next to each
-// other. `defaultOn: false` cards start switched off. `splitFrom` marks a card
-// carved out of another: a saved layout that predates it takes on that
-// card's on/off state.
+// other. `defaultOn: false` cards start switched off. `locked` cards can move
+// but never switch off (the calendar: its top-bar link is gone, 2026-10-06).
+// `splitFrom` marks a card carved out of another: a saved layout that
+// predates it takes on that card's on/off state.
 export const DASHBOARD_CARDS = [
   { id: 'today', label: 'Today', sub: 'Streak, last workout, today and tomorrow' },
   { id: 'progressSummary', label: 'Progress', sub: 'Strength, body fat and food over time' },
-  { id: 'calendar', label: 'Workout calendar', sub: 'Your training days, month by month' },
+  { id: 'calendar', label: 'Workout calendar', sub: 'Your training days, month by month', locked: true },
   { id: 'month', label: 'This month', sub: 'Workouts, volume, PRs and muscle focus', splitFrom: 'calendar' },
   { id: 'adherence', label: 'Plan adherence', sub: 'Sessions done vs planned', defaultOn: false },
   { id: 'injuries', label: 'Injuries', sub: 'Pain trend from your check-ins', defaultOn: false },
@@ -70,7 +71,7 @@ export function normalizeLayout(saved) {
       hidden.add(card.id)
     }
   })
-  return { order, hidden: order.filter((id) => hidden.has(id)) }
+  return { order, hidden: order.filter((id) => hidden.has(id) && !CARD_BY_ID.get(id).locked) }
 }
 
 export function defaultLayout() {

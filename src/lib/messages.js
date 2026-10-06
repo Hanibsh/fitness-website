@@ -192,6 +192,29 @@ export async function fetchCoachUnread(coachId) {
   return out
 }
 
+// The coach's inbox: the newest message in each of these chats,
+// { clientUserId: message }. One small query per client, so a chat that's been
+// quiet a while still shows its last word.
+export async function fetchCoachInbox(coachId, clientIds) {
+  if (!coachId || !clientIds.length) return {}
+  if (isDevChat(coachId, null)) {
+    const rows = devRead()
+    return Object.fromEntries(clientIds.map((id) => [id, rows.filter((m) => m.client_id === id).pop()]).filter(([, m]) => m))
+  }
+  if (!supabase) return {}
+  const latest = await Promise.all(clientIds.map(async (clientId) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('coach_id', coachId)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    return error ? null : data?.[0] || null
+  }))
+  return Object.fromEntries(clientIds.map((id, i) => [id, latest[i]]).filter(([, m]) => m))
+}
+
 // ---- Sending ---------------------------------------------------------------------
 
 // A picked file, made ready to send: { blob, type: 'image'|'video', ext } or

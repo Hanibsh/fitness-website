@@ -459,8 +459,6 @@ export default function Dashboard() {
   // existing day panel (same one the calendar grid itself uses) and scroll to
   // it, so the whole app has one place that shows "what's on this day."
   function goToDay(date, daySessions) {
-    // With the calendar card switched off there's nothing here to scroll to.
-    if (layout.hidden.includes('calendar')) return navigate('/calendar')
     setSelectedDay({ date, sessions: daySessions })
     calendarSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -592,6 +590,48 @@ export default function Dashboard() {
   // Auto-capitalise the email fallback, but leave a chosen nickname's casing.
   const nameClass = nickname.trim() ? '' : 'capitalize'
 
+  // The calendar card is locked on (lib/dashboardLayout.js) and the top bar
+  // has no Calendar link (2026-10-06), so this is the way to the full
+  // calendar — shown before the first workout too.
+  const calendarCard = (
+    <div ref={calendarSectionRef}>
+    <Card>
+      <SectionHeading
+        icon={CalendarDays}
+        right={
+          <Link
+            to="/calendar"
+            className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
+          >
+            <CalendarDays className="w-3.5 h-3.5" /> Full calendar
+          </Link>
+        }
+      >
+        Workout calendar
+      </SectionHeading>
+      <WorkoutCalendar
+        sessions={sessions}
+        program={program}
+        annotations={annotations}
+        injuries={injuries}
+        selectedDate={selectedDay?.date}
+        onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
+      />
+      <CalendarDayPanel
+        selectedDay={selectedDay}
+        program={program}
+        annotations={annotations}
+        sessions={sessions}
+        injuries={injuries}
+        onCheckin={(injury, pain) => checkinInjury(injury, pain, { date: selectedDay.date.getTime() })}
+        onOpenSummary={setSummarySession}
+        backTo="/"
+        backLabel="Dashboard"
+      />
+    </Card>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="pt-28 pb-24 px-6 max-w-5xl mx-auto">
@@ -642,6 +682,7 @@ export default function Dashboard() {
             plannedDay={firstPlan.status === 'train' ? firstPlan.day : null}
             profileDone={!!profile?.sex && profile?.bodyweight != null}
           />
+          {calendarCard}
           {(hasWeighIns || weekly.entries.length > 0) && weightAndFood}
         </div>
         {editingNick && user && (
@@ -827,46 +868,9 @@ export default function Dashboard() {
         </div>
       </motion.div>
     ),
-    // SECTION 2 — WORKOUT CALENDAR (its own card since 2026-10-03; it used to
-    // page between the calendar and the month summary with a toggle)
-    calendar: (
-      <div ref={calendarSectionRef}>
-      <Card>
-        <SectionHeading
-          icon={CalendarDays}
-          right={
-            <Link
-              to="/calendar"
-              className="inline-flex items-center gap-1 text-[12px] text-text-muted hover:text-text-primary no-underline transition-colors"
-            >
-              <CalendarDays className="w-3.5 h-3.5" /> Full calendar
-            </Link>
-          }
-        >
-          Workout calendar
-        </SectionHeading>
-        <WorkoutCalendar
-          sessions={sessions}
-          program={program}
-          annotations={annotations}
-          injuries={injuries}
-          selectedDate={selectedDay?.date}
-          onSelectDay={(date, daySessions) => setSelectedDay({ date, sessions: daySessions })}
-        />
-        <CalendarDayPanel
-          selectedDay={selectedDay}
-          program={program}
-          annotations={annotations}
-          sessions={sessions}
-          injuries={injuries}
-          onCheckin={(injury, pain) => checkinInjury(injury, pain, { date: selectedDay.date.getTime() })}
-          onOpenSummary={setSummarySession}
-          backTo="/"
-          backLabel="Dashboard"
-        />
-      </Card>
-      </div>
-    ),
+    // SECTION 2 — WORKOUT CALENDAR (calendarCard, above: always on, and on
+    // the get-started screen too — it's the way to the full calendar)
+    calendar: calendarCard,
     // SECTION 2b — THIS MONTH (the calendar card's old second page)
     month: (
       <Card>

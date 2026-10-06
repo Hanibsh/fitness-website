@@ -1,4 +1,4 @@
-import { Link, useOutletContext, useParams } from 'react-router-dom'
+import { Link, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import Chat from '../components/Chat'
 import { linkForCard } from '../lib/coach'
@@ -22,6 +22,8 @@ export default function ClientMessages() {
   const checkins = useClientCheckins(state === 'linked' ? link.client_id : null)
   const { targets } = useClientTargets(state === 'linked' ? link.client_id : null)
   const name = client?.name || 'Client'
+  // Opened from the inbox: back goes to the inbox.
+  const fromInbox = !!useLocation().state?.inbox
   // Signed out, only the dev sample gets here (CoachLayout's gate).
   const coachId = user?.id || DEV_COACH_ID
 
@@ -54,10 +56,10 @@ export default function ClientMessages() {
   return (
     <>
       <Link
-        to={client ? `/coach/${client.id}` : '/coach'}
+        to={fromInbox ? '/coach/messages' : client ? `/coach/${client.id}` : '/coach'}
         className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-6 transition-colors"
       >
-        <ArrowLeft className="w-3.5 h-3.5" /> {client ? `Back to ${name}` : 'All clients'}
+        <ArrowLeft className="w-3.5 h-3.5" /> {fromInbox ? 'All messages' : client ? `Back to ${name}` : 'All clients'}
       </Link>
       {state === 'linked' ? (
         // -mb-24 cancels the coach frame's bottom padding, so the composer

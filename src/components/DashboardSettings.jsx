@@ -1,11 +1,12 @@
-import { RotateCcw } from 'lucide-react'
+import { Lock, RotateCcw } from 'lucide-react'
 import { dashboardCard, isDefaultLayout, moveCardTo, toggleCard } from '../lib/dashboardLayout'
 import { useDashboardLayout } from '../lib/useDashboardLayout'
 import { SortableList, SortableItem, DragHandle } from './Sortable'
 
 // The profile page's "Dashboard" section: every card, a box to show it, and a
 // grip to drag it into place. Saves on every change. The coaching banner and
-// the session row aren't listed — they're fixed (lib/dashboardLayout.js).
+// the session row aren't listed — they're fixed (lib/dashboardLayout.js). A
+// locked card (the calendar) shows a lock instead of a box: it moves, but stays.
 export default function DashboardSettings() {
   const { layout, save, reset } = useDashboardLayout()
   const hidden = new Set(layout.hidden)
@@ -19,13 +20,17 @@ export default function DashboardSettings() {
             const on = !hidden.has(id)
             return (
               <SortableItem key={id} id={id} as="li" className="flex items-center gap-3 py-2.5 bg-white">
-                <label className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={(e) => save(toggleCard(layout, id, e.target.checked))}
-                    className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
-                  />
+                <label className={`flex items-start gap-3 flex-1 min-w-0 ${card.locked ? '' : 'cursor-pointer'}`}>
+                  {card.locked ? (
+                    <Lock className="mt-0.5 w-4 h-4 shrink-0 text-text-light" role="img" aria-label="Always shown" />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) => save(toggleCard(layout, id, e.target.checked))}
+                      className="mt-0.5 w-4 h-4 shrink-0 accent-text-primary cursor-pointer"
+                    />
+                  )}
                   <span className="min-w-0">
                     <span className={`block text-[13px] font-medium break-words ${on ? 'text-text-primary' : 'text-text-light'}`}>
                       {card.label}

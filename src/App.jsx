@@ -31,6 +31,7 @@ const SessionGenerator = lazy(() => import('./pages/SessionGenerator'))
 // The coach's client area — only reachable on the coach's account (CoachLayout).
 const CoachLayout = lazy(() => import('./pages/CoachLayout'))
 const Clients = lazy(() => import('./pages/Clients'))
+const CoachInbox = lazy(() => import('./pages/CoachInbox'))
 const ClientDetail = lazy(() => import('./pages/ClientDetail'))
 const ClientGenerate = lazy(() => import('./pages/ClientGenerate'))
 const ClientSplitLayout = lazy(() => import('./pages/ClientSplitLayout'))
@@ -115,6 +116,7 @@ function App() {
             same split editor. CoachLayout gates it and holds the list. */}
         <Route path="/coach" element={<CoachLayout />}>
           <Route index element={<Clients />} />
+          <Route path="messages" element={<CoachInbox />} />
           <Route path=":clientId" element={<ClientDetail />} />
           <Route path=":clientId/generate" element={<ClientGenerate />} />
           <Route path=":clientId/training" element={<ClientTraining />} />
