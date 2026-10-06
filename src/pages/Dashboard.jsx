@@ -56,6 +56,7 @@ import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
 import SendToCoachButton from '../components/SendToCoachButton'
+import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
@@ -1495,6 +1496,10 @@ export default function Dashboard() {
                 makeCard={() => workoutCard(summarySession, sessions, unit)}
                 coachId={coach?.coach_id}
                 coachName={coach?.coach_name}
+                backLabel="Dashboard"
+              />
+              <ShareToCommunityButton
+                makeCard={() => workoutCard(summarySession, sessions, unit)}
                 backLabel="Dashboard"
               />
               <button

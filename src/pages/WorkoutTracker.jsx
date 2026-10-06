@@ -78,6 +78,7 @@ import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
 import SessionSummary from '../components/SessionSummary'
 import SendToCoachButton from '../components/SendToCoachButton'
+import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
 import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
@@ -3363,6 +3364,10 @@ export default function WorkoutTracker() {
                                   makeCard={() => workoutCard(session, sortedHistory, unit)}
                                   coachId={sessionComments.coachId}
                                   coachName={sessionComments.coachName}
+                                  backLabel="Log"
+                                />
+                                <ShareToCommunityButton
+                                  makeCard={() => workoutCard(session, sortedHistory, unit)}
                                   backLabel="Log"
                                 />
                                 <button

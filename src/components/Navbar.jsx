@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogOut, Users, MessagesSquare } from 'lucide-react'
+import { Menu, X, LogOut, Users, MessagesSquare, UsersRound } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useCoachAccess } from '../lib/useClientsState'
 import { useMyCoach } from '../lib/useMyCoach'
 import { useCoachUnread, useMyUnreadMessages } from '../lib/useChat'
+import { useCommunityNew } from '../lib/useCommunity'
 import AuthModal from './AuthModal'
 import VersionBadge from './VersionBadge'
 
@@ -59,6 +60,11 @@ export default function Navbar() {
   const unreadMessages = isCoach ? Object.values(coachUnread).reduce((a, n) => a + n, 0) : myUnread
   const onChat = location.pathname === chatTo || (isCoach && /^\/coach\/[^/]+\/messages$/.test(location.pathname))
   const onCoach = location.pathname.startsWith('/coach') && !onChat
+  // The community: the same people as the chat (the coach and his clients),
+  // with a dot when someone posted since this device last looked.
+  const onCommunity = location.pathname === '/community'
+  const communityCoach = isCoach ? user?.id : coach?.coach_id
+  const newPosts = useCommunityNew(communityCoach, user?.id, showChat && !onCommunity, location.pathname)
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-surface-nav backdrop-blur-md border-b border-border">
@@ -72,6 +78,19 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-1">
+          {showChat && (
+            <Link
+              to="/community"
+              aria-label={newPosts ? 'Community, new posts' : 'Community'}
+              title="Community"
+              className={`relative mr-4 lg:mr-6 inline-flex items-center no-underline transition-colors ${
+                onCommunity ? 'text-text-primary' : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <UsersRound className="w-[18px] h-[18px]" />
+              {newPosts && <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-text-primary" />}
+            </Link>
+          )}
           {showChat && (
             <Link
               to={chatTo}

@@ -22,6 +22,7 @@ import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR, INJURY_BAND } from '../lib/ca
 import CalendarDayPanel from '../components/CalendarDayPanel'
 import SessionSummary from '../components/SessionSummary'
 import SendToCoachButton from '../components/SendToCoachButton'
+import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
 
 const SUMMARY_RANGES = [
@@ -425,6 +426,10 @@ export default function CalendarPage() {
                   makeCard={() => workoutCard(summarySession, sessions, summarySession.unit || 'kg')}
                   coachId={sessionComments.coachId}
                   coachName={sessionComments.coachName}
+                  backLabel="Calendar"
+                />
+                <ShareToCommunityButton
+                  makeCard={() => workoutCard(summarySession, sessions, summarySession.unit || 'kg')}
                   backLabel="Calendar"
                 />
                 <button

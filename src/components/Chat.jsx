@@ -1,14 +1,12 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Plus, SendHorizontal, X, Trash2, Loader2, Reply, Image as ImageIcon, Dumbbell, CalendarRange, Activity, ChevronRight } from 'lucide-react'
+import { Plus, SendHorizontal, X, Trash2, Loader2, Reply, Image as ImageIcon, ChevronRight } from 'lucide-react'
 import ConfirmModal from './ConfirmModal'
-import Modal from './Modal'
 import ChatCard from './ChatCard'
 import ChatProfile from './ChatProfile'
-import ExercisePicker from './ExercisePicker'
+import SharePickers, { ShareMenu, cardMenuItems } from './SharePickers'
 import { useChat } from '../lib/useChat'
-import { prepareMedia, MESSAGE_MAX, REACTIONS } from '../lib/messages'
-import { cardLabel, exerciseCard, splitCard, workoutCard, splitShape } from '../lib/chatCards'
-import { sessionStats } from '../lib/workoutStore'
+import { prepareMedia, reactionChips, MESSAGE_MAX, REACTIONS } from '../lib/messages'
+import { cardLabel } from '../lib/chatCards'
 
 const dayLabel = (iso) => {
   const d = new Date(iso)
@@ -20,7 +18,6 @@ const dayLabel = (iso) => {
   return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 const timeLabel = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-const shortDate = (ts) => new Date(ts).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 
 // What a message says, in one line — for reply quotes.
 function snippet(m) {
@@ -28,46 +25,6 @@ function snippet(m) {
   if (m.body) return m.body
   if (m.card) return cardLabel(m.card)
   return m.media_type === 'video' ? 'Video' : 'Photo'
-}
-
-// Reactions grouped for the chips under a message: [{ emoji, count, mine }].
-function reactionChips(reactions = [], meId) {
-  const out = []
-  for (const r of reactions) {
-    const chip = out.find((c) => c.emoji === r.emoji)
-    if (chip) {
-      chip.count++
-      chip.mine ||= r.user_id === meId
-    } else out.push({ emoji: r.emoji, count: 1, mine: r.user_id === meId })
-  }
-  return out
-}
-
-function PickerList({ title, empty, items, onClose }) {
-  return (
-    <Modal onClose={onClose} maxWidth="max-w-md">
-      <div className="p-6">
-        <h3 className="font-heading text-xl font-medium text-text-primary mb-4 pr-8">{title}</h3>
-        {items.length ? (
-          <div className="border border-border divide-y divide-border">
-            {items.map((it) => (
-              <button
-                key={it.key}
-                type="button"
-                onClick={it.onPick}
-                className="w-full text-left px-4 py-3 bg-white hover:bg-cream border-none cursor-pointer transition-colors"
-              >
-                <span className="block text-[14px] text-text-primary break-words">{it.title}</span>
-                {it.line && <span className="block text-[12px] text-text-muted mt-0.5">{it.line}</span>}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[13px] text-text-muted">{empty}</p>
-        )}
-      </div>
-    </Modal>
-  )
 }
 
 // A coach ↔ client chat: the messages, then the composer pinned to the bottom
@@ -239,10 +196,8 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
   const nameOf = (m) => (m?.sender_id === meId ? 'You' : otherName)
   const menu = [
     { key: 'media', label: 'Photo or video', icon: ImageIcon, run: () => fileRef.current?.click() },
-    { key: 'exercise', label: 'Exercise', icon: Dumbbell, run: () => setPicker('exercise') },
-    splits && { key: 'split', label: 'Split', icon: CalendarRange, run: () => setPicker('split') },
-    sessions && { key: 'workout', label: 'Workout', icon: Activity, run: () => setPicker('workout') },
-  ].filter(Boolean)
+    ...cardMenuItems({ splits, sessions, open: setPicker }),
+  ]
 
   return (
     <div ref={rootRef} className="flex flex-col">
@@ -449,24 +404,7 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
         {sendError && <p className="text-[12px] text-red-600 mb-2">{sendError}</p>}
         <div className="relative flex items-end gap-2">
           <input ref={fileRef} type="file" accept="image/*,video/*" onChange={pick} className="hidden" />
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-              <div className="absolute bottom-full left-0 mb-2 z-20 w-52 bg-white border border-border shadow-lg" role="menu">
-                {menu.map((it) => (
-                  <button
-                    key={it.key}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setMenuOpen(false); it.run() }}
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-[14px] text-text-primary bg-white hover:bg-cream border-none cursor-pointer transition-colors"
-                  >
-                    <it.icon className="w-4 h-4 text-text-muted" /> {it.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+          {menuOpen && <ShareMenu items={menu} onClose={() => setMenuOpen(false)} />}
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
@@ -505,44 +443,7 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
         </div>
       </form>
 
-      {picker === 'exercise' && (
-        <Modal onClose={() => setPicker(null)} maxWidth="max-w-md">
-          <div className="p-6">
-            <h3 className="font-heading text-xl font-medium text-text-primary mb-4 pr-8">Share an exercise</h3>
-            <ExercisePicker onSelect={(name, category, id) => attachCard(exerciseCard({ id, name, category }))} />
-          </div>
-        </Modal>
-      )}
-      {picker === 'split' && (
-        <PickerList
-          title="Share a split"
-          empty="No splits yet."
-          onClose={() => setPicker(null)}
-          items={(splits || []).map((p) => {
-            const { train } = splitShape(p)
-            return { key: p.id, title: p.name || 'Split', line: `${train} training day${train === 1 ? '' : 's'}`, onPick: () => attachCard(splitCard(p)) }
-          })}
-        />
-      )}
-      {picker === 'workout' && (
-        <PickerList
-          title="Share a workout"
-          empty="No workouts logged yet."
-          onClose={() => setPicker(null)}
-          items={[...(sessions?.list || [])]
-            .sort((a, b) => b.date - a.date)
-            .slice(0, 20)
-            .map((s) => {
-              const { sets } = sessionStats(s)
-              return {
-                key: s.id,
-                title: s.name || 'Workout',
-                line: `${shortDate(s.date)} · ${sets} set${sets === 1 ? '' : 's'}`,
-                onPick: () => attachCard(workoutCard(s, sessions.list, sessions.unit)),
-              }
-            })}
-        />
-      )}
+      <SharePickers picker={picker} splits={splits} sessions={sessions} onPick={attachCard} onClose={() => setPicker(null)} />
 
       {confirmDelete && (
         <ConfirmModal

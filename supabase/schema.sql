@@ -1009,6 +1009,181 @@ create policy "Uploaders can delete their chat media"
   on storage.objects for delete using (bucket_id = 'chat-media' and owner_id = auth.uid()::text);
 
 -- ---------------------------------------------------------------------------
+-- 2k) COMMUNITY — a feed the coach's clients share with each other: a caption,
+--     something from the app (a workout, a split or an exercise — shape in
+--     lib/chatCards.js; check-ins stay between client and coach), or both.
+--     Emoji reactions and comments under each post.
+--     One community per coach: the coach and every client with an ACTIVE link.
+--     Someone who leaves drops out — their posts and comments are hidden, not
+--     deleted, and come back if they rejoin. Nothing is editable; the author or
+--     the coach deletes.
+-- ---------------------------------------------------------------------------
+create table if not exists public.community_posts (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users(id) on delete cascade,
+  author_id uuid not null references auth.users(id) on delete cascade,
+  body text check (char_length(body) <= 1000),
+  card jsonb check (card is null or (octet_length(card::text) <= 100000 and card->>'type' in ('workout', 'split', 'exercise'))),
+  created_at timestamptz not null default now(),
+  check (body is not null or card is not null)
+);
+
+create index if not exists community_posts_feed_idx on public.community_posts (coach_id, created_at desc);
+
+alter table public.community_posts enable row level security;
+
+-- True while the signed-in user belongs to this coach's community: they're the
+-- coach (profiles.is_coach, which the app can't set), or one of their active
+-- clients.
+create or replace function public.community_member(p_coach uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and (
+    (auth.uid() = p_coach and exists (select 1 from public.profiles where id = p_coach and is_coach))
+    or exists (
+      select 1 from public.coach_links
+      where coach_id = p_coach and client_id = auth.uid() and status = 'active'
+    )
+  );
+$$;
+
+-- True while BOTH the signed-in user and `p_author` belong to the community —
+-- what every read asks, so someone who left drops out of everyone's feed. Only
+-- answers for a member, so it can't be used to look up who coaches whom.
+create or replace function public.community_sees(p_coach uuid, p_author uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.community_member(p_coach) and (
+    (p_author = p_coach and exists (select 1 from public.profiles where id = p_coach and is_coach))
+    or exists (
+      select 1 from public.coach_links
+      where coach_id = p_coach and client_id = p_author and status = 'active'
+    )
+  );
+$$;
+
+drop policy if exists "Members can view community posts" on public.community_posts;
+create policy "Members can view community posts"
+  on public.community_posts for select using (public.community_sees(coach_id, author_id));
+drop policy if exists "Members can post" on public.community_posts;
+create policy "Members can post"
+  on public.community_posts for insert with check (author_id = auth.uid() and public.community_member(coach_id));
+drop policy if exists "Authors and the coach can delete posts" on public.community_posts;
+create policy "Authors and the coach can delete posts"
+  on public.community_posts for delete using (author_id = auth.uid() or coach_id = auth.uid());
+
+-- A post the signed-in user can see.
+create or replace function public.community_post_visible(p_post uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.community_posts p
+    where p.id = p_post and public.community_sees(p.coach_id, p.author_id)
+  );
+$$;
+
+-- REACTIONS — one emoji per person per post; picking another replaces it.
+create table if not exists public.post_reactions (
+  post_id uuid not null references public.community_posts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  emoji text not null check (char_length(emoji) between 1 and 16),
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+alter table public.post_reactions enable row level security;
+
+drop policy if exists "Members can view post reactions" on public.post_reactions;
+create policy "Members can view post reactions"
+  on public.post_reactions for select using (public.community_post_visible(post_id));
+drop policy if exists "Members can react to posts" on public.post_reactions;
+create policy "Members can react to posts"
+  on public.post_reactions for insert with check (user_id = auth.uid() and public.community_post_visible(post_id));
+drop policy if exists "Members can change their post reaction" on public.post_reactions;
+create policy "Members can change their post reaction"
+  on public.post_reactions for update
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid() and public.community_post_visible(post_id));
+drop policy if exists "Members can remove their post reaction" on public.post_reactions;
+create policy "Members can remove their post reaction"
+  on public.post_reactions for delete using (user_id = auth.uid());
+
+-- COMMENTS — short text under a post.
+create table if not exists public.post_comments (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.community_posts(id) on delete cascade,
+  author_id uuid not null references auth.users(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 1000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists post_comments_post_idx on public.post_comments (post_id, created_at);
+
+alter table public.post_comments enable row level security;
+
+-- A comment the signed-in user can see: its post is visible and its author is
+-- still in the community.
+create or replace function public.community_comment_visible(p_post uuid, p_author uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.community_posts p
+    where p.id = p_post
+      and public.community_sees(p.coach_id, p.author_id)
+      and public.community_sees(p.coach_id, p_author)
+  );
+$$;
+
+-- The coach of the community a post is in (for someone who can see the post).
+create or replace function public.community_post_coach(p_post uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select coach_id from public.community_posts
+  where id = p_post and public.community_sees(coach_id, author_id);
+$$;
+
+drop policy if exists "Members can view comments" on public.post_comments;
+create policy "Members can view comments"
+  on public.post_comments for select using (public.community_comment_visible(post_id, author_id));
+drop policy if exists "Members can comment" on public.post_comments;
+create policy "Members can comment"
+  on public.post_comments for insert with check (author_id = auth.uid() and public.community_post_visible(post_id));
+drop policy if exists "Authors and the coach can delete comments" on public.post_comments;
+create policy "Authors and the coach can delete comments"
+  on public.post_comments for delete using (author_id = auth.uid() or public.community_post_coach(post_id) = auth.uid());
+
+-- Names in the feed. Clients can't read each other's profiles, so this hands
+-- out just the nickname — for the signed-in member only, and only for people
+-- who've posted or commented (a client who just reads is never named).
+create or replace function public.community_names(p_coach uuid)
+returns table (id uuid, name text, is_coach boolean)
+language sql stable security definer set search_path = public as $$
+  select p.id,
+    case when p.id = p_coach then coalesce(nullif(trim(p.display_name), ''), 'Leon') else nullif(trim(p.display_name), '') end,
+    p.id = p_coach
+  from public.profiles p
+  where public.community_sees(p_coach, p.id)
+    and (
+      p.id = p_coach
+      or exists (select 1 from public.community_posts cp where cp.coach_id = p_coach and cp.author_id = p.id)
+      or exists (
+        select 1 from public.post_comments c join public.community_posts cp on cp.id = c.post_id
+        where cp.coach_id = p_coach and c.author_id = p.id
+      )
+    );
+$$;
+
+-- Live feed (Realtime applies the select policies above). Added only once.
+do $$
+declare t text;
+begin
+  foreach t in array array['community_posts', 'post_reactions', 'post_comments'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 3) SHARED_LIFTS — anonymized data for analysis. NO user identity is stored.
 --    Signed-in users may contribute (insert), but the app can't read it back
 --    (no select policy) — only the Supabase dashboard can, for your analysis.

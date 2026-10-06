@@ -32,6 +32,7 @@ const sections = [
     body: [
       "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, weekly food log (calories, protein, body fat), injuries, profile and weekly check-ins, plus the name you go by (your nickname, or the part of your email before the @). I can't change any of it.",
       "Messages, photos, videos, reactions and anything shared in our chat (a workout, a split, a check-in) are stored privately: only you and I can see them, and only while your account is linked to mine. Either of us can delete what we sent.",
+      "The community is shared with me and my other current clients. They see only what you post there (a caption, a workout, a split or an exercise), your comments and reactions, and your nickname — never your email. You can delete any of it, and it's hidden if you stop coaching.",
       'You can stop sharing any time on your profile page. I stop seeing your data straight away.',
     ],
   },

@@ -22,6 +22,20 @@ const PHOTO_MAX_SIDE = 1600
 const BUCKET = 'chat-media'
 const PAGE = 200
 
+// Reactions grouped for the chips under a message (or a community post):
+// [{ emoji, count, mine }], in the order they were first used.
+export function reactionChips(reactions = [], meId) {
+  const out = []
+  for (const r of reactions) {
+    const chip = out.find((c) => c.emoji === r.emoji)
+    if (chip) {
+      chip.count++
+      chip.mine ||= r.user_id === meId
+    } else out.push({ emoji: r.emoji, count: 1, mine: r.user_id === meId })
+  }
+  return out
+}
+
 function missing(error) {
   if (!error) return false
   return ['42P01', 'PGRST205', 'PGRST202', '42883'].includes(error.code)

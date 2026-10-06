@@ -15,9 +15,10 @@ import { scheduleMode } from '../lib/program'
 const shortDate = (ts) => new Date(ts).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
 
 // The frame every card shares: icon, title, one line under it, and an action.
-function Frame({ icon: Icon, kicker, title, line, children, action }) {
+// `wide`: fills its column (the community feed) instead of a chat bubble's width.
+function Frame({ icon: Icon, kicker, title, line, children, action, wide = false }) {
   return (
-    <div className="w-64 max-w-[66vw] bg-white border border-border text-left">
+    <div className={`${wide ? 'w-full sm:max-w-sm' : 'w-64 max-w-[66vw]'} bg-white border border-border text-left`}>
       <div className="px-3.5 pt-3 pb-2.5">
         <p className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-light">
           <Icon className="w-3.5 h-3.5" /> {kicker}
@@ -113,16 +114,17 @@ function CheckinGrid({ answers, food }) {
   )
 }
 
-// One shared thing in the chat. `mine`: you sent it. `saveSplit(program)` —
-// keeps a copy of a split someone else shared, resolving to where it lives
-// now; `sentSplitPath(id)` — where a split the coach sent sits on this side.
-export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
+// One shared thing in the chat (or a community post). `mine`: you sent it.
+// `saveSplit(program)` — keeps a copy of a split someone else shared,
+// resolving to where it lives now; `sentSplitPath(id)` — where a split the
+// coach sent sits on this side. `wide`: see Frame.
+export default function ChatCard({ card, mine, saveSplit, sentSplitPath, wide = false }) {
   const [open, setOpen] = useState(false)
   const [savedPath, setSavedPath] = useState(null)
   const [saveError, setSaveError] = useState('')
 
   if (!isCard(card)) {
-    return <Frame icon={Dumbbell} kicker="Shared" title="This needs a newer version of the app" />
+    return <Frame wide={wide} icon={Dumbbell} kicker="Shared" title="This needs a newer version of the app" />
   }
 
   if (card.type === 'exercise') {
@@ -130,6 +132,7 @@ export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
     const muscles = full ? primaryMuscles(full).slice(0, 3).join(' · ') : card.category
     return (
       <Frame
+        wide={wide}
         icon={Dumbbell}
         kicker="Exercise"
         title={full?.name || card.name}
@@ -141,7 +144,7 @@ export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
 
   if (card.type === 'checkin') {
     return (
-      <Frame icon={ClipboardCheck} kicker={card.updated ? 'Check-in updated' : 'Weekly check-in'} title={weekLabel(card.week_start)}>
+      <Frame wide={wide} icon={ClipboardCheck} kicker={card.updated ? 'Check-in updated' : 'Weekly check-in'} title={weekLabel(card.week_start)}>
         <CheckinGrid answers={card.answers} food={card.food} />
       </Frame>
     )
@@ -155,6 +158,7 @@ export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
     return (
       <>
         <Frame
+          wide={wide}
           icon={Dumbbell}
           kicker="Workout"
           title={s.name || 'Workout'}
@@ -219,6 +223,7 @@ export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
   return (
     <>
       <Frame
+        wide={wide}
         icon={CalendarRange}
         kicker={card.sent ? 'New split' : 'Split'}
         title={program.name}
