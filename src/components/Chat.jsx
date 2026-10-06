@@ -97,6 +97,8 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
   const fileRef = useRef(null)
   const inputRef = useRef(null)
   const lastCount = useRef(0)
+  const rootRef = useRef(null)
+  const pinned = useRef(true) // at the newest message — the chat keeps you there
   const composerRef = useRef(null)
   const [composerH, setComposerH] = useState(80)
 
@@ -128,15 +130,32 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
     if (messages.length !== lastCount.current) {
       lastCount.current = messages.length
       window.scrollTo(0, document.documentElement.scrollHeight)
+      pinned.current = true
     }
   }, [messages.length])
 
-  // "Typing…" appearing at the bottom stays in view if you were there.
+  // Photos and videos load after the chat opens and push the bottom down —
+  // while you're at the newest message, stay there. Also keeps "typing…", an
+  // opened message's actions and a taller composer in view. Scroll up to read
+  // and it lets you be.
   useEffect(() => {
-    if (!otherTyping) return
-    const fromBottom = document.documentElement.scrollHeight - window.innerHeight - window.scrollY
-    if (fromBottom < 200) window.scrollTo(0, document.documentElement.scrollHeight)
-  }, [otherTyping])
+    const el = rootRef.current
+    const onScroll = () => {
+      pinned.current = document.documentElement.scrollHeight - window.innerHeight - window.scrollY < 80
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    let ro
+    if (el && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        if (pinned.current) window.scrollTo(0, document.documentElement.scrollHeight)
+      })
+      ro.observe(el)
+    }
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      ro?.disconnect()
+    }
+  }, [])
 
   // The text box grows with what's typed, up to about five lines.
   useEffect(() => {
@@ -220,7 +239,7 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
   ].filter(Boolean)
 
   return (
-    <div className="flex flex-col">
+    <div ref={rootRef} className="flex flex-col">
       {about ? (
         <button
           type="button"
@@ -267,7 +286,9 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
                       <span className="block text-[12px] text-text-muted truncate max-w-[14rem]">{snippet(quoted)}</span>
                     </button>
                   )}
-                  {/* Tap a message for its actions. */}
+                  {/* Tap a message for its actions. Reactions sit on its
+                      bottom-right corner, like a sticker. */}
+                  <div className={`relative max-w-full ${chips.length ? 'mb-4' : ''}`}>
                   <div
                     onClick={toggle}
                     onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && toggle()}
@@ -307,15 +328,17 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
                     )}
                   </div>
                   {chips.length > 0 && (
-                    <div className={`flex flex-wrap gap-1 mt-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+                    // 24px tall, 16px of it below the bubble — the rest only
+                    // covers the bubble's padding, never its text.
+                    <div className="absolute right-1.5 -bottom-4 z-[1] flex items-center gap-px p-px rounded-full bg-white border border-border shadow-sm">
                       {chips.map((c) => (
                         <button
                           key={c.emoji}
                           type="button"
                           onClick={() => doReact(m, c.emoji)}
                           aria-label={c.mine ? `Remove your ${c.emoji}` : `React ${c.emoji}`}
-                          className={`inline-flex items-center gap-1 h-6 px-1.5 text-[13px] leading-none border cursor-pointer ${
-                            c.mine ? 'bg-cream border-text-primary' : 'bg-white border-border'
+                          className={`inline-flex items-center justify-center gap-0.5 h-5 min-w-5 px-1 rounded-full text-[13px] leading-none border cursor-pointer ${
+                            c.mine ? 'bg-cream border-text-primary' : 'bg-transparent border-transparent'
                           }`}
                         >
                           {c.emoji}
@@ -324,6 +347,7 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
                       ))}
                     </div>
                   )}
+                  </div>
                   <span className="text-[10px] text-text-light mt-0.5 px-0.5">
                     {timeLabel(m.created_at)}
                     {mine && m.id === lastMineId && m.read_at && ' · Seen'}
