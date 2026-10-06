@@ -4,6 +4,7 @@ import { fetchProfile, saveProfile } from './profile'
 import { setTheme, storedTheme, themeById } from './theme'
 import { getCachedNickname, getExerciseNotesMap, saveCachedNickname, saveExerciseNotesMap } from './workoutStore'
 import { fetchRemoteExerciseNotes, upsertRemoteExerciseNotes } from './workoutRemote'
+import { forgetAccount, listAccounts, rememberSession, setAccountName } from './accounts'
 
 // Tracks the signed-in user across the app. If Supabase isn't configured
 // (no env vars), it stays "signed out" and everything runs anonymously.
@@ -42,6 +43,7 @@ const AuthContext = createContext({
   refreshProfile: async () => {},
   mergeProfile: () => {},
   signOut: async () => {},
+  switchAccount: async () => {},
 })
 
 export function AuthProvider({ children }) {
@@ -65,7 +67,19 @@ export function AuthProvider({ children }) {
       setUser(data.session?.user ?? null)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Every session is remembered for the account switcher (lib/accounts.js),
+    // refreshes included, so its stored token is never a spent one. Logging
+    // into a second account straight over the first ("Add account") reloads,
+    // like a switch, so no page carries the old account's state across.
+    let lastId = null
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const id = session?.user?.id ?? null
+      if (session) rememberSession(session)
+      if (event === 'SIGNED_IN' && lastId && id && id !== lastId) {
+        window.location.reload()
+        return
+      }
+      lastId = id
       setUser(session?.user ?? null)
     })
     return () => sub.subscription.unsubscribe()
@@ -125,6 +139,11 @@ export function AuthProvider({ children }) {
 
   // Editors call this after persisting a new nickname; mirroring it here means
   // the cache can never drift from what the UI is showing.
+  // The switcher lists accounts by nickname, so keep its copy current too.
+  useEffect(() => {
+    if (user && nickname) setAccountName(user.id, nickname)
+  }, [user, nickname])
+
   const setNickname = useCallback((value) => {
     setNicknameState(value)
     if (user) saveCachedNickname(user.id, value)
@@ -155,11 +174,30 @@ export function AuthProvider({ children }) {
   const profileLoading = !!user && profileSettledFor !== user.id
 
   async function signOut() {
-    if (supabase) await supabase.auth.signOut()
+    if (!supabase) return
+    if (user) forgetAccount(user.id)
+    await supabase.auth.signOut()
+  }
+
+  // Swaps the session for another remembered account, then reloads so every
+  // page starts clean on the new account. A token that no longer works (that
+  // account logged out everywhere) drops it from the list and throws.
+  async function switchAccount(id) {
+    const a = listAccounts().find((r) => r.id === id)
+    if (!supabase || !a) return
+    const { error } = await supabase.auth.setSession({
+      access_token: a.access_token,
+      refresh_token: a.refresh_token,
+    })
+    if (error) {
+      forgetAccount(id)
+      throw error
+    }
+    window.location.reload()
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, profile, profileLoading, nickname, setNickname, refreshProfile, mergeProfile, signOut }}>
+    <AuthContext.Provider value={{ user, loading, profile, profileLoading, nickname, setNickname, refreshProfile, mergeProfile, signOut, switchAccount }}>
       {children}
     </AuthContext.Provider>
   )

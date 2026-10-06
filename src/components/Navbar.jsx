@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogOut, Users, MessagesSquare, UsersRound } from 'lucide-react'
+import { Menu, X, LogOut, Users, MessagesSquare, UsersRound, ArrowLeftRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useCoachAccess } from '../lib/useClientsState'
@@ -9,6 +9,7 @@ import { useMyCoach } from '../lib/useMyCoach'
 import { useCoachUnread, useMyUnreadMessages } from '../lib/useChat'
 import { useCommunityNew } from '../lib/useCommunity'
 import AuthModal from './AuthModal'
+import SwitchAccountModal from './SwitchAccountModal'
 import VersionBadge from './VersionBadge'
 
 // `match` is every path a link stands for, so it stays lit across its whole
@@ -44,6 +45,7 @@ function linkLabel(link, user, nickname) {
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [switchOpen, setSwitchOpen] = useState(false)
   const location = useLocation()
   const { user, nickname, signOut } = useAuth()
   // The coach's own account gets its client list beside its name — the one
@@ -148,13 +150,24 @@ export default function Navbar() {
 
           {supabase && (
             user ? (
-              <button
-                onClick={signOut}
-                aria-label="Log out"
-                className="text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <span className="inline-flex items-center gap-4">
+                <button
+                  onClick={() => setSwitchOpen(true)}
+                  aria-label="Switch account"
+                  title="Switch account"
+                  className="text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={signOut}
+                  aria-label="Log out"
+                  title="Log out"
+                  className="text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </span>
             ) : (
               <button
                 onClick={() => setAuthOpen(true)}
@@ -215,12 +228,20 @@ export default function Navbar() {
               {supabase && (
                 <div className="pt-3 border-t border-border">
                   {user ? (
-                    <button
-                      onClick={() => { signOut(); setIsOpen(false) }}
-                      className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <LogOut className="w-4 h-4" /> Log out
-                    </button>
+                    <div className="flex flex-col items-start gap-4">
+                      <button
+                        onClick={() => { setSwitchOpen(true); setIsOpen(false) }}
+                        className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <ArrowLeftRight className="w-4 h-4" /> Switch account
+                      </button>
+                      <button
+                        onClick={() => { signOut(); setIsOpen(false) }}
+                        className="text-[13px] text-text-primary bg-transparent border-none cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <LogOut className="w-4 h-4" /> Log out
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => { setAuthOpen(true); setIsOpen(false) }}
@@ -237,6 +258,12 @@ export default function Navbar() {
       </AnimatePresence>
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {switchOpen && (
+        <SwitchAccountModal
+          onClose={() => setSwitchOpen(false)}
+          onAdd={() => { setSwitchOpen(false); setAuthOpen(true) }}
+        />
+      )}
     </nav>
   )
 }
