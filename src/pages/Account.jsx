@@ -585,6 +585,16 @@ export default function Account() {
                 {/* ---- Privacy ----------------------------------------------------- */}
                 <ProfileSection id="privacy" title="Privacy" {...sec('privacy')}>
                   <div>
+                    {/* Who sees what — a linked coach reads everything, the community only what's posted. */}
+                    <ul className="space-y-1.5 m-0 p-0 list-none mb-5 text-[13px] text-text-secondary leading-relaxed">
+                      <li>
+                        {coach
+                          ? <><span className="font-medium text-text-primary">You and {coach.coach_name}</span> (your coach) see your data.</>
+                          : <><span className="font-medium text-text-primary">Only you</span> see your data.</>}
+                      </li>
+                      {coach && <li>In the community, others see only what you post, under your nickname.</li>}
+                      <li>Never sold, never used for ads, never shared with other apps.</li>
+                    </ul>
                     <label className="flex items-start gap-3 cursor-pointer">
                       <input
                         type="checkbox"
@@ -597,6 +607,9 @@ export default function Account() {
                         Share my lifts, bodyweight and sex — <span className="font-medium text-text-primary">anonymously</span>, no name or email.
                       </span>
                     </label>
+                    <Link to="/privacy" className="inline-block mt-5 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline transition-colors">
+                      Full privacy policy →
+                    </Link>
                   </div>
                 </ProfileSection>
               </div>

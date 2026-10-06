@@ -8,6 +8,7 @@ const sections = [
     body: [
       "You can use every tool on this site — the calculators and the workout log — without an account and without giving me any personal information. If you don't log in, your data lives only in your own browser and never reaches my servers.",
       'An account is optional. It exists so your workouts sync across your devices. Sharing your data for research is separate, opt-in, and anonymous. I don\'t sell your data, run ads, or use third-party tracking.',
+      'If I coach you, I see your training once you link your account.',
     ],
   },
   {
