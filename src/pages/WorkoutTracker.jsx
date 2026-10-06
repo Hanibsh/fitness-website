@@ -77,7 +77,8 @@ import RestTimer from '../components/RestTimer'
 import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
 import SessionSummary from '../components/SessionSummary'
-import ShareWorkoutButton from '../components/ShareWorkoutButton'
+import SendToCoachButton from '../components/SendToCoachButton'
+import { workoutCard } from '../lib/chatCards'
 import SplitSyncModal from '../components/SplitSyncModal'
 import { formatDuration } from '../lib/dashboard'
 import { adviseTraining } from '../lib/advisor'
@@ -3358,13 +3359,11 @@ export default function WorkoutTracker() {
                 const session = openSessionData
                 return (
                   <div className="flex flex-wrap items-center gap-4">
-                                <ShareWorkoutButton
-                                  key={session.id}
-                                  session={session}
-                                  history={sortedHistory}
-                                  unit={unit}
+                                <SendToCoachButton
+                                  makeCard={() => workoutCard(session, sortedHistory, unit)}
                                   coachId={sessionComments.coachId}
                                   coachName={sessionComments.coachName}
+                                  backLabel="Log"
                                 />
                                 <button
                                   onClick={() => editSession(session)}

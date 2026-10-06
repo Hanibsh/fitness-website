@@ -5,7 +5,10 @@ import { getFullExercise, titleCase, fmtRecovery, fmtRest, tierLabel } from '../
 import MuscleMap from '../components/MuscleMap'
 import ExercisePerformance from '../components/ExercisePerformance'
 import InjuryBadge from '../components/InjuryBadge'
+import SendToCoachButton from '../components/SendToCoachButton'
 import { useInjuryRisk } from '../lib/useInjuries'
+import { useMyCoach } from '../lib/useMyCoach'
+import { exerciseCard } from '../lib/chatCards'
 
 // Detail page for one exercise. Commit 1: header + coach stats + muscle list.
 // Commit 3 polishes the layout + adds the "Log this" CTA; commit 4 slots in the
@@ -19,6 +22,7 @@ export default function ExerciseDetail() {
   // found and not-found renders.
   const injuryRisk = useInjuryRisk()
   const injuryHit = ex ? injuryRisk.get(ex.id) : null
+  const { coach } = useMyCoach()
 
   // Callers that sent you here from somewhere other than the bank (a split's day
   // page, say) pass where to go back to, so "back" returns to what you were
@@ -86,12 +90,22 @@ export default function ExerciseDetail() {
             </div>
           )}
 
-          <button
-            onClick={() => navigate('/log', { state: { addExerciseId: ex.id, addExerciseName: ex.name } })}
-            className="inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 rounded-lg mt-5 border-none cursor-pointer hover:bg-accent-hover transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Log this exercise
-          </button>
+          <div className="flex flex-wrap gap-2.5 mt-5">
+            <button
+              onClick={() => navigate('/log', { state: { addExerciseId: ex.id, addExerciseName: ex.name } })}
+              className="inline-flex items-center gap-1.5 bg-text-primary text-cream text-[13px] font-medium px-4 py-2 rounded-lg border-none cursor-pointer hover:bg-accent-hover transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Log this exercise
+            </button>
+            <SendToCoachButton
+              variant="button"
+              card={exerciseCard({ id: ex.id, name: ex.name, category: ex.category })}
+              coachId={coach?.coach_id}
+              coachName={coach?.coach_name}
+              backLabel={ex.name}
+              backState={state}
+            />
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-8">
             {stats.map(([label, val]) => (

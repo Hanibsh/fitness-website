@@ -81,11 +81,12 @@ function PickerList({ title, empty, items, onClose }) {
 //
 // The page's title is drawn here: `title`, tapped, opens the profile panel
 // (ChatProfile) with `about` and this chat's photos and videos.
-export default function Chat({ coachId, clientId, meId, otherName, title = otherName, about = null, splits = null, sessions = null, saveSplit = null, sentSplitPath = null }) {
+export default function Chat({ coachId, clientId, meId, otherName, title = otherName, about = null, splits = null, sessions = null, saveSplit = null, sentSplitPath = null, initialCard = null }) {
   const { messages, loading, error, send, remove, react, typing, otherTyping, urlFor } = useChat(coachId, clientId, meId)
   const [text, setText] = useState('')
   // What goes with the text: { media } (a prepared file + preview URL) or { card }.
-  const [attachment, setAttachment] = useState(null)
+  // `initialCard`: shared from elsewhere in the app (SendToCoachButton).
+  const [attachment, setAttachment] = useState(() => (initialCard ? { card: initialCard } : null))
   const [replyTo, setReplyTo] = useState(null)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -124,6 +125,11 @@ export default function Chat({ coachId, clientId, meId, otherName, title = other
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  // Arrived with something attached: ready for the question that goes with it.
+  useEffect(() => {
+    if (initialCard) inputRef.current?.focus({ preventScroll: true })
+  }, [initialCard])
 
   // Land on the newest message, and follow new ones.
   useLayoutEffect(() => {

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import Chat from '../components/Chat'
 import { useAuth } from '../lib/auth'
@@ -13,8 +14,23 @@ import { useMyProgressData } from '../lib/useMyProgressData'
 // workouts are there to share; a split the coach shares can be kept as a copy.
 // Tapping the coach's name shows your own progress, split and check-ins — the
 // same panel the coach sees about you.
+//
+// A "Send to Leon" button elsewhere (SendToCoachButton) lands here with its
+// card in the router state: it starts attached, and the back link returns there.
 export default function Messages() {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const back = location.state?.backTo ? location.state : null
+  // Kept once: the chat only mounts after the coach loads, and the state is
+  // cleared below so a reload doesn't attach it again.
+  const [attach] = useState(() => location.state?.attach || null)
+  useEffect(() => {
+    if (location.state?.attach) {
+      const { attach: _sent, ...rest } = location.state
+      navigate(location.pathname, { replace: true, state: rest })
+    }
+  }, [location, navigate])
   const { coach, coachLoading } = useMyCoach()
   const { programsState, addRoutine } = useProgramsState()
   const { checkins } = useMyCheckins(coach?.coach_id || null)
@@ -49,8 +65,12 @@ export default function Messages() {
   return (
     <div className="pt-24 px-6">
       <div className="max-w-2xl mx-auto">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-6 transition-colors">
-          <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+        <Link
+          to={back ? back.backTo : '/'}
+          state={back?.backState}
+          className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary no-underline text-[13px] mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> {back ? back.backLabel : 'Dashboard'}
         </Link>
         {coachLoading ? (
           <>
@@ -68,6 +88,7 @@ export default function Messages() {
             sessions={{ list: history, unit: mineData.unit }}
             saveSplit={saveSplit}
             sentSplitPath={(id) => `/split/${id}`}
+            initialCard={attach}
           />
         ) : (
           <>

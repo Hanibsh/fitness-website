@@ -55,7 +55,8 @@ import { DEV_CLIENT_ID } from '../lib/messages'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
-import ShareWorkoutButton from '../components/ShareWorkoutButton'
+import SendToCoachButton from '../components/SendToCoachButton'
+import { workoutCard } from '../lib/chatCards'
 import StatusChip from '../components/StatusChip'
 import ExerciseProgress from '../components/ExerciseProgress'
 import ExerciseSelect from '../components/ExerciseSelect'
@@ -1490,13 +1491,11 @@ export default function Dashboard() {
           coachName={coach?.coach_name}
           actions={
             <div className="flex flex-wrap items-center gap-4">
-              <ShareWorkoutButton
-                key={summarySession.id}
-                session={summarySession}
-                history={sessions}
-                unit={unit}
+              <SendToCoachButton
+                makeCard={() => workoutCard(summarySession, sessions, unit)}
                 coachId={coach?.coach_id}
                 coachName={coach?.coach_name}
+                backLabel="Dashboard"
               />
               <button
                 onClick={() => editDaySession(summarySession)}

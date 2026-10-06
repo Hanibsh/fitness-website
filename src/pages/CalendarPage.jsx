@@ -21,7 +21,8 @@ import SectionHeading from '../components/SectionHeading'
 import { REASON_COLOR, STATUS_MARKER, SPLIT_COLOR, INJURY_BAND } from '../lib/calendarMarkers'
 import CalendarDayPanel from '../components/CalendarDayPanel'
 import SessionSummary from '../components/SessionSummary'
-import ShareWorkoutButton from '../components/ShareWorkoutButton'
+import SendToCoachButton from '../components/SendToCoachButton'
+import { workoutCard } from '../lib/chatCards'
 
 const SUMMARY_RANGES = [
   { days: 7, label: 'Week' },
@@ -420,13 +421,11 @@ export default function CalendarPage() {
             coachName={sessionComments.coachName}
             actions={
               <div className="flex flex-wrap items-center gap-4">
-                <ShareWorkoutButton
-                  key={summarySession.id}
-                  session={summarySession}
-                  history={sessions}
-                  unit={summarySession.unit || 'kg'}
+                <SendToCoachButton
+                  makeCard={() => workoutCard(summarySession, sessions, summarySession.unit || 'kg')}
                   coachId={sessionComments.coachId}
                   coachName={sessionComments.coachName}
+                  backLabel="Calendar"
                 />
                 <button
                   onClick={() => editDaySession(summarySession)}
