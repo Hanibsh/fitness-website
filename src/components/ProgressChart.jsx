@@ -1,4 +1,4 @@
-import { W, H, useChartAxis } from '../lib/chartAxis'
+import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
 
 // Hand-rolled SVG line chart. No dependency — draws a clean line of points
 // scaled by date (x) and value (y), with a hover/tap highlight driven from
@@ -39,7 +39,7 @@ export default function ProgressChart({ points, hoveredIndex, onHover = () => {}
   }
 
   const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
-  const gridLabels = gridValues.map((v) => Math.round(v).toLocaleString())
+  const gridLabels = tickLabels(gridValues)
   const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
 
   const minDate = points[0].date

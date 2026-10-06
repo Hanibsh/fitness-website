@@ -41,6 +41,18 @@ function useUnitsPerPx(ref) {
   return k
 }
 
+// y tick strings with the fewest decimals (from `minDecimals`, up to 2) that
+// keep them distinct — a 16–18% body fat axis otherwise reads 16 | 17 | 18 | 18.
+// `format` gets each tick already rounded; Number() drops a trailing ".0".
+export function tickLabels(values, format = (r) => r.toLocaleString(), minDecimals = 0) {
+  let labels = []
+  for (let d = minDecimals; d <= Math.max(minDecimals, 2); d++) {
+    labels = values.map((v) => format(Number(v.toFixed(d))))
+    if (new Set(labels).size === labels.length) break
+  }
+  return labels
+}
+
 // `yLabels`: the y tick strings, so the left margin fits the widest. Put the
 // returned ref on the <svg>.
 export function useChartAxis(yLabels) {

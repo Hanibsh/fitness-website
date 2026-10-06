@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import ExerciseSelect from './ExerciseSelect'
 import { compareLines, valueAt } from '../lib/progress'
-import { W, H, useChartAxis } from '../lib/chartAxis'
+import { W, H, tickLabels, useChartAxis } from '../lib/chartAxis'
 
 // Two or more of the Progress lines on one chart — a lift's est. 1RM next to
 // bodyweight, calories next to body fat. Chips pick the lines; the rows under
@@ -216,14 +216,10 @@ function Plot({ chart, hovered, onHover }) {
   }
   if (mode === 'value') min = Math.max(0, min)
 
-  const decimals = mode === 'pct' && max - min < 6 ? 1 : 0
-  const tick = (v) => {
-    if (mode !== 'pct') return Math.round(v).toLocaleString()
-    const r = Number(v.toFixed(decimals))
-    return `${r > 0 ? '+' : ''}${r === 0 ? 0 : r}%`
-  }
+  const pctTick = (r) => `${r > 0 ? '+' : ''}${r === 0 ? 0 : r}%`
   const gridValues = [0, 1, 2, 3].map((i) => min + ((max - min) * i) / 3)
-  const gridLabels = gridValues.map(tick)
+  const gridLabels =
+    mode === 'pct' ? tickLabels(gridValues, pctTick, max - min < 6 ? 1 : 0) : tickLabels(gridValues)
   const { ref, fontSize, pad, plotW, plotH, yLabelX, yLabelDy, dateY } = useChartAxis(gridLabels)
 
   const xFor = (d) => (span === 0 ? pad.l + plotW / 2 : pad.l + (plotW * (d - minDate)) / span)
