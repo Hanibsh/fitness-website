@@ -12,7 +12,7 @@ import SearchField from './SearchField'
 // second press — and that Esc never reaches a modal underneath, so closing the
 // list doesn't also throw away the goals you were editing.
 // `tone` is the trigger's fill: cream on a white card, white on a cream one.
-export default function ExerciseSelect({ value, options, onChange, ariaLabel = 'Select exercise', tone = 'cream', className = '' }) {
+export default function ExerciseSelect({ value, options, onChange, ariaLabel = 'Select exercise', tone = 'cream', className = '', placeholder = 'Pick an exercise' }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -85,7 +85,7 @@ export default function ExerciseSelect({ value, options, onChange, ariaLabel = '
         aria-label={`${ariaLabel}: ${value || 'none'}`}
         className={`w-full flex items-center justify-between gap-2 ${tone === 'white' ? 'bg-white' : 'bg-cream'} border border-border px-3 py-2 text-[13px] text-text-primary text-left cursor-pointer outline-none focus:border-text-primary hover:border-border-hover transition-colors`}
       >
-        <span className="min-w-0 truncate">{value || 'Pick an exercise'}</span>
+        <span className="min-w-0 truncate">{value || placeholder}</span>
         <ChevronDown className={`w-4 h-4 text-text-light shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 

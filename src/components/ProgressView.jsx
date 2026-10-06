@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { TrendingUp } from 'lucide-react'
 import MiniStat from './MiniStat'
 import ExerciseSelect from './ExerciseSelect'
 import ProgressChart from './ProgressChart'
+import CompareChart from './CompareChart'
 import { buildSeries, bodyweightSeries, metricById } from '../lib/workoutStats'
 import { recentPRs } from '../lib/dashboard'
 import { weightTrend } from '../lib/coachStats'
@@ -63,8 +64,9 @@ function Chart({ title, points, unit, empty, target = null, sub = null }) {
 }
 
 // How someone's training and body are going over one chosen range: a few
-// numbers, then strength, bodyweight, body fat, lean mass, calories and protein
-// on the same timeline. The Progress page, the coach's Progress tab and the
+// numbers, a chart that puts any of the lines side by side (CompareChart),
+// then strength, bodyweight, body fat, lean mass, calories and protein on the
+// same timeline. The Progress page, the coach's Progress tab and the
 // chat profile panel all show this.
 //
 // `weekly`: their weekly food log (lib/weeklyLog.js); `targets`: calories and
@@ -104,6 +106,23 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
     [weekly, bodyweight, unit, cutoff]
   )
   const targetLine = (n, unitLabel) => (n ? `Dashed: target ${withUnit(n, unitLabel)}` : null)
+
+  // What Compare can draw: any logged lift's est. 1RM, and each body or food
+  // line this person has ever logged (in or out of this range).
+  const liftSeries = useCallback((name) => buildSeries(sessions, name, metricById('e1rm'), rangeId, unit), [sessions, rangeId, unit])
+  const compareMetrics = useMemo(
+    () =>
+      [
+        { id: 'bw', label: 'Bodyweight', unit, points: weightPoints, ever: bodyweight.length > 0 },
+        { id: 'fat', label: 'Body fat', unit: '%', points: food.fat, ever: weeklySeries(weekly, 'bodyFat').length > 0 },
+        { id: 'lean', label: 'Lean mass', unit, points: food.lean, ever: leanMassSeries(weekly, bodyweight, unit).length > 0 },
+        { id: 'cal', label: 'Calories', unit: 'cal', points: food.calories, ever: weeklySeries(weekly, 'calories').length > 0 },
+        { id: 'protein', label: 'Protein', unit: 'g', points: food.protein, ever: weeklySeries(weekly, 'protein').length > 0 },
+      ]
+        .filter((m) => m.ever)
+        .map(({ ever: _ever, ...m }) => m),
+    [weightPoints, food, weekly, bodyweight, unit]
+  )
 
   return (
     <div>
@@ -149,6 +168,9 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
       </div>
 
       <div className="space-y-7">
+        {lifts.length + compareMetrics.length >= 2 && (
+          <CompareChart metrics={compareMetrics} lifts={lifts} liftSeries={liftSeries} unit={unit} />
+        )}
         <div>
           {lifts.length > 0 && (
             <ExerciseSelect value={lift} options={lifts} onChange={setLift} ariaLabel="Lift to chart" className="w-full mb-3" />
