@@ -64,7 +64,8 @@ export function AuthProvider({ children }) {
       return
     }
     supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null)
+      const next = data.session?.user ?? null
+      setUser((prev) => (prev && next && prev.id === next.id ? prev : next))
       setLoading(false)
     })
     // Every session is remembered for the account switcher (lib/accounts.js),
@@ -80,7 +81,13 @@ export function AuthProvider({ children }) {
         return
       }
       lastId = id
-      setUser(session?.user ?? null)
+      // Supabase announces the session again every time the app comes back
+      // into view and on every token refresh, each time with a NEW user
+      // object. Same account → keep the one we have, or every page keyed on
+      // `user` reloads its data (and the coach area unmounted a half-built
+      // program). A real change to the account (USER_UPDATED) still lands.
+      const next = session?.user ?? null
+      setUser((prev) => (prev && next && prev.id === next.id && event !== 'USER_UPDATED' ? prev : next))
     })
     return () => sub.subscription.unsubscribe()
   }, [])

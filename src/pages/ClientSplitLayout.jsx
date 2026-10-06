@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { scheduleMode } from '../lib/program'
+import { scheduleMode, syncTwins } from '../lib/program'
 import { withProgram, withoutProgram } from '../lib/clients'
 import { InjuryScope } from '../lib/useInjuries'
 import { useLinkedClient } from '../lib/useClientData'
@@ -47,7 +47,8 @@ export default function ClientSplitLayout() {
   function update(mutator) {
     updateClient(client.id, (c) => {
       const current = c.programs.find((p) => p.id === program.id)
-      return current ? withProgram(c, { ...mutator(current), updatedAt: Date.now() }) : c
+      // Both turns of a day that comes round twice change together (syncTwins).
+      return current ? withProgram(c, { ...syncTwins(current, mutator(current)), updatedAt: Date.now() }) : c
     })
   }
 

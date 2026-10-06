@@ -252,10 +252,18 @@ export function buildExportModel({
     about.push({ key: `extra-${i}`, label: label || value, line: `extra-${i}`, value, text: label ? `${label}: ${value}` : value })
   })
 
-  // Training days, and the rest days that hold cardio.
+  // Training days, and the rest days that hold cardio. A day that comes round
+  // twice in a long rotation (program.js syncTwins) is written once.
+  const written = new Set()
   const days = program.days
     .map((day, i) => ({ day, i }))
     .filter(({ day }) => day.kind !== 'rest' || (day.exercises || []).length)
+    .filter(({ day }) => {
+      if (day.kind === 'rest' || !day.twin) return true
+      if (written.has(day.twin)) return false
+      written.add(day.twin)
+      return true
+    })
     .map(({ day, i }) => ({
       id: day.id,
       kind: day.kind === 'rest' ? 'rest' : 'train',

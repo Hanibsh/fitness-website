@@ -12,10 +12,13 @@ import { useLinkedClient } from '../lib/useClientData'
 // client's injuries (none unless their account is linked), never yours.
 export default function ClientGenerate() {
   const { clientId } = useParams()
-  const { clients, updateClient } = useOutletContext()
+  const { clients, updateClient, linksLoading } = useOutletContext()
   const navigate = useNavigate()
   const client = clients.find((c) => c.id === clientId) || null
-  const { injuries } = useLinkedClient(clientId)
+  // The wizard plans once their injuries are in: a list arriving after it has
+  // planned a week would plan it again, and lose the edits made on it.
+  const { linked, data, loading, injuries } = useLinkedClient(clientId)
+  const injuriesLoading = loading || (linked && !data)
 
   if (!client) {
     return (
@@ -49,9 +52,13 @@ export default function ClientGenerate() {
         <p className="text-text-muted text-[15px] mb-10 leading-relaxed">
           Training age, equipment and focus start from their profile. Nothing here reads your own log or injuries.
         </p>
-        <InjuryScope.Provider value={injuries}>
-          <SplitWizard client={client} onCreate={save} />
-        </InjuryScope.Provider>
+        {linksLoading || injuriesLoading ? (
+          <p className="text-[13px] text-text-muted">Loading…</p>
+        ) : (
+          <InjuryScope.Provider value={injuries}>
+            <SplitWizard client={client} onCreate={save} />
+          </InjuryScope.Provider>
+        )}
       </motion.div>
     </>
   )

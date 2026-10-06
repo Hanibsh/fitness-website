@@ -25,7 +25,7 @@
 
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
-import { createDay, createPlannedExercise, emptyProgram, substituteExercise } from './program'
+import { createDay, createPlannedExercise, emptyProgram, substituteExercise, copyDay } from './program'
 import { dayStats, ENGINE_MUSCLE_TO_COARSE, plannedExerciseDbId, donutRows, isCoreMovement } from './planStats'
 import { newSupersetId } from './workoutStats'
 import { cardioOf } from './cardio'
@@ -56,6 +56,7 @@ import {
   corePlacement, CORE_MUSCLES, SUPERSET_MAX_COMPOUND_FATIGUE,
   SAME_JOB, JOB_ALTERNATIVE_MIN, JOB_COVERED_MIN, IMPLEMENT_SCORE, EMPHASIS_WEIGHT, EMPHASIS_MIN_SHARE,
   SESSION_TYPES, SESSION_RECOMMENDABLE, SESSION_GAP_HOURS, SESSION_FATIGUED_BELOW,
+  ROTATION_RHYTHM, ROTATION_VERSIONS, rotationVersionsApply,
 } from './generatorConfig'
 
 const DAY_MS = 86400000
@@ -256,6 +257,12 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
 
   const schedule = answers.schedule === 'rotation' ? 'rotation' : 'weekly'
   const weekdays = normaliseWeekdays(answers.weekdays, daysPerWeek)
+  // How many versions of each day an Upper/Lower rotation takes turns through
+  // (ROTATION_RHYTHM): 2 or 3, null = "pick for me" (generateProgram builds
+  // both). Null too wherever the question doesn't apply.
+  const versions = rotationVersionsApply({ schedule, daysPerWeek, shape })
+    ? (ROTATION_VERSIONS.includes(answers.versions) ? answers.versions : null)
+    : null
 
   return {
     daysPerWeek,
@@ -274,6 +281,7 @@ export function resolveInputs({ answers = {}, profile = null, sessions = [], inj
     schedule,
     weekdays,
     shape,
+    versions,
     openSlots,
     history: historyContext(sessions, { now }),
     // Built once here rather than per scored exercise: fillDay ranks the whole
@@ -341,11 +349,13 @@ export function weeklyTargets({ posture, focus, history, volumePref = volumePref
 // Planned from what the week WITHOUT the focus actually delivered (`baseVolume`,
 // its weekly sets) rather than from its targets: the two differ, and planning
 // "+2" on a target the week never reached hands the gap to the focus muscle too.
-export function focusPlan(targets, focus, baseDays, focusDays, baseVolume = new Map()) {
+export function focusPlan(targets, focus, baseDays, focusDays, baseVolume = new Map(), perDay = 1) {
   const out = { ...targets }
   const sessionCap = {}
   const extraSets = {}
-  const sessions = (days, m) => days.filter((d) => d.muscles.includes(m)).length
+  // Sessions a week: a template day is one, except where versions take turns
+  // (`perDay` under one — pickTemplate).
+  const sessions = (days, m) => days.filter((d) => d.muscles.includes(m)).length * perDay
   let owed = 0
   for (const m of focus) {
     if (!targets[m]) continue
@@ -385,18 +395,22 @@ export function focusPlan(targets, focus, baseDays, focusDays, baseVolume = new 
 // Template days for this frequency, with the focus muscles promoted to the front
 // of every day they appear in and given an extra weekly session where one of the
 // other days has room. "Earlier and more often" is the whole ask of a focus.
-export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
+export function pickTemplate(daysPerWeek, focus = [], shapeId = null, versions = null) {
   // An unrecognised shape falls back to the first one rather than erroring: the
   // id can arrive from a saved answer whose day count has since changed, and a
   // sensible split beats a broken one.
   const shapes = shapesFor(daysPerWeek)
   const shape = shapes.find((sh) => sh.id === shapeId) || shapes[0]
+  // Three versions of an Upper/Lower rotation: six days, each trained twice in
+  // the 21-day cycle — two thirds of a session a week apiece (ROTATION_RHYTHM).
+  const three = versions === 3 && shape.rotation?.threeVersions
+  const perWeekEach = three ? ROTATION_RHYTHM.offsets.length / three.length : 1
   // `sizedAs` (Upper B) is the order the day is measured in for its set budget;
   // it takes the same focus edits as `muscles` so the two always list the same
   // muscles.
   // `emphasis`, `leadPaths` and `repeatJobs` ride along unchanged: a focus
   // reorders the day, it doesn't change what the day is for.
-  const days = shape.days.map((d) => ({
+  const days = (three || shape.days).map((d) => ({
     name: d.name,
     muscles: [...d.muscles],
     sizedAs: d.sizedAs ? [...d.sizedAs] : null,
@@ -420,10 +434,12 @@ export function pickTemplate(daysPerWeek, focus = [], shapeId = null) {
   // dropped the muscle on the first day that lacked it, which is how squats
   // ended up leading "Upper A" and lateral raises leading "Lower A".
   const borrowed = new Map(days.map((d) => [d, []]))
+  // Sessions a week, not days in the template: with three versions a day
+  // comes round two weeks in three.
   for (const muscle of focus) {
     let freq = days.filter((d) => d.muscles.includes(muscle)).length
     for (const d of days) {
-      if (freq >= FOCUS_TARGET_FREQUENCY) break
+      if (freq * perWeekEach >= FOCUS_TARGET_FREQUENCY - 1e-9) break
       if (d.muscles.includes(muscle)) continue
       if (!FOCUS_PORTABLE_MUSCLES.has(muscle) && regionOf(d) !== MUSCLE_REGION[muscle]) continue
       d.muscles.push(muscle)
@@ -507,11 +523,35 @@ export function assignDirectWork(days, natural = null) {
 //
 // A fixed week is 7 slots with the chosen weekdays filled in. A rotation picks
 // the rest-day count whose resulting weekly rate lands closest to the requested
-// frequency — with one hard rule: never a 7-day cycle, because program.js reads
-// a 7-day program as a fixed weekly schedule, which is the other thing entirely.
-export function cycleShape({ schedule, daysPerWeek, weekdays }) {
+// frequency — never a 7-day cycle, a rule from before program.schedule was
+// stored, when program.js read any 7-day program as a fixed week.
+//
+// An Upper/Lower rotation (`versions` set) runs on ROTATION_RHYTHM instead —
+// U L R U L R R — repeated until its versions line up again: 7 days for two,
+// 21 for three. `slots` says which template day sits at each training offset
+// (a version's second turn is a copy of its first, see buildProgram), and
+// `plan` is the cycle the planning runs on: each version once, over the share
+// of the cycle it covers, so weekly volume and recovery gaps come out as they
+// will be trained.
+export function cycleShape({ schedule, daysPerWeek, weekdays, versions = null }) {
   if (schedule === 'weekly') {
     return { length: 7, offsets: [...weekdays] }
+  }
+  if (versions) {
+    const { length: week, offsets: rhythm } = ROTATION_RHYTHM
+    const distinct = versions * 2 // an Upper and a Lower per version
+    let weeks = 1
+    while ((weeks * rhythm.length) % distinct) weeks++
+    const offsets = []
+    for (let w = 0; w < weeks; w++) for (const o of rhythm) offsets.push(w * week + o)
+    const slots = offsets.map((_, k) => k % distinct)
+    const turns = offsets.length / distinct
+    return {
+      length: weeks * week,
+      offsets,
+      slots,
+      plan: { length: (weeks * week) / turns, offsets: offsets.slice(0, distinct) },
+    }
   }
   let best = null
   for (let rest = 0; rest <= daysPerWeek * 2; rest++) {
@@ -1315,9 +1355,26 @@ function giveBack(trainingDays, total, { perWeek, targets, floors = {} }) {
 // Lay the training days out over the cycle, with rest days in the gaps. A fixed
 // week comes out as exactly 7 days Mon→Sun; generateProgram stamps the chosen
 // `schedule` on it (program.js scheduleMode).
-export function buildProgram(trainingDays, { length, offsets }, name) {
+//
+// With `slots` (an Upper/Lower rotation's versions), a day's second turn in the
+// cycle is a COPY of its first with fresh ids, and both carry `twin` — the
+// first copy's id — with every row's `twin` set to the first copy's row id.
+// program.js syncTwins keeps the copies identical from then on.
+export function buildProgram(trainingDays, { length, offsets, slots = null }, name) {
   const program = emptyProgram(name)
-  const byOffset = new Map(offsets.map((o, i) => [o, trainingDays[i]]))
+  const turns = new Map() // template index → times laid out so far
+  const twinned = slots ? new Set(slots.filter((s, k) => slots.indexOf(s) !== k)) : new Set()
+  const byOffset = new Map(offsets.map((o, k) => {
+    const i = slots ? slots[k] : k
+    const n = turns.get(i) || 0
+    turns.set(i, n + 1)
+    let day = trainingDays[i]
+    if (twinned.has(i)) {
+      const first = { ...day, twin: day.id, exercises: day.exercises.map((e) => ({ ...e, twin: e.id })) }
+      day = n === 0 ? first : { ...copyDay(first), twin: day.id }
+    }
+    return [o, day]
+  }))
   for (let i = 0; i < length; i++) {
     const day = byOffset.get(i)
     program.days.push(day || createDay('rest'))
@@ -1360,6 +1417,14 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     supersetId: e.supersetId || null,
   })
 
+  // A version's second turn in the cycle (buildProgram's twins) says which day
+  // it repeats, so the preview can show it as one line.
+  const firstOfTwin = new Map()
+  program.days.forEach((day, i) => {
+    if (day.twin && !firstOfTwin.has(day.twin)) firstOfTwin.set(day.twin, i)
+  })
+  const twinned = firstOfTwin.size > 0
+
   program.days.forEach((day, i) => {
     if (day.kind === 'rest') {
       days.push({
@@ -1374,10 +1439,12 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     }
     const stats = dayStats(day)
     for (const row of stats.muscles) weekly[row.muscle] = (weekly[row.muscle] || 0) + row.sets
+    const first = day.twin ? firstOfTwin.get(day.twin) : i
     days.push({
       id: day.id,
       kind: 'train',
       name: day.name,
+      repeatOf: first !== i ? first : null,
       weekday: schedule === 'weekly' ? WEEKDAY_NAMES[i] : null,
       // What the day spends of its set cap, and the ab sets on top of it.
       sets: stats.sets - stats.coreSets,
@@ -1409,7 +1476,11 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
       tier,
       status: tier.id,
       focus: focus.has(muscle),
-      sessions: program.days.filter((d) => d.kind !== 'rest' && dayHits(d, muscle)).length,
+      // Days in the cycle — or, where versions come round twice in a long
+      // rotation, sessions a week (a 21-day cycle holds every upper day twice).
+      sessions: twinned
+        ? Math.round(program.days.filter((d) => d.kind !== 'rest' && dayHits(d, muscle)).length * perWeek)
+        : program.days.filter((d) => d.kind !== 'rest' && dayHits(d, muscle)).length,
       // Whether the library holds anything at all for this muscle at this
       // equipment level. A muscle that got nothing because there IS nothing (an
       // at-home calf raise, today) is a different message from one that got
@@ -1474,6 +1545,8 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     // mistaken for a literal one.
     cycleLength: cycle.length,
     perWeek,
+    // Versions of each day an Upper/Lower rotation takes turns through.
+    versions: inputs.versions || null,
     fromHistory: !!inputs.history,
     historySessions: inputs.history?.sessions || 0,
     focus: inputs.focus,
@@ -1820,7 +1893,19 @@ export function patternOptions(planned, { program, dayId, sessions = [], injurie
 // nothing is persisted, the caller decides whether to keep it.
 export function generateProgram({ answers = {}, profile = null, sessions = [], injuries = [], now = Date.now() } = {}) {
   const inputs = resolveInputs({ answers, profile, sessions, injuries, now })
-  const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus, inputs.shape)
+  // An Upper/Lower rotation on "pick for me": build it with two versions and
+  // with three, and keep three only if it trains more muscles well.
+  if (inputs.versions == null && rotationVersionsApply(inputs)) {
+    const [two, three] = ROTATION_VERSIONS.map((versions) =>
+      generateProgram({ answers: { ...answers, versions }, profile, sessions, injuries, now }))
+    return coversMore(three.summary, two.summary) ? three : two
+  }
+  const templateDays = pickTemplate(inputs.daysPerWeek, inputs.focus, inputs.shape, inputs.versions)
+  // `cycle` is how the split is laid out; `planning` is what the week is
+  // planned on — the same thing, except for a rotation whose versions each
+  // come round more than once (cycleShape).
+  const cycle = cycleShape(inputs)
+  const planning = cycle.plan || cycle
   // A focus is planned against the same week without it (focusPlan), and the
   // preview reports what it actually changed against that week built in full —
   // so "Side Delts: 3 sessions, +2 sets" is a measurement, not a promise.
@@ -1829,8 +1914,10 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     : null
   const { targets, sessionCap, extraSets } = baseline
     ? focusPlan(
-        weeklyTargets(inputs), inputs.focus, pickTemplate(inputs.daysPerWeek, [], inputs.shape), templateDays,
+        weeklyTargets(inputs), inputs.focus, pickTemplate(inputs.daysPerWeek, [], inputs.shape, inputs.versions), templateDays,
         new Map(baseline.summary.volume.map((v) => [v.muscle, v.sets])),
+        // Sessions a week per template day: under one where versions take turns.
+        cycle.plan ? 7 / cycle.plan.length : 1,
       )
     : { targets: weeklyTargets(inputs), sessionCap: {}, extraSets: {} }
   // A focus muscle's share of any one day never exceeds sessionCap.
@@ -1838,9 +1925,8 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     for (const [m, cap] of Object.entries(sessionCap)) if (alloc[m] != null) alloc[m] = Math.min(alloc[m], cap)
     return alloc
   }
-  const cycle = cycleShape(inputs)
-  const gaps = recoveryGaps(templateDays, cycle)
-  const perWeek = 7 / cycle.length
+  const gaps = recoveryGaps(templateDays, planning)
+  const perWeek = 7 / planning.length
   const setCap = inputs.volumePref.setCap
 
   // `direct` is each day's DIRECT_WORK guarantees (assignDirectWork); without it
@@ -1978,7 +2064,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     const whole = Object.fromEntries(inputs.focus.map((m) => [m, Math.min(goal[m], before.get(m) || 0)]))
     deliverFocus(trainingDays, { ...focusOpts, goal: whole })
     deliverFocus(trainingDays, focusOpts)
-    const total = programSets(baseline.program)
+    const total = programSets(baseline.program, { once: true })
     giveBack(trainingDays, total, { perWeek, targets, floors: goal })
     // Every movement already at its two sets leaves giveBack nothing to trim;
     // then the week drops the movement it can best spare, as deliverFocus does.
@@ -2002,6 +2088,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
     focus: [...inputs.focus],
     shape: templateDays.shape?.id || null,
     core: inputs.core,
+    ...(inputs.versions ? { versions: inputs.versions } : {}),
   }
   const summary = summarize(program, { targets, schedule: inputs.schedule, cycle, inputs, shape: templateDays.shape })
   if (baseline) summary.focusTrade = focusTrade(program, summary, baseline, inputs.focus, sessionCap)
@@ -2066,6 +2153,18 @@ export function summarizeProposal(built, program) {
   return summary
 }
 
+// Does week `a` train more muscles well than week `b`? More of the muscles the
+// split aims at (those with a target) in the green, then more muscles trained
+// at all. A tie is no. Only aimed-at muscles count as "well": a lower back
+// that an RDL happens to push into the green is no reason to restructure a
+// split.
+const GREEN_TIERS = new Set(['prime', 'solid'])
+export function coversMore(a, b) {
+  const green = (s) => s.volume.filter((v) => v.target != null && GREEN_TIERS.has(v.status)).length
+  const trained = (s) => s.volume.filter((v) => v.sets > 0).length
+  return green(a) > green(b) || (green(a) === green(b) && trained(a) > trained(b))
+}
+
 // What bringing the focus muscles up did, measured against the same week built
 // without them: each focus muscle's sessions and weekly sets before and after,
 // who paid for it, and the week's total (which shouldn't have grown).
@@ -2076,8 +2175,11 @@ export function summarizeProposal(built, program) {
 function focusTrade(program, summary, baseline, focus, sessionCap) {
   const before = new Map(baseline.summary.volume.map((v) => [v.muscle, v]))
   const after = new Map(summary.volume.map((v) => [v.muscle, v]))
+  // A rotation whose versions come round twice (21 days) is counted a week at
+  // a time, like its summary; any other split as its days.
+  const weekOf = (p, n) => (p.days.some((d) => d.twin) ? Math.round((n * 7) / p.days.length) : n)
   const realSessions = (p, m) =>
-    p.days.filter((d) => d.kind !== 'rest' && (dayStats(d).muscles.find((r) => r.muscle === m)?.sets || 0) >= 1).length
+    weekOf(p, p.days.filter((d) => d.kind !== 'rest' && (dayStats(d).muscles.find((r) => r.muscle === m)?.sets || 0) >= 1).length)
   return {
     raised: focus.map((m) => ({
       muscle: m,
@@ -2092,8 +2194,8 @@ function focusTrade(program, summary, baseline, focus, sessionCap) {
       .map((v) => ({ muscle: v.muscle, change: round1(v.sets - (before.get(v.muscle)?.sets ?? 0)) }))
       .filter((p) => p.change <= -0.5)
       .sort((a, b) => a.change - b.change),
-    totalSets: programSets(program),
-    totalSetsBefore: programSets(baseline.program),
+    totalSets: weekOf(program, programSets(program)),
+    totalSetsBefore: weekOf(baseline.program, programSets(baseline.program)),
   }
 }
 
@@ -2195,8 +2297,18 @@ export function supersetPartnerOk(db) {
   return db.type !== 'compound' || (db.fatigueScore ?? DEFAULT_FATIGUE_SCORE) < SUPERSET_MAX_COMPOUND_FATIGUE
 }
 
-function programSets(program) {
-  return program.days.reduce((n, d) => n + (d.kind === 'rest' ? 0 : daySets(d)), 0)
+// `once`: a version's second turn in a long rotation (a twin) isn't counted
+// again — what the week was PLANNED with, day for day.
+function programSets(program, { once = false } = {}) {
+  const seen = new Set()
+  return program.days.reduce((n, d) => {
+    if (d.kind === 'rest') return n
+    if (once && d.twin) {
+      if (seen.has(d.twin)) return n
+      seen.add(d.twin)
+    }
+    return n + daySets(d)
+  }, 0)
 }
 
 // Every focus muscle ends the week with at least `goal` sets: what it had in the

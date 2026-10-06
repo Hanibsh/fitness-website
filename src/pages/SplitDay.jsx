@@ -6,7 +6,7 @@ import LockedDay from '../components/LockedDay'
 import MuscleShareBars from '../components/MuscleShareBars'
 import { muscleHref } from '../data/muscleInfo'
 import { dayStats } from '../lib/planStats'
-import { setDayName, setDayNote, splitSetCap, hasPlannedWork, DAY_NOTE_MAX } from '../lib/program'
+import { setDayName, setDayNote, splitSetCap, hasPlannedWork, otherTwins, DAY_NOTE_MAX } from '../lib/program'
 import { usePlanPerson } from '../lib/profilePrefill'
 
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -68,6 +68,7 @@ export default function SplitDay() {
   // one. A rest day can be started once it holds cardio.
   const canStart = isToday && isActive && hasPlannedWork(day)
   const rest = day.kind === 'rest'
+  const twins = otherTwins(program, day)
 
   return (
     <>
@@ -100,6 +101,15 @@ export default function SplitDay() {
               aria-label="Day name"
               className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
             />
+          )}
+
+          {/* A day that comes round twice in a 3-version rotation: both turns
+              are one workout, kept the same (syncTwins in SplitLayout). */}
+          {twins.length > 0 && (
+            <p className="text-[12px] text-text-light mt-2">
+              Same workout as Day {twins.map((t) => program.days.indexOf(t) + 1).join(' and ')}
+              {locked ? '.' : ' — edits here change both.'}
+            </p>
           )}
 
           {rest ? (

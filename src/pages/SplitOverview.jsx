@@ -7,7 +7,7 @@ import ExportModal from '../components/ExportModal'
 import DayCard from '../components/DayCard'
 import ScheduleSwitch from '../components/ScheduleSwitch'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
-import { createDay, appendDay, removeDay, moveDayTo, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork } from '../lib/program'
+import { createDay, appendDay, removeDay, moveDayTo, setProgramName, setPointerToDay, splitSetCap, hasPlannedWork, otherTwins } from '../lib/program'
 import { cardioOf, cardioTargetText } from '../lib/cardio'
 import { dayStats } from '../lib/planStats'
 
@@ -151,7 +151,9 @@ export default function SplitOverview() {
                           : `${isWeekly ? 'A rest day' : 'A rest slot in the rotation'} — tap to add optional cardio.`
                       : stats.exercises === 0
                         ? 'No exercises yet — tap to add some.'
-                        : null
+                        : otherTwins(program, day).length
+                          ? `Same workout as Day ${otherTwins(program, day).map((t) => program.days.indexOf(t) + 1).join(' and ')}.`
+                          : null
                   }
                   header={
                     <>

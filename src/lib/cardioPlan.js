@@ -70,6 +70,28 @@ function planRow(dayId, half, kind) {
 
 const isPlanRow = (e) => e.kind === 'cardio' && !!e.cardio?.plan
 
+// The lifting workouts a plan chooses from: each lifting day once — a day that
+// comes round twice in a long rotation (program.js syncTwins) is one workout,
+// and both its copies get the cardio or neither does.
+const liftingWorkouts = (days) => {
+  const seen = new Set()
+  return days.filter((d) => {
+    if (d.kind === 'rest') return false
+    if (!d.twin) return true
+    if (seen.has(d.twin)) return false
+    seen.add(d.twin)
+    return true
+  })
+}
+
+// How many days each half can be put on: { lifting, rest }.
+export function cardioDayCounts(program) {
+  return {
+    lifting: liftingWorkouts(program.days).length,
+    rest: program.days.filter((d) => d.kind === 'rest').length,
+  }
+}
+
 // The program with the plan's cardio in it: last on the chosen lifting days,
 // alone on the chosen rest days. Rows the planner wrote before are replaced;
 // everything else — cardio you added yourself included — is left alone.
@@ -79,16 +101,24 @@ export function applyCardioPlan(program, plan) {
     return kept.length === (d.exercises || []).length ? d : { ...d, exercises: kept }
   })
   const chosen = { lifting: new Set(), rest: new Set() }
-  const lifting = days.filter((d) => d.kind !== 'rest')
+  const lifting = liftingWorkouts(days)
   const rest = days.filter((d) => d.kind === 'rest')
   if (plan?.lifting?.on) chosen.lifting = pickLiftingDays(lifting, plannedDayCount(plan.lifting, lifting.length))
   if (plan?.rest?.on && rest.length) chosen.rest = pickSpread(rest, plannedDayCount(plan.rest, rest.length))
+  // A pair of twins is one workout: choosing either copy chooses both.
+  const keyOf = (d) => (d.kind !== 'rest' && d.twin) || d.id
+  const byId = new Map(days.map((d) => [d.id, d]))
+  const keys = {
+    lifting: new Set([...chosen.lifting].map((id) => keyOf(byId.get(id)))),
+    rest: chosen.rest,
+  }
   return {
     ...program,
     days: days.map((d) => {
       const kind = d.kind === 'rest' ? 'rest' : 'lifting'
-      if (!chosen[kind].has(d.id)) return d
-      return { ...d, exercises: [...d.exercises, planRow(d.id, plan[kind], kind)] }
+      if (!keys[kind].has(keyOf(d))) return d
+      const row = planRow(d.id, plan[kind], kind)
+      return { ...d, exercises: [...d.exercises, d.twin ? { ...row, twin: planRowId(d.twin) } : row] }
     }),
     settings: { ...(program.settings || {}), cardio: cardioPlanFrom(plan) },
   }

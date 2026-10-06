@@ -25,7 +25,7 @@ const server = await createServer({ root: ROOT, server: { middlewareMode: true }
 const { generateProgram, failureSafe, primaryMuscleOf, movementFamily, supersetPartnerOk, pickTemplate, jobOf, muscleWeights } = await server.ssrLoadModule('/src/lib/generator.js')
 const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, SYSTEMIC_CAPACITY, SYSTEMIC_LEVELS } =
   await server.ssrLoadModule('/src/lib/engineConfig.js')
-const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS, JOB_COVERED_MIN } =
+const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS, JOB_COVERED_MIN, ROTATION_RHYTHM, rotationVersionsApply } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
@@ -47,6 +47,8 @@ const round = (n) => Math.round(n * 10) / 10
 const trainableCache = new Map()
 const failures = []
 let scenarios = 0
+// How often "pick for me" chose three versions of an Upper/Lower rotation.
+const threeVersionWeeks = { picked: 0, notPicked: 0 }
 
 function check(label, ok, detail) {
   if (!ok) failures.push(`${label}: ${detail}`)
@@ -67,13 +69,19 @@ for (const daysPerWeek of DAYS_CASES) {
       for (const equipment of EQUIPMENT_CASES) {
         for (const experience of EXPERIENCE_CASES) {
           for (const schedule of SCHEDULE_CASES) {
-            for (const volume of VOLUME_CASES) {
-              for (const core of coreCases) {
-                scenarios++
-                const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume, core }
-                const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]${core === DEFAULT_CORE_PLACEMENT ? '' : `/abs-${core}`}`
-                const { program, summary, inputs } = generateProgram({ answers })
-                audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, core, shape, recommended: rank === 0 })
+            // An Upper/Lower rotation also runs with each versions answer:
+            // "pick for me" (undefined), 2 and 3 (ROTATION_RHYTHM).
+            const versionCases = rotationVersionsApply({ schedule, daysPerWeek, shape }) ? [undefined, 2, 3] : [undefined]
+            for (const versions of versionCases) {
+              for (const volume of VOLUME_CASES) {
+                for (const core of coreCases) {
+                  scenarios++
+                  const answers = { daysPerWeek, shape, focus, equipment, experience, schedule, volume, core, versions }
+                  const label = `${daysPerWeek}d/${shape}/${schedule}${versions ? `-${versions}v` : ''}/${equipment}/${experience}/${volume}/[${focus.join(',') || 'no focus'}]${core === DEFAULT_CORE_PLACEMENT ? '' : `/abs-${core}`}`
+                  const { program, summary, inputs } = generateProgram({ answers })
+                  if (!versions && program.settings.versions) threeVersionWeeks[program.settings.versions === 3 ? 'picked' : 'notPicked']++
+                  audit(label, program, summary, inputs, { focus, equipment, experience, daysPerWeek, schedule, volume, core, shape, recommended: rank === 0 })
+                }
               }
             }
           }
@@ -84,14 +92,43 @@ for (const daysPerWeek of DAYS_CASES) {
 }
 
 function audit(label, program, summary, inputs, opts) {
-  const training = program.days.filter((d) => d.kind !== 'rest')
+  // Every training day ONCE: a 3-version rotation holds each day twice (twins,
+  // program.js syncTwins), and checks about "the week" or "a day" ask about the
+  // workouts, not how often they come round. The copies are checked to be
+  // identical below.
+  const allTraining = program.days.filter((d) => d.kind !== 'rest')
+  const seenTwins = new Set()
+  const training = allTraining.filter((d) => !d.twin || (!seenTwins.has(d.twin) && seenTwins.add(d.twin)))
+  const versions = program.settings.versions || null
 
   // ---- shape
-  check(label, training.length === opts.daysPerWeek, `${training.length} training days, wanted ${opts.daysPerWeek}`)
   if (opts.schedule === 'weekly') {
+    check(label, training.length === opts.daysPerWeek, `${training.length} training days, wanted ${opts.daysPerWeek}`)
     check(label, program.days.length === 7, `weekly split has ${program.days.length} days, must be 7`)
   } else {
-    check(label, program.days.length !== 7, 'rotation is 7 days long — program.js would read it as a fixed week')
+    check(label, program.schedule === 'rotating', `rotation stored as ${program.schedule}`)
+    if (versions) {
+      // Two on, one off, two on, two off — in every week of the cycle — with
+      // the Upper and Lower days taking turns through their versions.
+      const { length, offsets } = ROTATION_RHYTHM
+      check(label, program.days.length === (versions === 3 ? 21 : 7), `${versions}-version rotation is ${program.days.length} days`)
+      program.days.forEach((d, i) => {
+        const train = offsets.includes(i % length)
+        check(label, (d.kind !== 'rest') === train, `day ${i + 1} is ${d.kind}, the rhythm says ${train ? 'train' : 'rest'}`)
+      })
+      check(label, training.length === versions * 2, `${training.length} distinct training days for ${versions} versions`)
+      check(label, (allTraining.length * 7) / program.days.length === opts.daysPerWeek, `${allTraining.length} training days in ${program.days.length}`)
+      // A day's second turn is its first, under its own ids.
+      for (const d of allTraining) {
+        const first = allTraining.find((x) => x.twin && x.twin === d.twin)
+        if (!first || first === d) continue
+        check(label, d.id !== first.id && d.exercises.every((e, j) => e.id !== first.exercises[j]?.id), `"${d.name}" shares ids with its first copy`)
+        const sig = (x) => JSON.stringify(x.exercises.map((e) => [e.exerciseId, e.sets, e.repRange, e.rirTarget, !!e.supersetId]))
+        check(label, d.name === first.name && sig(d) === sig(first), `"${d.name}" differs from its first copy`)
+      }
+    } else {
+      check(label, training.length === opts.daysPerWeek, `${training.length} training days, wanted ${opts.daysPerWeek}`)
+    }
   }
 
   // ---- every day is a real workout
@@ -152,7 +189,13 @@ function audit(label, program, summary, inputs, opts) {
       }
       if (opts.equipment === 'gym') {
         const fam = movementFamily(db)
-        check(label, !weekIds.has(db.id) && !weekFamilies.has(fam), `"${e.name}" repeats ${weekFamilies.get(fam) || e.name} in the same week`)
+        // Three versions of an Upper/Lower rotation asked for by name, with a
+        // portable focus (side delts, abs) on five or six of its workouts: one
+        // muscle's movements run out even at a gym, and the generator repeats
+        // the best one rather than drop the focus. "Pick for me" never lands
+        // here — it keeps three versions only when they train more muscles well.
+        const focusRepeat = versions === 3 && opts.focus.includes(primaryMuscleOf(db))
+        check(label, focusRepeat || (!weekIds.has(db.id) && !weekFamilies.has(fam)), `"${e.name}" repeats ${weekFamilies.get(fam) || e.name} in the same week`)
         weekIds.set(db.id, e.name)
         weekFamilies.set(fam, e.name)
       }
@@ -167,7 +210,7 @@ function audit(label, program, summary, inputs, opts) {
   // isolation, and a muscle nothing earlier in the day trains properly
   // (JOB_COVERED_MIN) may take a second movement for the job rather than go
   // without. Gym only, like the week rule above: at home the pool runs out.
-  const templates = pickTemplate(opts.daysPerWeek, opts.focus, opts.shape)
+  const templates = pickTemplate(opts.daysPerWeek, opts.focus, opts.shape, versions)
   training.forEach((day, i) => {
     const t = templates[i]
     if (!t || t.name !== day.name) return check(label, false, `"${day.name}" doesn't line up with its template day "${t?.name}"`)
@@ -228,7 +271,7 @@ function audit(label, program, summary, inputs, opts) {
   }
 
   // ---- what limits a day: fatigue and the movement count, never the clock
-  for (const day of summary.days.filter((d) => d.kind !== 'rest')) {
+  for (const day of summary.days.filter((d) => d.kind !== 'rest' && d.repeatOf == null)) {
     // The ab movement counts toward neither the movement cap nor the set cap.
     const planned = program.days.find((d) => d.id === day.id)
     const counted = planned.exercises.filter((e) => !isCoreRow(e))
@@ -305,7 +348,10 @@ function audit(label, program, summary, inputs, opts) {
         // come in whole chunks: a muscle given exactly its minimum per 8-day
         // cycle averages 3.5 a week against a 4. That's the cycle length, not
         // a shortfall — so a rotation is held to its minimum per cycle.
-        const floor = mevFor(row.muscle) * (opts.schedule === 'rotation' ? summary.perWeek : 1)
+        // A rotation whose versions come round twice is planned on each
+        // version once (generator cycleShape), so it's held per THAT cycle.
+        const turns = allTraining.length / training.length
+        const floor = mevFor(row.muscle) * (opts.schedule === 'rotation' ? Math.min(1, summary.perWeek * turns) : 1)
         check(label, row.sets >= floor - 0.25, `${row.muscle} at ${row.sets} sets (${row.tier.label})`)
       } else {
         check(label, row.sets > 2, `${row.muscle} at ${row.sets} sets — nothing to speak of`)
@@ -356,7 +402,12 @@ function audit(label, program, summary, inputs, opts) {
       // exception is at home with three focus muscles at once: every at-home lat
       // movement is a pull-up or chin-up variant, and with chest and glutes also
       // claiming room the week can come up to about a set short.
-      const slack = opts.equipment === 'bodyweight' && opts.focus.length > 1 ? 1.2 : 0.05
+      // Likewise three versions asked for by name in a TIGHT week (Lower volume,
+      // 4 days) with three focus muscles: each upper workout is 12 sets for all
+      // of chest, lats and the rest, and lats can come up about a set short.
+      // The preview's "Bringing up" line shows it.
+      const tightThree = versions === 3 && volumePreference(opts.volume).setCap * opts.daysPerWeek <= TIGHT_WEEK_SETS && opts.focus.length > 1
+      const slack = (opts.equipment === 'bodyweight' && opts.focus.length > 1) || tightThree ? (tightThree ? 1.5 : 1.2) : 0.05
       check(label, r.sets >= r.setsBefore - slack, `focus ${r.muscle} lost sets: ${r.setsBefore} → ${r.sets}`)
       // More often up to FOCUS_TARGET_FREQUENCY; a muscle the week already hit
       // more often than that (through other movements) keeps at least that many.
@@ -475,6 +526,7 @@ function hitsMuscle(planned, muscle, min = 0) {
 await server.close()
 
 console.log(`\n${scenarios} scenarios · ${ENGINE_MUSCLES.length} muscles · capacity ${SYSTEMIC_CAPACITY}`)
+console.log(`Upper/Lower rotation, pick for me: 3 versions ${threeVersionWeeks.picked}× · 2 versions ${threeVersionWeeks.notPicked}×`)
 if (failures.length) {
   // Grouped by the shape of the complaint, not by scenario: 500 rows of "Calves
   // at 0 sets" is one bug, and a flat list buries that under its own volume.

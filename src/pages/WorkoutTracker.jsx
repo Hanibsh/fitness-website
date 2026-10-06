@@ -45,7 +45,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
@@ -924,7 +924,7 @@ export default function WorkoutTracker() {
     const trimmed = name.trim().slice(0, 60)
     setProgram((p) => {
       if (!p) return p
-      const updated = {
+      const updated = syncTwins(p, {
         ...p,
         days: p.days.map((d) =>
           d.id === dayId
@@ -932,7 +932,7 @@ export default function WorkoutTracker() {
             : d
         ),
         updatedAt: Date.now(),
-      }
+      })
       persistProgram(updated)
       return updated
     })
@@ -1087,7 +1087,10 @@ export default function WorkoutTracker() {
   // swap on one will offer to update the split too.
   function applyChangesToSplit(accepted) {
     if (!program || !planDayForDraft || !accepted.length) return
-    const { program: updated, links } = applySplitChanges(program, planDayForDraft.id, accepted)
+    const applied = applySplitChanges(program, planDayForDraft.id, accepted)
+    // A day that comes round twice (3-version rotation) changes on both turns.
+    const updated = syncTwins(program, applied.program)
+    const { links } = applied
     setProgram(updated)
     persistProgram(updated)
     if (links.size) {
@@ -1791,7 +1794,8 @@ export default function WorkoutTracker() {
     let links = new Map()
     if (sync?.accepted?.length) {
       const applied = applySplitChanges(base, sync.day.id, sync.accepted)
-      nextProgram = applied.program
+      // ...on both turns of a day that comes round twice.
+      nextProgram = syncTwins(base, applied.program)
       links = applied.links
     }
     if (nextProgram !== program) {

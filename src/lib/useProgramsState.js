@@ -84,6 +84,8 @@ export function useProgramsState() {
   function duplicateRoutine(program) {
     const copy = emptyProgram(`${program.name} (copy)`)
     copy.days = JSON.parse(JSON.stringify(program.days))
+    // A 7-day rotation must stay a rotation (program.js scheduleMode).
+    if (program.schedule) copy.schedule = program.schedule
     addRoutine(copy)
     return copy
   }

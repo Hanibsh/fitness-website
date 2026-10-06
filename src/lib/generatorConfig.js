@@ -245,6 +245,19 @@ export const TEMPLATES = {
         { name: 'Upper · Shoulders & arms', muscles: UPPER_B, sizedAs: UPPER, emphasis: ['Side Delts', 'Biceps', 'Triceps'] },
         { name: 'Lower · Glutes & hams', ...GLUTE_DAY },
       ],
+      // On a rotation (see ROTATION_RHYTHM): the same days two on, one off,
+      // two on, two off — or three versions of each taking turns over that
+      // rhythm, the third pair balanced (Hani, 2026-10-06).
+      rotation: {
+        threeVersions: [
+          { name: 'Upper 1 · Chest & back', muscles: UPPER, emphasis: ['Chest', 'Lats', 'Upper Back'] },
+          { name: 'Lower 1 · Quads', ...QUAD_DAY },
+          { name: 'Upper 2 · Shoulders & arms', muscles: UPPER_B, sizedAs: UPPER, emphasis: ['Side Delts', 'Biceps', 'Triceps'] },
+          { name: 'Lower 2 · Glutes & hams', ...GLUTE_DAY },
+          { name: 'Upper 3', muscles: UPPER },
+          { name: 'Lower 3', muscles: LOWER },
+        ],
+      },
     },
     {
       id: 'arnold-4',
@@ -366,6 +379,25 @@ export function shapeById(id) {
     if (shape) return shape
   }
   return null
+}
+
+// ---- Upper/Lower on a rotation (Hani, 2026-10-06) ------------------------------
+// Two days on, one off, two on, two off: U L R U L R R. With two versions of
+// each day (the A/B days above) that's a 7-day rotation. With three, the
+// versions take turns over the same rhythm — U1 L1 R U2 L2 R R U3 L3 R U1 L1 R
+// R … — so the cycle is 21 days and each version comes round twice.
+//
+// "Pick for me" builds both and keeps three only when it trains more muscles
+// well (more in the green); a tie keeps two, which is simpler to run.
+export const ROTATION_RHYTHM = { length: 7, offsets: [0, 1, 3, 4] }
+export const ROTATION_VERSIONS = [2, 3]
+
+// Whether the Versions question applies: a rotation, on a shape that has a
+// rotation (Upper/Lower). `shapeId` null = "pick for me" = the first shape.
+export function rotationVersionsApply({ schedule, daysPerWeek, shape }) {
+  if (schedule !== 'rotation') return false
+  const shapes = shapesFor(daysPerWeek)
+  return !!(shapes.find((sh) => sh.id === shape) || shapes[0]).rotation
 }
 
 export const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6]

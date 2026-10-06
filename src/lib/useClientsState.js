@@ -16,18 +16,23 @@ export function useClientsState() {
   // the join-link auto-add (CoachLayout) mustn't bring them straight back.
   const removed = useRef(new Set())
 
+  // Keyed on the account, not the user object: the page under the coach area
+  // (a half-built program, say) is only swapped for "Loading…" when it's a
+  // different account's list — never because the same account was
+  // re-announced.
+  const userId = user?.id || null
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
       let list = getClients()
-      if (user) {
+      if (userId) {
         try {
-          const remote = await fetchRemoteClients(user.id)
+          const remote = await fetchRemoteClients(userId)
           // The account has never held a list (or the table isn't there yet):
           // this device's copy is the truth, and it seeds the account.
           if (remote === null) {
-            if (list.length) upsertRemoteClients(user.id, list).catch(() => {})
+            if (list.length) upsertRemoteClients(userId, list).catch(() => {})
           } else {
             list = remote
             saveClients(list)
@@ -43,7 +48,7 @@ export function useClientsState() {
     }
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [userId])
 
   const persist = useCallback(
     (next, { now = false } = {}) => {

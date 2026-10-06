@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Check, Dumbbell, FileOutput, Moon, Pencil, Plus, RefreshCw, Repeat, Undo2, Wand2 } from 'lucide-react'
+import { Check, Dumbbell, FileOutput, Moon, Pencil, Plus, RefreshCw, Repeat, RotateCcw, Undo2, Wand2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useProgramsState } from '../lib/useProgramsState'
@@ -10,21 +10,23 @@ import ExportModal from './ExportModal'
 import SlotSwapPanel from './SlotSwapPanel'
 import DayEditor from './DayEditor'
 import CardioFields from './CardioFields'
+import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus, scheduleMode } from '../lib/program'
+import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus, scheduleMode, syncTwins, moveDayTo } from '../lib/program'
 import { getHistory, saveExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
 import { fetchRemoteHistory, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { donutRows } from '../lib/planStats'
+import { readWizardDraft, saveWizardDraft, clearWizardDraft } from '../lib/wizardDraft'
 import { supersetLabels } from '../lib/workoutStats'
 import { usePlanPerson } from '../lib/profilePrefill'
-import { applyCardioPlan, cardioPlanFrom, cardioPlanOn, weeklyCardio, plannedDayCount, DEFAULT_CARDIO_PLAN } from '../lib/cardioPlan'
+import { applyCardioPlan, cardioPlanFrom, cardioPlanOn, weeklyCardio, plannedDayCount, cardioDayCounts, DEFAULT_CARDIO_PLAN } from '../lib/cardioPlan'
 import { cardioTargetText, cardioSettingsText, cardioCounterpartText } from '../lib/cardio'
 import {
   DAYS_PER_WEEK_OPTIONS, DEFAULT_DAYS_PER_WEEK, DEFAULT_WEEKDAYS, MAX_FOCUS_MUSCLES,
   DEFAULT_EXPERIENCE, shapesFor,
   VOLUME_PREFERENCES, DEFAULT_VOLUME_PREFERENCE, volumePreference,
-  CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, corePlacement } from '../lib/generatorConfig'
+  CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, corePlacement, rotationVersionsApply } from '../lib/generatorConfig'
 import { EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, cleanFocus } from '../lib/profileFields'
 
 // The split generator's questions and its preview, with no page around them.
@@ -65,31 +67,64 @@ const NO_PROFILE = {}
 // of yours (the page scopes them away — InjuryScope), your active split never
 // reopens anything, and Create hands the program to `onCreate` instead of
 // adding it to your own splits.
-export default function SplitWizard({ client = null, onCreate = null }) {
+export default function SplitWizard(props) {
+  // "Start over" clears the saved draft and mounts a fresh wizard: every
+  // answer back to its default and seeded from the profile again.
+  const [round, setRound] = useState(0)
+  return <Wizard key={round} {...props} onStartOver={() => setRound((r) => r + 1)} />
+}
+
+function Wizard({ client = null, onCreate = null, onStartOver }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { addRoutine, programsState, loading: programsLoading } = useProgramsState()
 
   const [history, setHistory] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Anything picked or edited by hand yet? Only then is there a draft worth
+  // keeping (lib/wizardDraft.js) — saving the untouched defaults would pin
+  // them over the profile's seeds next time.
+  const dirty = useRef(false)
+  const touch = () => {
+    dirty.current = true
+    // From here on the draft is what's on screen, not what was restored.
+    pendingEdit.current = null
+  }
+  // A restored draft's edits, waiting for their week to be built (see `built`).
+  const pendingEdit = useRef(null)
+
   const [daysPerWeek, setDaysPerWeek] = useState(DEFAULT_DAYS_PER_WEEK)
   const [schedule, setSchedule] = useState('weekly')
+  function chooseSchedule(v) {
+    touch()
+    setSchedule(v)
+  }
   const [weekdays, setWeekdays] = useState(DEFAULT_WEEKDAYS[DEFAULT_DAYS_PER_WEEK])
   const [focus, setFocus] = useState([])
   // The profile's pick seeds the wizard; once changed here, the profile never
   // overrides it again this visit. Saved back to the profile on create.
   const focusTouched = useRef(false)
   function chooseFocus(next) {
+    touch()
     focusTouched.current = true
     setFocus(next)
   }
   const [experience, setExperience] = useState('')
+  // Same rule for training age and equipment: the profile seeds them, a pick
+  // here wins — even if the profile loads again under it.
+  const experienceTouched = useRef(false)
+  function chooseExperience(v) {
+    touch()
+    experienceTouched.current = true
+    setExperience(v)
+  }
   const [volume, setVolume] = useState(DEFAULT_VOLUME_PREFERENCE)
   // Picked by hand this visit? Then the active split's setting never overrides it.
   const volumeTouched = useRef(false)
   function chooseVolume(v) {
+    touch()
     volumeTouched.current = true
     setVolume(v)
   }
@@ -97,6 +132,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   const [core, setCore] = useState(DEFAULT_CORE_PLACEMENT)
   const coreTouched = useRef(false)
   function chooseCore(v) {
+    touch()
     coreTouched.current = true
     setCore(v)
   }
@@ -106,14 +142,41 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   const [cardio, setCardio] = useState(DEFAULT_CARDIO_PLAN)
   const cardioTouched = useRef(false)
   function chooseCardio(kind, patch) {
+    touch()
     cardioTouched.current = true
     setCardio((c) => ({ ...c, [kind]: { ...c[kind], ...patch } }))
   }
   const [equipment, setEquipment] = useState('')
+  const equipmentTouched = useRef(false)
+  function chooseEquipment(v) {
+    touch()
+    equipmentTouched.current = true
+    setEquipment(v)
+  }
   const [openSlots, setOpenSlots] = useState(false)
+  function chooseOpenSlots(v) {
+    touch()
+    setOpenSlots(v)
+  }
   // null = "pick for me": pickTemplate takes the recommended shape for the count.
   const [shape, setShape] = useState(null)
-  const [name, setName] = useState('')
+  function chooseShape(v) {
+    touch()
+    setShape(v)
+  }
+  // How many versions of each day an Upper/Lower rotation takes turns through
+  // (ROTATION_RHYTHM in generatorConfig): null = pick for me, 2 or 3.
+  const [versions, setVersions] = useState(null)
+  function chooseVersions(v) {
+    touch()
+    setVersions(v)
+  }
+  const versionsApply = rotationVersionsApply({ schedule, daysPerWeek, shape })
+  const [name, setNameState] = useState('')
+  function setName(v) {
+    touch()
+    setNameState(v)
+  }
   // Open injuries steer the picks — a bad shoulder pushes overhead pressing down
   // the ranking without removing it (PENALTIES.injury in generatorConfig).
   const { injuries } = useInjuries()
@@ -121,28 +184,35 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   // History and profile, loaded the way every other surface loads them: remote
   // when signed in, this device's copy otherwise. A client brings their own
   // profile and has no history here.
-  const clientProfile = client?.profile || null
+  //
+  // Keyed on the account and on what's IN the client's profile, never on the
+  // objects: the coach area hands down a fresh client object whenever its list
+  // reloads, and reading that as a new profile threw away every week planned
+  // so far — and the edits made on it.
+  const userId = user?.id || null
+  const clientKey = client ? `${client.id}:${JSON.stringify(client.profile || null)}` : null
+  const clientProfile = useMemo(() => (client ? client.profile || null : null), [clientKey]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     let cancelled = false
-    if (client) {
+    if (clientKey) {
       setHistory([])
       setProfile(clientProfile)
-      if (clientProfile?.experience_level) setExperience(clientProfile.experience_level)
-      if (clientProfile?.equipment) setEquipment(clientProfile.equipment)
+      if (clientProfile?.experience_level && !experienceTouched.current) setExperience(clientProfile.experience_level)
+      if (clientProfile?.equipment && !equipmentTouched.current) setEquipment(clientProfile.equipment)
       setLoading(false)
       return
     }
     async function load() {
       let sessions = getHistory()
       let p = null
-      if (user) {
+      if (userId) {
         try {
-          sessions = await fetchRemoteHistory(user.id)
+          sessions = await fetchRemoteHistory(userId)
         } catch {
           /* keep the local copy */
         }
         try {
-          p = await fetchProfile(user.id)
+          p = await fetchProfile(userId)
         } catch {
           /* profile is a prefill, never a requirement */
         }
@@ -150,13 +220,13 @@ export default function SplitWizard({ client = null, onCreate = null }) {
       if (cancelled) return
       setHistory(sessions)
       setProfile(p)
-      if (p?.experience_level) setExperience(p.experience_level)
-      if (p?.equipment) setEquipment(p.equipment)
+      if (p?.experience_level && !experienceTouched.current) setExperience(p.experience_level)
+      if (p?.equipment && !equipmentTouched.current) setEquipment(p.equipment)
       setLoading(false)
     }
     load()
     return () => { cancelled = true }
-  }, [user, client, clientProfile])
+  }, [userId, clientKey, clientProfile])
 
   // The split the log follows now, and — once it has run the months it was
   // built for — how long it's been going and what it brought up.
@@ -186,12 +256,13 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     if (settings.volume && !volumeTouched.current) setVolume(settings.volume)
     if (settings.core && !coreTouched.current) setCore(corePlacement(settings.core))
     if (settings.cardio && !cardioTouched.current) setCardio(cardioPlanFrom(settings.cardio))
-    if (settings.experience && !profile?.experience_level) setExperience((e) => e || settings.experience)
+    if (settings.experience && !profile?.experience_level && !experienceTouched.current) setExperience((e) => e || settings.experience)
   }, [programsLoading, loading, active, refresh, profile])
 
   // Changing the frequency re-spreads the training days, unless the user has
   // already placed exactly that many themselves.
   function chooseDays(n) {
+    touch()
     // A shape id belongs to one day count ('bro-5' means nothing at 4 days), so
     // changing the count hands the choice back to "pick for me" rather than
     // silently falling through to whatever pickTemplate defaults to.
@@ -201,6 +272,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
   }
 
   function toggleWeekday(d) {
+    touch()
     setWeekdays((prev) => {
       if (prev.includes(d)) return prev.length > 2 ? prev.filter((x) => x !== d) : prev
       return [...prev, d].sort((a, b) => a - b)
@@ -225,6 +297,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     core,
     equipment: equipment || undefined,
     shape: shape || undefined,
+    versions: versionsApply ? versions : null,
     openSlots,
   }
   const answersKey = JSON.stringify(answers)
@@ -237,7 +310,14 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     }
     const hit = weeks.current.byAnswers.get(answersKey)
     if (hit) return hit
-    const week = generateProgram({ answers: JSON.parse(answersKey), profile, sessions: history, injuries })
+    let week = generateProgram({ answers: JSON.parse(answersKey), profile, sessions: history, injuries })
+    // A restored draft's edits were made on the week as it was proposed THEN;
+    // that week comes back with it (ids and all), measured on today's terms,
+    // so its swapped / added marks still line up.
+    const pending = pendingEdit.current
+    if (pending?.key === answersKey && pending.base) {
+      week = { ...week, program: pending.base, summary: summarizeProposal(week, pending.base) }
+    }
     weeks.current.byAnswers.set(answersKey, week)
     return week
   }, [loading, answersKey, profile, history, injuries])
@@ -260,17 +340,21 @@ export default function SplitWizard({ client = null, onCreate = null }) {
     [edited, draft, cardio, proposedProgram]
   )
   const summary = useMemo(() => (built ? summarizeProposal(built, program) : null), [built, program])
+  // Every edit keeps a day that comes round twice (a 3-version rotation) the
+  // same on both turns (syncTwins).
   function update(fn) {
+    touch()
     setEdits((prev) => {
       const kept = prev[answersKey]?.base === built ? prev[answersKey] : null
       const current = kept ? (kept.cardio === cardio ? kept.program : applyCardioPlan(kept.program, cardio)) : applyCardioPlan(built.program, cardio)
-      return { ...prev, [answersKey]: { base: built, program: fn(current), cardio } }
+      return { ...prev, [answersKey]: { base: built, program: syncTwins(current, fn(current)), cardio } }
     })
   }
   // Whose weight turns minutes into calories: the client's, or yours.
   const person = usePlanPerson(client ? client.profile || NO_PROFILE : null)
   const swap = (dayId, rowId, choice) => update((p) => swapProposedRow(built, p, dayId, rowId, choice))
   function undoEdits() {
+    touch()
     setEdits((prev) => {
       const next = { ...prev }
       delete next[answersKey]
@@ -280,9 +364,70 @@ export default function SplitWizard({ client = null, onCreate = null }) {
 
   const weekdayMismatch = schedule === 'weekly' && weekdays.length !== daysPerWeek
 
+  // ---- The draft (lib/wizardDraft.js) -------------------------------------
+  // Every answer and the edits on the week on screen, saved as they change
+  // and put back on the way in — a reload no longer loses a half-built split.
+  // Your own split waits for the account, so one account never opens
+  // another's draft.
+  const who = client ? `client:${client.id}` : authLoading ? null : `own:${userId || 'guest'}`
+  const [restored, setRestored] = useState(false)
+  const restoredFor = useRef(null)
+  useEffect(() => {
+    if (!who || restoredFor.current === who) return
+    restoredFor.current = who
+    const d = readWizardDraft(who)
+    if (!d?.answers) return
+    const a = d.answers
+    // Everything comes back as it was left, and counts as picked: the profile
+    // and the active split seed only what nobody has chosen.
+    focusTouched.current = volumeTouched.current = coreTouched.current = cardioTouched.current = true
+    experienceTouched.current = equipmentTouched.current = true
+    dirty.current = true
+    if (DAYS_PER_WEEK_OPTIONS.includes(a.daysPerWeek)) setDaysPerWeek(a.daysPerWeek)
+    if (a.schedule === 'weekly' || a.schedule === 'rotation') setSchedule(a.schedule)
+    if (Array.isArray(a.weekdays)) setWeekdays(a.weekdays)
+    if (Array.isArray(a.focus)) setFocus(cleanFocus(a.focus))
+    setExperience(a.experience || '')
+    if (a.volume) setVolume(a.volume)
+    if (a.core) setCore(corePlacement(a.core))
+    if (d.cardio) setCardio(cardioPlanFrom(d.cardio))
+    setEquipment(a.equipment || '')
+    setOpenSlots(a.openSlots === true)
+    setShape(a.shape || null)
+    setVersions(a.versions === 2 || a.versions === 3 ? a.versions : null)
+    setNameState(typeof d.name === 'string' ? d.name : '')
+    pendingEdit.current = d.edit || null
+    setRestored(true)
+  }, [who])
+  // The restored edits go on once their week is built (see `built`) — and
+  // again if that week is planned afresh before anything is touched (a
+  // client's injuries arriving just after it was first built).
+  useEffect(() => {
+    const pending = pendingEdit.current
+    if (!pending || !built || pending.key !== answersKey || built.program !== pending.base) return
+    setEdits((prev) =>
+      prev[answersKey]?.base === built ? prev : { ...prev, [answersKey]: { base: built, program: pending.program, cardio: pending.cardio } }
+    )
+  }, [built, answersKey])
+  useEffect(() => {
+    if (!who || !dirty.current || pendingEdit.current) return
+    const draft = edits[answersKey]
+    saveWizardDraft(who, {
+      answers: { daysPerWeek, schedule, weekdays, focus, experience, volume, core, equipment, openSlots, shape, versions },
+      cardio,
+      name,
+      edit: built && draft?.base === built ? { key: answersKey, base: built.program, program: draft.program, cardio: draft.cardio } : null,
+    })
+  }, [who, answersKey, built, edits, cardio, name, daysPerWeek, schedule, weekdays, focus, experience, volume, core, equipment, openSlots, shape, versions])
+  function startOver() {
+    if (who) clearWizardDraft(who)
+    onStartOver?.()
+  }
+
   function create() {
     if (!built) return
     const named = name.trim() ? setProgramName(program, name.trim()) : program
+    if (who) clearWizardDraft(who)
     if (onCreate) return onCreate(named, { focus })
     addRoutine(named)
     fileDraftNotes(named)
@@ -337,6 +482,18 @@ export default function SplitWizard({ client = null, onCreate = null }) {
         <p className="text-[13px] text-text-muted">Loading…</p>
       ) : (
         <div className="space-y-6">
+          {restored && (
+            <div className="flex items-center gap-3 -mb-2">
+              <p className="min-w-0 flex-1 text-[12px] text-text-light">Picked up where you left off.</p>
+              <button
+                type="button"
+                onClick={startOver}
+                className="shrink-0 inline-flex items-center gap-1 min-h-8 bg-transparent border-none cursor-pointer p-0 text-[12px] text-text-muted hover:text-text-primary transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Start over
+              </button>
+            </div>
+          )}
           {refresh && <RefreshNote refresh={refresh} />}
 
           {/* ---- 1. How often ------------------------------------------- */}
@@ -349,8 +506,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
 
             <label className={labelCls}>Shape</label>
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {choice(shape === null, () => setShape(null), 'Pick for me', 'The one that trains you best')}
-              {shapesFor(daysPerWeek).map((sh) => choice(shape === sh.id, () => setShape(sh.id), sh.name))}
+              {choice(shape === null, () => chooseShape(null), 'Pick for me', 'The one that trains you best')}
+              {shapesFor(daysPerWeek).map((sh) => choice(shape === sh.id, () => chooseShape(sh.id), sh.name))}
             </div>
             {/* What the chosen shape costs, in its own words. The bro splits say
                 outright that a muscle trained once a week takes less weekly
@@ -362,8 +519,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
 
             <label className={labelCls}>Schedule</label>
             <div className="grid grid-cols-2 gap-2 mb-5">
-              {choice(schedule === 'weekly', () => setSchedule('weekly'), 'Fixed week', 'Same weekdays, always')}
-              {choice(schedule === 'rotation', () => setSchedule('rotation'), 'Rotation', 'Days wait if you miss one')}
+              {choice(schedule === 'weekly', () => chooseSchedule('weekly'), 'Fixed week', 'Same weekdays, always')}
+              {choice(schedule === 'rotation', () => chooseSchedule('rotation'), 'Rotation', 'Days wait if you miss one')}
             </div>
 
             {schedule === 'weekly' ? (
@@ -379,7 +536,31 @@ export default function SplitWizard({ client = null, onCreate = null }) {
                 </p>
               </>
             ) : (
-              <p className="text-[12px] text-text-light">Miss a day and your workouts wait for you.</p>
+              <>
+                <p className="text-[12px] text-text-light">Miss a day and your workouts wait for you.</p>
+                {/* Upper/Lower on a rotation: 2 on, 1 off, 2 on, 2 off, with two
+                    or three versions of each day taking turns. */}
+                {versionsApply && (
+                  <>
+                    <label className={`${labelCls} mt-5`}>Versions</label>
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {choice(versions === null, () => chooseVersions(null), 'Pick for me', 'From the muscles')}
+                      {choice(versions === 2, () => chooseVersions(2), '2', 'A and B')}
+                      {choice(versions === 3, () => chooseVersions(3), '3', '1, 2 and 3')}
+                    </div>
+                    <p className="text-[12px] text-text-light leading-relaxed">
+                      2 on, 1 off, 2 on, 2 off.{' '}
+                      {versions === null
+                        ? built?.summary.versions === 3
+                          ? 'Using 3 — more muscles land in the green.'
+                          : 'Using 2 — a third version adds nothing here.'
+                        : versions === 3
+                          ? 'Repeats every 3 weeks.'
+                          : 'Repeats every week.'}
+                    </p>
+                  </>
+                )}
+              </>
             )}
           </section>
 
@@ -407,7 +588,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
               {EXPERIENCE_LEVELS.map((e) =>
                 choice(
                   (experience || DEFAULT_EXPERIENCE) === e.value,
-                  () => setExperience(e.value),
+                  () => chooseExperience(e.value),
                   e.label,
                   e.sub
                 )
@@ -436,7 +617,7 @@ export default function SplitWizard({ client = null, onCreate = null }) {
 
             <label className={labelCls}>Equipment</label>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              {EQUIPMENT_PRESETS.map((eq) => choice((equipment || 'gym') === eq.value, () => setEquipment(eq.value), eq.label))}
+              {EQUIPMENT_PRESETS.map((eq) => choice((equipment || 'gym') === eq.value, () => chooseEquipment(eq.value), eq.label))}
             </div>
             <p className="text-[12px] text-text-light leading-relaxed">
               {(equipment || 'gym') === 'gym'
@@ -449,8 +630,8 @@ export default function SplitWizard({ client = null, onCreate = null }) {
                 this only decides what the split says on the day it's created. */}
             <label className={labelCls}>Movements</label>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              {choice(!openSlots, () => setOpenSlots(false), 'Pick for me', 'A movement in every slot')}
-              {choice(openSlots, () => setOpenSlots(true), 'Leave open', 'Choose in the gym')}
+              {choice(!openSlots, () => chooseOpenSlots(false), 'Pick for me', 'A movement in every slot')}
+              {choice(openSlots, () => chooseOpenSlots(true), 'Leave open', 'Choose in the gym')}
             </div>
             <p className="text-[12px] text-text-light leading-relaxed">
               {openSlots
@@ -542,10 +723,9 @@ const CARDIO_HALVES = [
 ]
 
 function CardioSection({ plan, onChange, program, person, client, signedIn }) {
-  const available = {
-    lifting: program.days.filter((d) => d.kind !== 'rest').length,
-    rest: program.days.filter((d) => d.kind === 'rest').length,
-  }
+  // A day that comes round twice (3 versions) is one workout here.
+  const available = cardioDayCounts(program)
+  const twinned = program.days.some((d) => d.twin)
   const week = weeklyCardio(program, person.weightKg)
   const weekly = scheduleMode(program) === 'weekly'
   const pill = (active) =>
@@ -594,7 +774,7 @@ function CardioSection({ plan, onChange, program, person, client, signedIn }) {
                     />
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-text-light mb-1.5">
-                        {kind === 'rest' ? 'Rest days' : 'Lifting days'} {weekly ? 'a week' : 'per rotation'}
+                        {kind === 'rest' ? 'Rest days' : twinned ? 'Lifting workouts' : 'Lifting days'} {weekly ? 'a week' : twinned && kind !== 'rest' ? '' : 'per rotation'}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {Array.from({ length: available[kind] }, (_, i) => i + 1).map((n) => (
@@ -725,6 +905,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
       <h2 className="font-heading text-xl font-medium text-text-primary mb-1">{client?.name ? `${client.name}'s split` : 'Your split'}</h2>
       <p className="text-[12px] text-text-light mb-6">
         {summary.shape ? `${summary.shape.name} · ` : ''}
+        {summary.versions ? `${summary.versions} versions · ` : ''}
         {summary.shapeLabel}
         {summary.focus.length ? ` · ${summary.focus.join(' + ')} focus` : ''}
         {summary.fromHistory
@@ -732,9 +913,13 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
           : ''}
       </p>
 
+      {/* Days and rest days move by holding the ⋮⋮ grip (components/
+          Sortable.jsx), as on the split page. On a fixed week the weekday
+          follows the slot. */}
       <div className="border border-border divide-y divide-border mb-7">
+        <SortableList ids={summary.days.map((d) => d.id)} onMove={(from, to) => update((p) => moveDayTo(p, from, to))}>
         {summary.days.map((d, i) => (
-          <div key={d.id} className="px-3 py-3">
+          <SortableItem key={d.id} id={d.id} className="px-3 py-3 bg-white">
             <div className="flex items-start gap-3">
               {d.kind === 'rest' ? (
                 <Moon className="w-3.5 h-3.5 text-text-light shrink-0 mt-0.5" />
@@ -742,7 +927,7 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                 <Dumbbell className="w-3.5 h-3.5 text-text-light shrink-0 mt-0.5" />
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2 flex-wrap">
+                <div className="flex items-baseline gap-2 flex-wrap pr-7">
                   <span className="text-[13px] font-medium text-text-primary break-words">
                     {d.weekday || `Day ${i + 1}`}
                   </span>
@@ -757,6 +942,11 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                 {d.kind === 'rest' && (
                   <p className="text-[11px] text-text-light mt-0.5">{d.exercises.length ? 'Rest · optional cardio' : 'Rest'}</p>
                 )}
+                {/* A version's second turn (3 versions): the same workout as
+                    its first, kept identical — edit it there. */}
+                {d.repeatOf != null ? (
+                  <p className="text-[11px] text-text-light mt-0.5">Same as Day {d.repeatOf + 1}.</p>
+                ) : (
                 <>
                   {/* What this day is FOR, at a glance. The exercise list below
                       says what you will do; this says what it adds up to — which
@@ -879,7 +1069,13 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                   </>
                   )}
                 </>
+                )}
               </div>
+            </div>
+            {/* In the row's corner rather than a column of its own: on a phone
+                the exercise lines below need every pixel of the width. */}
+            <div className="absolute top-1.5 right-1">
+              <DragHandle label={`Move ${d.kind === 'rest' ? 'this rest day' : d.name || 'this day'}`} />
             </div>
             {/* The split editor's own day editor, on the draft: add, remove,
                 reorder, sets and reps, supersets, notes. Everything above and
@@ -924,8 +1120,9 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                 </button>
               </div>
             )}
-          </div>
+          </SortableItem>
         ))}
+        </SortableList>
       </div>
 
       {/* Edits are the user's, on a proposal still being shaped by the answers

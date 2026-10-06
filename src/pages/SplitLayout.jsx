@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useProgramsState } from '../lib/useProgramsState'
-import { emptyProgram, scheduleMode, effectiveRotation } from '../lib/program'
+import { emptyProgram, scheduleMode, effectiveRotation, syncTwins } from '../lib/program'
 import { getDayAnnotations } from '../lib/workoutStore'
 import { isLockedProgram } from '../lib/coachSync'
 
@@ -49,10 +49,11 @@ export default function SplitLayout() {
   const program = programsState.programs.find((p) => p.id === id) || null
   const isActive = !!program && program.id === programsState.activeId
 
-  // The one write path for every mutator in lib/program.js.
+  // The one write path for every mutator in lib/program.js. A day that comes
+  // round twice (3-version rotation) changes on both turns (syncTwins).
   function update(mutator) {
     if (!program) return
-    saveProgram({ ...mutator(program), updatedAt: Date.now() })
+    saveProgram({ ...syncTwins(program, mutator(program)), updatedAt: Date.now() })
   }
 
   // Weekly (exactly 7 days): the date decides the day, so the pointer and its

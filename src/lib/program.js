@@ -220,7 +220,8 @@ export function moveDayTo(program, from, to) {
 
 // A day with fresh ids throughout — the day, every row, its superset pairings
 // (still paired, under new ids) — so the same day can be dropped into more than
-// one split, or twice into one, without two rows sharing an id.
+// one split, or twice into one, without two rows sharing an id. A copy is its
+// own day: it never joins the pair (`twin`, below) its original belongs to.
 export function copyDay(day) {
   const pairs = new Map()
   const pair = (id) => {
@@ -228,11 +229,85 @@ export function copyDay(day) {
     if (!pairs.has(id)) pairs.set(id, newSupersetId())
     return pairs.get(id)
   }
+  const { twin: _twin, ...rest } = day
   return {
-    ...day,
+    ...rest,
     id: newId(),
     exercises: (day.exercises || []).map((e) => ({ ...e, id: newId(), supersetId: pair(e.supersetId) })),
   }
+}
+
+// ---- Versions that come round twice ------------------------------------------
+//
+// A long Upper/Lower rotation (generator.js buildProgram, 3 versions) holds
+// each day twice: U1 L1 R U2 L2 R R U3 L3 R U1 L1 R R … The two copies are
+// separate days — their own ids, so the rotation, the log and split sync work
+// on them like any day — linked by `day.twin` (same value on both) and, row
+// by row, `row.twin`. They're one workout, so whatever changes on one copy is
+// made on the other: call this wherever a split is edited, with the split
+// before and after the edit.
+export function syncTwins(prev, next) {
+  if (!next?.days?.some((d) => d.twin)) return next
+  const before = new Map((prev?.days || []).map((d) => [d.id, d]))
+  const source = new Map() // twin → the copy that changed
+  for (const d of next.days) {
+    if (!d.twin || source.has(d.twin)) continue
+    const old = before.get(d.id)
+    if (old && old !== d && twinContent(old) !== twinContent(d)) source.set(d.twin, d)
+  }
+  if (!source.size) return next
+  return {
+    ...next,
+    days: next.days.map((d) => {
+      const src = d.twin ? source.get(d.twin) : null
+      return src && src !== d ? mirrorTwin(src, d) : d
+    }),
+  }
+}
+
+// What two copies share: everything but their ids (and the superset ids,
+// which are per copy).
+function twinContent(day) {
+  const { id: _id, twin: _twin, exercises, ...rest } = day
+  return JSON.stringify({
+    ...rest,
+    exercises: (exercises || []).map(({ id: _rid, twin: _rtwin, supersetId, ...e }) => ({ ...e, paired: !!supersetId })),
+  })
+}
+
+// `dst` made to match `src`, keeping dst's own day id and — matched by the
+// row's twin key — its row ids, so a session logged on dst still finds its rows.
+function mirrorTwin(src, dst) {
+  const key = (e) => e.twin || e.id
+  const mine = new Map((dst.exercises || []).map((e) => [key(e), e]))
+  const pairs = new Map()
+  for (const e of src.exercises || []) {
+    const m = mine.get(key(e))
+    if (e.supersetId && m?.supersetId && !pairs.has(e.supersetId)) pairs.set(e.supersetId, m.supersetId)
+  }
+  const pair = (id) => {
+    if (!id) return id
+    if (!pairs.has(id)) pairs.set(id, newSupersetId())
+    return pairs.get(id)
+  }
+  return {
+    ...src,
+    id: dst.id,
+    twin: dst.twin,
+    exercises: (src.exercises || []).map((e) => ({
+      ...e,
+      id: mine.get(key(e))?.id || newId(),
+      twin: key(e),
+      supersetId: pair(e.supersetId),
+    })),
+  }
+}
+
+// The other copies of a day that comes round twice — what "Same workout as
+// Day N" names.
+export function otherTwins(program, day) {
+  if (!day?.twin) return []
+  return program.days.filter((d) => d.twin === day.twin && d.id !== day.id)
 }
 
 // Put `day` in slot `index`, replacing what's there — how a day lands on one

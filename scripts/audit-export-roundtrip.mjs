@@ -90,12 +90,12 @@ for (const daysPerWeek of [2, 3, 4, 5, 6]) {
     for (const focus of [[], ['Side Delts'], ['Chest', 'Lats', 'Glutes']]) {
       for (const equipment of ['gym', 'bodyweight']) {
         for (const experience of ['beginner', 'intermediate', 'advanced']) {
-          for (const schedule of ['weekly', 'rotation']) {
+          for (const [schedule, versions] of [['weekly'], ['rotation'], ...(shape === 'upper-lower' ? [['rotation', 3]] : [])]) {
             for (const volume of VOLUME_PREFERENCES.map((p) => p.value)) {
               for (const openSlots of [false, true]) {
                 scenarios++
-                const label = `${daysPerWeek}d/${shape}/${schedule}/${equipment}/${experience}/${volume}/[${focus.join(',')}]${openSlots ? '/open' : ''}`
-                const { program } = generateProgram({ answers: { daysPerWeek, shape, focus, equipment, experience, schedule, volume, openSlots } })
+                const label = `${daysPerWeek}d/${shape}/${schedule}${versions ? `-${versions}v` : ''}/${equipment}/${experience}/${volume}/[${focus.join(',')}]${openSlots ? '/open' : ''}`
+                const { program } = generateProgram({ answers: { daysPerWeek, shape, focus, equipment, experience, schedule, volume, openSlots, versions } })
                 program.name = `Gym ${scenarios}`
                 Object.assign(program, applyCardioPlan(program, CARDIO_PLANS[scenarios % CARDIO_PLANS.length]))
                 // Cardio plan rows carry the planner's mark; the text doesn't, and
@@ -126,7 +126,10 @@ for (const daysPerWeek of [2, 3, 4, 5, 6]) {
                 check(label, back.program?.settings?.volume === volume, `volume ${back.program?.settings?.volume}`)
                 check(label, back.program?.settings?.shape === program.settings.shape, `shape ${back.program?.settings?.shape} ≠ ${program.settings.shape}`)
 
-                const want = schedule === 'weekly' ? program.days : program.days.filter((d) => d.kind !== 'rest' || d.exercises.length)
+                // A day that comes round twice (3-version rotation) is written once.
+                const twinSeen = new Set()
+                const once = (d) => !d.twin || d.kind === 'rest' || (!twinSeen.has(d.twin) && twinSeen.add(d.twin))
+                const want = schedule === 'weekly' ? program.days : program.days.filter((d) => d.kind !== 'rest' || d.exercises.length).filter(once)
                 const got = back.program?.days || []
                 check(label, got.length === want.length, `${got.length} days ≠ ${want.length}`)
                 want.forEach((d, i) => {
