@@ -38,7 +38,7 @@ export const DASHBOARD_CARDS = [
   { id: 'cardio', label: 'Cardio', sub: 'This week vs your plan', defaultOn: false },
   { id: 'activity', label: 'Recent activity', sub: 'Your last sessions' },
   { id: 'throwback', label: 'This day in history', sub: 'What you trained a year ago' },
-  { id: 'bodyweight', label: 'Bodyweight', sub: 'Weigh-ins and trend' },
+  { id: 'bodyweight', label: 'Weight & food', sub: 'Weigh-ins and weekly food' },
   { id: 'targets', label: 'Daily targets', sub: 'Calories and protein for your goal', defaultOn: false },
 ]
 

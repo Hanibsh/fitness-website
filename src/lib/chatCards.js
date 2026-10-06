@@ -8,7 +8,8 @@
 //              it's already in their splits.
 //   workout  — { type, session, prs } — the PRs worked out on the sender's
 //              side, against their whole log (the other person doesn't have it).
-//   checkin  — { type, week_start, answers, updated }
+//   checkin  — { type, week_start, answers, updated, food } — `food`: the
+//              week's { calories, protein, bodyFat } (lib/weeklyLog.js) or null.
 import { sessionPRs } from './workoutStats'
 import { emptyProgram } from './program'
 
@@ -39,8 +40,15 @@ export function workoutCard(session, history = [], unit = 'kg') {
   }
 }
 
-export function checkinCard(row, { updated = false } = {}) {
-  return { type: 'checkin', week_start: row.week_start, answers: row.answers || {}, updated: !!updated }
+export function checkinCard(row, { updated = false, food = null } = {}) {
+  const keep = food && ['calories', 'protein', 'bodyFat'].some((k) => food[k] != null)
+  return {
+    type: 'checkin',
+    week_start: row.week_start,
+    answers: row.answers || {},
+    updated: !!updated,
+    food: keep ? { calories: food.calories ?? null, protein: food.protein ?? null, bodyFat: food.bodyFat ?? null } : null,
+  }
 }
 
 // One line for a card: reply quotes and the chat's empty-text fallbacks.

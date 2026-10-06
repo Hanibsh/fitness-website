@@ -5,6 +5,7 @@ import Modal from './Modal'
 import SessionSummary from './SessionSummary'
 import { isCard, splitShape } from '../lib/chatCards'
 import { CHECKIN_QUESTIONS, weekLabel } from '../lib/checkins'
+import { intakeLine } from '../lib/weeklyLog'
 import { getFullExercise, primaryMuscles } from '../lib/exerciseBank'
 import { sessionStats } from '../lib/workoutStore'
 import { formatDuration } from '../lib/dashboard'
@@ -95,7 +96,7 @@ function Contained({ children }) {
   )
 }
 
-function CheckinGrid({ answers }) {
+function CheckinGrid({ answers, food }) {
   return (
     <>
       <div className="grid grid-cols-3 gap-1 mt-2">
@@ -106,6 +107,7 @@ function CheckinGrid({ answers }) {
           </div>
         ))}
       </div>
+      {food && <p className="text-[12px] text-text-primary mt-2">{intakeLine(food)}</p>}
       {answers?.note && <p className="text-[13px] text-text-secondary mt-2 break-words whitespace-pre-line">{answers.note}</p>}
     </>
   )
@@ -140,7 +142,7 @@ export default function ChatCard({ card, mine, saveSplit, sentSplitPath }) {
   if (card.type === 'checkin') {
     return (
       <Frame icon={ClipboardCheck} kicker={card.updated ? 'Check-in updated' : 'Weekly check-in'} title={weekLabel(card.week_start)}>
-        <CheckinGrid answers={card.answers} />
+        <CheckinGrid answers={card.answers} food={card.food} />
       </Frame>
     )
   }

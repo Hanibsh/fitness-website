@@ -4,10 +4,10 @@ import MiniStat from './MiniStat'
 import ExerciseSelect from './ExerciseSelect'
 import ProgressChart from './ProgressChart'
 import { buildSeries, bodyweightSeries, metricById } from '../lib/workoutStats'
-import { sessionStats } from '../lib/workoutStore'
 import { recentPRs } from '../lib/dashboard'
 import { weightTrend } from '../lib/coachStats'
 import { liftsByUse } from '../lib/chatCards'
+import { intakeAverages, bodyFatTrend } from '../lib/weeklyLog'
 
 const DAY = 86400000
 
@@ -55,7 +55,10 @@ function Chart({ title, points, unit, empty }) {
 // How someone's training and body are going over one chosen range: a few
 // numbers, then strength and bodyweight on the same timeline. In the chat's
 // profile panel now; the Progress page adds its calories and body fat charts.
-export default function ProgressView({ sessions = [], bodyweight = [], unit = 'kg' }) {
+//
+// `weekly`: their weekly food log (lib/weeklyLog.js); `targets`: calories and
+// protein a day to aim for (lib/useDailyTargets.js pickTargets), or null.
+export default function ProgressView({ sessions = [], bodyweight = [], weekly = [], targets = null, unit = 'kg' }) {
   const [rangeId, setRangeId] = useState('3m')
   const range = PROGRESS_RANGES.find((r) => r.id === rangeId)
   const now = useMemo(() => Date.now(), [])
@@ -68,12 +71,12 @@ export default function ProgressView({ sessions = [], bodyweight = [], unit = 'k
   }, [lifts, lift])
 
   const stats = useMemo(() => {
-    const inRange = sessions.filter((s) => s.date >= cutoff)
-    const sets = inRange.reduce((n, s) => n + sessionStats(s).sets, 0)
+    const workouts = sessions.filter((s) => s.date >= cutoff).length
     const prs = recentPRs(sessions, unit, Infinity).filter((p) => p.date >= cutoff).length
     const weight = weightTrend(bodyweight, unit, { days: range.days === Infinity ? 36500 : range.days, now })
-    return { workouts: inRange.length, sets, prs, weight }
-  }, [sessions, bodyweight, unit, cutoff, range, now])
+    return { workouts, prs, weight, intake: intakeAverages(weekly, cutoff), fat: bodyFatTrend(weekly, cutoff) }
+  }, [sessions, bodyweight, weekly, unit, cutoff, range, now])
+  const vsTarget = (target, unitLabel) => (target ? `target ${target.toLocaleString('en-US')}${unitLabel}` : 'a day')
 
   const strength = useMemo(
     () => (lift ? buildSeries(sessions, lift, metricById('e1rm'), rangeId, unit) : []),
@@ -99,14 +102,28 @@ export default function ProgressView({ sessions = [], bodyweight = [], unit = 'k
         ))}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-7">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-7">
         <MiniStat label="Workouts" value={stats.workouts} />
-        <MiniStat label="Working sets" value={stats.sets} />
         <MiniStat label="PRs" value={stats.prs} />
         <MiniStat
           label="Bodyweight"
           value={stats.weight.latest != null ? `${stats.weight.latest} ${unit}` : '—'}
           sub={stats.weight.change != null && stats.weight.change !== 0 ? `${signed(stats.weight.change)} ${unit}` : null}
+        />
+        <MiniStat
+          label="Body fat"
+          value={stats.fat.latest != null ? `${stats.fat.latest}%` : '—'}
+          sub={stats.fat.change != null && stats.fat.change !== 0 ? `${signed(stats.fat.change)}%` : null}
+        />
+        <MiniStat
+          label="Calories"
+          value={stats.intake.calories != null ? stats.intake.calories.toLocaleString('en-US') : '—'}
+          sub={vsTarget(targets?.calories, '')}
+        />
+        <MiniStat
+          label="Protein"
+          value={stats.intake.protein != null ? `${stats.intake.protein} g` : '—'}
+          sub={vsTarget(targets?.protein, ' g')}
         />
       </div>
 

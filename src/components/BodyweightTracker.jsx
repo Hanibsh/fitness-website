@@ -9,6 +9,10 @@ import ProgressChart from './ProgressChart'
 import Modal from './Modal'
 import AuthModal from './AuthModal'
 import NumberField from './NumberField'
+import FoodFields from './FoodFields'
+import { devClientSample } from '../lib/coach'
+import { weekStart } from '../lib/checkins'
+import { foodForm, parseIntake, previousWeek, intakeLine, underFloor } from '../lib/weeklyLog'
 
 // A bathroom scale — the kind you step on. Hand-rolled because lucide has no
 // such icon: its `Scale` is a justice/balance scale and `Weight` is a kettlebell,
@@ -55,10 +59,18 @@ function isSameDay(a, b) {
 // Local-first: guests store in localStorage; logged-in users sync to Supabase,
 // falling back to local if the table isn't there yet.
 //
+// Given `weekly` (lib/useWeeklyLog.js), it's "Weight & food": the tile adds
+// this week's food and the panel a Food block to log a week — measured
+// against `targets` (lib/useDailyTargets.js pickTargets), with `sex` for the
+// calorie floor.
+//
 // Given `entries`, it's someone else's weigh-ins (the coach's view of a
 // client): read-only — nothing loaded, added or deleted.
-export default function BodyweightTracker({ user, unit = 'kg', entries: given = null }) {
+export default function BodyweightTracker({ user, unit = 'kg', entries: given = null, weekly = null, targets = null, sex = null }) {
   const readOnly = given != null
+  // The dev client sample logs to this device, signed out.
+  const dev = !user && devClientSample()
+  const title = weekly ? 'Weight & food' : 'Bodyweight'
   const [ownEntries, setEntries] = useState([])
   const entries = readOnly ? given : ownEntries
   const [rangeId, setRangeId] = useState('3m')
@@ -73,13 +85,13 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
 
   // Bodyweight tracking requires an account (it syncs to your profile), so
   // logged-out visitors get a locked teaser that prompts login.
-  const locked = !user && !readOnly
+  const locked = !user && !readOnly && !dev
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       if (readOnly) return
-      if (!user) { setEntries([]); return }
+      if (!user) { setEntries(dev ? getBodyweightLog() : []); return }
       try {
         const remote = await fetchRemoteBodyweight(user.id)
         if (!cancelled) { setEntries(remote); setRemoteOk(true) }
@@ -91,7 +103,7 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
     }
     load()
     return () => { cancelled = true }
-  }, [user, readOnly])
+  }, [user, readOnly, dev])
 
   const useRemote = !!user && remoteOk
 
@@ -155,6 +167,7 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
   const Trend = change === null || change === 0 ? Minus : change < 0 ? TrendingDown : TrendingUp
   const trendColor = change === null || change === 0 ? 'text-text-muted' : change < 0 ? 'text-green-600' : 'text-red-600'
   const rangeLabel = (BODYWEIGHT_RANGES.find((r) => r.id === rangeId) || {}).label
+  const thisWeekLine = weekly ? intakeLine(weekly.entryFor(weekStart())) : ''
 
   return (
     <>
@@ -166,7 +179,7 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ScaleIcon className="w-4 h-4 text-text-primary" />
-            <h2 className="font-heading text-lg font-medium text-text-primary">Bodyweight</h2>
+            <h2 className="font-heading text-lg font-medium text-text-primary">{title}</h2>
           </div>
           {locked ? <Lock className="w-3.5 h-3.5 text-text-light" /> : <ChevronRight className="w-4 h-4 text-text-light" />}
         </div>
@@ -188,6 +201,11 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
         ) : (
           <p className="text-[13px] text-text-muted mt-2">{readOnly ? 'No weigh-ins yet.' : 'Tap to log your weight and track your trend.'}</p>
         )}
+        {weekly && !locked && (
+          <p className={`text-[12px] mt-2 ${thisWeekLine ? 'text-text-secondary' : 'text-text-muted'}`}>
+            {thisWeekLine ? `This week: ${thisWeekLine}` : 'Log this week’s food'}
+          </p>
+        )}
       </button>
 
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
@@ -198,7 +216,7 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
           <div className="p-6 sm:p-7">
             <div className="flex items-center gap-2 mb-5">
               <ScaleIcon className="w-4 h-4 text-text-primary" />
-              <h2 className="font-heading text-xl font-medium text-text-primary">Bodyweight</h2>
+              <h2 className="font-heading text-xl font-medium text-text-primary">{title}</h2>
             </div>
 
             {/* add today's weight */}
@@ -223,6 +241,8 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
                 </button>
               </div>
             )}
+
+            {weekly && !readOnly && <FoodBlock weekly={weekly} targets={targets} sex={sex} />}
 
             {series.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-border">
@@ -311,5 +331,98 @@ export default function BodyweightTracker({ user, unit = 'kg', entries: given = 
         </Modal>
       )}
     </>
+  )
+}
+
+// A bar against a target: how close the week's average came. Never red —
+// under or over, it's information, not a verdict.
+function TargetBar({ label, value, target, unit }) {
+  const pct = Math.min(100, Math.round((value / target) * 100))
+  return (
+    <div>
+      <div className="flex justify-between items-baseline gap-2 text-[12px] mb-1">
+        <span className="text-text-secondary">{label}</span>
+        <span className="text-text-muted tabular-nums">
+          <span className="text-text-primary font-medium">{value.toLocaleString('en-US')}</span> / {target.toLocaleString('en-US')} {unit}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-cream border border-border overflow-hidden">
+        <div className="h-full bg-text-primary" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+// One week's food — this week, or last (a finished week often gets logged on
+// Monday). The same entry the weekly check-in writes.
+function FoodBlock({ weekly, targets, sex }) {
+  const thisWeek = weekStart()
+  const [key, setKey] = useState(thisWeek)
+  const entry = weekly.entryFor(key)
+  const [text, setText] = useState(() => foodForm(entry))
+  const [error, setError] = useState(null)
+  const [state, setState] = useState('idle') // 'saving' | 'saved'
+
+  // Switching weeks, or the week arriving from the account, refills the form.
+  useEffect(() => {
+    setText(foodForm(entry))
+    setError(null)
+  }, [key, entry])
+
+  async function save() {
+    const parsed = parseIntake(text)
+    setError(parsed.error)
+    if (parsed.error) return
+    setState('saving')
+    await weekly.save({ weekStart: key, ...parsed.entry })
+    setState('saved')
+    setTimeout(() => setState((st) => (st === 'saved' ? 'idle' : st)), 2000)
+  }
+
+  const week = (k, label) => (
+    <button
+      type="button"
+      onClick={() => setKey(k)}
+      aria-pressed={key === k}
+      className={`px-2.5 py-1 text-[11px] font-medium border-none cursor-pointer transition-colors ${
+        key === k ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
+      }`}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div className="mb-6 pb-5 border-b border-border">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h3 className="text-[13px] font-medium text-text-primary">Food</h3>
+        <div className="flex border border-border">
+          {week(thisWeek, 'This week')}
+          {week(previousWeek(thisWeek), 'Last week')}
+        </div>
+      </div>
+      <FoodFields value={text} onChange={(v) => { setText(v); setError(null) }} error={error} idPrefix="tile-food" />
+      <div className="flex items-center gap-3 mt-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={state === 'saving'}
+          className="bg-text-primary text-cream text-[13px] font-medium px-4 py-2 border-none cursor-pointer hover:bg-accent-hover transition-colors disabled:opacity-40"
+        >
+          {state === 'saving' ? 'Saving…' : 'Save'}
+        </button>
+        {state === 'saved' && <span className="text-[12px] text-text-muted">Saved</span>}
+      </div>
+      {targets && (entry?.calories != null || entry?.protein != null) && (
+        <div className="space-y-2.5 mt-4">
+          {targets.calories && entry?.calories != null && <TargetBar label="Calories" value={entry.calories} target={targets.calories} unit="cal" />}
+          {targets.protein && entry?.protein != null && <TargetBar label="Protein" value={entry.protein} target={targets.protein} unit="g" />}
+          <p className="text-[11px] text-text-light">{targets.from === 'coach' ? 'Targets from your coach' : 'Your targets, from your profile'}</p>
+        </div>
+      )}
+      {underFloor(entry, sex) && (
+        <p className="text-[12px] text-text-muted mt-3">Under the floor — eat a bit more, walk for the rest.</p>
+      )}
+    </div>
   )
 }

@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { ClipboardCheck } from 'lucide-react'
 import CoachComments from './CoachComments'
 import { CHECKIN_QUESTIONS, weekLabel } from '../lib/checkins'
+import { intakeLine } from '../lib/weeklyLog'
 import { useClientCheckins, useClientNotes } from '../lib/useCoachNotes'
 
 const SHOWN = 3
 
 // A linked client's weekly check-ins, newest first, each with a reply box.
 // Sits on the client's page (ClientDetail).
-export default function ClientCheckinsCard({ clientName, clientUserId }) {
+// `weekly`: their weekly food log, for the food line under each week.
+export default function ClientCheckinsCard({ clientName, clientUserId, weekly = [] }) {
   const checkins = useClientCheckins(clientUserId)
   const { notes, addNote, removeNote } = useClientNotes(clientUserId)
   const [all, setAll] = useState(false)
@@ -34,6 +36,10 @@ export default function ClientCheckinsCard({ clientName, clientUserId }) {
                   </div>
                 ))}
               </div>
+              {(() => {
+                const line = intakeLine(weekly.find((w) => w.weekStart === c.week_start))
+                return line ? <p className="text-[13px] text-text-primary mb-2">{line}</p> : null
+              })()}
               {c.answers?.note && <p className="text-[13px] text-text-secondary mb-3 break-words whitespace-pre-line">{c.answers.note}</p>}
               <CoachComments
                 notes={notes.filter((n) => n.kind === 'checkin' && n.target_id === c.id)}

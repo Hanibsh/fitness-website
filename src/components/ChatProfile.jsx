@@ -146,13 +146,13 @@ function MediaTab({ media, onOpen }) {
 // About the person a chat is with — or, for the client, about themselves:
 // their progress, split, check-ins, and what's been shared in the chat.
 //
-//   about: { since, sinceLabel, sessions, bodyweight, unit, loading, program,
-//            annotations, splitPath, checkins, checkinsPath }
+//   about: { since, sinceLabel, sessions, bodyweight, weekly, targets, unit,
+//            loading, program, annotations, splitPath, checkins, checkinsPath }
 //   media: [{ id, type, url, date }], newest first (from the chat)
 export default function ChatProfile({ name, about, media, onClose }) {
   const [tab, setTab] = useState('progress')
   const [viewing, setViewing] = useState(null)
-  const { sessions = [], bodyweight = [], annotations = [], checkins = [] } = about
+  const { sessions = [], bodyweight = [], weekly = [], annotations = [], checkins = [] } = about
 
   return (
     <Modal onClose={onClose} maxWidth="max-w-xl">
@@ -201,7 +201,7 @@ export default function ChatProfile({ name, about, media, onClose }) {
               (about.loading ? (
                 <p className="text-[13px] text-text-muted">Loading…</p>
               ) : (
-                <ProgressView sessions={sessions} bodyweight={bodyweight} unit={about.unit} />
+                <ProgressView sessions={sessions} bodyweight={bodyweight} weekly={weekly} targets={about.targets || null} unit={about.unit} />
               ))}
             {tab === 'split' &&
               (about.loading ? (

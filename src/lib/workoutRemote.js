@@ -326,6 +326,40 @@ export async function deleteRemoteBodyweight(id) {
   if (error) throw error
 }
 
+// ---- Weekly food log ----------------------------------------------------------
+// The `weekly_log` table (one row per user per week); the coach can read a
+// linked client's.
+function weeklyFromRow(row) {
+  const n = (v) => (v == null ? null : Number(v))
+  return { weekStart: row.week_start, calories: n(row.calories), protein: n(row.protein), bodyFat: n(row.body_fat) }
+}
+
+export async function fetchRemoteWeeklyLog(userId) {
+  const { data, error } = await supabase
+    .from('weekly_log')
+    .select('week_start, calories, protein, body_fat')
+    .eq('user_id', userId)
+    .order('week_start', { ascending: false })
+  if (error) throw error
+  return (data || []).map(weeklyFromRow)
+}
+
+export async function upsertRemoteWeeklyLog(userId, entry) {
+  const { error } = await supabase.from('weekly_log').upsert(
+    {
+      user_id: userId,
+      week_start: entry.weekStart,
+      calories: entry.calories,
+      protein: entry.protein,
+      body_fat: entry.bodyFat,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,week_start' }
+  )
+  if (error) throw error
+  return entry
+}
+
 // ---- Day annotations --------------------------------------------------------
 // Mirrors the localStorage day-annotation functions but talks to the
 // `day_annotations` table. Degrades gracefully if the migration hasn't been

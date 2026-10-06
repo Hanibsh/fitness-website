@@ -712,6 +712,21 @@ export function deleteBodyweightEntry(id) {
   return log
 }
 
+// ---- Weekly food log ---------------------------------------------------------
+// One entry per week (lib/weeklyLog.js has the shape), newest week first.
+const WEEKLY_KEY = 'leon_weekly_log'
+
+export function getWeeklyLog() {
+  return read(WEEKLY_KEY, [])
+}
+
+// Upsert by week.
+export function saveWeeklyEntry(entry) {
+  const log = [entry, ...getWeeklyLog().filter((e) => e.weekStart !== entry.weekStart)].sort((a, b) => b.weekStart.localeCompare(a.weekStart))
+  write(WEEKLY_KEY, log)
+  return log
+}
+
 // ---- Day annotations (sick / injury / travel / rest / other) --------------
 //
 // Independent of workouts — a day can have BOTH a logged session and an

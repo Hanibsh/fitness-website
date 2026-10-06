@@ -69,6 +69,10 @@ check('workout label', cards.cardLabel(workout) === 'Workout: Upper')
 // ---- Check-in ----------------------------------------------------------------------
 const ci = cards.checkinCard({ week_start: '2026-10-05', answers: { sleep: 4 } }, { updated: true })
 check('check-in card', ci.type === 'checkin' && ci.answers.sleep === 4 && cards.cardLabel(ci) === 'Check-in updated')
+check('check-in card without food', ci.food === null)
+const ciFood = cards.checkinCard({ week_start: '2026-10-05', answers: {} }, { food: { calories: 2200, protein: null, bodyFat: 18 } })
+check('check-in card carries the week’s food', JSON.stringify(ciFood.food) === JSON.stringify({ calories: 2200, protein: null, bodyFat: 18 }))
+check('an empty food entry rides as null', cards.checkinCard({ week_start: '2026-10-05' }, { food: { calories: null, protein: null, bodyFat: null } }).food === null)
 
 // ---- Lifts by use ------------------------------------------------------------------
 const withRow = (id, date, names) => ({ id, date, exercises: names.map((n) => ({ name: n, kind: n === 'Incline Walk' ? 'cardio' : 'strength', sets: [] })) })

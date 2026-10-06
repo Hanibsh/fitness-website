@@ -12,9 +12,7 @@ import { weeklyCardio } from '../lib/cardioPlan'
 import { scheduleMode } from '../lib/program'
 import { convertWeight, formatRest } from '../lib/workoutStats'
 import { formatDuration } from '../lib/dashboard'
-import { usePrefill, weeklyTrainingHours, tdeeFromPrefill } from '../lib/profilePrefill'
-import { calorieTargets, GOAL_DEFAULT_TARGET, DEFAULT_TARGET } from '../lib/calorieTargets'
-import { proteinRange, macroSplit } from '../lib/macros'
+import { useDailyTargets } from '../lib/useDailyTargets'
 import { SPLIT_REFRESH_WEEKS } from '../lib/generatorConfig'
 
 // The dashboard's optional cards — all switched off until someone turns them on
@@ -288,19 +286,7 @@ export function InjuriesCard({ injuries, now }) {
 // The TDEE calculator's own numbers, worked out from the profile — only when
 // every input it needs is really known, same rule as the calculators' prefill.
 export function DailyTargetsCard({ sessions, now }) {
-  const p = usePrefill()
-  const hours = useMemo(() => weeklyTrainingHours(sessions, now), [sessions, now])
-  const result = useMemo(() => {
-    if (!p.ready) return null
-    const tdee = tdeeFromPrefill(p, hours)
-    if (tdee == null) return null
-    const metric = p.unitSystem !== 'imperial'
-    const weightKg = metric ? p.weight : convertWeight(p.weight, 'lbs', 'kg')
-    const target = calorieTargets({ tdee, weightKg, sex: p.sex })[GOAL_DEFAULT_TARGET[p.goal] ?? DEFAULT_TARGET]
-    const protein = proteinRange({ lbmKg: weightKg * (1 - p.bodyFat / 100), bodyFat: p.bodyFat, trainingHours: hours, age: p.age, vegan: !!p.vegan })
-    const split = macroSplit({ kcal: target.kcal, posture: target.posture, weightKg, sex: p.sex, protein })
-    return { tdee, target, protein: Math.round(split.protein.target) }
-  }, [p, hours])
+  const { p, hours, result } = useDailyTargets(sessions, now)
 
   const missing = p.ready
     ? [

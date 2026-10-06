@@ -239,7 +239,7 @@ export default function ClientDetail() {
         <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
         {linked && <MessagesRow clientId={client.id} unread={unread[link.client_id] || 0} />}
         {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
-        {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} />}
+        {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} weekly={linkedData?.weekly || []} />}
         {linked && <ClientTargetsCard clientName={client.name} clientUserId={link.client_id} unit={unit} />}
 
         {/* ---- Programs ------------------------------------------------------ */}

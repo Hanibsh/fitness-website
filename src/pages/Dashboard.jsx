@@ -44,7 +44,10 @@ import MiniStat from '../components/MiniStat'
 import { useInjuries } from '../lib/useInjuries'
 import { useMyCoach } from '../lib/useMyCoach'
 import { useFromCoach, useMyCheckins } from '../lib/useCoachNotes'
-import { thisWeeksCheckin } from '../lib/checkins'
+import { thisWeeksCheckin, weekStart } from '../lib/checkins'
+import { useWeeklyLog } from '../lib/useWeeklyLog'
+import { useDailyTargets, pickTargets } from '../lib/useDailyTargets'
+import { hasIntake } from '../lib/weeklyLog'
 import FromCoachCard from '../components/FromCoachCard'
 import GetStarted from '../components/GetStarted'
 import { useMyUnreadMessages } from '../lib/useChat'
@@ -381,6 +384,8 @@ export default function Dashboard() {
   const fromCoach = useFromCoach(!!coach)
   const { checkins, saveCheckin } = useMyCheckins(coach?.coach_id || null)
   const thisWeek = thisWeeksCheckin(checkins)
+  // The weekly food log: one copy for the weigh-in tile and the check-in.
+  const weekly = useWeeklyLog()
   const [checkinOpen, setCheckinOpen] = useState(false)
   const unreadMessages = useMyUnreadMessages(user?.id, !!coach)
   // Before the first workout, the bodyweight card shows only once there's a
@@ -505,6 +510,17 @@ export default function Dashboard() {
   // and moved on whenever the log changes or the day rolls over.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nowTs = useMemo(() => Date.now(), [sessions, today])
+  const ownTargets = useDailyTargets(sessions, nowTs)
+  const foodTargets = pickTargets(coach ? fromCoach.targets : null, ownTargets.result)
+  // The check-in saves the week's food alongside it (same Monday key).
+  const saveCheckinWithFood = async (answers, food) => {
+    const key = weekStart()
+    if (hasIntake(food) || weekly.entryFor(key)) await weekly.save({ weekStart: key, ...food })
+    return saveCheckin(answers, food)
+  }
+  const weightAndFood = (
+    <BodyweightTracker user={user} unit={unit} weekly={weekly.enabled ? weekly : null} targets={foodTargets} sex={ownTargets.p.sex} />
+  )
   const now = new Date()
   // One shared verdict on the draft (draftState), so the logger and this page
   // can never disagree about whether there's a session to continue.
@@ -626,7 +642,7 @@ export default function Dashboard() {
             plannedDay={firstPlan.status === 'train' ? firstPlan.day : null}
             profileDone={!!profile?.sex && profile?.bodyweight != null}
           />
-          {hasWeighIns && <BodyweightTracker user={user} unit={unit} />}
+          {(hasWeighIns || weekly.entries.length > 0) && weightAndFood}
         </div>
         {editingNick && user && (
           <NicknameModal current={nickname} onSave={saveNickname} onClose={() => setEditingNick(false)} />
@@ -639,7 +655,8 @@ export default function Dashboard() {
           <CheckinModal
             coachName={coach?.coach_name}
             initial={thisWeek?.answers}
-            onSave={saveCheckin}
+            food={weekly.entryFor(weekStart())}
+            onSave={saveCheckinWithFood}
             onClose={() => setCheckinOpen(false)}
           />
         )}
@@ -1342,9 +1359,7 @@ export default function Dashboard() {
       </Card>
     ) : null,
     // SECTION 14 — BODYWEIGHT (compact; tap to open the full panel)
-    bodyweight: (
-      <BodyweightTracker user={user} unit={unit} />
-    ),
+    bodyweight: weightAndFood,
     // The optional cards (components/DashboardInsightCards.jsx), off until
     // switched on in the profile.
     adherence: <AdherenceCard sessions={sessions} annotations={annotations} program={program} now={nowTs} />,
@@ -1450,7 +1465,8 @@ export default function Dashboard() {
         <CheckinModal
           coachName={coach?.coach_name}
           initial={thisWeek?.answers}
-          onSave={saveCheckin}
+          food={weekly.entryFor(weekStart())}
+          onSave={saveCheckinWithFood}
           onClose={() => setCheckinOpen(false)}
         />
       )}

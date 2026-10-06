@@ -1,19 +1,28 @@
 import { useState } from 'react'
 import Modal from './Modal'
+import FoodFields from './FoodFields'
 import { CHECKIN_QUESTIONS, CHECKIN_NOTE_MAX, checkinComplete } from '../lib/checkins'
+import { foodForm, parseIntake } from '../lib/weeklyLog'
 
-// The weekly check-in: one 1–5 row per question and an optional note. Opens
-// on this week's answers when there are some, so it doubles as the edit.
-export default function CheckinModal({ coachName = 'Leon', initial = null, onSave, onClose }) {
+// The weekly check-in: one 1–5 row per question, the week's food (optional),
+// and an optional note. Opens on this week's answers and food when there are
+// some, so it doubles as the edit. `food`: this week's weekly-log entry.
+// `onSave(answers, food)` — food as lib/weeklyLog.js parseIntake gives it.
+export default function CheckinModal({ coachName = 'Leon', initial = null, food = null, onSave, onClose }) {
   const [answers, setAnswers] = useState(() => ({ ...(initial || {}) }))
+  const [foodText, setFoodText] = useState(() => foodForm(food))
+  const [foodError, setFoodError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   async function save() {
+    const parsed = parseIntake(foodText)
+    setFoodError(parsed.error)
+    if (parsed.error) return
     setBusy(true)
     setError('')
     try {
-      await onSave({ ...answers, note: (answers.note || '').trim() })
+      await onSave({ ...answers, note: (answers.note || '').trim() }, parsed.entry)
       onClose()
     } catch {
       setError('Didn’t save — try again.')
@@ -55,6 +64,10 @@ export default function CheckinModal({ coachName = 'Leon', initial = null, onSav
               </div>
             </div>
           ))}
+          <div>
+            <p className="text-[13px] font-medium text-text-primary mb-2">Food this week</p>
+            <FoodFields value={foodText} onChange={(v) => { setFoodText(v); setFoodError(null) }} error={foodError} idPrefix="checkin-food" />
+          </div>
           <div>
             <label htmlFor="checkin-note" className="text-[13px] font-medium text-text-primary block mb-2">Anything else?</label>
             <textarea

@@ -124,14 +124,15 @@ export function useMyCheckins(coachId) {
     return () => { cancelled = true }
   }, [enabled, user])
 
-  // This week's check-in, new or edited.
+  // This week's check-in, new or edited. `food` (the week's weekly-log
+  // numbers) only rides along on the chat card — the page saves it.
   const save = useCallback(
-    async (answers) => {
+    async (answers, food = null) => {
       const updated = checkins.some((c) => c.week_start === weekStart())
       const row = await saveCheckin(user?.id, weekStart(), answers)
       setCheckins((prev) => [row, ...prev.filter((c) => c.week_start !== row.week_start)])
       const me = user?.id || DEV_CLIENT_ID
-      sendMessage({ coachId, clientId: me, senderId: me, card: checkinCard(row, { updated }) }).catch(() => {})
+      sendMessage({ coachId, clientId: me, senderId: me, card: checkinCard(row, { updated, food }) }).catch(() => {})
       return row
     },
     [user, coachId, checkins]

@@ -14,7 +14,7 @@ const sections = [
     title: 'What I collect',
     body: [
       'As a guest (no account): nothing leaves your device. Your workout log and any calculator inputs are saved in your browser\'s local storage only.',
-      'If you create an account: your email address (or, if you sign in with Google, your Google account email). If you fill in your profile, your sex, bodyweight, and preferred units. And the workouts you log while signed in.',
+      'If you create an account: your email address (or, if you sign in with Google, your Google account email). If you fill in your profile, your sex, bodyweight, and preferred units. And the workouts, weigh-ins and weekly food log (calories, protein, body fat) you add while signed in.',
       'If you opt in to sharing (a checkbox that is off by default): your lifts — exercise, weight, reps, and RIR — along with your bodyweight and sex, are saved without your name, email, or any identifier. This anonymized data is used only to improve the strength-standards tool.',
     ],
   },
@@ -30,7 +30,7 @@ const sections = [
   {
     title: 'Coaching',
     body: [
-      "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, injuries, profile and weekly check-ins, plus the name you go by (your nickname, or the part of your email before the @). I can't change any of it.",
+      "If you're my coaching client, I can send you an invite to link your account. Only if you accept do I see your workout log (including what you logged before), your bodyweight, weekly food log (calories, protein, body fat), injuries, profile and weekly check-ins, plus the name you go by (your nickname, or the part of your email before the @). I can't change any of it.",
       "Messages, photos, videos, reactions and anything shared in our chat (a workout, a split, a check-in) are stored privately: only you and I can see them, and only while your account is linked to mine. Either of us can delete what we sent.",
       'You can stop sharing any time on your profile page. I stop seeing your data straight away.',
     ],

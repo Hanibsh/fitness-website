@@ -12,9 +12,10 @@
 import { supabase } from './supabase'
 import {
   fetchRemoteHistory, fetchRemoteBodyweight, fetchRemoteInjuries, fetchRemoteDayAnnotations, fetchRemoteProgramsState,
+  fetchRemoteWeeklyLog,
 } from './workoutRemote'
 import { fetchProfile } from './profile'
-import { getHistory, getBodyweightLog, getInjuries, getDayAnnotations, getProgramsState } from './workoutStore'
+import { getHistory, getBodyweightLog, getInjuries, getDayAnnotations, getProgramsState, getWeeklyLog } from './workoutStore'
 import { createClient } from './clients'
 
 // A table or function that isn't in the database yet.
@@ -179,19 +180,21 @@ export async function fetchClientData(clientUserId) {
       annotations: getDayAnnotations(),
       program: state.programs.find((p) => p.id === state.activeId) || null,
       profile: { sex: 'male', unit: 'kg', bodyweight: 82, height: 180, birth_year: 1996, goal: 'gain_muscle', experience_level: 'intermediate' },
+      weekly: getWeeklyLog(),
     }
   }
   const safe = (p, fallback) => p.catch(() => fallback)
-  const [sessions, bodyweight, injuries, annotations, programsState, profile] = await Promise.all([
+  const [sessions, bodyweight, injuries, annotations, programsState, profile, weekly] = await Promise.all([
     safe(fetchRemoteHistory(clientUserId), []),
     safe(fetchRemoteBodyweight(clientUserId), []),
     safe(fetchRemoteInjuries(clientUserId), []),
     safe(fetchRemoteDayAnnotations(clientUserId), []),
     safe(fetchRemoteProgramsState(clientUserId, { coach: false }), { programs: [], activeId: null }),
     safe(fetchProfile(clientUserId), null),
+    safe(fetchRemoteWeeklyLog(clientUserId), []),
   ])
   const program = programsState.programs.find((p) => p.id === programsState.activeId) || null
-  return { sessions, bodyweight, injuries, annotations, program, profile }
+  return { sessions, bodyweight, injuries, annotations, program, profile, weekly }
 }
 
 // ---- Sent programs (coach side) ------------------------------------------------
@@ -456,7 +459,7 @@ export async function fetchClientSummaries(coachId, clientUserIds) {
 
 // What the coach sees once you accept — said on the invite, before you do, and
 // again on your profile's Coach section.
-export const COACH_SEES = ['Your workout log, past and future', 'Your bodyweight and injuries', 'Your profile and weekly check-ins']
+export const COACH_SEES = ['Your workout log, past and future', 'Your bodyweight, weekly food log and injuries', 'Your profile and weekly check-ins']
 
 // { state: 'open' | 'linked' | 'used' | 'expired' | 'invalid', coach_name, is_self }
 // ('linked': you already accepted this coach's join link.)

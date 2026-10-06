@@ -806,6 +806,37 @@ drop policy if exists "Users can delete their own check-ins" on public.checkins;
 create policy "Users can delete their own check-ins"
   on public.checkins for delete using (auth.uid() = user_id);
 
+-- WEEKLY_LOG — food and body fat, once a week (added 2026-10-06): the week's
+-- average calories and protein a day, and body fat when they measured it.
+-- Everyone's, coached or not; a coached client fills it in with the check-in
+-- (same Monday key). The coach reads while linked. Weigh-ins stay daily in
+-- bodyweight_log.
+create table if not exists public.weekly_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week_start date not null,
+  calories int check (calories between 0 and 20000),
+  protein int check (protein between 0 and 1000),
+  body_fat numeric check (body_fat between 4 and 65),
+  updated_at timestamptz not null default now(),
+  unique (user_id, week_start)
+);
+
+alter table public.weekly_log enable row level security;
+
+drop policy if exists "Client and coach can view the weekly log" on public.weekly_log;
+create policy "Client and coach can view the weekly log"
+  on public.weekly_log for select using (auth.uid() = user_id or public.is_coach_of(user_id));
+drop policy if exists "Users can insert their own weekly log" on public.weekly_log;
+create policy "Users can insert their own weekly log"
+  on public.weekly_log for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update their own weekly log" on public.weekly_log;
+create policy "Users can update their own weekly log"
+  on public.weekly_log for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users can delete their own weekly log" on public.weekly_log;
+create policy "Users can delete their own weekly log"
+  on public.weekly_log for delete using (auth.uid() = user_id);
+
 -- ---------------------------------------------------------------------------
 -- 2j) MESSAGES — a chat between the coach and one linked client, with photos
 --     and short videos. Only the two of them, and only while their link is

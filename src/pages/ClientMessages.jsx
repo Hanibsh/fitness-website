@@ -6,7 +6,8 @@ import { withProgram } from '../lib/clients'
 import { DEV_COACH_ID } from '../lib/messages'
 import { copyOfSharedSplit } from '../lib/chatCards'
 import { useLinkedClient } from '../lib/useClientData'
-import { useClientCheckins } from '../lib/useCoachNotes'
+import { useClientCheckins, useClientTargets } from '../lib/useCoachNotes'
+import { pickTargets } from '../lib/useDailyTargets'
 
 // The coach's chat with one linked client — /coach/:clientId/messages. The
 // programs written for them are there to share; a split they share can be
@@ -19,6 +20,7 @@ export default function ClientMessages() {
   const { state, link } = linkForCard(links, clientId)
   const { data, loading } = useLinkedClient(clientId)
   const checkins = useClientCheckins(state === 'linked' ? link.client_id : null)
+  const { targets } = useClientTargets(state === 'linked' ? link.client_id : null)
   const name = client?.name || 'Client'
   // Signed out, only the dev sample gets here (CoachLayout's gate).
   const coachId = user?.id || DEV_COACH_ID
@@ -32,6 +34,9 @@ export default function ClientMessages() {
     loading: loading || !data,
     sessions: data?.sessions || [],
     bodyweight: data?.bodyweight || [],
+    weekly: data?.weekly || [],
+    // The targets you set them; their own profile's aren't yours to see here.
+    targets: pickTargets(targets, null),
     annotations: data?.annotations || [],
     unit: data?.profile?.unit === 'lbs' ? 'lbs' : 'kg',
     program,
