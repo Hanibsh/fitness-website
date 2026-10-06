@@ -1,22 +1,22 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput, Send, MessageCircle, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Plus, Sparkles, FileOutput, Trash2, X, FileInput, Send } from 'lucide-react'
 import NumberField from '../components/NumberField'
 import FocusPicker from '../components/FocusPicker'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 import Modal from '../components/Modal'
 import ImportReview from '../components/ImportReview'
-import ClientLinkCard from '../components/ClientLinkCard'
+import ClientHeader from '../components/ClientHeader'
+import ProfileSection from '../components/ProfileSection'
 import ClientTrainingSummary from '../components/ClientTrainingSummary'
 import SendProgramModal from '../components/SendProgramModal'
 import ClientTargetsCard from '../components/ClientTargetsCard'
 import ClientCheckinsCard from '../components/ClientCheckinsCard'
-import StatusChip from '../components/StatusChip'
 import { useLinkedClient } from '../lib/useClientData'
 import { InjuryScope } from '../lib/useInjuries'
-import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile, CLIENT_NAME_MAX, CLIENT_STATUSES, clientStatus } from '../lib/clients'
+import { blankClientProgram, withProgram, withoutProgram, withAccountProfile, sameProfile } from '../lib/clients'
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, HEIGHT_BOUNDS, WRIST_BOUNDS, cleanFocus } from '../lib/profileFields'
 import { convertMassText, convertLengthText } from '../lib/units'
 import { sendMessage, DEV_COACH_ID } from '../lib/messages'
@@ -35,6 +35,9 @@ export default function ClientDetail() {
   const [exporting, setExporting] = useState(null) // program | null
   const [sending, setSending] = useState(null) // program | null
   const [importing, setImporting] = useState(false)
+  // Profile and export lines are set once, so they start folded.
+  const [open, setOpen] = useState({})
+  const fold = (id) => ({ open: !!open[id], onToggle: () => setOpen((o) => ({ ...o, [id]: !o[id] })) })
   const client = clients.find((c) => c.id === clientId) || null
   // Linked to their real account: their training, and their own profile
   // answers, which fill in (and lock) the matching fields here.
@@ -162,7 +165,23 @@ export default function ClientDetail() {
     </div>
   )
   const lengthUnit = HEIGHT_BOUNDS[unit].label
-  const fmt = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  // One line each for the folded sections.
+  const optionLabel = (options, value) => options.find((o) => o.value === value)?.label
+  const profileSummary =
+    [
+      { male: 'Male', female: 'Female' }[p.sex],
+      p.bodyweight ? `${p.bodyweight} ${unit}` : null,
+      optionLabel(GOALS, p.goal),
+      optionLabel(EXPERIENCE_LEVELS, p.experience_level),
+      optionLabel(EQUIPMENT_PRESETS, p.equipment),
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Nothing filled in yet'
+  const lines = client.extra.filter((x) => (x.label || '').trim() || (x.value || '').trim()).length
+  const exportSummary =
+    [client.injuries?.trim() && 'Injuries', lines && `${lines} line${lines !== 1 ? 's' : ''}`, client.notes?.trim() && 'Notes']
+      .filter(Boolean)
+      .join(' · ') || 'Nothing added'
   const shapeLabel = (prog) => {
     const train = prog.days.filter((d) => d.kind !== 'rest').length
     if (!prog.days.length) return 'Empty — add days'
@@ -175,79 +194,22 @@ export default function ClientDetail() {
       <BackLink to="/coach" label="All clients" />
 
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-        {/* ---- Who ----------------------------------------------------------- */}
-        <div className={cardCls}>
-          <label className={labelCls} htmlFor="client-name">Client</label>
-          <input
-            id="client-name"
-            value={client.name}
-            maxLength={CLIENT_NAME_MAX}
-            onChange={(e) => edit((c) => ({ ...c, name: e.target.value }))}
-            placeholder="Their name"
-            className="w-full bg-cream border border-border px-3 py-2.5 text-text-primary text-[15px] font-heading font-medium outline-none focus:border-text-primary transition-colors"
-          />
-          <p className="text-[11px] text-text-light mt-2">Added {fmt(client.createdAt)} · their name heads every export.</p>
-
-          {/* Your own bookkeeping: never exported, never shown to them. */}
-          <div className="mt-6">
-            <span className={labelCls}>Status</span>
-            <div className="grid grid-cols-3 gap-2">
-              {CLIENT_STATUSES.map((st) => {
-                const on = clientStatus(client) === st.id
-                return (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => edit((c) => ({ ...c, status: st.id }))}
-                    aria-pressed={on}
-                    className={`px-2 py-2.5 text-[13px] font-medium border cursor-pointer transition-colors ${
-                      on ? 'bg-text-primary text-cream border-text-primary' : 'bg-white text-text-muted border-border hover:border-border-hover'
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                )
-              })}
-            </div>
-            {/* Stacked on a phone: a date field half of 320px clips its own text. */}
-            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className={labelCls} htmlFor="client-start">Started</label>
-                <input
-                  id="client-start"
-                  type="date"
-                  value={client.startDate || ''}
-                  onChange={(e) => edit((c) => ({ ...c, startDate: e.target.value }))}
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls} htmlFor="client-renewal">Renews</label>
-                <input
-                  id="client-renewal"
-                  type="date"
-                  value={client.renewalDate || ''}
-                  onChange={(e) => edit((c) => ({ ...c, renewalDate: e.target.value }))}
-                  className={inputCls}
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-text-light mt-2">Only you see these.</p>
-          </div>
-        </div>
-
-        {/* ---- Their account ------------------------------------------------- */}
-        <ClientLinkCard client={client} links={links} invite={invite} unlink={unlink} />
-        {linked && <MessagesRow clientId={client.id} unread={unread[link.client_id] || 0} />}
+        {/* What you check every visit first, the set-once setup last. */}
+        <ClientHeader
+          client={client}
+          edit={edit}
+          links={links}
+          invite={invite}
+          unlink={unlink}
+          unread={linked ? unread[link.client_id] || 0 : 0}
+        />
         {linked && <ClientTrainingSummary clientId={client.id} data={linkedData} loading={linkedLoading} />}
-        {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} weekly={linkedData?.weekly || []} />}
-        {linked && <ClientTargetsCard clientName={client.name} clientUserId={link.client_id} unit={unit} />}
 
         {/* ---- Programs ------------------------------------------------------ */}
         <section className={cardCls}>
           <h2 className={headCls}>Programs</h2>
           <p className="text-[12px] text-text-light mb-4">
-            Built from {client.name ? `${client.name}'s` : 'their'} profile below — never your log, injuries or notes.
+            Built from {client.name ? `${client.name}'s` : 'their'} profile, not yours.
           </p>
           {client.programs.length > 0 && (
             <div className="border border-border divide-y divide-border mb-4">
@@ -314,13 +276,13 @@ export default function ClientDetail() {
           </div>
         </section>
 
+        {linked && <ClientCheckinsCard clientName={client.name} clientUserId={link.client_id} weekly={linkedData?.weekly || []} />}
+        {linked && <ClientTargetsCard clientName={client.name} clientUserId={link.client_id} unit={unit} />}
+
         {/* ---- Profile ------------------------------------------------------- */}
-        <section className={cardCls}>
-          <h2 className={headCls}>Profile</h2>
+        <ProfileSection id="client-profile" title="Profile" summary={profileSummary} {...fold('profile')}>
           <p className="text-[12px] text-text-light mb-6">
-            {account
-              ? 'Greyed-out fields come from their account. Fill in the rest.'
-              : 'All optional. What’s filled in seeds the generator and heads the export; what’s blank is left out.'}
+            {account ? 'Greyed-out fields come from their account.' : 'All optional — feeds the generator and the export.'}
           </p>
           <div className="space-y-6">
             <div>
@@ -381,14 +343,11 @@ export default function ClientDetail() {
               )}
             </div>
           </div>
-        </section>
+        </ProfileSection>
 
         {/* ---- For the export --------------------------------------------- */}
-        <section className={cardCls}>
-          <h2 className={headCls}>In the export</h2>
-          <p className="text-[12px] text-text-light mb-6">
-            Said in the text and Excel files, under their profile — anything the fields above don&apos;t cover.
-          </p>
+        <ProfileSection id="client-export" title="In the export" summary={exportSummary} {...fold('export')}>
+          <p className="text-[12px] text-text-light mb-6">Extra lines for the text and Excel files.</p>
           <div className="space-y-6">
             <div>
               <label className={labelCls} htmlFor="client-injuries">Injuries / limitations</label>
@@ -448,7 +407,7 @@ export default function ClientDetail() {
               />
             </div>
           </div>
-        </section>
+        </ProfileSection>
 
         <button
           onClick={() => setConfirm({ kind: 'client' })}
@@ -516,21 +475,6 @@ export default function ClientDetail() {
         />
       )}
     </>
-  )
-}
-
-// The way into the chat with a linked client, with how many are unread.
-function MessagesRow({ clientId, unread }) {
-  return (
-    <Link
-      to={`/coach/${clientId}/messages`}
-      className="flex items-center gap-3 bg-white border border-border px-5 py-4 sm:px-7 no-underline hover:border-border-hover transition-colors"
-    >
-      <MessageCircle className="w-4 h-4 text-text-primary shrink-0" />
-      <span className="flex-1 text-[14px] font-medium text-text-primary">Messages</span>
-      {unread > 0 && <StatusChip tone="dark">{unread} new</StatusChip>}
-      <ChevronRight className="w-4 h-4 text-text-light shrink-0" />
-    </Link>
   )
 }
 
