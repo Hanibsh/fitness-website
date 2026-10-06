@@ -74,27 +74,3 @@ export function copyOfSharedSplit(program) {
   if (program.settings) copy.settings = JSON.parse(JSON.stringify(program.settings))
   return copy
 }
-
-// Logged lift names (cardio left out), most-trained first: how many sessions
-// each appears in, then the most recent. Picks the strength chart's default.
-export function liftsByUse(sessions = []) {
-  const seen = new Map() // key -> { name, count, last }
-  for (const s of sessions) {
-    const inSession = new Set()
-    for (const ex of s.exercises || []) {
-      if (ex.kind === 'cardio') continue
-      const name = (ex.name || '').trim()
-      const key = name.toLowerCase()
-      if (!key || inSession.has(key)) continue
-      inSession.add(key)
-      const cur = seen.get(key) || { name, count: 0, last: 0 }
-      cur.count++
-      if (s.date > cur.last) {
-        cur.last = s.date
-        cur.name = name
-      }
-      seen.set(key, cur)
-    }
-  }
-  return [...seen.values()].sort((a, b) => b.count - a.count || b.last - a.last).map((l) => l.name)
-}

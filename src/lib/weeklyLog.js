@@ -7,6 +7,7 @@
 //          number or null.
 import { CALORIE_FLOOR } from './calorieTargets'
 import { weekStart } from './checkins'
+import { convertWeight } from './workoutStats'
 
 const DAY = 86400000
 
@@ -103,4 +104,34 @@ export function intakeLine(entry) {
   const parts = food.length ? [`${food.join(' · ')} a day`] : []
   if (has(entry.bodyFat)) parts.push(`${entry.bodyFat}% bf`)
   return parts.join(' · ')
+}
+
+// One point per logged week for a chart: [{ date, value }], oldest first.
+// `key`: 'calories', 'protein' or 'bodyFat'.
+export function weeklySeries(entries = [], key, cutoff = 0) {
+  return inRange(entries, cutoff)
+    .filter((e) => has(e[key]))
+    .map((e) => ({ date: weekTime(e.weekStart), value: Number(e[key]) }))
+    .sort((a, b) => a.date - b.date)
+}
+
+// Lean mass — weight minus fat — on the weeks body fat was logged AND there
+// was a weigh-in that week (Monday to Sunday): the week's average weight ×
+// (1 − body fat). Nothing in between: filling the gaps with the last body fat
+// would only redraw the weight line and call it muscle.
+export function leanMassSeries(entries = [], bodyweight = [], unit = 'kg', cutoff = 0) {
+  const points = []
+  for (const e of inRange(entries, cutoff)) {
+    if (!has(e.bodyFat)) continue
+    const [y, m, d] = e.weekStart.split('-').map(Number)
+    const from = new Date(y, m - 1, d).getTime()
+    const to = new Date(y, m - 1, d + 7).getTime()
+    const weights = bodyweight
+      .filter((b) => b.date >= from && b.date < to && Number(b.weight) > 0)
+      .map((b) => convertWeight(Number(b.weight), b.unit || 'kg', unit))
+    if (!weights.length) continue
+    const avg = weights.reduce((a, b) => a + b, 0) / weights.length
+    points.push({ date: weekTime(e.weekStart), value: Math.round(avg * (1 - Number(e.bodyFat) / 100) * 10) / 10 })
+  }
+  return points.sort((a, b) => a.date - b.date)
 }

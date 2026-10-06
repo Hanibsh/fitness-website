@@ -37,6 +37,7 @@ const ClientSplitLayout = lazy(() => import('./pages/ClientSplitLayout'))
 const ClientTraining = lazy(() => import('./pages/ClientTraining'))
 const ClientMessages = lazy(() => import('./pages/ClientMessages'))
 const Messages = lazy(() => import('./pages/Messages'))
+const Progress = lazy(() => import('./pages/Progress'))
 // A coach's invite: open it, sign in, accept.
 const Join = lazy(() => import('./pages/Join'))
 
@@ -125,6 +126,7 @@ function App() {
         </Route>
         <Route path="/join/:code" element={<Join />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/progress" element={<Progress />} />
         <Route path="/routine" element={<Navigate to="/programs" replace />} />
         <Route path="/routine/:id" element={<LegacyRoutineRedirect />} />
         <Route path="/account" element={<Account />} />

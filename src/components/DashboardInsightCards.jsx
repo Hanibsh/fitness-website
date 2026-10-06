@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, Gauge, Medal, Zap, Timer, HeartPulse, Bandage, Utensils, Clock, Hourglass } from 'lucide-react'
+import { CalendarCheck, Gauge, Medal, Zap, Timer, HeartPulse, Bandage, Utensils, Clock, Hourglass, TrendingUp, ChevronRight } from 'lucide-react'
 import Card from './Card'
 import SectionHeading from './SectionHeading'
 import MiniStat from './MiniStat'
@@ -13,6 +13,9 @@ import { scheduleMode } from '../lib/program'
 import { convertWeight, formatRest } from '../lib/workoutStats'
 import { formatDuration } from '../lib/dashboard'
 import { useDailyTargets } from '../lib/useDailyTargets'
+import { recentPRs } from '../lib/dashboard'
+import { topLiftChange } from '../lib/progress'
+import { bodyFatTrend } from '../lib/weeklyLog'
 import { SPLIT_REFRESH_WEEKS } from '../lib/generatorConfig'
 
 // The dashboard's optional cards — all switched off until someone turns them on
@@ -395,6 +398,52 @@ export function SplitProgressCard({ program, now }) {
               </Link>
             </p>
           )}
+        </>
+      )}
+    </Card>
+  )
+}
+
+// ---- Progress ----------------------------------------------------------------------------
+// The way into the Progress page: the last 3 months in three numbers.
+const PROGRESS_DAYS = 91
+
+export function ProgressSummaryCard({ sessions, weekly = [], unit, now }) {
+  const p = useMemo(() => {
+    const cutoff = now - PROGRESS_DAYS * 86400000
+    return {
+      top: topLiftChange(sessions, unit, '3m'),
+      prs: recentPRs(sessions, unit, Infinity).filter((pr) => pr.date >= cutoff).length,
+      fat: bodyFatTrend(weekly, cutoff),
+    }
+  }, [sessions, weekly, unit, now])
+  const signed = (n) => `${n > 0 ? '+' : ''}${n}`
+  const seeAll = (
+    <Link to="/progress" className="inline-flex items-center gap-1 text-[13px] font-medium text-text-secondary hover:text-text-primary no-underline">
+      See all <ChevronRight className="w-4 h-4" />
+    </Link>
+  )
+  return (
+    <Card>
+      <SectionHeading icon={TrendingUp} right={seeAll}>Progress</SectionHeading>
+      {!sessions.length && !weekly.length ? (
+        empty('Log workouts and your weekly food to see how you’re changing.')
+      ) : (
+        <>
+          <p className="text-[12px] text-text-muted mb-2 -mt-2">Last 3 months</p>
+          <div className="grid grid-cols-3 gap-2.5">
+            <MiniStat
+              label="Top lift"
+              value={p.top?.pct != null ? `${signed(p.top.pct)}%` : '—'}
+              sub={p.top?.name || null}
+            />
+            <MiniStat label="PRs" value={p.prs} />
+            <MiniStat
+              label="Body fat"
+              value={p.fat.latest != null ? `${p.fat.latest}%` : '—'}
+              sub={p.fat.change != null && p.fat.change !== 0 ? `${signed(p.fat.change)}%` : null}
+            />
+          </div>
         </>
       )}
     </Card>

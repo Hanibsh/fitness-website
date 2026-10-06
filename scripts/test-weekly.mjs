@@ -52,6 +52,24 @@ check('nothing logged', same(w.intakeAverages([]), { calories: null, protein: nu
 check('body fat trend', same(w.bodyFatTrend(log), { latest: 18.5, change: -1.5 }))
 check('one body fat, no change', same(w.bodyFatTrend(log, cutoff), { latest: 18.5, change: null }))
 
+// ---- Chart series ------------------------------------------------------------------------
+const cals = w.weeklySeries(log, 'calories')
+check('calorie points skip blank weeks', same(cals.map((p) => p.value), [2000, 2400, 2300]))
+check('points are oldest first, dated on the Monday', cals[0].date === w.weekTime('2026-09-14') && cals[2].date > cals[1].date)
+check('body fat points', same(w.weeklySeries(log, 'bodyFat').map((p) => p.value), [20, 18.5]))
+
+// Weigh-ins: two in the week of 14 Sep (81, 79 → 80), none in the week of 5 Oct.
+const at = (iso, h = 8) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d, h).getTime() }
+const weighIns = [
+  { date: at('2026-09-14'), weight: 81, unit: 'kg' },
+  { date: at('2026-09-20', 21), weight: 79, unit: 'kg' },
+  { date: at('2026-09-21'), weight: 78, unit: 'kg' }, // next week: not paired with the 14 Sep body fat
+]
+const lean = w.leanMassSeries(log, weighIns, 'kg')
+check('lean mass only where body fat and a weigh-in share a week', lean.length === 1 && lean[0].value === 64, JSON.stringify(lean))
+check('lean mass in lbs', w.leanMassSeries(log, weighIns, 'lbs')[0].value === Math.round(80 * 2.20462 * 0.8 * 10) / 10, JSON.stringify(w.leanMassSeries(log, weighIns, 'lbs')))
+check('no weigh-ins, no lean mass', w.leanMassSeries(log, [], 'kg').length === 0)
+
 // ---- The calorie floor ------------------------------------------------------------------
 check('under the floor (male)', w.underFloor({ calories: 1450 }, 'male'))
 check('fine for female at 1450', !w.underFloor({ calories: 1450 }, 'female'))

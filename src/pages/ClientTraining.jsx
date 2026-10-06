@@ -9,19 +9,22 @@ import ExerciseProgress from '../components/ExerciseProgress'
 import WorkoutCalendar from '../components/WorkoutCalendar'
 import SessionSummary from '../components/SessionSummary'
 import ClientTrainingSummary from '../components/ClientTrainingSummary'
+import ProgressView from '../components/ProgressView'
 import CoachComments from '../components/CoachComments'
 import {
   AdherenceCard, StalledLiftsCard, StrengthLevelCard, EffortCard, TrainingTimeCard,
 } from '../components/DashboardInsightCards'
 import { useLinkedClient } from '../lib/useClientData'
-import { useClientNotes } from '../lib/useCoachNotes'
+import { useClientNotes, useClientTargets } from '../lib/useCoachNotes'
+import { pickTargets } from '../lib/useDailyTargets'
 import { effectiveWeeklyVolume, muscleRecovery, formatReadyIn } from '../lib/engine'
 import { loggedExerciseNames, convertWeight } from '../lib/workoutStats'
 import { sessionStats } from '../lib/workoutStore'
 import { annotationForDate } from '../lib/dayLog'
 import { openInjuries, injuryTitle, injuryDuration, INJURY_STATUSES } from '../lib/injuries'
 
-// A linked client's training, read-only: the overview (how they're doing) and
+// A linked client's training, read-only: the overview (how they're doing),
+// their progress over time (the same view as their own Progress page) and
 // their full log. Reached from their page (ClientDetail → Their training).
 export default function ClientTraining() {
   const { clientId } = useParams()
@@ -29,7 +32,8 @@ export default function ClientTraining() {
   const client = clients.find((c) => c.id === clientId) || null
   const { linked, link, data, loading } = useLinkedClient(clientId)
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'log' ? 'log' : 'overview'
+  const tab = ['log', 'progress'].includes(params.get('tab')) ? params.get('tab') : 'overview'
+  const { targets } = useClientTargets(linked ? link.client_id : null)
   const name = client?.name || 'Client'
 
   const back = (
@@ -54,7 +58,7 @@ export default function ClientTraining() {
 
   const tabBtn = (id, label) => (
     <button
-      onClick={() => setParams(id === 'log' ? { tab: 'log' } : {}, { replace: true })}
+      onClick={() => setParams(id === 'overview' ? {} : { tab: id }, { replace: true })}
       aria-pressed={tab === id}
       className={`flex-1 px-4 py-2 text-[13px] font-medium border-none cursor-pointer transition-colors ${
         tab === id ? 'bg-text-primary text-cream' : 'bg-white text-text-muted hover:text-text-primary'
@@ -70,12 +74,23 @@ export default function ClientTraining() {
       <h1 className="font-heading text-3xl sm:text-4xl font-medium text-text-primary mb-6 break-words">{name}’s training</h1>
       <div className="flex border border-border mb-6 max-w-xs">
         {tabBtn('overview', 'Overview')}
+        {tabBtn('progress', 'Progress')}
         {tabBtn('log', 'Log')}
       </div>
       {loading || !data ? (
         <p className="text-[13px] text-text-muted">Loading…</p>
       ) : tab === 'log' ? (
         <ClientLog data={data} clientUserId={link.client_id} />
+      ) : tab === 'progress' ? (
+        <section className="bg-white border border-border p-5 sm:p-7">
+          <ProgressView
+            sessions={data.sessions}
+            bodyweight={data.bodyweight}
+            weekly={data.weekly || []}
+            targets={pickTargets(targets, null)}
+            unit={data.profile?.unit === 'lbs' ? 'lbs' : 'kg'}
+          />
+        </section>
       ) : (
         <Overview clientId={client.id} data={data} />
       )}

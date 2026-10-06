@@ -6,8 +6,8 @@ import ProgressChart from './ProgressChart'
 import { buildSeries, bodyweightSeries, metricById } from '../lib/workoutStats'
 import { recentPRs } from '../lib/dashboard'
 import { weightTrend } from '../lib/coachStats'
-import { liftsByUse } from '../lib/chatCards'
-import { intakeAverages, bodyFatTrend } from '../lib/weeklyLog'
+import { liftsByUse } from '../lib/progress'
+import { intakeAverages, bodyFatTrend, weeklySeries, leanMassSeries } from '../lib/weeklyLog'
 
 const DAY = 86400000
 
@@ -22,12 +22,15 @@ const PROGRESS_RANGES = [
 ]
 
 const round1 = (v) => Math.round(v * 10) / 10
-const signed = (v) => `${v > 0 ? '+' : ''}${v}`
+const signed = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('en-US')}`
+// "2,275 cal", "81.4 kg", "18.5%"
+const withUnit = (v, unit) => `${round1(v).toLocaleString('en-US')}${unit === '%' ? '%' : ` ${unit}`}`
 const shortDate = (ts) => new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
 
 // A line chart with its headline: the hovered point, else the latest, and the
-// change across the range.
-function Chart({ title, points, unit, empty }) {
+// change across the range. `target` draws the dashed line; `sub` is one line
+// under the title.
+function Chart({ title, points, unit, empty, target = null, sub = null }) {
   const [hovered, setHovered] = useState(null)
   useEffect(() => setHovered(null), [points])
   const shown = hovered != null && points[hovered] ? points[hovered] : points[points.length - 1]
@@ -35,16 +38,23 @@ function Chart({ title, points, unit, empty }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-2">
-        <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-light">{title}</h3>
+        <div className="min-w-0">
+          <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-light">{title}</h3>
+          {sub && <p className="text-[11px] text-text-light mt-0.5">{sub}</p>}
+        </div>
         {shown && (
-          <p className="text-[12px] text-text-muted tabular-nums text-right">
-            <span className="text-text-primary font-medium">{round1(shown.value)} {unit}</span>
-            {hovered != null ? ` · ${shortDate(shown.date)}` : change != null && change !== 0 ? ` · ${signed(change)}` : ''}
+          <p className="shrink-0 text-[12px] text-text-muted tabular-nums text-right">
+            <span className="text-text-primary font-medium">{withUnit(shown.value, unit)}</span>
+            {hovered != null
+              ? ` · ${shortDate(shown.date)}`
+              : change != null && change !== 0
+                ? ` · ${signed(change)}`
+                : ''}
           </p>
         )}
       </div>
       {points.length ? (
-        <ProgressChart points={points} hoveredIndex={hovered} onHover={setHovered} />
+        <ProgressChart points={points} hoveredIndex={hovered} onHover={setHovered} target={target} />
       ) : (
         <p className="text-[13px] text-text-muted py-8 text-center border border-dashed border-border">{empty}</p>
       )}
@@ -53,8 +63,9 @@ function Chart({ title, points, unit, empty }) {
 }
 
 // How someone's training and body are going over one chosen range: a few
-// numbers, then strength and bodyweight on the same timeline. In the chat's
-// profile panel now; the Progress page adds its calories and body fat charts.
+// numbers, then strength, bodyweight, body fat, lean mass, calories and protein
+// on the same timeline. The Progress page, the coach's Progress tab and the
+// chat profile panel all show this.
 //
 // `weekly`: their weekly food log (lib/weeklyLog.js); `targets`: calories and
 // protein a day to aim for (lib/useDailyTargets.js pickTargets), or null.
@@ -83,6 +94,16 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
     [sessions, lift, rangeId, unit]
   )
   const weightPoints = useMemo(() => bodyweightSeries(bodyweight, rangeId, unit), [bodyweight, rangeId, unit])
+  const food = useMemo(
+    () => ({
+      fat: weeklySeries(weekly, 'bodyFat', cutoff),
+      lean: leanMassSeries(weekly, bodyweight, unit, cutoff),
+      calories: weeklySeries(weekly, 'calories', cutoff),
+      protein: weeklySeries(weekly, 'protein', cutoff),
+    }),
+    [weekly, bodyweight, unit, cutoff]
+  )
+  const targetLine = (n, unitLabel) => (n ? `Dashed: target ${withUnit(n, unitLabel)}` : null)
 
   return (
     <div>
@@ -140,6 +161,30 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
           />
         </div>
         <Chart title="Bodyweight" points={weightPoints} unit={unit} empty="No weigh-ins in this range." />
+        <Chart title="Body fat" points={food.fat} unit="%" empty="No body fat logged in this range." />
+        <Chart
+          title="Lean mass"
+          sub="Weight minus fat, on weeks you logged body fat"
+          points={food.lean}
+          unit={unit}
+          empty="Needs body fat and a weigh-in in the same week."
+        />
+        <Chart
+          title="Calories a day"
+          sub={targetLine(targets?.calories, 'cal')}
+          points={food.calories}
+          unit="cal"
+          target={targets?.calories || null}
+          empty="No calories logged in this range."
+        />
+        <Chart
+          title="Protein a day"
+          sub={targetLine(targets?.protein, 'g')}
+          points={food.protein}
+          unit="g"
+          target={targets?.protein || null}
+          empty="No protein logged in this range."
+        />
       </div>
     </div>
   )

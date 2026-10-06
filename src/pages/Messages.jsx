@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import Chat from '../components/Chat'
@@ -7,13 +6,8 @@ import { useMyCoach } from '../lib/useMyCoach'
 import { useProgramsState } from '../lib/useProgramsState'
 import { DEV_CLIENT_ID } from '../lib/messages'
 import { copyOfSharedSplit } from '../lib/chatCards'
-import { useMyCheckins, useFromCoach } from '../lib/useCoachNotes'
-import { useDailyTargets, pickTargets } from '../lib/useDailyTargets'
-import { getHistory, getUnit, getBodyweightLog, getDayAnnotations, getWeeklyLog } from '../lib/workoutStore'
-import { fetchRemoteHistory, fetchRemoteBodyweight, fetchRemoteDayAnnotations, fetchRemoteWeeklyLog } from '../lib/workoutRemote'
-
-// Signed in, the account's copy; on any failure (or signed out), this device's.
-const mine = (user, remote, local) => (user ? remote(user.id).catch(() => local()) : Promise.resolve(local()))
+import { useMyCheckins } from '../lib/useCoachNotes'
+import { useMyProgressData } from '../lib/useMyProgressData'
 
 // A coached client's chat with their coach — /messages. Your splits and
 // workouts are there to share; a split the coach shares can be kept as a copy.
@@ -24,39 +18,23 @@ export default function Messages() {
   const { coach, coachLoading } = useMyCoach()
   const { programsState, addRoutine } = useProgramsState()
   const { checkins } = useMyCheckins(coach?.coach_id || null)
-  const { targets: coachTargets } = useFromCoach(!!coach, { markRead: false })
-  const [mineData, setMineData] = useState(null) // { sessions, bodyweight, annotations, weekly }
+  const mineData = useMyProgressData(coach)
   // Signed out, only the dev client sample has a coach.
   const me = user?.id || DEV_CLIENT_ID
   const name = coach?.coach_name || 'Leon'
-  const history = mineData?.sessions || []
+  const history = mineData.sessions
 
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([
-      mine(user, fetchRemoteHistory, getHistory),
-      mine(user, fetchRemoteBodyweight, getBodyweightLog),
-      mine(user, fetchRemoteDayAnnotations, getDayAnnotations),
-      mine(user, fetchRemoteWeeklyLog, getWeeklyLog),
-    ]).then(([sessions, bodyweight, annotations, weekly]) => {
-      if (!cancelled) setMineData({ sessions: sessions || [], bodyweight: bodyweight || [], annotations: annotations || [], weekly: weekly || [] })
-    })
-    return () => { cancelled = true }
-  }, [user])
-
-  const now = useMemo(() => Date.now(), [])
-  const own = useDailyTargets(history, now)
   const active = programsState.programs.find((p) => p.id === programsState.activeId) || null
   const about = {
     since: coach?.since || null,
     sinceLabel: 'Your coach since',
-    loading: !mineData,
+    loading: mineData.loading,
     sessions: history,
-    bodyweight: mineData?.bodyweight || [],
-    weekly: mineData?.weekly || [],
-    targets: pickTargets(coachTargets, own.result),
-    annotations: mineData?.annotations || [],
-    unit: getUnit(),
+    bodyweight: mineData.bodyweight,
+    weekly: mineData.weekly,
+    targets: mineData.targets,
+    annotations: mineData.annotations,
+    unit: mineData.unit,
     program: active,
     splitPath: active ? `/split/${active.id}` : null,
     checkins,
@@ -87,7 +65,7 @@ export default function Messages() {
             otherName={name}
             about={about}
             splits={programsState.programs}
-            sessions={{ list: history, unit: getUnit() }}
+            sessions={{ list: history, unit: mineData.unit }}
             saveSplit={saveSplit}
             sentSplitPath={(id) => `/split/${id}`}
           />

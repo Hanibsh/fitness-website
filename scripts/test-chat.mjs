@@ -1,4 +1,5 @@
-// Checks for what gets shared into the coach ↔ client chat (lib/chatCards.js):
+// Checks for what gets shared into the coach ↔ client chat (lib/chatCards.js)
+// and the progress numbers beside it (lib/progress.js):
 // the snapshots stay snapshots, PRs travel with a workout, a kept split is a
 // new split of the reader's own.
 //
@@ -14,6 +15,7 @@ import { dirname, join } from 'node:path'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const server = await createServer({ root: ROOT, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
 const cards = await server.ssrLoadModule('/src/lib/chatCards.js')
+const progress = await server.ssrLoadModule('/src/lib/progress.js')
 
 let passed = 0
 function check(name, ok, detail = '') {
@@ -76,12 +78,19 @@ check('an empty food entry rides as null', cards.checkinCard({ week_start: '2026
 
 // ---- Lifts by use ------------------------------------------------------------------
 const withRow = (id, date, names) => ({ id, date, exercises: names.map((n) => ({ name: n, kind: n === 'Incline Walk' ? 'cardio' : 'strength', sets: [] })) })
-const lifts = cards.liftsByUse([
+const lifts = progress.liftsByUse([
   withRow('1', now - 3 * DAY, ['Squat', 'Bench Press']),
   withRow('2', now - 2 * DAY, ['bench press', 'Incline Walk']),
   withRow('3', now - DAY, ['Row', 'Row']),
 ])
 check('most-trained lift first, cardio out, a repeat counts once', JSON.stringify(lifts) === JSON.stringify(['bench press', 'Row', 'Squat']), JSON.stringify(lifts))
+
+// ---- Top lift change ------------------------------------------------------------------
+const benchDay = (id, date, weight) => ({ id, date, unit: 'kg', exercises: [{ id: `b${id}`, exerciseId: 'barbell-bench-press', name: 'Bench Press', kind: 'strength', sets: [{ id: `s${id}`, reps: 5, weight, type: 'working' }] }] })
+const top = progress.topLiftChange([benchDay('1', now - 60 * DAY, 100), benchDay('2', now - 30 * DAY, 105), benchDay('3', now - DAY, 110)])
+check('top lift change', top.name === 'Bench Press' && top.pct === 10, JSON.stringify(top))
+check('one session is no change', progress.topLiftChange([benchDay('1', now - DAY, 100)]).pct === null)
+check('nothing logged', progress.topLiftChange([]) === null)
 
 // ---- Unknown -----------------------------------------------------------------------
 check('unknown card is not a card', !cards.isCard({ type: 'poll' }) && !cards.isCard(null))

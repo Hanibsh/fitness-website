@@ -16,8 +16,12 @@ function axisDate(ts) {
 // auto fit — the interesting part of a bodyweight series is its shape, and 78-82
 // tells you more than 0-82. A bounded rating does not: pain is a 0-10 scale, and
 // auto-fitting it would draw a 4-then-5 week as a dramatic climb.
-export default function ProgressChart({ points, hoveredIndex, onHover, domain = null }) {
+//
+// `target` draws a dashed line at that value (calories or protein to aim for),
+// and the auto fit stretches to keep it in view.
+export default function ProgressChart({ points, hoveredIndex, onHover, domain = null, target = null }) {
   const values = points.map((p) => p.value)
+  if (target != null && !domain) values.push(target)
   let min = domain ? domain[0] : Math.min(...values)
   let max = domain ? domain[1] : Math.max(...values)
 
@@ -78,6 +82,20 @@ export default function ProgressChart({ points, hoveredIndex, onHover, domain = 
         <text x={W - PAD.r} y={H - 8} textAnchor="end" fontSize="9" fill="currentColor" className="text-text-light">
           {axisDate(maxDate)}
         </text>
+      )}
+
+      {/* target */}
+      {target != null && (
+        <line
+          x1={PAD.l}
+          y1={yFor(target)}
+          x2={W - PAD.r}
+          y2={yFor(target)}
+          stroke="currentColor"
+          className="text-text-muted"
+          strokeWidth="1.25"
+          strokeDasharray="5 4"
+        />
       )}
 
       {/* hover guide */}

@@ -15,6 +15,7 @@
 // card's on/off state.
 export const DASHBOARD_CARDS = [
   { id: 'today', label: 'Today', sub: 'Streak, last workout, today and tomorrow' },
+  { id: 'progressSummary', label: 'Progress', sub: 'Strength, body fat and food over time' },
   { id: 'calendar', label: 'Workout calendar', sub: 'Your training days, month by month' },
   { id: 'month', label: 'This month', sub: 'Workouts, volume, PRs and muscle focus', splitFrom: 'calendar' },
   { id: 'adherence', label: 'Plan adherence', sub: 'Sessions done vs planned', defaultOn: false },

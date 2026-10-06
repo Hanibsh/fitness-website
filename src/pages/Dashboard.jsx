@@ -20,7 +20,7 @@ import { layoutRows } from '../lib/dashboardLayout'
 import { useDashboardLayout } from '../lib/useDashboardLayout'
 import { usePlanPerson } from '../lib/profilePrefill'
 import {
-  AdherenceCard, StalledLiftsCard, StrengthLevelCard, EffortCard, RestTimesCard, CardioCard,
+  AdherenceCard, StalledLiftsCard, StrengthLevelCard, EffortCard, RestTimesCard, CardioCard, ProgressSummaryCard,
   InjuriesCard, DailyTargetsCard, TrainingTimeCard, SplitProgressCard,
 } from '../components/DashboardInsightCards'
 import BlockModal from '../components/BlockModal'
@@ -1362,6 +1362,7 @@ export default function Dashboard() {
     bodyweight: weightAndFood,
     // The optional cards (components/DashboardInsightCards.jsx), off until
     // switched on in the profile.
+    progressSummary: <ProgressSummaryCard sessions={sessions} weekly={weekly.entries} unit={unit} now={nowTs} />,
     adherence: <AdherenceCard sessions={sessions} annotations={annotations} program={program} now={nowTs} />,
     stalled: <StalledLiftsCard sessions={sessions} unit={unit} now={nowTs} />,
     strength: <StrengthLevelCard sessions={sessions} sex={profile?.sex} bodyweightKg={person.weightKg} unit={unit} now={nowTs} signedIn={!!user} />,
