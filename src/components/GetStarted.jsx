@@ -3,16 +3,16 @@ import { Check, ChevronRight, Dumbbell, Calculator } from 'lucide-react'
 
 // The dashboard before the first workout: three steps that tick themselves
 // off, then the other free tools. The full dashboard takes over once there's
-// a session logged.
-export default function GetStarted({ hasProgram, plannedDay, profileDone }) {
+// a session logged. The middle step is the coach: a coached client messages
+// theirs (`coachName`); anyone else books an intro chat — it stands in for the
+// coaching banner on this screen. Starting a workout lives on the calendar
+// card and in Tools; a bare "Start Upper A" here read as no context (Hani).
+export default function GetStarted({ hasProgram, coachName = null, messaged = false, profileDone }) {
   const steps = [
     { title: 'Build your program', to: '/programs?start=build', done: hasProgram },
-    {
-      title: plannedDay ? `Start ${plannedDay.name}` : 'Log your first workout',
-      to: '/log',
-      state: plannedDay ? { startPlannedDay: plannedDay.id } : undefined,
-      done: false,
-    },
+    coachName
+      ? { title: `Message ${coachName}`, to: '/messages', done: messaged }
+      : { title: 'Book a free intro chat', to: '/contact', done: false },
     { title: 'Set up your profile', to: '/account', done: profileDone },
   ]
   // The first step not done yet is the one to do next.
@@ -27,7 +27,6 @@ export default function GetStarted({ hasProgram, plannedDay, profileDone }) {
             <li key={s.title}>
               <Link
                 to={s.to}
-                state={s.state}
                 className="flex items-center gap-3 px-4 py-4 no-underline hover:bg-cream transition-colors"
               >
                 <span

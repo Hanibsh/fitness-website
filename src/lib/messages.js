@@ -166,6 +166,9 @@ export async function markChatRead(coachId, clientId, meId) {
 
 // The client's side: how many messages from the coach are unread.
 export async function fetchMyUnreadCount(userId) {
+  if (import.meta.env.DEV && userId === DEV_CLIENT_ID) {
+    return devRead().filter((m) => m.sender_id !== userId && !m.read_at).length
+  }
   if (!supabase || !userId) return 0
   const { count, error } = await supabase
     .from('messages')
@@ -177,8 +180,26 @@ export async function fetchMyUnreadCount(userId) {
   return count || 0
 }
 
+// Has this client sent their coach anything yet? Ticks off the "Message your
+// coach" step on the dashboard's get-started list.
+export async function fetchHasMessaged(userId) {
+  if (import.meta.env.DEV && userId === DEV_CLIENT_ID) return devRead().some((m) => m.sender_id === userId)
+  if (!supabase || !userId) return false
+  const { count, error } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', userId)
+    .eq('sender_id', userId)
+  return !error && count > 0
+}
+
 // The coach's side: unread messages per client account, { clientUserId: n }.
 export async function fetchCoachUnread(coachId) {
+  if (isDevChat(coachId, null)) {
+    const out = {}
+    for (const m of devRead()) if (m.sender_id !== coachId && !m.read_at) out[m.client_id] = (out[m.client_id] || 0) + 1
+    return out
+  }
   if (!supabase || !coachId) return {}
   const { data, error } = await supabase
     .from('messages')
@@ -190,6 +211,30 @@ export async function fetchCoachUnread(coachId) {
   const out = {}
   for (const r of data || []) out[r.client_id] = (out[r.client_id] || 0) + 1
   return out
+}
+
+// Every chat this account is in, live: calls onChange whenever a message
+// arrives or is read, so unread badges and the inbox refetch. Pass coachId
+// (the coach's chats) or clientId (a client's one chat). Returns unsubscribe.
+export function subscribeToInbox({ coachId = null, clientId = null }, onChange) {
+  if (isDevChat(coachId, clientId)) {
+    const bus = devBus()
+    const listen = ({ data: e }) => {
+      if (e.kind === 'insert' || e.kind === 'update' || e.kind === 'delete') onChange()
+    }
+    bus?.addEventListener('message', listen)
+    return () => bus?.removeEventListener('message', listen)
+  }
+  if (!supabase || !(coachId || clientId)) return () => {}
+  const filter = coachId ? `coach_id=eq.${coachId}` : `client_id=eq.${clientId}`
+  // Several of these can be open at once (the top bar, the coach area, the
+  // inbox), so each gets its own channel name.
+  const channel = supabase
+    .channel(`inbox:${coachId || clientId}:${newId()}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, () => onChange())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter }, () => onChange())
+    .subscribe()
+  return () => supabase.removeChannel(channel)
 }
 
 // The coach's inbox: the newest message in each of these chats,

@@ -6,6 +6,7 @@ import { linkForCard } from '../lib/coach'
 import { fetchCoachInbox, DEV_COACH_ID } from '../lib/messages'
 import { cardLabel } from '../lib/chatCards'
 import { useReturnLink } from '../lib/returnPath'
+import { useInboxTick } from '../lib/useChat'
 
 // The coach's chats in one list — /coach/messages, opened from the messenger
 // icon in the top bar. Newest first; tapping one opens that chat.
@@ -23,6 +24,8 @@ export default function CoachInbox() {
     return state === 'linked' ? [{ client: c, userId: link.client_id }] : []
   }), [clients, links])
   const idsKey = chats.map((c) => c.userId).sort().join(',')
+  // A new message moves its chat to the top while you're looking.
+  const tick = useInboxTick({ coachId }, !!idsKey)
 
   useEffect(() => {
     let cancelled = false
@@ -30,7 +33,7 @@ export default function CoachInbox() {
       .then((m) => { if (!cancelled) setLatest(m) })
       .catch(() => { if (!cancelled) setLatest({}) })
     return () => { cancelled = true }
-  }, [coachId, idsKey])
+  }, [coachId, idsKey, tick])
 
   const rows = useMemo(() => {
     const at = (c) => (latest?.[c.userId] ? Date.parse(latest[c.userId].created_at) : 0)

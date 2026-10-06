@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   fetchMessages, mediaUrls, subscribeToChat, markChatRead, sendMessage, deleteMessage, setReaction,
-  fetchMyUnreadCount, fetchCoachUnread,
+  fetchMyUnreadCount, fetchCoachUnread, fetchHasMessaged, subscribeToInbox,
 } from './messages'
 
 // "Typing…" shows this long after the last keystroke heard.
@@ -140,28 +140,53 @@ export function useChat(coachId, clientId, meId) {
   return { messages, loading, error, send, remove, react, typing, otherTyping, urlFor }
 }
 
-// The client's unread count (navbar, "From Leon" card). `refreshKey` — the
-// navbar passes the page address — fetches again when it changes, so leaving
-// the chat clears the badge.
+// A number that goes up whenever a message in this account's chats arrives or
+// is read — anything showing unread counts refetches on it, so badges move
+// without leaving the page.
+export function useInboxTick({ coachId = null, clientId = null }, enabled = true) {
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    if (!enabled || !(coachId || clientId)) return
+    return subscribeToInbox({ coachId, clientId }, () => setTick((t) => t + 1))
+  }, [coachId, clientId, enabled])
+  return tick
+}
+
+// The client's unread count (navbar, "From Leon" card). Live, and `refreshKey`
+// — the navbar passes the page address — fetches again when it changes too.
 export function useMyUnreadMessages(userId, enabled, refreshKey = null) {
   const [count, setCount] = useState(0)
+  const tick = useInboxTick({ clientId: userId }, enabled)
   useEffect(() => {
     if (!enabled || !userId) return
     let cancelled = false
     fetchMyUnreadCount(userId).then((n) => { if (!cancelled) setCount(n) })
     return () => { cancelled = true }
-  }, [userId, enabled, refreshKey])
+  }, [userId, enabled, refreshKey, tick])
   return count
 }
 
-// The coach's unread counts per client account; `refreshKey` as above.
+// Whether this client has sent their coach a message yet (null while checking).
+export function useHasMessaged(userId, enabled) {
+  const [sent, setSent] = useState(null)
+  useEffect(() => {
+    if (!enabled || !userId) return
+    let cancelled = false
+    fetchHasMessaged(userId).then((v) => { if (!cancelled) setSent(v) })
+    return () => { cancelled = true }
+  }, [userId, enabled])
+  return sent
+}
+
+// The coach's unread counts per client account; live, `refreshKey` as above.
 export function useCoachUnread(coachId, enabled = true, refreshKey = null) {
   const [counts, setCounts] = useState({})
+  const tick = useInboxTick({ coachId }, enabled)
   useEffect(() => {
     if (!enabled || !coachId) return
     let cancelled = false
     fetchCoachUnread(coachId).then((c) => { if (!cancelled) setCounts(c) })
     return () => { cancelled = true }
-  }, [coachId, enabled, refreshKey])
+  }, [coachId, enabled, refreshKey, tick])
   return counts
 }

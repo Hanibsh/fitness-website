@@ -50,7 +50,8 @@ import { useDailyTargets, pickTargets } from '../lib/useDailyTargets'
 import { hasIntake } from '../lib/weeklyLog'
 import FromCoachCard from '../components/FromCoachCard'
 import GetStarted from '../components/GetStarted'
-import { useMyUnreadMessages } from '../lib/useChat'
+import { useHasMessaged, useMyUnreadMessages } from '../lib/useChat'
+import { DEV_CLIENT_ID } from '../lib/messages'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
@@ -387,7 +388,9 @@ export default function Dashboard() {
   // The weekly food log: one copy for the weigh-in tile and the check-in.
   const weekly = useWeeklyLog()
   const [checkinOpen, setCheckinOpen] = useState(false)
-  const unreadMessages = useMyUnreadMessages(user?.id, !!coach)
+  // Signed out, only the dev client sample has a coach.
+  const chatMe = user?.id || DEV_CLIENT_ID
+  const unreadMessages = useMyUnreadMessages(chatMe, !!coach)
   // Before the first workout, the bodyweight card shows only once there's a
   // weigh-in to show.
   const [hasWeighIns, setHasWeighIns] = useState(false)
@@ -530,6 +533,8 @@ export default function Dashboard() {
     () => !nudgeDismissed && !loading && shouldSuggestSplit(sessions, program ? { programs: [program] } : getProgramsState()),
     [nudgeDismissed, loading, sessions, program]
   )
+  // Get started's "Message <coach>" step ticks off once they've written.
+  const hasMessaged = useHasMessaged(chatMe, !!coach && !loading && sessions.length === 0)
   const stats = useMemo(() => {
     if (!sessions.length) return null
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -644,7 +649,6 @@ export default function Dashboard() {
   // empty stats. A session in progress still comes first; weigh-ins already
   // logged keep their card.
   if (!stats) {
-    const firstPlan = todayPlan(program, { now: today, annotations, trainedToday: false })
     return (
       <div className="pt-24 pb-24 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto space-y-6">
@@ -658,9 +662,7 @@ export default function Dashboard() {
               checkin={{ done: !!thisWeek, open: () => setCheckinOpen(true) }}
               unreadMessages={unreadMessages}
             />
-          ) : (
-            <CoachingBanner />
-          )}
+          ) : null /* Get started's "Book a free intro chat" step says what the coaching banner would */}
           {live && <SessionActions live={live} plannedDay={null} firstTime onStartNew={() => setConfirmStartNew(true)} onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null} />}
           <div>
             <p className="text-[13px] text-text-light uppercase tracking-wider mb-2">{greeting()}</p>
@@ -679,7 +681,8 @@ export default function Dashboard() {
           </div>
           <GetStarted
             hasProgram={!!program}
-            plannedDay={firstPlan.status === 'train' ? firstPlan.day : null}
+            coachName={coach ? coach.coach_name || 'your coach' : null}
+            messaged={!!hasMessaged}
             profileDone={!!profile?.sex && profile?.bodyweight != null}
           />
           {calendarCard}
