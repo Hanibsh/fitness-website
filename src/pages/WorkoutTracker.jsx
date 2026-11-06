@@ -45,7 +45,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
@@ -144,13 +144,6 @@ function isSameDay(a, b) {
 }
 
 // "tomorrow" or "on Friday" — for pointing at the next planned training day.
-function nextDayLabel(ts) {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  if (isSameDay(ts, tomorrow.getTime())) return 'tomorrow'
-  return `on ${new Date(ts).toLocaleDateString(undefined, { weekday: 'long' })}`
-}
-
 // A calendar day strictly after today — can't log a workout there.
 function isFutureDay(ts) {
   const d = new Date(ts); d.setHours(0, 0, 0, 0)

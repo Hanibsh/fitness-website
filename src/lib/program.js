@@ -1002,6 +1002,12 @@ export function nextTrainingDate(program, { now = Date.now(), annotations = [] }
   return null
 }
 
+// "tomorrow" or "on Friday" — how a nextTrainingDate date reads in a sentence.
+export function nextDayLabel(date, now = Date.now()) {
+  if (startOfDay(date) === addDays(startOfDay(now), 1)) return 'tomorrow'
+  return `on ${new Date(date).toLocaleDateString(undefined, { weekday: 'long' })}`
+}
+
 // The training day a logged exercise came from, found by its plan link
 // (`plannedExerciseId`, stamped by draftFromDay below). Planned-exercise ids
 // are program-unique, so the day is unambiguous. This is how a past session —

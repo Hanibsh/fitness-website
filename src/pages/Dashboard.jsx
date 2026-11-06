@@ -11,7 +11,7 @@ import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
 import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge, getBodyweightLog } from '../lib/workoutStore'
 import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations, fetchRemoteBodyweight } from '../lib/workoutRemote'
-import { scheduleMode, plannedDayForDate, todayPlan } from '../lib/program'
+import { scheduleMode, plannedDayForDate, todayPlan, nextTrainingDate, nextDayLabel } from '../lib/program'
 import { liveDraft } from '../lib/draftState'
 import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -183,7 +183,7 @@ function CoachingBanner() {
 // half-logged workout waited one tap away. Anyone who trains with the phone in
 // their pocket lands here between exercises, so this is the screen that has to
 // answer "where was I?".
-function SessionActions({ live, plannedDay, firstTime, onStartNew, onNewWorkout = null }) {
+function SessionActions({ live, plannedDay, idle = null, firstTime, onStartNew, onNewWorkout = null }) {
   // Mid-session: pick up where you left off, or deliberately set it aside and
   // begin a fresh one.
   if (live) {
@@ -234,19 +234,21 @@ function SessionActions({ live, plannedDay, firstTime, onStartNew, onNewWorkout 
   // an action. Starting the planned day goes through the same deep link the
   // calendar's day panel uses, so it opens pre-filled rather than empty.
   const label = plannedDay ? `Start ${plannedDay.name}` : firstTime ? 'Log your first workout' : 'Start a workout'
+  // A split with nothing due today (`idle`) says so; the no-split wording is
+  // only for people without one.
+  const title = plannedDay ? 'Today’s session' : idle ? idle.title : 'No session in progress'
+  const sub = plannedDay
+    ? `${plannedDay.exercises.length} exercise${plannedDay.exercises.length !== 1 ? 's' : ''} planned · or log something else`
+    : idle
+      ? idle.next
+      : 'Start whenever you like — a split isn’t needed.'
   return (
     <div className="bg-white border border-border p-4 sm:p-5">
       <div className="flex items-center gap-3 flex-wrap">
         <PlayCircle className="w-4 h-4 text-text-light shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-text-primary break-words">
-            {plannedDay ? 'Today’s session' : 'No session in progress'}
-          </p>
-          <p className="text-[11px] text-text-light mt-0.5 break-words">
-            {plannedDay
-              ? `${plannedDay.exercises.length} exercise${plannedDay.exercises.length !== 1 ? 's' : ''} planned · or log something else`
-              : 'Start whenever you like — a split isn’t needed.'}
-          </p>
+          <p className="text-[13px] font-medium text-text-primary break-words">{title}</p>
+          {sub && <p className="text-[11px] text-text-light mt-0.5 break-words">{sub}</p>}
         </div>
         {/* Following the plan and training something else are both ordinary
             days, so both are one tap. "Something else" opens the New workout
@@ -746,6 +748,13 @@ export default function Dashboard() {
     ? tomorrowPlanned.kind === 'rest'
       ? { label: 'Rest day', sub: null }
       : { label: tomorrowPlanned.name, sub: exerciseCount(tomorrowPlanned) }
+    : null
+  // The session card on a day with nothing left to do: what today is, and when
+  // the next session falls.
+  const idleTitle = { rest: 'Rest day', off: 'Day off', done: 'Done for today' }[plan.status]
+  const nextUp = idleTitle ? nextTrainingDate(program, { now: today, annotations }) : null
+  const idle = idleTitle
+    ? { title: idleTitle, next: nextUp ? `Next: ${nextUp.day.name} ${nextDayLabel(nextUp.date, today)}` : null }
     : null
   // Active specialization block + its per-muscle summary.
   const active = activeBlock(blocks)
@@ -1408,6 +1417,7 @@ export default function Dashboard() {
         <SessionActions
           live={live}
           plannedDay={plan.status === 'train' ? plan.day : null}
+          idle={idle}
           onStartNew={() => setConfirmStartNew(true)}
           onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null}
         />
