@@ -170,18 +170,20 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], injuri
   // R3 — performance regression where fatigue is the likely culprit: e1RM
   // below trend several sessions running AND the lift's muscles run hot.
   // Exactly the targeted per-exercise trim the app is built around.
-  for (const [key, p] of Object.entries(model.perf)) {
+  for (const [slot, p] of Object.entries(model.perf)) {
     if (p.residuals.length < ADVISOR_REGRESSION_STREAK) continue
     const recent = p.residuals.slice(-ADVISOR_REGRESSION_STREAK)
     if (!recent.every((r) => r < ADVISOR_REGRESSION_EPS)) continue
-    const db = key.startsWith('name:') ? null : DB_BY_ID.get(key)
-    const muscles = db ? primaryMusclesFor({ exerciseId: key, name: p.name }) : new Set([muscleForExercise(p.name)].filter(Boolean))
+    const db = p.key.startsWith('name:') ? null : DB_BY_ID.get(p.key)
+    const muscles = db ? primaryMusclesFor({ exerciseId: p.key, name: p.name }) : new Set([muscleForExercise(p.name)].filter(Boolean))
     const hot = [...muscles].find((m) => overMuscles.has(m) || chronicMuscles.has(m))
     if (!hot) continue // could be sleep/technique — stay quiet rather than guess
+    // Each type has its own trend, so name which one slipped if the lift has both.
+    const type = p.laterality ? ` (${p.laterality})` : ''
     recs.push({
-      id: `regression-${key}`,
+      id: `regression-${slot}`,
       severity: 'red',
-      title: `${p.name} is trending down`,
+      title: `${p.name}${type} is trending down`,
       detail:
         `Estimated 1RM has been below trend ${ADVISOR_REGRESSION_STREAK} sessions running while ${hot} runs hot. ` +
         `Cut a set from ${p.name} specifically and see if the trend turns — everything else trains on as planned.`,
@@ -190,8 +192,13 @@ export function adviseTraining(sessions, { blocks = [], annotations = [], injuri
 
   // R4 — whole-body strain high while lifts slip: shave the costliest movers.
   if (recovery.systemic.level === 'high') {
-    const slipping = Object.values(model.perf).filter((p) => p.residuals.length && p.residuals[p.residuals.length - 1] < 0)
-    if (slipping.length >= 2) {
+    // Counted per lift: both types of one lift slipping is still one lift.
+    const slipping = new Set(
+      Object.values(model.perf)
+        .filter((p) => p.residuals.length && p.residuals[p.residuals.length - 1] < 0)
+        .map((p) => p.key)
+    )
+    if (slipping.size >= 2) {
       const costly = week
         .filter((e) => e.db)
         .sort(

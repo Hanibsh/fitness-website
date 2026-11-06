@@ -1,6 +1,6 @@
 // Checks that bilateral and unilateral sets of a lift never compete: records,
-// charts, the stalled-lifts card and strength levels each compare a set only with
-// its own type, while volume still adds the two together.
+// charts, the stalled-lifts card, strength levels and the recovery engine each
+// compare a set only with its own type, while volume still adds the two together.
 //
 //   node scripts/test-laterality.mjs
 //
@@ -17,6 +17,8 @@ const stats = await server.ssrLoadModule('/src/lib/workoutStats.js')
 const dash = await server.ssrLoadModule('/src/lib/dashboard.js')
 const insights = await server.ssrLoadModule('/src/lib/dashboardInsights.js')
 const progress = await server.ssrLoadModule('/src/lib/progress.js')
+const engine = await server.ssrLoadModule('/src/lib/engine.js')
+const advisor = await server.ssrLoadModule('/src/lib/advisor.js')
 
 let passed = 0
 function check(name, ok, detail = '') {
@@ -153,6 +155,50 @@ const kinds = (prs) => prs.map((p) => p.kind).sort().join(',')
   check('bilateral sets are', row([day(1, [bi(100)])]).length === 1)
   const curl = row([day(1, [uni(20, 10)], 'Dumbbell Curl')])
   check('a one-arm dumbbell curl still counts', curl.length === 1 && curl[0].key === 'bicepCurl', JSON.stringify(curl))
+}
+
+// ---- Recovery engine ------------------------------------------------------------
+{
+  const BI = 'leg-extension|bilateral'
+  const UNI = 'leg-extension|unilateral'
+  const flat = (r) => r.every((x) => Math.abs(x) < 1e-9)
+
+  // Steady numbers, swapping type every session: nothing has changed, so there's
+  // nothing to learn. One shared trend would read each swap as a big day or a bad one.
+  const swapping = Array.from({ length: 10 }, (_, i) => day(40 - i * 4, [i % 2 ? uni(90) : bi(100)]))
+  const a = engine.personalizedModel(swapping)
+  check('swapping type: a trend each', !!a.perf[BI] && !!a.perf[UNI], JSON.stringify(Object.keys(a.perf)))
+  check('swapping type is no change', flat(a.perf[BI].residuals) && flat(a.perf[UNI].residuals), JSON.stringify(a.perf))
+  check('...teaches no recovery speed', Object.values(a.tauMult).every((m) => Math.abs(m - 1) < 1e-9), JSON.stringify(a.tauMult))
+  check('...and names its type', a.perf[UNI].laterality === 'unilateral' && a.perf[BI].key === 'leg-extension')
+
+  // A new type needs its own warm-up, however often the lift was done the other way.
+  const bis = Array.from({ length: 5 }, (_, i) => day(60 - i * 3, [bi(100)]))
+  const unis = Array.from({ length: 4 }, (_, i) => day(40 - i * 3, [uni(90)]))
+  check('a new type has no trend for 3 sessions', !engine.personalizedModel([...bis, ...unis.slice(0, 3)]).perf[UNI])
+  check('...then learns', engine.personalizedModel([...bis, ...unis]).perf[UNI].residuals.length === 1)
+
+  // Still catches a real change within a type.
+  const drop = engine.personalizedModel([...bis, day(40, [bi(90)])])
+  check('a real drop still counts', drop.perf[BI].residuals.at(-1) < 0, JSON.stringify(drop.perf))
+  check('one type only: no label', drop.perf[BI].laterality === null)
+
+  // Novelty is per movement: switching type doesn't make the lift new again.
+  const onlyUni = engine.personalizedModel([...bis, unis[0]])
+  check('exposure stays per movement', onlyUni.exposures['leg-extension'] === 6, JSON.stringify(onlyUni.exposures))
+
+  // The advisor's warning names the type that slipped.
+  const hard = (w, n = 14) => Array.from({ length: n }, () => w)
+  const biSets = hard(100).map((w) => bi(w, 10, { rir: 0 }))
+  const uniSets = (w) => hard(w).map((x) => uni(x, 10))
+  const slipping = [
+    ...[90, 90, 90, 90].map((w, i) => day(16 - i, [...biSets, ...uniSets(w)])),
+    ...[85, 80, 75].map((w, i) => day(3 - i, [...biSets, ...uniSets(w)])),
+  ]
+  const recs = advisor.adviseTraining(slipping, { blocks: [], annotations: [], injuries: [] })
+  const warning = recs.find((r) => r.title.includes('trending down'))
+  check('the advisor names the type', warning?.title === 'Leg Extension (unilateral) is trending down', JSON.stringify(recs.map((r) => r.title)))
+  check('...and leaves the steady type alone', recs.filter((r) => r.title.includes('trending down')).length === 1)
 }
 
 console.log(`OK  ${passed} checks passed`)

@@ -20,7 +20,7 @@ import {
   PERSONAL_LEARNING_RATE, TAU_MULT_MIN, TAU_MULT_MAX, TAU_MULT_NOTEWORTHY, noveltyMult,
 } from './engineConfig'
 import { exerciseIdForName } from './exerciseLibrary'
-import { estimatedOneRepMax, convertWeight } from './workoutStats'
+import { estimatedOneRepMax, convertWeight, LATERALITIES, setLaterality } from './workoutStats'
 
 const DAY = 86400000
 const DB_BY_ID = withAliases(new Map((exercisesDb.exercises || []).map((e) => [e.id, e])))
@@ -250,14 +250,15 @@ function primaryMuscles(ex, db) {
   return out
 }
 
-// Session-best e1RM for one logged exercise, in kg, RIR-normalized: reps + RIR
-// ≈ reps to failure, so 100×8@2 and 100×10@0 read the same. Warm-ups skipped,
-// unilateral limbs counted separately, effective reps past MAX_E1RM_REPS
-// skipped (Brzycki is unreliable there).
-function sessionE1rm(ex, sessionUnit) {
+// Session-best e1RM for one logged exercise and one type of set (bilateral or
+// unilateral — different strength, see workoutStats), in kg, RIR-normalized:
+// reps + RIR ≈ reps to failure, so 100×8@2 and 100×10@0 read the same. Warm-ups
+// skipped, unilateral limbs counted separately, effective reps past
+// MAX_E1RM_REPS skipped (Brzycki is unreliable there).
+function sessionE1rm(ex, sessionUnit, laterality) {
   let best = null
   for (const set of ex.sets) {
-    if (set.type === 'warmup') continue
+    if (set.type === 'warmup' || setLaterality(set) !== laterality) continue
     const sides = set.left ? [set.left, set.right] : [set]
     for (const side of sides) {
       if (!side) continue
@@ -285,10 +286,16 @@ function sessionE1rm(ex, sessionUnit) {
 // later predictions see it. Guards: ≥ MIN_EXPOSURES_TO_LEARN sessions of an
 // exercise first, residuals clamped, small learning rate, multiplier clamped.
 //
+// Bilateral and unilateral sets each keep their own trend and warm-up count, or
+// swapping one for the other would read as a great or a terrible day and teach
+// the wrong recovery speed. Novelty and fatigue stay per movement: the muscle
+// doesn't care which way round you trained it.
+//
 // Returns {
 //   tauMult:   { muscle: 0.6–1.6 },          // recovery-speed multipliers
 //   exposures: { exerciseKey: count },        // total sessions per exercise
-//   perf:      { exerciseKey: { name, residuals:[last ≤6] } },
+//   perf:      { 'exerciseKey|type': { key, name, laterality, residuals:[last ≤6] } },
+//                                            // laterality: null unless logged both ways
 //   workedLow: { muscle: [bool, …last ≤6] },  // trained while under threshold?
 //   observations,                             // residual comparisons made
 //   exposureBefore: Map(sessionId -> {key: prior count}),  // for muscleRecovery
@@ -297,7 +304,9 @@ export function personalizedModel(sessions) {
   const { before, counts } = exposureIndex(sessions)
   const ordered = [...sessions].filter((s) => s.exercises?.length).sort((a, b) => a.date - b.date)
   const tauMult = {}
-  const trends = {} // exerciseKey -> EWMA of session e1RM (kg)
+  const trends = {} // 'exerciseKey|type' -> EWMA of session e1RM (kg)
+  const typeSeen = {} // 'exerciseKey|type' -> earlier sessions with an e1RM of that type
+  const typesLogged = {} // exerciseKey -> the types with an e1RM
   const perf = {}
   const workedLow = {}
   let observations = 0
@@ -320,6 +329,7 @@ export function personalizedModel(sessions) {
 
     const seenBefore = before.get(s.id) || {}
     const musclesWorked = new Map() // muscle -> under threshold at session start?
+    const slotsThisSession = new Set()
 
     // 1) Learn from performance BEFORE this session's own fatigue lands.
     for (const ex of s.exercises) {
@@ -331,25 +341,32 @@ export function personalizedModel(sessions) {
         if (!musclesWorked.has(m)) musclesWorked.set(m, pctAt(m, s.date) < READY_THRESHOLD)
       }
 
-      const e1 = sessionE1rm(ex, s.unit)
-      const trend = trends[key]
-      if (e1 != null && trend > 0 && (seenBefore[key] || 0) >= MIN_EXPOSURES_TO_LEARN) {
-        const residual = Math.max(-RESIDUAL_CLAMP, Math.min(RESIDUAL_CLAMP, (e1 - trend) / trend))
-        observations++
-        const p = (perf[key] = perf[key] || { name: ex.name, residuals: [] })
-        p.residuals.push(residual)
-        if (p.residuals.length > 6) p.residuals.shift()
-        const strength = Math.abs(residual) / RESIDUAL_CLAMP // 0..1 evidence weight
-        for (const m of primaryMuscles(ex, db)) {
-          const under = musclesWorked.get(m)
-          const dir = under && residual >= 0 ? -1 : !under && residual < 0 ? 1 : 0
-          if (dir) {
-            tauMult[m] = Math.min(TAU_MULT_MAX, Math.max(TAU_MULT_MIN, (tauMult[m] || 1) + dir * PERSONAL_LEARNING_RATE * strength))
+      for (const laterality of LATERALITIES) {
+        const e1 = sessionE1rm(ex, s.unit, laterality)
+        if (e1 == null) continue
+        const slot = `${key}|${laterality}`
+        ;(typesLogged[key] = typesLogged[key] || new Set()).add(laterality)
+        slotsThisSession.add(slot)
+        const trend = trends[slot]
+        if (trend > 0 && (typeSeen[slot] || 0) >= MIN_EXPOSURES_TO_LEARN) {
+          const residual = Math.max(-RESIDUAL_CLAMP, Math.min(RESIDUAL_CLAMP, (e1 - trend) / trend))
+          observations++
+          const p = (perf[slot] = perf[slot] || { key, name: ex.name, laterality, residuals: [] })
+          p.residuals.push(residual)
+          if (p.residuals.length > 6) p.residuals.shift()
+          const strength = Math.abs(residual) / RESIDUAL_CLAMP // 0..1 evidence weight
+          for (const m of primaryMuscles(ex, db)) {
+            const under = musclesWorked.get(m)
+            const dir = under && residual >= 0 ? -1 : !under && residual < 0 ? 1 : 0
+            if (dir) {
+              tauMult[m] = Math.min(TAU_MULT_MAX, Math.max(TAU_MULT_MIN, (tauMult[m] || 1) + dir * PERSONAL_LEARNING_RATE * strength))
+            }
           }
         }
+        trends[slot] = trend == null ? e1 : EWMA_ALPHA * e1 + (1 - EWMA_ALPHA) * trend
       }
-      if (e1 != null) trends[key] = trend == null ? e1 : EWMA_ALPHA * e1 + (1 - EWMA_ALPHA) * trend
     }
+    for (const slot of slotsThisSession) typeSeen[slot] = (typeSeen[slot] || 0) + 1
     for (const [m, under] of musclesWorked) {
       const list = (workedLow[m] = workedLow[m] || [])
       list.push(under)
@@ -371,6 +388,9 @@ export function personalizedModel(sessions) {
       }
     }
   }
+
+  // A lift done one way only doesn't need its type named.
+  for (const p of Object.values(perf)) if (typesLogged[p.key].size < 2) p.laterality = null
 
   return { tauMult, exposures: counts, perf, workedLow, observations, exposureBefore: before }
 }
