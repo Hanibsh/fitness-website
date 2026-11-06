@@ -502,20 +502,24 @@ export function splitDistribution(sessions) {
 }
 
 
-// ---- Recent activity + this-day-in-history ---------------------------------
-export function recentActivity(sessions, limit = 8) {
-  const prDays = new Set(recentPRs(sessions, 'kg', Infinity).map((p) => startOfDay(p.date)))
-  return [...sessions]
-    .sort((a, b) => b.date - a.date)
-    .slice(0, limit)
-    .map((s) => ({
-      id: s.id,
-      name: s.name || 'Workout',
-      date: s.date,
-      exercises: s.exercises.length,
-      sets: sessionSetCount(s),
-      hadPR: prDays.has(startOfDay(s.date)),
-    }))
+// ---- PR days + friendly dates + this-day-in-history -------------------------
+// Every day a record was set, so a workout can be checked with sessionHadPR.
+export function prDays(sessions) {
+  return new Set(recentPRs(sessions, 'kg', Infinity).map((p) => startOfDay(p.date)))
+}
+
+export function sessionHadPR(session, days) {
+  return days.has(startOfDay(session.date))
+}
+
+// 'Today', 'Yesterday', '3 days ago'. Null from a week back, and for a future
+// date, where the caller shows a real date.
+export function daysAgoLabel(ts) {
+  const diff = Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86400000)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Yesterday'
+  if (diff > 1 && diff < 7) return `${diff} days ago`
+  return null
 }
 
 export function thisDayInHistory(sessions, unit = 'kg') {

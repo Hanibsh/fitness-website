@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { sessionStats } from '../lib/workoutStore'
 import { sessionAvgRest, formatRest } from '../lib/workoutStats'
-import { formatDuration } from '../lib/dashboard'
+import { formatDuration, prDays, sessionHadPR, daysAgoLabel } from '../lib/dashboard'
 import HistoryPager from './HistoryPager'
 
 const PER_PAGE = 5
@@ -28,6 +28,7 @@ export default function PreviousWorkouts({ sessions, onOpen, inCard = false }) {
   }
 
   const sorted = useMemo(() => [...sessions].sort((a, b) => b.date - a.date), [sessions])
+  const recordDays = useMemo(() => prDays(sessions), [sessions])
   // Clamped here rather than on delete, so losing the only workout on the last
   // page lands on the page before it, not on an empty one.
   const pages = Math.max(1, Math.ceil(sorted.length / PER_PAGE))
@@ -57,11 +58,14 @@ export default function PreviousWorkouts({ sessions, onOpen, inCard = false }) {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[14px] font-medium text-text-primary">{formatDate(session.date)}</p>
+                    <p className="text-[14px] font-medium text-text-primary">{daysAgoLabel(session.date) || formatDate(session.date)}</p>
                     {session.name && (
                       <span className={`text-[11px] font-medium text-text-secondary ${inCard ? 'bg-white' : 'bg-cream'} border border-border px-2 py-0.5 break-words min-w-0`}>
                         {session.name}
                       </span>
+                    )}
+                    {sessionHadPR(session, recordDays) && (
+                      <span className="text-[10px] font-medium text-cream bg-text-primary px-1.5 py-0.5">PR</span>
                     )}
                   </div>
                   <p className="text-[12px] text-text-muted mt-0.5">

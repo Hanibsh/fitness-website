@@ -2,7 +2,7 @@ import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Flame, Dumbbell, TrendingUp, Trophy, Target, Activity, History,
+  Flame, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
   BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2, PlayCircle, Wand2, X, Sparkles, Bandage,
   SlidersHorizontal,
@@ -29,7 +29,7 @@ import { saveProfile } from '../lib/profile'
 import { loggedExerciseNames, LATERALITY_LABELS } from '../lib/workoutStats'
 import {
   heroSummary, monthStats, lifetimeStats, personalRecords, recentPRs,
-  splitDistribution, recentActivity, thisDayInHistory, formatDuration,
+  splitDistribution, thisDayInHistory, formatDuration, daysAgoLabel,
   exerciseBests, blockSummary, monthMuscleSets,
 } from '../lib/dashboard'
 import MuscleDonut from '../components/MuscleDonut'
@@ -105,13 +105,7 @@ const VOLUME_RANGES = [
 ]
 
 function relativeDay(ts) {
-  const day = new Date(ts); day.setHours(0, 0, 0, 0)
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const diff = Math.round((today - day) / 86400000)
-  if (diff === 0) return 'Today'
-  if (diff === 1) return 'Yesterday'
-  if (diff < 7) return `${diff} days ago`
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return daysAgoLabel(ts) || new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function fullDate(ts) {
@@ -552,7 +546,6 @@ export default function Dashboard() {
       records: personalRecords(sessions, unit),
       prs: recentPRs(sessions, unit, 6),
       split: splitDistribution(sessions),
-      activity: recentActivity(sessions, 8),
       throwback: thisDayInHistory(sessions, unit),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -713,7 +706,7 @@ export default function Dashboard() {
     )
   }
 
-  const { hero, month, prevMonthVolume, monthMuscles, lifetime, records, prs, split, activity, throwback } = stats
+  const { hero, month, prevMonthVolume, monthMuscles, lifetime, records, prs, split, throwback } = stats
   // "+12% vs last month" under the Volume tile — only when both months have
   // volume, so a first month or an empty one doesn't show a misleading ±100%.
   const volumeDelta = prevMonthVolume > 0 && month.volume > 0 ? Math.round(((month.volume - prevMonthVolume) / prevMonthVolume) * 100) : null
@@ -1332,34 +1325,9 @@ export default function Dashboard() {
         </div>
       </Card>
     ),
-    // SECTION 12 — RECENT ACTIVITY
+    // SECTION 12 — PREVIOUS WORKOUTS. Id stays 'activity', the old Recent
+    // activity card's, so saved layouts keep its place and on/off state.
     activity: (
-      <Card>
-        <SectionHeading icon={Activity}>Recent activity</SectionHeading>
-        <div className="space-y-0">
-          {activity.map((a, i) => (
-            <Link
-              key={a.id}
-              to="/log"
-              className={`flex items-center gap-3 py-3 no-underline group ${i > 0 ? 'border-t border-border' : ''}`}
-            >
-              <div className="w-8 h-8 shrink-0 rounded-full bg-cream border border-border flex items-center justify-center">
-                <Dumbbell className="w-3.5 h-3.5 text-text-muted" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-text-primary break-words">
-                  {a.name}
-                  {a.hadPR && <span className="ml-2 text-[10px] font-medium text-cream bg-text-primary px-1.5 py-0.5 align-middle">PR</span>}
-                </p>
-                <p className="text-[11px] text-text-muted">{relativeDay(a.date)} · {a.exercises} exercise{a.exercises !== 1 ? 's' : ''} · {a.sets} sets</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-text-light shrink-0 group-hover:text-text-primary transition-colors" />
-            </Link>
-          ))}
-        </div>
-      </Card>
-    ),
-    previousWorkouts: (
       <Card>
         <SectionHeading icon={History}>Previous workouts</SectionHeading>
         <PreviousWorkouts sessions={sessions} onOpen={setSummarySession} inCard />
