@@ -47,7 +47,7 @@ import {
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, sessionAvgRest, formatRest, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { isLockedProgram } from '../lib/coachSync'
@@ -77,7 +77,7 @@ import RestTimer from '../components/RestTimer'
 import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
 import SessionSummary from '../components/SessionSummary'
-import HistoryPager from '../components/HistoryPager'
+import PreviousWorkouts from '../components/PreviousWorkouts'
 import SendToCoachButton from '../components/SendToCoachButton'
 import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
@@ -91,7 +91,6 @@ const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px] gap-1.5 items-cen
 // only used on "both" exercises, where a flat row can be split into L/R.
 const SET_GRID_TOGGLE = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px_18px] gap-1.5 items-center'
 const CARDIO_SET_GRID = 'grid grid-cols-[18px_1fr_1fr_18px_18px] gap-1.5 items-center'
-const HISTORY_PER_PAGE = 5
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -416,8 +415,6 @@ export default function WorkoutTracker() {
   const [profile, setProfile] = useState(null)
   const [unit, setUnit] = useState(() => getUnit())
   const [openSession, setOpenSession] = useState(null)
-  const [historyPage, setHistoryPage] = useState(1)
-  const historyListRef = useRef(null)
   const [supersetMenuFor, setSupersetMenuFor] = useState(null)
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [substituteFor, setSubstituteFor] = useState(null)
@@ -766,17 +763,6 @@ export default function WorkoutTracker() {
   }, [draft, history, unit])
 
   const sortedHistory = useMemo(() => [...history].sort((a, b) => b.date - a.date), [history])
-
-  // Clamped here rather than when deleting, so losing the only workout on the
-  // last page lands on the page before it, not on an empty one.
-  const historyPages = Math.max(1, Math.ceil(sortedHistory.length / HISTORY_PER_PAGE))
-  const currentHistoryPage = Math.min(historyPage, historyPages)
-  const pagedHistory = sortedHistory.slice((currentHistoryPage - 1) * HISTORY_PER_PAGE, currentHistoryPage * HISTORY_PER_PAGE)
-
-  function goToHistoryPage(page) {
-    setHistoryPage(page)
-    historyListRef.current?.scrollIntoView({ block: 'start' })
-  }
 
   // The workout whose summary card is open. Looked up rather than held in state
   // so an edit (a moved date, a corrected time) shows through immediately
@@ -1901,7 +1887,6 @@ export default function WorkoutTracker() {
         if (ex.kind !== 'cardio' && ex.repRange) saveExerciseTarget(ex.name, ex.repRange)
       }
       setSplitSyncDone(banner)
-      setHistoryPage(1)
       // Restore any stashed in-progress draft (set aside when a planned session
       // was started over it), else start fresh. Harmless for plain saves.
       const stash = getStashedDraft()
@@ -3314,43 +3299,7 @@ export default function WorkoutTracker() {
                 )}
               </div>
 
-              <div ref={historyListRef} className="space-y-3" style={{ scrollMarginTop: 'calc(7rem + env(safe-area-inset-top, 0px))' }}>
-                {pagedHistory.map((session) => {
-                  const stats = sessionStats(session)
-                  const avgRest = formatRest(sessionAvgRest(session))
-                  const duration = formatDuration(session.durationMs)
-                  return (
-                    <div key={session.id} id={`session-${session.id}`} className="bg-white border border-border" style={{ scrollMarginTop: 'calc(7rem + env(safe-area-inset-top, 0px))' }}>
-                      <button
-                        onClick={() => setOpenSession(session.id)}
-                        className="w-full flex items-center justify-between px-6 py-4 bg-transparent border-none cursor-pointer text-left"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-[14px] font-medium text-text-primary">{formatDate(session.date)}</p>
-                            {session.name && (
-                              <span className="text-[11px] font-medium text-text-secondary bg-cream border border-border px-2 py-0.5 break-words">
-                                {session.name}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[12px] text-text-muted mt-0.5">
-                            {stats.exercises} exercise{stats.exercises !== 1 ? 's' : ''} · {stats.sets} set{stats.sets !== 1 ? 's' : ''}
-                            {stats.volume > 0 && ` · ${stats.volume.toLocaleString()} ${session.unit || 'kg'} volume`}
-                            {duration && ` · ${duration}`}
-                            {avgRest && ` · ${avgRest} avg rest`}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {historyPages > 1 && (
-                <HistoryPager page={currentHistoryPage} pages={historyPages} onChange={goToHistoryPage} />
-              )}
+              <PreviousWorkouts sessions={sortedHistory} onOpen={(s) => setOpenSession(s.id)} />
             </div>
           )}
 

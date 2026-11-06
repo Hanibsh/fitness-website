@@ -55,6 +55,7 @@ import { DEV_CLIENT_ID } from '../lib/messages'
 import CheckinModal from '../components/CheckinModal'
 import { openInjuries, injuryTitle, latestPain } from '../lib/injuries'
 import SessionSummary from '../components/SessionSummary'
+import PreviousWorkouts from '../components/PreviousWorkouts'
 import SendToCoachButton from '../components/SendToCoachButton'
 import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
@@ -1356,6 +1357,12 @@ export default function Dashboard() {
             </Link>
           ))}
         </div>
+      </Card>
+    ),
+    previousWorkouts: (
+      <Card>
+        <SectionHeading icon={History}>Previous workouts</SectionHeading>
+        <PreviousWorkouts sessions={sessions} onOpen={setSummarySession} inCard />
       </Card>
     ),
     // SECTION 13 — THIS DAY IN HISTORY
