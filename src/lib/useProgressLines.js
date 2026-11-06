@@ -2,7 +2,7 @@
 // coach's Progress tab, the chat profile panel (all ProgressView) and the
 // Compare chart on the coach's client page read the same ones.
 import { useCallback, useMemo } from 'react'
-import { buildSeries, bodyweightSeries, metricById } from './workoutStats'
+import { bodyweightSeries, liftE1rmSeries } from './workoutStats'
 import { liftsByUse } from './progress'
 import { weeklySeries, leanMassSeries } from './weeklyLog'
 
@@ -38,7 +38,7 @@ export function useProgressLines({ sessions = [], bodyweight = [], weekly = [], 
     }),
     [weekly, bodyweight, unit, cutoff]
   )
-  const liftSeries = useCallback((name) => buildSeries(sessions, name, metricById('e1rm'), range.id, unit), [sessions, range.id, unit])
+  const liftSeries = useCallback((name) => liftE1rmSeries(sessions, name, range.id, unit), [sessions, range.id, unit])
   const metrics = useMemo(
     () =>
       [

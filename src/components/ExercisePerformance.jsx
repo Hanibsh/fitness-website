@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { getHistory, getUnit } from '../lib/workoutStore'
 import { fetchRemoteHistory } from '../lib/workoutRemote'
-import { exerciseSummary, recentExerciseSessions, convertWeight, avgRestForExercise, formatRest } from '../lib/workoutStats'
+import { exerciseSummary, lateralityHistory, LATERALITY_LABELS, recentExerciseSessions, convertWeight, avgRestForExercise, formatRest } from '../lib/workoutStats'
 import ExerciseProgress from './ExerciseProgress'
 
 // "Your performance" section for the exercise detail page: the user's own
@@ -84,6 +84,12 @@ export default function ExercisePerformance({ exercise }) {
     () => (sessions ? recentExerciseSessions(sessions, target, 4) : []),
     [sessions, target]
   )
+  // Logged both ways: one summary per type, because their bests aren't comparable.
+  const byType = useMemo(() => {
+    if (!sessions) return null
+    const { logged } = lateralityHistory(sessions, target)
+    return logged.length === 2 ? logged.map((l) => [LATERALITY_LABELS[l], exerciseSummary(sessions, target, unit, l)]) : null
+  }, [sessions, target, unit])
 
   if (!sessions) return null
 
@@ -112,10 +118,27 @@ export default function ExercisePerformance({ exercise }) {
   // rest exists only for sessions logged set by set as you train. Unexplained,
   // it reads as a bug rather than as an absence.
   const restLabel = formatRest(summary.avgRest)
+  const weightText = (s) => (s.bestWeight != null ? `${fmtW(s.bestWeight)} ${unit}` : '—')
+  const e1rmText = (s) => (s.bestE1rm != null ? `${Math.round(s.bestE1rm)} ${unit}` : '—')
+  const repsText = (s) => s.bestReps ?? '—'
+  // One best, or a line per type for a lift logged both ways.
+  const best = (text) =>
+    byType ? (
+      <span className="block mt-1 space-y-0.5">
+        {byType.map(([label, s]) => (
+          <span key={label} className="flex flex-wrap items-baseline justify-between gap-x-2 text-[13px]">
+            <span className="text-[11px] font-normal text-text-muted">{label}</span>
+            <span>{text(s)}</span>
+          </span>
+        ))}
+      </span>
+    ) : (
+      text(summary)
+    )
   const tiles = [
-    ['Best weight', summary.bestWeight != null ? `${fmtW(summary.bestWeight)} ${unit}` : '—'],
-    ['Est. 1RM', summary.bestE1rm != null ? `${Math.round(summary.bestE1rm)} ${unit}` : '—'],
-    ['Best reps', summary.bestReps ?? '—'],
+    ['Best weight', best(weightText)],
+    ['Est. 1RM', best(e1rmText)],
+    ['Best reps', best(repsText)],
     ['Lifetime volume', `${Math.round(summary.lifetimeVolume).toLocaleString()} ${unit}`],
     ['Times performed', summary.timesPerformed],
     ['Avg rest', restLabel ?? '—', restLabel ? null : 'Only measured when you log your sets as you go.'],
@@ -130,7 +153,7 @@ export default function ExercisePerformance({ exercise }) {
         {tiles.map(([label, val, title]) => (
           <div key={label} title={title || undefined} className="bg-white border border-border rounded-lg p-3">
             <p className="text-[10px] uppercase tracking-wide text-text-light">{label}</p>
-            <p className="text-[15px] font-medium text-text-primary mt-0.5">{val}</p>
+            <div className="text-[15px] font-medium text-text-primary mt-0.5">{val}</div>
           </div>
         ))}
       </div>

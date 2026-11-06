@@ -1,6 +1,6 @@
 // Progress over time — the numbers the Progress page, its dashboard card and
 // the chat profile panel share. Pure, so scripts/test-chat.mjs can check it.
-import { buildSeries, metricById } from './workoutStats'
+import { liftE1rmSeries } from './workoutStats'
 
 // Logged lift names (cardio left out), most-trained first: how many sessions
 // each appears in, then the most recent. Picks the strength chart's default.
@@ -31,7 +31,7 @@ export function liftsByUse(sessions = []) {
 export function topLiftChange(sessions = [], unit = 'kg', rangeId = '3m') {
   const name = liftsByUse(sessions)[0]
   if (!name) return null
-  const series = buildSeries(sessions, name, metricById('e1rm'), rangeId, unit)
+  const series = liftE1rmSeries(sessions, name, rangeId, unit)
   if (series.length < 2 || !series[0].value) return { name, pct: null }
   return { name, pct: Math.round(((series[series.length - 1].value - series[0].value) / series[0].value) * 100) }
 }

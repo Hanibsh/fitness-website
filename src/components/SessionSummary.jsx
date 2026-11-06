@@ -3,7 +3,7 @@ import { Trophy, Timer, Dumbbell, Lightbulb, LineChart, MessageCircle } from 'lu
 import Modal from './Modal'
 import {
   sessionAvgRest, avgRestForExercise, formatRest, setSummary, distanceUnit, setHasWork,
-  sessionPRs, PR_KINDS, supersetLabels,
+  sessionPRs, PR_KINDS, LATERALITY_LABELS, supersetLabels,
 } from '../lib/workoutStats'
 import { sessionStats } from '../lib/workoutStore'
 import { formatDuration } from '../lib/dashboard'
@@ -149,8 +149,11 @@ export default function SessionSummary({
             </h3>
             <div className="space-y-1.5">
               {prs.map((pr) => (
-                <div key={`${pr.name}-${pr.kind}`} className="flex items-baseline justify-between gap-3 text-[13px]">
-                  <span className="text-text-primary min-w-0 truncate">{pr.name}</span>
+                <div key={`${pr.name}-${pr.kind}-${pr.laterality || ''}`} className="flex flex-wrap items-baseline justify-between gap-x-3 text-[13px]">
+                  <span className="min-w-0 break-words text-text-primary">
+                    {pr.name}
+                    {pr.laterality && <span className="text-text-light"> · {LATERALITY_LABELS[pr.laterality]}</span>}
+                  </span>
                   <span className="text-text-muted shrink-0 tabular-nums">
                     {PR_KINDS[pr.kind]}{' '}
                     <span className="text-text-primary font-medium">

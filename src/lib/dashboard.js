@@ -3,7 +3,7 @@
 // weights to a single display unit so totals are consistent even if you logged
 // some sessions in kg and others in lbs.
 
-import { convertWeight, estimatedOneRepMax } from './workoutStats'
+import { convertWeight, estimatedOneRepMax, LATERALITIES, setLaterality } from './workoutStats'
 import { MOVEMENTS } from './movements'
 import exercisesDb from '../data/exercises.json'
 import { withAliases } from '../data/exerciseAliases'
@@ -398,10 +398,13 @@ export function exerciseBests(sessions, unit = 'kg') {
           const reps = Number(side.reps) || 0
           const w = reps > 0 ? convertWeight(Number(side.weight) || 0, from, unit) : 0
           if (reps > 0) {
-            if (w > cur.weight) cur.weight = w
-            if (reps > cur.reps) cur.reps = reps
-            const e = estimatedOneRepMax(w, reps)
-            if (e && e > cur.e1rm) cur.e1rm = e
+            // A warm-up is lifetime work but no best: 20 light reps isn't a record.
+            if (set.type !== 'warmup') {
+              if (w > cur.weight) cur.weight = w
+              if (reps > cur.reps) cur.reps = reps
+              const e = estimatedOneRepMax(w, reps)
+              if (e && e > cur.e1rm) cur.e1rm = e
+            }
             cur.volume += w * reps
           }
         }
@@ -439,35 +442,46 @@ function countPRsInRange(sessions, unit, inRange) {
 }
 
 // PRs as a timeline: each time an exercise beats its previous best e1RM.
+// Bilateral and unilateral sets each chase their own best (see workoutStats); a
+// PR names its type (`laterality`) only if the lift has been logged both ways.
 export function recentPRs(sessions, unit = 'kg', limit = 6) {
   const sorted = [...sessions].sort((a, b) => a.date - b.date)
-  const best = new Map()
+  const best = new Map() // 'lift|type' -> best e1RM
+  const types = new Map() // lift -> the types logged
   const prs = []
   for (const s of sorted) {
     const from = s.unit || 'kg'
     for (const ex of s.exercises) {
       if (isCardio(ex)) continue
       const key = ex.name.trim().toLowerCase()
-      let top = 0
+      const top = { bilateral: 0, unilateral: 0 }
       for (const set of ex.sets) {
+        if (set.type === 'warmup') continue
+        const laterality = setLaterality(set)
         for (const side of sides(set)) {
           const reps = Number(side.reps) || 0
           if (reps < 1) continue
           const w = convertWeight(Number(side.weight) || 0, from, unit)
           const e = estimatedOneRepMax(w, reps)
-          if (e && e > top) top = e
+          if (e && e > top[laterality]) top[laterality] = e
         }
       }
-      if (top <= 0) continue
-      const prev = best.get(key) || 0
-      if (top > prev + 0.01) {
-        if (prev > 0) prs.push({ name: ex.name.trim(), from: Math.round(prev), to: Math.round(top), date: s.date })
-        best.set(key, top)
+      for (const laterality of LATERALITIES) {
+        if (top[laterality] <= 0) continue
+        if (!types.has(key)) types.set(key, new Set())
+        types.get(key).add(laterality)
+        const slot = `${key}|${laterality}`
+        const prev = best.get(slot) || 0
+        if (top[laterality] > prev + 0.01) {
+          if (prev > 0) prs.push({ key, name: ex.name.trim(), from: Math.round(prev), to: Math.round(top[laterality]), date: s.date, laterality })
+          best.set(slot, top[laterality])
+        }
       }
     }
   }
   prs.sort((a, b) => b.date - a.date)
-  return limit === Infinity ? prs : prs.slice(0, limit)
+  const shown = prs.map(({ key, laterality, ...pr }) => ({ ...pr, laterality: types.get(key).size === 2 ? laterality : null }))
+  return limit === Infinity ? shown : shown.slice(0, limit)
 }
 
 // ---- Training distribution -------------------------------------------------

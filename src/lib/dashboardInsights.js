@@ -3,7 +3,7 @@
 // functions over the session history, same split as lib/dashboard.js is for the
 // original cards — the components live in components/DashboardInsightCards.jsx.
 
-import { convertWeight, convertDistance, distanceUnit, estimatedOneRepMax, canonicalExerciseId, restBetweenSets } from './workoutStats'
+import { convertWeight, convertDistance, distanceUnit, estimatedOneRepMax, canonicalExerciseId, restBetweenSets, LATERALITIES, setLaterality } from './workoutStats'
 import { getExercise, exerciseIdForName } from './exerciseLibrary'
 import { lifts, matchTier, CATEGORY_ORDER } from './strengthStandards'
 import { dayStatusesForRange, scheduleMode } from './program'
@@ -100,17 +100,21 @@ export function planAdherence(sessions, annotations, program, now = Date.now()) 
 // Each lift's best estimated 1RM in the last 2 weeks against the 4 weeks before
 // that. Moving = up 1% or more; dropping = down 3% or more (a bad day is noise,
 // three is a trend); anything between is stalled. Lifts done with no load
-// compare best reps instead. Needs the lift in both windows.
+// compare best reps instead. Needs the lift in both windows, done the same way:
+// bilateral and unilateral sets are compared only with their own type, and a row
+// names its type (`laterality`) only when the lift has a row of each.
 const RECENT_DAYS = 14
 const EARLIER_DAYS = 28
 const UP_PCT = 1
 const DOWN_PCT = -3
 
-function bestOf(ex, from, unit) {
+// `laterality` limits it to one type of set; left out, it takes both.
+function bestOf(ex, from, unit, laterality = null) {
   let e1rm = 0
   let reps = 0
   for (const set of ex.sets) {
     if (isWarmup(set)) continue
+    if (laterality && setLaterality(set) !== laterality) continue
     for (const side of sides(set)) {
       const r = Number(side.reps) || 0
       if (r < 1) continue
@@ -131,23 +135,31 @@ export function liftProgress(sessions, unit = 'kg', now = Date.now()) {
     const slot = s.date >= recentFrom ? 'recent' : 'earlier'
     for (const ex of s.exercises) {
       if (ex.kind === 'cardio') continue
-      const key = ex.name.trim().toLowerCase()
-      const cur = byLift.get(key) || { name: ex.name.trim(), recent: { e1rm: 0, reps: 0 }, earlier: { e1rm: 0, reps: 0 } }
-      const best = bestOf(ex, s.unit || 'kg', unit)
-      cur[slot] = { e1rm: Math.max(cur[slot].e1rm, best.e1rm), reps: Math.max(cur[slot].reps, best.reps) }
-      byLift.set(key, cur)
+      const lift = ex.name.trim().toLowerCase()
+      for (const laterality of LATERALITIES) {
+        const best = bestOf(ex, s.unit || 'kg', unit, laterality)
+        if (!best.reps) continue
+        const key = `${lift}|${laterality}`
+        const cur = byLift.get(key) || { lift, laterality, name: ex.name.trim(), recent: { e1rm: 0, reps: 0 }, earlier: { e1rm: 0, reps: 0 } }
+        cur[slot] = { e1rm: Math.max(cur[slot].e1rm, best.e1rm), reps: Math.max(cur[slot].reps, best.reps) }
+        byLift.set(key, cur)
+      }
     }
   }
-  const out = { up: [], flat: [], down: [] }
+  const rows = []
   for (const l of byLift.values()) {
     const loaded = l.recent.e1rm > 0 && l.earlier.e1rm > 0
     const from = loaded ? l.earlier.e1rm : l.earlier.reps
     const to = loaded ? l.recent.e1rm : l.recent.reps
     if (!(from > 0) || !(to > 0)) continue
     const pct = Math.round(((to - from) / from) * 1000) / 10
-    const row = { name: l.name, from: Math.round(from), to: Math.round(to), pct, metric: loaded ? 'e1rm' : 'reps' }
-    if (pct >= UP_PCT) out.up.push(row)
-    else if (pct <= DOWN_PCT) out.down.push(row)
+    rows.push({ lift: l.lift, laterality: l.laterality, name: l.name, from: Math.round(from), to: Math.round(to), pct, metric: loaded ? 'e1rm' : 'reps' })
+  }
+  const out = { up: [], flat: [], down: [] }
+  for (const { lift, laterality, ...row } of rows) {
+    row.laterality = rows.filter((r) => r.lift === lift).length === 2 ? laterality : null
+    if (row.pct >= UP_PCT) out.up.push(row)
+    else if (row.pct <= DOWN_PCT) out.down.push(row)
     else out.flat.push(row)
   }
   out.up.sort((a, b) => b.pct - a.pct)
@@ -208,6 +220,11 @@ const STANDARD_FOR_EXERCISE = {
 // best from a stronger year.
 const STRENGTH_WINDOW_DAYS = 84
 
+// Standards measured one side at a time: per dumbbell or per leg, so a unilateral
+// set is the same number. Every other standard is for both sides together, and
+// grading a one-leg 90 kg against it would flatter you, so only bilateral sets count.
+const PER_SIDE_STANDARDS = new Set(['bicepCurl', 'hammerCurl', 'lateralRaise', 'bulgarianSplitSquat'])
+
 export function strengthLevels(sessions, { sex, bodyweightKg, now = Date.now() }) {
   if (!sex || !(bodyweightKg > 0)) return null
   const from = startOfDay(now) - (STRENGTH_WINDOW_DAYS - 1) * DAY_MS
@@ -218,7 +235,7 @@ export function strengthLevels(sessions, { sex, bodyweightKg, now = Date.now() }
       if (ex.kind === 'cardio') continue
       const key = STANDARD_FOR_EXERCISE[dbIdOf(ex)]
       if (!key) continue
-      const { e1rm } = bestOf(ex, s.unit || 'kg', 'kg')
+      const { e1rm } = bestOf(ex, s.unit || 'kg', 'kg', PER_SIDE_STANDARDS.has(key) ? null : 'bilateral')
       if (e1rm > (best.get(key)?.kg || 0)) best.set(key, { kg: e1rm, name: ex.name.trim() })
     }
   }

@@ -26,7 +26,7 @@ import {
 import BlockModal from '../components/BlockModal'
 import NewWorkoutModal from '../components/NewWorkoutModal'
 import { saveProfile } from '../lib/profile'
-import { loggedExerciseNames } from '../lib/workoutStats'
+import { loggedExerciseNames, LATERALITY_LABELS } from '../lib/workoutStats'
 import {
   heroSummary, monthStats, lifetimeStats, personalRecords, recentPRs,
   splitDistribution, recentActivity, thisDayInHistory, formatDuration,
@@ -1290,7 +1290,9 @@ export default function Dashboard() {
             <div key={i} className="flex items-center justify-between border border-border bg-cream px-4 py-2.5">
               <div className="min-w-0">
                 <p className="text-[13px] font-medium text-text-primary break-words">{pr.name}</p>
-                <p className="text-[11px] text-text-muted">{relativeDay(pr.date)} · est. 1RM</p>
+                <p className="text-[11px] text-text-muted">
+                  {relativeDay(pr.date)} · est. 1RM{pr.laterality ? ` · ${LATERALITY_LABELS[pr.laterality]}` : ''}
+                </p>
               </div>
               <p className="text-[13px] font-medium text-text-primary shrink-0 ml-3">
                 {fmtNum(pr.from)} <span className="text-text-light">→</span> {fmtNum(pr.to)} {unit}

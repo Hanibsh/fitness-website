@@ -279,19 +279,59 @@ function exerciseEntryMatches(ex, target) {
 // entry per limb so the metrics below treat each limb as its own working set.
 // Checked per set (not the exercise-wide flag) so a "both" exercise with a mix
 // of bilateral and unilateral sets is gathered correctly. `exercise` is a name
-// string or `{ id, name }` (see exercise identity above).
-function setsForExercise(session, exercise) {
+// string or `{ id, name }` (see exercise identity above). `laterality` keeps only
+// sets of that type (see below); left out, it gathers both.
+function setsForExercise(session, exercise, laterality = null) {
   const target = normalizeExerciseTarget(exercise)
   const sets = []
   for (const ex of session.exercises) {
     if (!exerciseEntryMatches(ex, target)) continue
     for (const s of ex.sets) {
       if (s.type === 'warmup') continue
+      if (laterality && ex.kind !== 'cardio' && setLaterality(s) !== laterality) continue
       if (ex.kind !== 'cardio' && s.left) { sets.push(s.left); if (s.right) sets.push(s.right) }
       else sets.push(s)
     }
   }
   return sets
+}
+
+// ---- Bilateral vs unilateral ----------------------------------------------------
+// The same movement done one side at a time is different strength: 90 kg on one
+// leg is far stronger than 100 kg on two. So anything that judges strength (a
+// record, a trend, est. 1RM, top set) compares a set only with its own type.
+//
+// There's deliberately no conversion between them. "Halve the bilateral number"
+// works on a leg extension and is wrong on a dumbbell curl, where a bilateral set
+// is already logged as the weight in each hand. Volume and total reps still add
+// the two together: it's all work done.
+export const LATERALITIES = ['bilateral', 'unilateral']
+export const LATERALITY_LABELS = { bilateral: 'Bilateral', unilateral: 'Unilateral' }
+export const setLaterality = (set) => (set.left ? 'unilateral' : 'bilateral')
+
+// Which types of this lift have working sets logged, and which was done last:
+// { logged: ['bilateral', 'unilateral'], latest: 'unilateral' }. `logged` keeps
+// LATERALITIES order; `latest` is null if the lift has no working sets at all.
+export function lateralityHistory(sessions, exercise) {
+  const target = normalizeExerciseTarget(exercise)
+  const seen = new Set()
+  let latest = null
+  let latestDate = -Infinity
+  for (const session of sessions) {
+    for (const ex of session.exercises) {
+      if (ex.kind === 'cardio' || !exerciseEntryMatches(ex, target)) continue
+      for (const s of ex.sets) {
+        if (s.type === 'warmup' || !setHasWork(s, ex.kind)) continue
+        seen.add(setLaterality(s))
+        // >= so that within a session the last set logged decides.
+        if (session.date >= latestDate) {
+          latest = setLaterality(s)
+          latestDate = session.date
+        }
+      }
+    }
+  }
+  return { logged: LATERALITIES.filter((l) => seen.has(l)), latest }
 }
 
 // Double-progression status for an in-progress exercise: with a fixed weight,
@@ -328,12 +368,14 @@ export function repRangeStatus(ex) {
 }
 
 // Each metric turns one session's sets into a single number (or null if the
-// session has no usable data for it).
+// session has no usable data for it). `perLaterality`: it measures strength, so
+// a line of it should show one type of set, not both (see above).
 export const METRICS = [
   {
     id: 'e1rm',
     label: 'Est. 1RM',
     unit: 'kg',
+    perLaterality: true,
     compute(sets) {
       let best = null
       for (const s of sets) {
@@ -347,6 +389,7 @@ export const METRICS = [
     id: 'top',
     label: 'Top set',
     unit: 'kg',
+    perLaterality: true,
     compute(sets) {
       let best = null
       for (const s of sets) {
@@ -469,8 +512,9 @@ export function metricById(id, cardio = false) {
 // the chosen time range, sorted oldest → newest. `exercise` is a name string
 // or `{ id, name }`; `metric` is a metric object (strength or cardio).
 // Weights are normalised to the display unit for strength; distances for
-// cardio — so a line stays continuous across a unit switch.
-export function buildSeries(sessions, exercise, metric, rangeId, displayUnit = 'kg', cardio = false) {
+// cardio — so a line stays continuous across a unit switch. `laterality` limits
+// the line to one type of set; left out, it uses both.
+export function buildSeries(sessions, exercise, metric, rangeId, displayUnit = 'kg', cardio = false, laterality = null) {
   const range = RANGES.find((r) => r.id === rangeId) || RANGES[RANGES.length - 1]
   const cutoff = range.days === Infinity ? 0 : Date.now() - range.days * 86400000
   const dispDist = distanceUnit(displayUnit)
@@ -479,7 +523,7 @@ export function buildSeries(sessions, exercise, metric, rangeId, displayUnit = '
   for (const session of sessions) {
     if (session.date < cutoff) continue
     const sessionUnit = session.unit || 'kg'
-    const sets = setsForExercise(session, exercise).map((s) => {
+    const sets = setsForExercise(session, exercise, laterality).map((s) => {
       if (cardio) {
         return {
           ...s,
@@ -503,10 +547,18 @@ export function buildSeries(sessions, exercise, metric, rangeId, displayUnit = '
   return points
 }
 
+// A lift's est. 1RM line for a chart with no Bilateral | Unilateral switch: it
+// follows whichever type was done last.
+export function liftE1rmSeries(sessions, exercise, rangeId, displayUnit = 'kg') {
+  const { latest } = lateralityHistory(sessions, exercise)
+  return buildSeries(sessions, exercise, metricById('e1rm'), rangeId, displayUnit, false, latest)
+}
+
 // Lifetime stats for one exercise across every session, normalised to the
 // display unit. Warm-ups are excluded and unilateral limbs count as their own
-// sets (both via setsForExercise). Returns null if it was never logged.
-export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
+// sets (both via setsForExercise). `laterality` limits it to one type of set.
+// Returns null if it was never logged.
+export function exerciseSummary(sessions, exercise, displayUnit = 'kg', laterality = null) {
   let timesPerformed = 0
   let firstDate = null
   let lastDate = null
@@ -523,7 +575,7 @@ export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
   const target = normalizeExerciseTarget(exercise)
   const restGaps = []
   for (const session of sessions) {
-    const sets = setsForExercise(session, exercise)
+    const sets = setsForExercise(session, exercise, laterality)
     if (!sets.length) continue
     const sessionUnit = session.unit || 'kg'
     for (const ex of session.exercises) {
@@ -558,6 +610,10 @@ export function exerciseSummary(sessions, exercise, displayUnit = 'kg') {
 // managed, and the best estimated 1RM (which is what catches "same weight, two
 // more reps"). An exercise with no prior history at all is NOT a record —
 // everything would be a PR on day one, which tells you nothing.
+//
+// Bilateral and unilateral each keep their own records, so the first time you do
+// a lift the other way is a first too. A record names its type (`laterality`)
+// only when the lift has been logged both ways — otherwise it's just noise.
 export const PR_KINDS = { weight: 'Heaviest', reps: 'Most reps', e1rm: 'Best est. 1RM' }
 
 export function sessionPRs(session, allSessions, displayUnit = 'kg') {
@@ -574,27 +630,29 @@ export function sessionPRs(session, allSessions, displayUnit = 'kg') {
     seen.add(key)
 
     const target = { id: ex.exerciseId, name: ex.name }
-    const before = exerciseSummary(prior, target, displayUnit)
-    if (!before) continue // never done it before — not a record, just a first
+    const mixed = lateralityHistory([...prior, session], target).logged.length === 2
+    for (const laterality of LATERALITIES) {
+      const before = exerciseSummary(prior, target, displayUnit, laterality)
+      if (!before) continue // never done it this way before — not a record, just a first
 
-    const sessionUnit = session.unit || 'kg'
-    let weight = null
-    let reps = null
-    let e1rm = null
-    for (const s of setsForExercise(session, target)) {
-      const r = Number(s.reps)
-      const w = convertWeight(Number(s.weight), sessionUnit, displayUnit)
-      if (w > 0 && (weight === null || w > weight)) weight = w
-      if (r > 0 && (reps === null || r > reps)) reps = r
-      const e = estimatedOneRepMax(w, r)
-      if (e !== null && (e1rm === null || e > e1rm)) e1rm = e
-    }
+      const sessionUnit = session.unit || 'kg'
+      let weight = null
+      let reps = null
+      let e1rm = null
+      for (const s of setsForExercise(session, target, laterality)) {
+        const r = Number(s.reps)
+        const w = convertWeight(Number(s.weight), sessionUnit, displayUnit)
+        if (w > 0 && (weight === null || w > weight)) weight = w
+        if (r > 0 && (reps === null || r > reps)) reps = r
+        const e = estimatedOneRepMax(w, r)
+        if (e !== null && (e1rm === null || e > e1rm)) e1rm = e
+      }
 
-    const beat = (now, prev) => now !== null && prev !== null && now > prev
-    if (beat(weight, before.bestWeight)) out.push({ kind: 'weight', name: ex.name, value: weight, previous: before.bestWeight })
-    if (beat(reps, before.bestReps)) out.push({ kind: 'reps', name: ex.name, value: reps, previous: before.bestReps })
-    if (beat(e1rm, before.bestE1rm)) {
-      out.push({ kind: 'e1rm', name: ex.name, value: Math.round(e1rm), previous: Math.round(before.bestE1rm) })
+      const beat = (now, prev) => now !== null && prev !== null && now > prev
+      const pr = (kind, value, previous) => out.push({ kind, name: ex.name, value, previous, ...(mixed ? { laterality } : {}) })
+      if (beat(weight, before.bestWeight)) pr('weight', weight, before.bestWeight)
+      if (beat(reps, before.bestReps)) pr('reps', reps, before.bestReps)
+      if (beat(e1rm, before.bestE1rm)) pr('e1rm', Math.round(e1rm), Math.round(before.bestE1rm))
     }
   }
   return out

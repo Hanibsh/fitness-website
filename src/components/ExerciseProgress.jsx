@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { buildSeries, metricById, METRICS, CARDIO_METRICS, RANGES, distanceUnit } from '../lib/workoutStats'
+import { buildSeries, metricById, lateralityHistory, LATERALITY_LABELS, METRICS, CARDIO_METRICS, RANGES, distanceUnit } from '../lib/workoutStats'
 import ProgressChart from './ProgressChart'
 
 function fmt(value, unit) {
@@ -33,9 +33,20 @@ export default function ExerciseProgress({
   // Resolve unit label: weight metrics show the chosen kg/lbs; the cardio
   // distance metric shows km/mi; everything else uses its own fixed unit.
   const unitLabel = metric.unit === 'kg' ? unit : metric.unit === 'dist' ? distanceUnit(unit) : metric.unit
+  const target = useMemo(() => (exerciseId ? { id: exerciseId, name: exerciseName } : exerciseName), [exerciseId, exerciseName])
+
+  // Bilateral and unilateral are different strength, so Est. 1RM and Top set show
+  // one at a time: the type done last, until you pick the other. Volume and Total
+  // reps add both up. The switch only shows for a lift logged both ways.
+  const [pickedSide, setPickedSide] = useState(null)
+  useEffect(() => setPickedSide(null), [target])
+  const sides = useMemo(() => (isCardio ? { logged: [], latest: null } : lateralityHistory(sessions, target)), [isCardio, sessions, target])
+  const side = metric.perLaterality ? pickedSide || sides.latest : null
+  const showSideSwitch = metric.perLaterality && sides.logged.length === 2
+
   const series = useMemo(
-    () => buildSeries(sessions, exerciseId ? { id: exerciseId, name: exerciseName } : exerciseName, metric, rangeId, unit, isCardio),
-    [sessions, exerciseName, exerciseId, metric, rangeId, unit, isCardio]
+    () => buildSeries(sessions, target, metric, rangeId, unit, isCardio, side),
+    [sessions, target, metric, rangeId, unit, isCardio, side]
   )
 
   const active = hovered != null && series[hovered] ? series[hovered] : series[series.length - 1]
@@ -71,6 +82,26 @@ export default function ExerciseProgress({
           </button>
         ))}
       </div>
+
+      {/* bilateral | unilateral */}
+      {showSideSwitch && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {sides.logged.map((l) => (
+            <button
+              key={l}
+              onClick={() => { setPickedSide(l); setHovered(null) }}
+              aria-pressed={l === side}
+              className={`px-3 py-1.5 text-[12px] font-medium border cursor-pointer transition-colors ${
+                l === side
+                  ? 'bg-text-primary text-cream border-text-primary'
+                  : 'bg-white text-text-muted border-border hover:border-border-hover'
+              }`}
+            >
+              {LATERALITY_LABELS[l]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* range toggle */}
       <div className="flex flex-wrap gap-1.5 mb-7">

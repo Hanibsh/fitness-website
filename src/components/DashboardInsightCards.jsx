@@ -10,7 +10,7 @@ import { reasonLabel } from '../lib/dayLog'
 import { openInjuries, injuryTitle, injuryDuration, INJURY_STATUSES } from '../lib/injuries'
 import { weeklyCardio } from '../lib/cardioPlan'
 import { scheduleMode } from '../lib/program'
-import { convertWeight, formatRest } from '../lib/workoutStats'
+import { convertWeight, formatRest, LATERALITY_LABELS } from '../lib/workoutStats'
 import { formatDuration } from '../lib/dashboard'
 import { useDailyTargets } from '../lib/useDailyTargets'
 import { recentPRs } from '../lib/dashboard'
@@ -90,6 +90,7 @@ function ProgressRow({ row, unit, tone, chip }) {
         <p className="text-[11px] text-text-muted">
           {value(row.from)} → {value(row.to)}
           {row.metric === 'e1rm' ? ' · est. 1RM' : ''}
+          {row.laterality ? ` · ${LATERALITY_LABELS[row.laterality]}` : ''}
         </p>
       </div>
       <StatusChip tone={tone}>
@@ -113,9 +114,9 @@ export function StalledLiftsCard({ sessions, unit, now }) {
         <>
           <p className="text-[12px] text-text-muted mb-2 -mt-2">Last 2 weeks vs the 4 before.</p>
           <div className="divide-y divide-border">
-            {p.down.map((r) => <ProgressRow key={r.name} row={r} unit={unit} tone="red" chip="Down" />)}
-            {p.flat.map((r) => <ProgressRow key={r.name} row={r} unit={unit} tone="amber" chip="Stalled" />)}
-            {p.up.map((r) => <ProgressRow key={r.name} row={r} unit={unit} tone="green" chip="Up" />)}
+            {p.down.map((r) => <ProgressRow key={`${r.name}-${r.laterality}`} row={r} unit={unit} tone="red" chip="Down" />)}
+            {p.flat.map((r) => <ProgressRow key={`${r.name}-${r.laterality}`} row={r} unit={unit} tone="amber" chip="Stalled" />)}
+            {p.up.map((r) => <ProgressRow key={`${r.name}-${r.laterality}`} row={r} unit={unit} tone="green" chip="Up" />)}
           </div>
         </>
       )}

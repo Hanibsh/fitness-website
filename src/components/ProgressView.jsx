@@ -5,7 +5,7 @@ import ExerciseSelect from './ExerciseSelect'
 import ProgressChart from './ProgressChart'
 import CompareChart from './CompareChart'
 import RangeTabs from './RangeTabs'
-import { buildSeries, metricById } from '../lib/workoutStats'
+import { liftE1rmSeries, lateralityHistory, LATERALITY_LABELS } from '../lib/workoutStats'
 import { recentPRs } from '../lib/dashboard'
 import { weightTrend } from '../lib/coachStats'
 import { useProgressLines } from '../lib/useProgressLines'
@@ -79,9 +79,14 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
   const vsTarget = (target, unitLabel) => (target ? `target ${target.toLocaleString('en-US')}${unitLabel}` : 'a day')
 
   const strength = useMemo(
-    () => (lift ? buildSeries(sessions, lift, metricById('e1rm'), rangeId, unit) : []),
+    () => (lift ? liftE1rmSeries(sessions, lift, rangeId, unit) : []),
     [sessions, lift, rangeId, unit]
   )
+  // The line follows the type done last; say which, if the lift is logged both ways.
+  const strengthSide = useMemo(() => {
+    const { logged, latest } = lift ? lateralityHistory(sessions, lift) : { logged: [] }
+    return logged.length === 2 ? `${LATERALITY_LABELS[latest]} sets` : null
+  }, [sessions, lift])
   const targetLine = (n, unitLabel) => (n ? `Dashed: target ${withUnit(n, unitLabel)}` : null)
 
   return (
@@ -125,6 +130,7 @@ export default function ProgressView({ sessions = [], bodyweight = [], weekly = 
           <Chart
             title={<span className="inline-flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Est. 1RM</span>}
             points={strength}
+            sub={strengthSide}
             unit={unit}
             empty={lifts.length ? 'No sets of this lift in this range.' : 'No lifts logged yet.'}
           />
