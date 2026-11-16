@@ -18,6 +18,7 @@ import {
   removeExercise,
   moveExerciseBlockTo,
   setExerciseSets,
+  setExerciseWarmups,
   setExerciseRep,
   setExerciseRir,
   setExerciseLastSetFailure,
@@ -218,6 +219,20 @@ export default function DayEditor({
                 )
               ) : (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                {/* Warm-ups come before the work and never count as sets. Blank
+                    on a row that has never said, which the logger reads as
+                    "whatever I warmed up with last time". */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-text-light">Warm-up</span>
+                  <NumberField
+                    decimal={false}
+                    value={ex.warmupSets ?? ''}
+                    placeholder="0"
+                    onValueChange={(v) => update((p) => setExerciseWarmups(p, day.id, ex.id, v))}
+                    aria-label={`${ex.name} warm-up sets`}
+                    className="w-12 bg-cream border border-border px-1 py-1.5 text-center text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
+                  />
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] uppercase tracking-wider text-text-light">Sets</span>
                   <NumberField

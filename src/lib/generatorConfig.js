@@ -898,6 +898,12 @@ export const DAY_LOAD_MAX = 0.8
 // and abs included) gets 8–12. A returning user's own logged range for a
 // movement wins over these (see repRangeFor in splitFromHistory.js), held under
 // the same ceiling.
+// Warm-up sets before the first movement for each muscle in a day (Hani,
+// 2026-11-16): two before a compound, one before anything else, none before a
+// muscle's later movements — by then it's warm. Never working volume: they sit
+// outside every set count, cap and volume number (program.js `warmupSets`).
+export const WARMUP_SETS = { compound: 2, other: 1 }
+
 export const REP_RANGES = {
   heavyCompound: { low: 6, high: 8 }, // fatigueScore ≥ 4 — the big axial lifts
   compound: { low: 6, high: 10 },

@@ -55,7 +55,7 @@ import {
   PATTERN_OPTION_LIMIT, DIRECT_WORK, DIRECT_WORK_TARGET_SLACK, LEAD_PATHS, COVERAGE_MIN_WEIGHT, HEAVY_FATIGUE_SCORE,
   corePlacement, CORE_MUSCLES, SUPERSET_MAX_COMPOUND_FATIGUE,
   SAME_JOB, JOB_ALTERNATIVE_MIN, JOB_COVERED_MIN, IMPLEMENT_SCORE, EMPHASIS_WEIGHT, EMPHASIS_MIN_SHARE,
-  SESSION_TYPES, SESSION_RECOMMENDABLE, SESSION_GAP_HOURS, SESSION_FATIGUED_BELOW,
+  SESSION_TYPES, SESSION_RECOMMENDABLE, SESSION_GAP_HOURS, SESSION_FATIGUED_BELOW, WARMUP_SETS,
   ROTATION_RHYTHM, ROTATION_VERSIONS, rotationVersionsApply,
 } from './generatorConfig'
 
@@ -1409,6 +1409,7 @@ export function summarize(program, { targets, schedule, cycle, inputs, shape = n
     kind: e.kind === 'cardio' ? 'cardio' : 'strength',
     cardio: e.kind === 'cardio' ? cardioOf(e) : null,
     sets: e.sets,
+    ...(e.kind === 'cardio' || e.warmupSets == null ? {} : { warmupSets: e.warmupSets }),
     repRange: e.repRange,
     rirTarget: e.rirTarget || null,
     pattern: e.slot?.pattern || null,
@@ -2075,6 +2076,7 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   }
   placeCore(trainingDays, inputs.core)
   trimSecondCore(trainingDays, perWeek)
+  for (const day of trainingDays) assignWarmups(day.exercises)
 
   const program = buildProgram(trainingDays, cycle, answers.name || suggestName(inputs.focus, inputs.daysPerWeek))
   program.schedule = inputs.schedule === 'weekly' ? 'weekly' : 'rotating'
@@ -2096,6 +2098,33 @@ export function generateProgram({ answers = {}, profile = null, sessions = [], i
   // preview (swapProposedRow) can be re-summarised on the same terms.
   const context = { targets, cycle, shape: templateDays.shape, baseline, sessionCap }
   return { program, summary, inputs, context }
+}
+
+// ---- Warm-ups ------------------------------------------------------------------
+
+// How many warm-up sets a muscle's first movement of the day gets (WARMUP_SETS).
+export function warmupsFor(db) {
+  return db?.type === 'compound' ? WARMUP_SETS.compound : WARMUP_SETS.other
+}
+
+// Every row of a finished day gets its warm-up count, read in the day's final
+// order — after the abs are seated and the focus movements added. The first row
+// a muscle is the MAIN mover of gets warmupsFor; every later one gets none, so
+// the fly after the press and the leg extension after the hack squat start
+// warm. "Main mover" is primaryMuscleOf, the same reading the rest of the file
+// uses, falling back to the slot's muscle for a movement the DB can't place.
+// Cardio rows have no warm-ups. Mutates the rows it's handed: they're the
+// generator's own, not yet anyone's program.
+export function assignWarmups(exercises) {
+  const warm = new Set()
+  for (const row of exercises || []) {
+    if (row.kind === 'cardio') continue
+    const db = DB_BY_ID.get(plannedExerciseDbId(row) || '') || null
+    const muscle = (db && primaryMuscleOf(db)) || row.slot?.muscle || null
+    row.warmupSets = muscle && !warm.has(muscle) ? warmupsFor(db) : 0
+    if (muscle) warm.add(muscle)
+  }
+  return exercises
 }
 
 // ---- Editing the proposal ----------------------------------------------------
@@ -2136,6 +2165,10 @@ export function swapProposedRow(built, program, dayId, rowId, { id, name, catego
           slot: e.slot && muscle && muscle !== e.slot.muscle ? { ...e.slot, muscle } : e.slot,
           repRange: repRangeForExercise(db, history),
           rirTarget,
+          // A row that opened its muscle keeps opening it, warmed up the way
+          // the new movement needs (a compound two, anything else one); a row
+          // that didn't stays at none.
+          ...(Number(e.warmupSets) > 0 ? { warmupSets: warmupsFor(db) } : {}),
         }
       }),
     }),
@@ -2557,6 +2590,7 @@ export function generateSession({ type = 'auto', answers = {}, profile = null, s
   const template = { name: t.label, muscles: [...t.muscles], direct: t.direct.filter((m) => week.targets[m]), repeatJobs: t.repeatJobs || null }
   const day = fillDay(template, alloc, gaps, ctx)
   placeCore([day], inputs.core)
+  assignWarmups(day.exercises)
 
   const program = emptyProgram(`${t.label} session`)
   program.days = [day]

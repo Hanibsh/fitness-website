@@ -16,7 +16,7 @@
 //     carry forward from your last session as suggestions, not from the plan.
 //   - notes: shared per movement, not per plan row (see workoutStore).
 
-import { createPlannedExercise, matchesPlanned, plannedRowFor, isOpenSlot, withKindFields } from './program'
+import { createPlannedExercise, matchesPlanned, plannedRowFor, isOpenSlot, withKindFields, plannedWarmups } from './program'
 import { newSupersetId, pruneSupersets, regroupSupersets, setHasWork } from './workoutStats'
 
 const DEFAULT_REP_RANGE = { low: 6, high: 10 }
@@ -25,6 +25,13 @@ const DEFAULT_REP_RANGE = { low: 6, high: 10 }
 // is ad-hoc ramping, not something the plan should start prescribing.
 function prescribedSetCount(ex) {
   return ex.sets.filter((s) => s.type !== 'warmup' && setHasWork(s, ex.kind)).length
+}
+
+// The warm-ups this session kept, logged into or not. A warm-up row is planned
+// (program.js `warmupSets`), so deleting one is the instruction and so is
+// adding one — whether you typed the weight into it is neither here nor there.
+function warmupCount(ex) {
+  return (ex.sets || []).filter((s) => s.type === 'warmup').length
 }
 
 // Did this exercise happen at all? Warm-ups count here, unlike above: an
@@ -171,6 +178,8 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false, d
       exerciseId: ex.exerciseId || null,
       exKind: ex.kind || 'strength',
       sets,
+      // ...with the warm-ups you gave it, if any.
+      warmupSets: ex.kind === 'cardio' ? 0 : warmupCount(ex),
       repRange: ex.kind === 'cardio' ? null : ex.repRange || DEFAULT_REP_RANGE,
       unilateral: loggedLaterality(ex),
       // The note follows the movement, so a row added here starts with whatever
@@ -208,6 +217,18 @@ export function diffSessionAgainstDay(exercises = [], day, { complete = false, d
     const count = prescribedSetCount(ex)
     if (count > 0 && count !== Number(pe.sets) && (complete || count > Number(pe.sets))) {
       changes.push({ id: `sets:${pe.id}`, kind: 'sets', name: ex.name, peId: pe.id, from: Number(pe.sets), to: count })
+    }
+
+    // Warm-ups, on the same terms as the working sets: one you added shows up
+    // straight away, one you deleted only once the session is done. A row with
+    // no opinion reads as none, so a session that warms up on it starts
+    // planning them; one that doesn't changes nothing.
+    if (ex.kind !== 'cardio' && (pe.kind || 'strength') !== 'cardio') {
+      const warm = warmupCount(ex)
+      const plannedWarm = plannedWarmups(pe) ?? 0
+      if (warm !== plannedWarm && (complete || warm > plannedWarm)) {
+        changes.push({ id: `warmups:${pe.id}`, kind: 'warmups', name: ex.name, peId: pe.id, from: plannedWarm, to: warm })
+      }
     }
 
     if (ex.kind !== 'cardio' && ex.repRange && !sameRepRange(ex.repRange, pe.repRange)) {
@@ -329,14 +350,16 @@ export function applySplitChanges(program, dayId, changes) {
     if (removals.size) exercises = exercises.filter((pe) => !removals.has(pe.id))
 
     const setChanges = new Map(byKind('sets').map((c) => [c.peId, c.to]))
+    const warmChanges = new Map(byKind('warmups').map((c) => [c.peId, c.to]))
     const rangeChanges = new Map(byKind('repRange').map((c) => [c.peId, c.repRange]))
     const swaps = new Map(byKind('swap').map((c) => [c.peId, c]))
     const lats = new Map(byKind('laterality').map((c) => [c.peId, c.unilateral]))
-    if (setChanges.size || rangeChanges.size || swaps.size || lats.size) {
+    if (setChanges.size || warmChanges.size || rangeChanges.size || swaps.size || lats.size) {
       exercises = exercises.map((pe) => {
-        if (!setChanges.has(pe.id) && !rangeChanges.has(pe.id) && !swaps.has(pe.id) && !lats.has(pe.id)) return pe
+        if (!setChanges.has(pe.id) && !warmChanges.has(pe.id) && !rangeChanges.has(pe.id) && !swaps.has(pe.id) && !lats.has(pe.id)) return pe
         let next = { ...pe }
         if (setChanges.has(pe.id)) next.sets = Math.max(1, setChanges.get(pe.id))
+        if (warmChanges.has(pe.id)) next.warmupSets = Math.max(0, warmChanges.get(pe.id))
         if (rangeChanges.has(pe.id)) next.repRange = rangeChanges.get(pe.id)
         if (swaps.has(pe.id)) {
           // The slot survives, the movement changes: sets, rep target and
@@ -366,6 +389,9 @@ export function applySplitChanges(program, dayId, changes) {
         repRange: c.exKind === 'cardio' ? null : c.repRange || DEFAULT_REP_RANGE,
         unilateral: c.unilateral ?? null,
         note: c.note || '',
+        // Only an opinion you actually gave: a row added with no warm-ups stays
+        // as free about them as any other hand-built row.
+        warmupSets: c.warmupSets > 0 ? c.warmupSets : null,
       })
       links.set(c.draftExerciseId, pe.id)
       const at = c.afterPeId ? exercises.findIndex((x) => x.id === c.afterPeId) : -1

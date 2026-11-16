@@ -87,14 +87,39 @@ export function moveItem(arr, from, to) {
 // A cardio row carries `cardio` instead of a rep target: the activity, its
 // machine settings and how much per session (see lib/cardio.js). Its `sets` is
 // the logger's interval count, which starts at one.
+//
+// `warmupSets` is how many warm-up sets come before the working `sets` (Hani,
+// 2026-11-16): the generator plans them, the logger opens the day with them as
+// W rows, and deleting or adding one in a workout saves back here (splitSync).
+// They are never working volume — every count of sets, caps and volume reads
+// `sets` alone. Absent on hand-built rows and on everything written before it
+// existed, and absent means what it always meant: the logger replays whatever
+// warm-ups you logged last time and the plan has no opinion.
 export function createPlannedExercise(name, opts = {}) {
-  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, rirTarget = null, note = '', unilateral = null, slot = null, cardio = null } = opts
+  const { exerciseId = null, kind = 'strength', sets = 3, repRange = { low: 6, high: 10 }, rirTarget = null, note = '', unilateral = null, slot = null, cardio = null, warmupSets = null } = opts
   const row = { id: newId(), exerciseId, name: name.trim().slice(0, 60), kind, sets: Math.max(1, sets), repRange, rirTarget, note, unilateral, slot }
   if (kind === 'cardio') {
     const prescription = cardio || cardioOf({ name })
     if (prescription) row.cardio = prescription
+  } else if (Number.isFinite(warmupSets)) {
+    row.warmupSets = clampWarmups(warmupSets)
   }
   return row
+}
+
+// The warm-up count a plan row asks for, or null when it has no opinion.
+export const MAX_WARMUP_SETS = 10
+function clampWarmups(n) {
+  return Math.max(0, Math.min(MAX_WARMUP_SETS, Math.round(Number(n) || 0)))
+}
+// "2 warm-ups", or null for none / no opinion — the read-only rows' wording.
+export function warmupLabel(pe) {
+  const n = plannedWarmups(pe)
+  return n ? `${n} warm-up${n === 1 ? '' : 's'}` : null
+}
+export function plannedWarmups(pe) {
+  if (!pe || pe.kind === 'cardio' || pe.warmupSets === '' || pe.warmupSets == null) return null
+  return Number.isFinite(Number(pe.warmupSets)) ? clampWarmups(pe.warmupSets) : null
 }
 
 // A day with something to do in it. A training day always counts — an empty
@@ -368,6 +393,13 @@ export function moveExerciseBlockTo(program, dayId, from, to) {
 export function setExerciseSets(program, dayId, exId, value) {
   const sets = value === '' ? '' : Math.max(1, Math.min(20, parseInt(value, 10) || 1))
   return withExercise(program, dayId, exId, (e) => ({ ...e, sets }))
+}
+
+// '' while the field is being typed into, like the set count; plannedWarmups
+// reads it as no opinion until a number lands.
+export function setExerciseWarmups(program, dayId, exId, value) {
+  const warmupSets = value === '' ? '' : clampWarmups(parseInt(value, 10) || 0)
+  return withExercise(program, dayId, exId, (e) => ({ ...e, warmupSets }))
 }
 
 export function setExerciseRep(program, dayId, exId, field, value) {
@@ -1146,7 +1178,7 @@ export function draftFromDay(day, opts = {}) {
       ex.rirTarget = pe.rirTarget || null
       ex.sets = []
       ex.exerciseId = null
-      ex.slot = { ...pe.slot, sets: Math.max(1, Number(pe.sets) || 1) }
+      ex.slot = { ...pe.slot, sets: Math.max(1, Number(pe.sets) || 1), warmups: plannedWarmups(pe) }
       ex.plannedExerciseId = pe.id
       ex.supersetId = pe.supersetId || null
       return ex
@@ -1173,9 +1205,14 @@ export function draftFromDay(day, opts = {}) {
     }
     // createExercise seeds one set; add the rest to hit the target count.
     const target = Math.max(1, Number(pe.sets) || 1)
+    const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: ex.unilateral }
     while (ex.sets.length < target) {
-      const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: ex.unilateral }
       ex.sets.push(createSet(ex.sets[ex.sets.length - 1], setOpts))
+    }
+    // The planned warm-ups open the movement, as W rows ahead of the work.
+    const warmups = strength ? plannedWarmups(pe) || 0 : 0
+    if (warmups) {
+      ex.sets = [...Array.from({ length: warmups }, () => ({ ...createSet(undefined, setOpts), type: 'warmup' })), ...ex.sets]
     }
     // Traces this session exercise back to its slot in the routine, so a
     // mid-session substitution can optionally update the plan too.

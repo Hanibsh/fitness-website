@@ -99,6 +99,12 @@ function describe(c) {
           <span className="font-medium">{c.name}</span> — sets {c.from} → {c.to}
         </>
       )
+    case 'warmups':
+      return (
+        <>
+          <span className="font-medium">{c.name}</span> — warm-ups {c.from} → {c.to}
+        </>
+      )
     case 'repRange':
       return (
         <>
@@ -110,6 +116,7 @@ function describe(c) {
         <>
           Add <span className="font-medium">{c.name}</span> — {c.sets} {c.sets === 1 ? 'set' : 'sets'}
           {c.repRange ? `, ${c.repRange.low}–${c.repRange.high}` : ''}
+          {c.warmupSets > 0 ? `, ${c.warmupSets} warm-up` : ''}
         </>
       )
     case 'swap':

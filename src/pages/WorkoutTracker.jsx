@@ -46,7 +46,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins, setPointerToDay } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, plannedWarmups, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins, setPointerToDay } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
@@ -974,12 +974,15 @@ export default function WorkoutTracker() {
           note: getExerciseNote({ exerciseId, name: trimmed }),
         })
         const target = Math.max(1, Number(e.slot?.sets) || 1)
+        const setOpts = fresh.bodyweight ? { bodyweight: true, bw: Number(d.bodyweight) || 0 } : { unilateral: fresh.unilateral }
         while (fresh.sets.length < target) {
-          const setOpts = fresh.bodyweight ? { bodyweight: true, bw: Number(d.bodyweight) || 0 } : { unilateral: fresh.unilateral }
           fresh.sets.push(createSet(fresh.sets[fresh.sets.length - 1], setOpts))
         }
+        // ...and so are the warm-ups it planned, ahead of the work.
+        const warmups = kind === 'cardio' ? null : e.slot?.warmups ?? null
+        if (warmups) fresh.sets = [...Array.from({ length: warmups }, () => ({ ...createSet(undefined, setOpts), type: 'warmup' })), ...fresh.sets]
         return {
-          ...prefillFromHistory(fresh, Number(d.bodyweight) || 0, null),
+          ...prefillFromHistory(fresh, Number(d.bodyweight) || 0, null, warmups),
           id: e.id,
           slot: e.slot,
           plannedExerciseId: e.plannedExerciseId,
@@ -1553,7 +1556,13 @@ export default function WorkoutTracker() {
   // impossible to express. The plan's set count is kept as a floor, so a day
   // that asks for four sets still shows four rows even if you only did two last
   // time. Only bails when bodyweight-loaded doesn't match.
-  function prefillFromHistory(ex, sessionBw, plannedUnilateral = null) {
+  //
+  // A row that plans its warm-ups (`plannedWarmup`, a number) opens with exactly
+  // that many, whatever last time had: the plan is where a warm-up you deleted
+  // or added was saved to (splitSync). Last time's warm-ups lend them their
+  // suggestions, in order. A row with no opinion (null) replays last time's
+  // warm-ups as they were, as it always has.
+  function prefillFromHistory(ex, sessionBw, plannedUnilateral = null, plannedWarmup = null) {
     if (ex.kind === 'cardio') return ex
     const slotIds = slotRowIds(program, ex.plannedExerciseId)
     const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name, slotIds })
@@ -1572,17 +1581,29 @@ export default function WorkoutTracker() {
     // laterality you set in the builder still outranks last week's working sets,
     // and a split that says nothing still defers to history, exactly as before.
     const planned = ex.bodyweight || typeof plannedUnilateral !== 'boolean' ? null : plannedUnilateral
-    const sets = setsFromPrevious(last.ex, last.unit, unit, {
+    const replayed = setsFromPrevious(last.ex, last.unit, unit, {
       laterality: ex.laterality,
       plannedUnilateral: planned,
       bodyweight: ex.bodyweight,
       bw: sessionBw,
       asHint: true,
     })
-    if (!sets || !sets.length) return ex
+    if (!replayed || !replayed.length) return ex
+    let sets = replayed
+    if (plannedWarmup !== null) {
+      const warm = replayed.filter((s) => s.type === 'warmup').slice(0, plannedWarmup)
+      const draftWarm = ex.sets.filter((s) => s.type === 'warmup')
+      while (warm.length < plannedWarmup) {
+        // Shaped like the warm-up before it, else like the draft's own.
+        const prev = warm[warm.length - 1]
+        const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: !!(prev || draftWarm[0])?.left }
+        warm.push({ ...createSet(undefined, setOpts), type: 'warmup', ...(prev?.hint ? { hint: prev.hint } : {}) })
+      }
+      sets = [...warm, ...replayed.filter((s) => s.type !== 'warmup')]
+    }
     // Top back up to whatever the plan asked for, so a day prescribing four sets
     // still shows four rows when last time only got two. Rows added here are
-    // working sets by definition — the plan has never prescribed a warm-up — so
+    // working sets by definition — planned warm-ups were seated above — so
     // they take the shape the plan asks for, falling back to the last replayed
     // set's shape where it has no opinion. Built at that shape and converted
     // after, rather than created unilateral outright, so the suggestion travels
@@ -1590,7 +1611,10 @@ export default function WorkoutTracker() {
     // flat one onto an L/R row would leave the fill-from-last-time tap nothing
     // to fill.
     const padShape = ex.bodyweight || (ex.laterality || 'both') !== 'both' ? null : planned
-    while (sets.length < ex.sets.length) {
+    // With planned warm-ups the floor is the warm-ups plus the planned work, so
+    // the working sets get their full count however many warm-ups there are.
+    const floor = plannedWarmup !== null ? plannedWarmup + ex.sets.filter((s) => s.type !== 'warmup').length : ex.sets.length
+    while (sets.length < floor) {
       const prev = sets[sets.length - 1]
       const setOpts = ex.bodyweight ? { bodyweight: true, bw: sessionBw } : { unilateral: !!prev?.left }
       const fresh = { ...createSet(undefined, setOpts), ...(prev?.hint ? { hint: prev.hint } : {}) }
@@ -1627,7 +1651,10 @@ export default function WorkoutTracker() {
       // draftFromDay ever filtering or reordering what it returns.
       const byPeId = new Map((day.exercises || []).map((pe) => [pe.id, pe]))
       const exercises = draftFromDay(day, { bodyweight })
-        .map((ex) => prefillFromHistory(ex, Number(bodyweight) || 0, plannedLaterality(byPeId.get(ex.plannedExerciseId))))
+        .map((ex) => {
+          const pe = byPeId.get(ex.plannedExerciseId)
+          return prefillFromHistory(ex, Number(bodyweight) || 0, plannedLaterality(pe), plannedWarmups(pe))
+        })
         // The note follows the movement, so it comes from the shared store
         // rather than from this day's copy of it (draftFromDay stays pure).
         .map((ex) => ({ ...ex, note: getExerciseNote(ex) || ex.note || '' }))

@@ -1,4 +1,4 @@
-import { rirLabel } from '../lib/program'
+import { rirLabel, warmupLabel } from '../lib/program'
 import { cardioOf, cardioLabel } from '../lib/cardio'
 import { supersetLabels } from '../lib/workoutStats'
 
@@ -32,7 +32,7 @@ export default function LockedDay({ day, unit = 'kg', weightKg = null }) {
               <p className="text-[14px] font-medium text-text-primary min-w-0 break-words">{ex.name}</p>
             </div>
             <p className="text-[12px] text-text-muted mt-0.5">
-              {cardio ? cardioLabel(cardio, unit, weightKg) : [`${ex.sets} × ${reps || '—'}`, effort].filter(Boolean).join(' · ')}
+              {cardio ? cardioLabel(cardio, unit, weightKg) : [warmupLabel(ex), `${ex.sets} × ${reps || '—'}`, effort].filter(Boolean).join(' · ')}
             </p>
             {ex.note && <p className="text-[12px] text-text-secondary mt-1.5 break-words">{ex.note}</p>}
           </div>

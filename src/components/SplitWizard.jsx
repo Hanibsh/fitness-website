@@ -13,7 +13,7 @@ import CardioFields from './CardioFields'
 import { SortableList, SortableItem, DragHandle } from './Sortable'
 import { generateProgram, swapProposedRow, summarizeProposal } from '../lib/generator'
 import { useInjuries } from '../lib/useInjuries'
-import { setProgramName, setDayName, isOpenSlot, rirLabel, splitRefresh, withoutStaleFocus, scheduleMode, syncTwins, moveDayTo } from '../lib/program'
+import { setProgramName, setDayName, isOpenSlot, rirLabel, warmupLabel, splitRefresh, withoutStaleFocus, scheduleMode, syncTwins, moveDayTo } from '../lib/program'
 import { getHistory, saveExerciseNote, getExerciseNotesMap } from '../lib/workoutStore'
 import { fetchRemoteHistory, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { donutRows } from '../lib/planStats'
@@ -994,9 +994,9 @@ function Preview({ base, program, summary, history, edited, update, onSwap, onUn
                               {/* The effort target, on its own line — "1–2 RIR,
                                   last set to failure" is too long to share the
                                   narrow sets column on a phone. */}
-                              {rirLabel(e.rirTarget) && (
+                              {(rirLabel(e.rirTarget) || warmupLabel(e)) && (
                                 <span className={`block text-[11px] ${e.rirTarget?.lastSetFailure ? 'text-text-secondary' : 'text-text-light'}`}>
-                                  {rirLabel(e.rirTarget)}
+                                  {[warmupLabel(e), rirLabel(e.rirTarget)].filter(Boolean).join(' · ')}
                                 </span>
                               )}
                               {/* A cardio row's settings and the other half of

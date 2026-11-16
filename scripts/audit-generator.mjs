@@ -27,6 +27,7 @@ const { ENGINE_MUSCLES, ATOM_TO_GROUP, mevFor, ceilingFor, ADVISOR_BLOCK_SLACK, 
   await server.ssrLoadModule('/src/lib/engineConfig.js')
 const { PROGRAMMED_MUSCLES, SKILL_RANK, EXPERIENCE_POSTURE, DAY_LOAD_MAX, VOLUME_PREFERENCES, volumePreference, MIN_WORKING_RIR, shapesFor, DIRECT_WORK, HEAVY_FATIGUE_SCORE, FOCUS_TARGET_FREQUENCY, MIN_SETS_PER_EXERCISE, FOCUS_EXTRA_SESSION_SETS, FOCUS_PORTABLE_MUSCLES, MUSCLE_REGION, CORE_CATEGORY, CORE_PLACEMENTS, DEFAULT_CORE_PLACEMENT, MAX_REPS, JOB_COVERED_MIN, ROTATION_RHYTHM, rotationVersionsApply } =
   await server.ssrLoadModule('/src/lib/generatorConfig.js')
+const { WARMUP_SETS } = await server.ssrLoadModule('/src/lib/generatorConfig.js')
 const { getFullExercise } = await server.ssrLoadModule('/src/lib/exerciseBank.js')
 const { AT_HOME_EQUIPMENT } = await server.ssrLoadModule('/src/data/equipmentGroups.js')
 const EXERCISES = (await server.ssrLoadModule('/src/data/exercises.json')).default.exercises
@@ -235,6 +236,24 @@ function audit(label, program, summary, inputs, opts) {
       check(label, t.emphasis.includes(lead.slot?.muscle), `"${day.name}" opens on ${lead.name} for ${lead.slot?.muscle}, not on what it emphasises (${t.emphasis.join(', ')})`)
     }
   })
+
+  // ---- warm-ups (Hani, 2026-11-16): the first movement a muscle is the main
+  // mover of in a day gets two warm-up sets if it's a compound, one otherwise;
+  // every later movement for that muscle gets none. Cardio rows get none.
+  for (const day of training) {
+    const warm = new Set()
+    for (const e of day.exercises) {
+      if (e.kind === 'cardio') {
+        check(label, e.warmupSets == null, `"${day.name}" cardio row ${e.name} has ${e.warmupSets} warm-ups`)
+        continue
+      }
+      const db = getFullExercise(e.exerciseId || e.slot?.suggestedId)
+      const muscle = (db && primaryMuscleOf(db)) || e.slot?.muscle || null
+      const want = muscle && !warm.has(muscle) ? (db?.type === 'compound' ? WARMUP_SETS.compound : WARMUP_SETS.other) : 0
+      if (muscle) warm.add(muscle)
+      check(label, e.warmupSets === want, `"${day.name}" ${e.name} has ${e.warmupSets} warm-ups, wanted ${want}`)
+    }
+  }
 
   // ---- abs (Hani, 2026-10-02): one ab movement a day at most — two different
   // ones when the abs are a focus (2026-10-06) — outside the set cap and the
