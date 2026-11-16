@@ -16,7 +16,8 @@
 //
 // An exercise line is read left to right: the movement's name (matched against
 // the exercise library, longest name first — DB names already contain " - " and
-// brackets), an optional weight (ignored: weights live in the log), one rep
+// brackets), optional warm-ups ("2 warm-ups," — "warmups" and "warm up" too,
+// comma or not), an optional weight (ignored: weights live in the log), one rep
 // token per set, an optional bracket of RIR / failure / rest, an optional note,
 // and " + " before a superset partner. Anything the library doesn't know is
 // returned in `unmatched` for the person importing to pick, because a split row
@@ -88,6 +89,7 @@ const partStarts = (s) => !!(matchPhrase(s) || matchName(s))
 // ---- One exercise line -------------------------------------------------------------
 
 const WEIGHT = /^\s+[+-]?\d+(?:[.,]\d+)?\s?(?:kg|lbs)(?=\s|$)/i
+const WARMUPS = /^,?\s+(\d+)\s*warm[- ]?ups?,?(?=\s|$)/i
 const CARDIO_TARGET = /^\s+(\d+(?:[.,]\d+)?)\s?(min|cal)(?=\s|$|\()/i
 const REPS = /^\s+(\d+)(?:-(\d+))?(?=\s|$|\()/
 const BRACKET = /^\s*\(([^)]*)\)/
@@ -145,8 +147,19 @@ function parsePart(text) {
     return { head, reps: [], rir: null, failure: false, cardio: { target, settings }, ...noteAndNext(s) }
   }
 
+  // Warm-ups lead the working sets; read either side of a weight, since a
+  // hand-typed line may put them after it.
+  let warmups = null
+  const readWarmups = () => {
+    const w = s.match(WARMUPS)
+    if (!w) return
+    warmups = Number(w[1])
+    s = s.slice(w[0].length)
+  }
+  readWarmups()
   let m = s.match(WEIGHT)
   if (m) s = s.slice(m[0].length)
+  if (warmups === null) readWarmups()
   const reps = []
   while ((m = s.match(REPS))) {
     reps.push({ low: Number(m[1]), high: Number(m[2] ?? m[1]) })
@@ -165,7 +178,7 @@ function parsePart(text) {
     }
   }
 
-  return { head, reps, rir, failure, ...noteAndNext(s) }
+  return { head, reps, warmups, rir, failure, ...noteAndNext(s) }
 }
 
 // Whatever's left up to the next partner is the note — " - record yourself",
@@ -221,7 +234,7 @@ function cardioFrom(name, { target, settings }) {
 // A parsed part as a planned row — the same shape the generator writes, so an
 // imported split edits, swaps and grades like a generated one.
 function plannedFrom(part) {
-  const { head, reps, rir, failure, note } = part
+  const { head, reps, warmups, rir, failure, note } = part
   if (part.cardio) {
     const name = head.match.name
     return createPlannedExercise(name, { kind: 'cardio', sets: 1, repRange: null, note, cardio: cardioFrom(name, part.cardio) })
@@ -229,7 +242,7 @@ function plannedFrom(part) {
   const sets = reps.length || undefined
   const repRange = reps.length ? { low: Math.min(...reps.map((r) => r.low)), high: Math.max(...reps.map((r) => r.high)) } : undefined
   const rirTarget = rir || failure ? { low: rir?.low ?? '', high: rir?.high ?? '', ...(failure ? { lastSetFailure: true } : {}) } : null
-  const base = { sets, repRange, rirTarget, note }
+  const base = { sets, repRange, rirTarget, note, warmupSets: warmups ?? undefined }
   Object.keys(base).forEach((k) => base[k] === undefined && delete base[k])
 
   if (head.open) {

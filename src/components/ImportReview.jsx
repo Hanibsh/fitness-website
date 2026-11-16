@@ -5,7 +5,7 @@ import { parseExportText, resolveUnmatched, measuresInUnit } from '../lib/progra
 import { PROFILE_EXPORT_FIELDS, WEEKDAY_NAMES, COACH_NOTES_HEADING } from '../lib/programExport'
 import { supersetLabels } from '../lib/workoutStats'
 import { cardioTargetText } from '../lib/cardio'
-import { scheduleMode } from '../lib/program'
+import { scheduleMode, warmupLabel } from '../lib/program'
 
 // Paste (or open) an exported split and see what it would bring in before
 // anything is written: the split, day by day, and each profile field as
@@ -181,7 +181,10 @@ export default function ImportReview({ currentProfile = null, canSaveProfile = t
                             {pairs.get(e.id) && (
                               <span className="shrink-0 text-[9px] font-semibold text-cream bg-text-primary px-1 py-0.5">{pairs.get(e.id).label}</span>
                             )}
-                            <span className={`min-w-0 break-words ${missing ? 'text-amber-600' : 'text-text-secondary'}`}>{e.name}</span>
+                            <span className={`min-w-0 break-words ${missing ? 'text-amber-600' : 'text-text-secondary'}`}>
+                              {e.name}
+                              {warmupLabel(e) && <span className="block text-[11px] text-text-light">{warmupLabel(e)}</span>}
+                            </span>
                             <span className="text-text-light shrink-0 ml-auto tabular-nums">
                               {e.kind === 'cardio'
                                 ? e.cardio ? cardioTargetText(e.cardio.target) : null

@@ -124,6 +124,7 @@ export default function ExportModal({ program, client = null, onClose }) {
     model.forName && { key: 'name', label: 'Name' },
     { key: 'date', label: 'Date' },
     model.programLine && { key: 'program', label: 'Split shape' },
+    parts.some((p) => p.warmups) && { key: 'warmups', label: 'Warm-ups' },
     parts.some((p) => p.rir) && { key: 'rir', label: 'RIR' },
     parts.some((p) => p.rest) && { key: 'rest', label: 'Rest times' },
     parts.some((p) => p.note) && { key: 'notes', label: 'Exercise notes' },

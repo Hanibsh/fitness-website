@@ -19,10 +19,14 @@ export function workbookSheets(model, prefs = DEFAULT_EXPORT_PREFS) {
   // target ("20 min", "250 cal") under Reps, and its settings and estimate in
   // a Cardio column that only appears when the split has cardio.
   const hasCardio = model.days.some((d) => d.rows.some((r) => r.parts.some((p) => p.cardio)))
+  // Warm-ups get a column of their own, ahead of the sets they come before —
+  // never the RIR column, which is the working sets' alone.
+  const hasWarmups = prefs.warmups && model.days.some((d) => d.rows.some((r) => r.parts.some((p) => p.warmups)))
   const cols = [
     { key: 'day', head: 'Day', width: 22 },
     { key: 'n', head: '#', width: 5 },
     { key: 'name', head: 'Exercise', width: 42 },
+    hasWarmups && { key: 'warmups', head: 'Warm-up', width: 9 },
     { key: 'sets', head: 'Sets', width: 6 },
     { key: 'reps', head: 'Reps', width: 9 },
     prefs.rir && { key: 'rir', head: 'RIR', width: 26 },
@@ -49,6 +53,7 @@ export function workbookSheets(model, prefs = DEFAULT_EXPORT_PREFS) {
           day: first ? bold(dayHeading(day)) : null,
           n: { value: n },
           name: { value: p.example ? `${p.name}, e.g. ${p.example}` : p.name },
+          warmups: p.warmups ? { value: p.warmups, type: Number } : null,
           sets: p.kind === 'cardio' ? null : { value: p.sets, type: Number },
           reps: p.cardio ? { value: p.cardio.target } : p.reps[0] ? { value: p.reps[0] } : null,
           cardio: p.cardio && (p.cardio.settings || p.cardio.estimate)

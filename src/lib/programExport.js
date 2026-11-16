@@ -4,12 +4,14 @@
 //
 //   Upper A (Monday)
 //
-//   1. Incline Smith Press 40kg 6-10 6-10 6-10 (1-2 RIR)
+//   1. Incline Smith Press 2 warm-ups, 40kg 6-10 6-10 6-10 (1-2 RIR)
 //
 //   2. Seated Leg Curl 10-15 10-15 + Cable Crunch 10-15 10-15 - slow negatives
 //
 //   3. Incline Walk 20 min (5 km/h, 10% incline, about 185 cal)
 //
+// Warm-ups lead, in words, ahead of the weight and the working sets — never in
+// the bracket: the RIR is the working sets' alone (Hani, 2026-11-16).
 // Reps are written once PER SET ("10 10" is two sets of ten), a superset shares
 // one numbered line joined by " + ", a note trails after " - ", and rest days
 // don't appear — unless they hold cardio, written under "Rest day (Wednesday)".
@@ -25,7 +27,7 @@
 // layout here is a change to what it has to parse.
 
 import { GOALS, EXPERIENCE_LEVELS, EQUIPMENT_PRESETS, DIETS, cleanFocus } from './profileFields'
-import { rirLabel, isOpenSlot, scheduleMode } from './program'
+import { rirLabel, isOpenSlot, scheduleMode, plannedWarmups } from './program'
 import { exerciseBlocks, canonicalExerciseId, convertWeight } from './workoutStats'
 import { dayStats, bankIdFor } from './planStats'
 import { getFullExercise, fmtRest } from './exerciseBank'
@@ -155,6 +157,8 @@ function partFor(pe, { sessions, unit, noteFor, weightKg }) {
     example: open ? getFullExercise(pe.slot?.suggestedId)?.name || null : null,
     kind: cardio ? 'cardio' : 'strength',
     sets,
+    // Warm-up sets ahead of the work, or null for none / no opinion.
+    warmups: cardio ? null : plannedWarmups(pe) || null,
     repRange: pe.repRange || null,
     reps: cardio || !reps ? [] : Array(sets).fill(reps),
     rir: plain(rirLabel(pe.rirTarget)) || null,
@@ -296,6 +300,7 @@ export const DEFAULT_EXPORT_PREFS = {
   hidden: [],
   program: true,
   rir: true,
+  warmups: true,
   rest: false,
   notes: true,
   weights: true,
@@ -305,6 +310,11 @@ export const DEFAULT_EXPORT_PREFS = {
   logColumns: false,
 }
 
+// "2 warm-ups" — the export's words for them, and what programImport reads back.
+export function warmupText(n) {
+  return `${n} warm-up${n === 1 ? '' : 's'}`
+}
+
 export function partText(p, prefs = DEFAULT_EXPORT_PREFS) {
   if (p.cardio) {
     const detail = [p.cardio.settings, p.cardio.estimate].filter(Boolean).join(', ')
@@ -312,6 +322,7 @@ export function partText(p, prefs = DEFAULT_EXPORT_PREFS) {
     return prefs.notes && p.note ? `${text} - ${p.note}` : text
   }
   const bits = [p.example ? `${p.name}, e.g. ${p.example}` : p.name]
+  if (prefs.warmups && p.warmups) bits.push(`${warmupText(p.warmups)},`)
   if (prefs.weights && p.weight) bits.push(p.weight)
   if (p.reps.length) bits.push(p.reps.join(' '))
   const bracket = [prefs.rir && p.rir, prefs.rest && p.rest && `rest ${p.rest}`].filter(Boolean)

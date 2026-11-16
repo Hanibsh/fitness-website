@@ -72,6 +72,9 @@ function rowKey(e) {
     pattern: open ? e.slot.pattern : null,
     suggested: open ? e.slot.suggestedId || null : null,
     sets: Number(e.sets),
+    // A row with no warm-ups writes none and reads back as none: 0 and absent
+    // are the same split.
+    warmups: Number(e.warmupSets) || 0,
     reps: [Number(e.repRange?.low), Number(e.repRange?.high)],
     rir: e.rirTarget ? [e.rirTarget.low === '' ? null : Number(e.rirTarget.low), e.rirTarget.high === '' ? null : Number(e.rirTarget.high), !!e.rirTarget.lastSetFailure] : null,
     note: e.note || '',
