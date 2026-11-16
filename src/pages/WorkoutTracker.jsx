@@ -12,6 +12,7 @@ import {
   convertSet,
   setsFromPrevious,
   promoteHint,
+  takeHintWeight,
   stripHints,
   getHistory,
   makeSession,
@@ -45,7 +46,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
@@ -1167,7 +1168,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, { ...s, [side]: { ...s[side], [field]: value } }, e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, takeHintWeight(s, { ...s, [side]: { ...s[side], [field]: value } }), e.kind) : s)) }
           : e
       ),
     }))
@@ -1358,7 +1359,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, { ...s, [field]: value }, e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, e.kind === 'cardio' ? { ...s, [field]: value } : takeHintWeight(s, { ...s, [field]: value }), e.kind) : s)) }
           : e
       ),
     }))
@@ -1540,8 +1541,14 @@ export default function WorkoutTracker() {
   // time. Only bails when bodyweight-loaded doesn't match.
   function prefillFromHistory(ex, sessionBw, plannedUnilateral = null) {
     if (ex.kind === 'cardio') return ex
-    const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name })
+    const slotIds = slotRowIds(program, ex.plannedExerciseId)
+    const last = lastLoggedExercise(history, { exerciseId: ex.exerciseId, name: ex.name, slotIds })
     if (!last) return ex
+    // A planned exercise borrowing numbers from somewhere else says where, so
+    // you know they're a starting point, not this day's own history.
+    const hintFrom = ex.plannedExerciseId && !last.fromSlot
+      ? dayForPlannedExercise(program, last.ex.plannedExerciseId)?.name || 'another split'
+      : null
     // The two things that can override that memory are handed over SEPARATELY
     // rather than collapsed into one shape, because they bind differently: the
     // DB's fixed laterality binds every set, while the split's flag binds only
@@ -1583,7 +1590,7 @@ export default function WorkoutTracker() {
     // "add set" copies the row above it.
     const shapeSet = [...sets].reverse().find((s) => s.type !== 'warmup') || sets[sets.length - 1]
     const unilateral = ex.bodyweight ? false : !!shapeSet.left
-    return { ...ex, sets, unilateral }
+    return { ...ex, sets, unilateral, ...(hintFrom ? { hintFrom } : {}) }
   }
 
   // Start a planned session: fill the draft from the program day (name +
@@ -2746,7 +2753,8 @@ export default function WorkoutTracker() {
               onClick={() => fillFromHint(ex.id)}
               className="inline-flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-primary bg-transparent border-none cursor-pointer mt-1 transition-colors"
             >
-              <Repeat className="w-3.5 h-3.5" /> Same as last time
+              <Repeat className="w-3.5 h-3.5 shrink-0" /> Same as last time
+              {ex.hintFrom && <span>· from {ex.hintFrom}</span>}
             </button>
           )}
         </div>

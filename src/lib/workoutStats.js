@@ -713,16 +713,28 @@ export function buildSharedLifts(session, profile) {
 // when both sides have one, else case-insensitive name — with the unit it was
 // logged in. `sessions` must be newest-first (as getHistory()/
 // fetchRemoteHistory both return). Powers "prefill from last time you did this".
-export function lastLoggedExercise(sessions, { exerciseId, name }) {
-  const key = (name || '').trim().toLowerCase()
-  for (const session of sessions) {
-    for (const ex of session.exercises) {
-      if (ex.kind === 'cardio') continue
-      const match = exerciseId && ex.exerciseId ? ex.exerciseId === exerciseId : ex.name.trim().toLowerCase() === key
-      if (match) return { ex, unit: session.unit || 'kg' }
+//
+// Two passes. With `slotIds` (the plan rows of ONE slot — see slotRowIds), the
+// last time you did this movement in that exact spot of the split wins: the
+// same lift 5th in a session is weaker than it is 1st. Failing that, the last
+// time you did it anywhere (`fromSlot: false`) — a starting point for a new
+// split. Entries you never logged (a skipped exercise saves with empty sets)
+// are passed over, and renamed exercises still match through the alias map.
+export function lastLoggedExercise(sessions, { exerciseId, name, slotIds = null }) {
+  const target = normalizeExerciseTarget({ id: exerciseId, name })
+  const find = (inSlot) => {
+    for (const session of sessions) {
+      for (const ex of session.exercises) {
+        if (ex.kind === 'cardio') continue
+        if (inSlot && !slotIds.has(ex.plannedExerciseId)) continue
+        if (!exerciseEntryMatches(ex, target)) continue
+        if (!(ex.sets || []).some((s) => setHasWork(s, ex.kind))) continue
+        return { ex, unit: session.unit || 'kg', fromSlot: inSlot }
+      }
     }
+    return null
   }
-  return null
+  return (slotIds?.size ? find(true) : null) || find(false)
 }
 
 // Every unique exercise name ever logged, most-recent first.

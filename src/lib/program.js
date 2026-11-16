@@ -1018,6 +1018,22 @@ export function dayForPlannedExercise(program, plannedExerciseId) {
   return program.days.find((d) => (d.exercises || []).some((pe) => pe.id === plannedExerciseId)) || null
 }
 
+// Every plan-row id that is the SAME slot as this one: the row itself plus its
+// copies on twin days (a day that comes round twice is one workout). This is
+// what "last time on this day of this split" matches on, so a lift that's 1st
+// on Upper A and 4th on Upper B keeps two separate histories.
+export function slotRowIds(program, plannedExerciseId) {
+  const ids = new Set()
+  if (!plannedExerciseId) return ids
+  ids.add(plannedExerciseId)
+  const rows = (program?.days || []).flatMap((d) => d.exercises || [])
+  const row = rows.find((pe) => pe.id === plannedExerciseId)
+  if (!row) return ids
+  const key = row.twin || row.id
+  for (const pe of rows) if ((pe.twin || pe.id) === key) ids.add(pe.id)
+  return ids
+}
+
 function nameKey(s) {
   return (s || '').trim().toLowerCase()
 }

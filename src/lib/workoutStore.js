@@ -148,13 +148,42 @@ export function promoteHint(s, onlySide = null) {
   }
 }
 
+// Typing only the reps means "same weight as last time" — the grey weight is
+// right there. Without this the set saved with NO weight, and next week had
+// nothing to suggest. So the moment a set (or one limb) first gets reps, a
+// still-blank weight takes its suggestion, visibly. Only on that first reps
+// entry: clear the weight afterwards and it stays cleared.
+export function takeHintWeight(prev, next) {
+  const h = next.hint
+  if (!h) return next
+  const blank = (v) => v === '' || v == null
+  const gotReps = (p, n) => !(Number(p?.reps) > 0) && Number(n?.reps) > 0
+  if (next.left) {
+    let out = next
+    for (const k of ['left', 'right']) {
+      if (gotReps(prev[k], next[k]) && blank(next[k]?.weight) && !blank(h[k]?.weight)) {
+        out = { ...out, [k]: { ...out[k], weight: h[k].weight } }
+      }
+    }
+    return out
+  }
+  if (!gotReps(prev, next)) return next
+  if (next.bw != null) {
+    if (!blank(next.added) || blank(h.added)) return next
+    return { ...next, added: h.added, weight: (Number(next.bw) || 0) + (Number(h.added) || 0) }
+  }
+  if (!blank(next.weight) || blank(h.weight)) return next
+  return { ...next, weight: h.weight }
+}
+
 // Drop the logging scaffolding before a session is stored. Suggestions aren't
 // part of the record — and leaving them in would make the NEXT session's
 // suggestions come from the last one's suggestions. `stampAuto` is scaffolding
 // too: it only marks a timestamp the app guessed on your behalf as still open
 // to correction, which is a question that dies with the draft.
 export function stripHints(exercises) {
-  return exercises.map((ex) => ({
+  // `hintFrom` (where borrowed suggestions came from) is scaffolding as well.
+  return exercises.map(({ hintFrom: _hintFrom, ...ex }) => ({
     ...ex,
     sets: ex.sets.map((s) => {
       if (!s.hint && !s.stampAuto) return s
