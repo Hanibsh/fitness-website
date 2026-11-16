@@ -9,9 +9,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
-import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge, getBodyweightLog } from '../lib/workoutStore'
-import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations, fetchRemoteBodyweight } from '../lib/workoutRemote'
-import { scheduleMode, plannedDayForDate, todayPlan, nextTrainingDate, nextDayLabel } from '../lib/program'
+import { getHistory, getUnit, getGoals, saveGoals, getProgram, getBlocks, saveBlocks, deleteSession, getDayAnnotations, getDraft, clearDraft, stashDraft, getStashedDraft, getProgramsState, getSplitNudgeDismissed, dismissSplitNudge, getBodyweightLog, saveProgram } from '../lib/workoutStore'
+import { fetchRemoteHistory, fetchRemoteProgram, fetchRemoteBlocks, upsertRemoteBlocks, deleteRemoteSession, fetchRemoteDayAnnotations, fetchRemoteBodyweight, upsertRemoteProgram } from '../lib/workoutRemote'
+import { scheduleMode, plannedDayForDate, todayPlan, nextTrainingDate, nextDayLabel, setPointerToDay } from '../lib/program'
 import { liveDraft } from '../lib/draftState'
 import { shouldSuggestSplit } from '../lib/splitFromHistory'
 import { reasonLabel, annotationForDate } from '../lib/dayLog'
@@ -66,6 +66,7 @@ import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
 import NicknameModal from '../components/NicknameModal'
 import ConfirmModal from '../components/ConfirmModal'
+import ChangeTodayDay from '../components/ChangeTodayDay'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -738,6 +739,16 @@ export default function Dashboard() {
           : plan.status === 'rest'
             ? { label: 'Rest day', sub: weeklyProgram ? 'Scheduled day off' : 'Recovery in your rotation', rest: true }
             : { label: plan.day.name, sub: `${exerciseCount(plan.day)} planned` }
+  // Missed a day? Point today at another day of the rotation from here — same
+  // correction as the split page's Set as today. Hidden once today's logged
+  // (it would undo the session) and while one's underway (it'd strand it).
+  const canChangeToday = !!program && !weeklyProgram && plan.status !== 'none' && plan.status !== 'done' && !live
+  function changeTodayDay(dayId) {
+    const next = setPointerToDay(program, dayId)
+    setProgram(next)
+    saveProgram(next)
+    if (user) upsertRemoteProgram(user.id, next).catch(() => {})
+  }
   const upTomorrow = tomorrowPlanned
     ? tomorrowPlanned.kind === 'rest'
       ? { label: 'Rest day', sub: null }
@@ -856,6 +867,9 @@ export default function Dashboard() {
                 >
                   {program ? 'Start today’s session →' : 'Start logging →'}
                 </Link>
+              )}
+              {canChangeToday && (
+                <ChangeTodayDay program={program} currentDayId={plan.day.id} onPick={changeTodayDay} className="mt-1" />
               )}
               {upTomorrow && (
                 <button

@@ -46,7 +46,7 @@ import {
   saveDayAnnotation,
 } from '../lib/workoutStore'
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
-import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins } from '../lib/program'
+import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins, setPointerToDay } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
 import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
@@ -83,6 +83,7 @@ import SendToCoachButton from '../components/SendToCoachButton'
 import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
 import SplitSyncModal from '../components/SplitSyncModal'
+import ChangeTodayDay from '../components/ChangeTodayDay'
 import { formatDuration } from '../lib/dashboard'
 import { adviseTraining } from '../lib/advisor'
 
@@ -1658,6 +1659,16 @@ export default function WorkoutTracker() {
     persistProgram(advanced)
   }
 
+  // Missed a day, or trained out of order: point today at another day of the
+  // rotation, straight from the card (same correction as the split page's
+  // Set as today).
+  function changeTodayDay(dayId) {
+    if (!program) return
+    const next = setPointerToDay(program, dayId)
+    setProgram(next)
+    persistProgram(next)
+  }
+
   // ---- Injury ---------------------------------------------------------------
   //
   // Marking a day as an injury is what tells the rotation its slot is SPENT
@@ -2786,6 +2797,11 @@ export default function WorkoutTracker() {
                 </div>
                 <Link to={`/split/${program.id}`} className="text-[11px] text-cream-70 underline hover:text-cream no-underline shrink-0">Edit split</Link>
               </div>
+              {/* Rotation only, and not once today's logged — switching then
+                  would undo the session you just finished. */}
+              {!isWeeklyProgram && !doneToday && (
+                <ChangeTodayDay program={program} currentDayId={todayDay.id} onPick={changeTodayDay} className="-mt-2 mb-4" />
+              )}
 
               {/* `done` must win over the rest branch: for a rotating program
                   that advanced today, plan.day is TOMORROW's day and may well
