@@ -83,7 +83,7 @@ import SendToCoachButton from '../components/SendToCoachButton'
 import ShareToCommunityButton from '../components/ShareToCommunityButton'
 import { workoutCard } from '../lib/chatCards'
 import SplitSyncModal from '../components/SplitSyncModal'
-import ChangeTodayDay from '../components/ChangeTodayDay'
+import ChangeTodayDay, { SwapDayButton } from '../components/ChangeTodayDay'
 import { formatDuration } from '../lib/dashboard'
 import { adviseTraining } from '../lib/advisor'
 
@@ -393,6 +393,7 @@ export default function WorkoutTracker() {
   const [setAside, setSetAside] = useState(() => migrateDraft(getStashedDraft()))
   const [history, setHistory] = useState([])
   const [program, setProgram] = useState(null)
+  const [dayPickerOpen, setDayPickerOpen] = useState(false)
   const [annotations, setAnnotations] = useState([])
   // Whether the day_annotations table is reachable — same fallback the calendar
   // page keeps. Starts true when signed in, flips to local the first time a
@@ -510,6 +511,18 @@ export default function WorkoutTracker() {
   // rotation has already moved on by tomorrow, and offering it again would read
   // as a second skip.
   const offTodayConsumes = !!todayAnnotation && reasonConsumesSlot(todayAnnotation.reason)
+  // Missed a day? Rotation only, and not once today's logged — switching then
+  // would undo the session you just finished.
+  const canChangeToday = !!todayDay && !isWeeklyProgram && !doneToday
+  const changeDayButton = (
+    <button
+      type="button"
+      onClick={() => setDayPickerOpen(true)}
+      className="shrink-0 inline-flex items-center justify-center gap-2 bg-transparent text-cream border border-cream-30 font-medium px-5 py-2.5 cursor-pointer text-[13px] hover:border-cream-60 transition-colors"
+    >
+      <ArrowLeftRight className="w-4 h-4" /> Change day
+    </button>
+  )
 
   // Engine v2 nudge: which of today's target muscles are still recovering.
   // Informational only — never a gate on training. Only meaningful when
@@ -2797,10 +2810,8 @@ export default function WorkoutTracker() {
                 </div>
                 <Link to={`/split/${program.id}`} className="text-[11px] text-cream-70 underline hover:text-cream no-underline shrink-0">Edit split</Link>
               </div>
-              {/* Rotation only, and not once today's logged — switching then
-                  would undo the session you just finished. */}
-              {!isWeeklyProgram && !doneToday && (
-                <ChangeTodayDay program={program} currentDayId={todayDay.id} onPick={changeTodayDay} className="-mt-2 mb-4" />
+              {dayPickerOpen && canChangeToday && (
+                <ChangeTodayDay program={program} currentDayId={todayDay.id} onPick={changeTodayDay} onClose={() => setDayPickerOpen(false)} />
               )}
 
               {/* `done` must win over the rest branch: for a rotating program
@@ -2865,6 +2876,7 @@ export default function WorkoutTracker() {
                         Mark rest done
                       </button>
                     )}
+                    {canChangeToday && changeDayButton}
                   </div>
                 </div>
               ) : skipTodayCard ? (
@@ -2892,6 +2904,7 @@ export default function WorkoutTracker() {
                         Skip — move to next
                       </button>
                     )}
+                    {canChangeToday && changeDayButton}
                   </div>
                 </div>
               ) : (
@@ -2919,12 +2932,15 @@ export default function WorkoutTracker() {
                     </p>
                   )}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <button
-                      onClick={() => startPlannedSession(todayDay)}
-                      className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[14px] hover:bg-white transition-colors"
-                    >
-                      <Check className="w-4 h-4" /> Start session
-                    </button>
+                    <span className="inline-flex items-stretch">
+                      <button
+                        onClick={() => startPlannedSession(todayDay)}
+                        className="inline-flex items-center justify-center gap-2 bg-cream text-text-primary font-medium px-5 py-2.5 border-none cursor-pointer text-[14px] hover:bg-white transition-colors"
+                      >
+                        <Check className="w-4 h-4" /> Start session
+                      </button>
+                      {canChangeToday && <SwapDayButton tone="cream" onClick={() => setDayPickerOpen(true)} />}
+                    </span>
                     {/* An injury you're not even starting the session for. Here
                         rather than only on /calendar because this is the screen
                         you're on when you find out. */}

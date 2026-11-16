@@ -5,7 +5,7 @@ import {
   Flame, TrendingUp, Trophy, Target, Activity, History,
   ChevronRight, Award, CalendarDays, Plus, Pencil, MessageCircle, ArrowRight, Crosshair,
   BatteryCharging, Lightbulb, CalendarRange, HelpCircle, Trash2, PlayCircle, Wand2, X, Sparkles, Bandage,
-  SlidersHorizontal,
+  SlidersHorizontal, ArrowLeftRight,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useLocalDay } from '../lib/useLocalDay'
@@ -66,7 +66,7 @@ import BodyweightTracker from '../components/BodyweightTracker'
 import GoalsModal from '../components/GoalsModal'
 import NicknameModal from '../components/NicknameModal'
 import ConfirmModal from '../components/ConfirmModal'
-import ChangeTodayDay from '../components/ChangeTodayDay'
+import ChangeTodayDay, { SwapDayButton } from '../components/ChangeTodayDay'
 
 function greeting(d = new Date()) {
   const h = d.getHours()
@@ -179,7 +179,7 @@ function CoachingBanner() {
 // half-logged workout waited one tap away. Anyone who trains with the phone in
 // their pocket lands here between exercises, so this is the screen that has to
 // answer "where was I?".
-function SessionActions({ live, plannedDay, idle = null, firstTime, onStartNew, onNewWorkout = null }) {
+function SessionActions({ live, plannedDay, idle = null, firstTime, onStartNew, onNewWorkout = null, onChangeDay = null }) {
   // Mid-session: pick up where you left off, or deliberately set it aside and
   // begin a fresh one.
   if (live) {
@@ -254,13 +254,18 @@ function SessionActions({ live, plannedDay, idle = null, firstTime, onStartNew, 
             startPlannedDay link. */}
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {plannedDay || !onNewWorkout ? (
-            <Link
-              to="/log"
-              state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
-              className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
-            >
-              {!plannedDay && <Plus className="w-3.5 h-3.5" />}{label}
-            </Link>
+            /* On a rotation split the Start button carries a joined ⇄ box:
+               missed a day, so today is really another one — pick it there. */
+            <span className="inline-flex items-stretch">
+              <Link
+                to="/log"
+                state={plannedDay ? { startPlannedDay: plannedDay.id } : undefined}
+                className="inline-flex items-center gap-1.5 bg-text-primary text-cream font-medium px-4 py-2 no-underline cursor-pointer text-[13px] hover:bg-accent-hover transition-colors"
+              >
+                {!plannedDay && <Plus className="w-3.5 h-3.5" />}{label}
+              </Link>
+              {plannedDay && onChangeDay && <SwapDayButton onClick={onChangeDay} />}
+            </span>
           ) : (
             <button
               type="button"
@@ -286,6 +291,17 @@ function SessionActions({ live, plannedDay, idle = null, firstTime, onStartNew, 
               <Plus className="w-3.5 h-3.5" /> New workout
             </Link>
           ))}
+          {/* A rest day or a day off has no Start button to hang the ⇄ on,
+              and "it says rest but I missed yesterday's" is the very case. */}
+          {!plannedDay && onChangeDay && (
+            <button
+              type="button"
+              onClick={onChangeDay}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover px-4 py-2 cursor-pointer transition-colors"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" /> Change day
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -375,6 +391,7 @@ export default function Dashboard() {
   const [draft, setDraft] = useState(() => getDraft())
   const [confirmStartNew, setConfirmStartNew] = useState(false)
   const [newWorkoutOpen, setNewWorkoutOpen] = useState(false)
+  const [dayPickerOpen, setDayPickerOpen] = useState(false)
   const [nudgeDismissed, setNudgeDismissed] = useState(() => !!getSplitNudgeDismissed())
   // Which cards show and in what order — chosen on the profile page.
   const { layout } = useDashboardLayout()
@@ -867,9 +884,6 @@ export default function Dashboard() {
                 >
                   {program ? 'Start today’s session →' : 'Start logging →'}
                 </Link>
-              )}
-              {canChangeToday && (
-                <ChangeTodayDay program={program} currentDayId={plan.day.id} onPick={changeTodayDay} className="mt-1" />
               )}
               {upTomorrow && (
                 <button
@@ -1411,7 +1425,11 @@ export default function Dashboard() {
           idle={idle}
           onStartNew={() => setConfirmStartNew(true)}
           onNewWorkout={canChooseWorkout ? () => setNewWorkoutOpen(true) : null}
+          onChangeDay={canChangeToday ? () => setDayPickerOpen(true) : null}
         />
+        {dayPickerOpen && canChangeToday && (
+          <ChangeTodayDay program={program} currentDayId={plan.day.id} onPick={changeTodayDay} onClose={() => setDayPickerOpen(false)} />
+        )}
         {suggestSplit && <BuildSplitNudge count={sessions.length} onDismiss={dismissNudge} />}
 
         {/* The cards, in the order chosen on the profile page. Two half cards
