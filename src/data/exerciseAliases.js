@@ -70,6 +70,8 @@ export const EXERCISE_ID_ALIASES = {
   // match the "Base - Variant" convention, so it needs an alias of its own.
   'push-down': 'push-down-straight-bar',
   'rope-push-down': 'push-down-rope',
+  // 2026-11-19: "Z-Bar Curl" renamed to match "EZ Bar Preacher Curl".
+  'z-bar-curl': 'ez-bar-curl',
   // legs (weighted → base merges; deadlift abbreviation renames)
   // Standing/Seated Calf Raise became "- Dumbbell" when the bodyweight/band
   // variants were added, same move as the lat pulldown/push-down renames above.

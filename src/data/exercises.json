@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-06",
-  "count": 285,
+  "generatedAt": "2026-11-18",
+  "count": 286,
   "exercises": [
     {
       "id": "high-to-low-cable-fly",
@@ -5424,6 +5424,44 @@
       "implement": "machine"
     },
     {
+      "id": "preacher-curl-machine-close-grip",
+      "name": "Preacher Curl Machine - Close Grip",
+      "category": "Arms",
+      "subCategory": "Biceps",
+      "type": "isolation",
+      "laterality": "bilateral",
+      "muscles": {
+        "Biceps": 1,
+        "Brachioradialis": 0.5,
+        "Brachialis": 0.5
+      },
+      "fatigueScore": 1,
+      "recoveryWindowHours": [
+        24,
+        48
+      ],
+      "restSeconds": [
+        120,
+        180
+      ],
+      "progressiveOverload": "high",
+      "stability": "very stable",
+      "hypertrophyPotential": "excellent",
+      "sfr": "excellent",
+      "stretchMediated": "none",
+      "resistanceProfile": "balanced",
+      "equipment": "machine",
+      "axialLoading": false,
+      "skill": "low",
+      "limiter": "target",
+      "programmable": true,
+      "notes": "Close grip on the machine handles shifts more work to the brachioradialis and brachialis.",
+      "video": null,
+      "thumbnail": null,
+      "pattern": "elbow-flexion",
+      "implement": "machine"
+    },
+    {
       "id": "dumbbell-hammer-preacher-curl",
       "name": "Dumbbell Hammer Preacher Curl",
       "category": "Arms",
@@ -5796,8 +5834,8 @@
       "implement": "barbell"
     },
     {
-      "id": "z-bar-curl",
-      "name": "Z-Bar Curl",
+      "id": "ez-bar-curl",
+      "name": "EZ Bar Curl",
       "category": "Arms",
       "subCategory": "Biceps",
       "type": "isolation",

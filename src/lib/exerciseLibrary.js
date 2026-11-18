@@ -120,6 +120,13 @@ function hasWord(words, t) {
   return false
 }
 
+// Does every query word match? A word that misses on its own may still match
+// joined to the word before it, so "over head" finds "Overhead" and
+// "pull over" finds "Pullover".
+function matchesAll(words, tokens) {
+  return tokens.every((t, i) => hasWord(words, t) || (i > 0 && hasWord(words, tokens[i - 1] + t)))
+}
+
 // Library entries from the DB — the real, ID'd movements. Compounds sort ahead
 // of isolation (nice empty-state suggestions), then alphabetical.
 const LIBRARY = (exercisesDb.exercises || [])
@@ -301,7 +308,7 @@ export function searchExercises(query, recentNames = []) {
   const qCompact = q.replace(/[^a-z0-9]/g, '')
   const tokens = tokenize(q)
   return pool
-    .filter((m) => tokens.every((t) => hasWord(m._hay, t)))
+    .filter((m) => matchesAll(m._hay, tokens))
     .map((m) => ({ m, score: relevance(m, q, qCompact, tokens, recentSet.has(m.name.toLowerCase())) }))
     .sort((a, b) => b.score - a.score)
     .map((x) => x.m)
@@ -322,7 +329,7 @@ function searchWithin(list, query, itemOf, { ranked = true } = {}) {
   const hits = []
   list.forEach((x, i) => {
     const item = itemOf(x)
-    if (item && tokens.every((t) => hasWord(item._hay, t))) hits.push({ x, i, score: relevance(item, q, qCompact, tokens, false) })
+    if (item && matchesAll(item._hay, tokens)) hits.push({ x, i, score: relevance(item, q, qCompact, tokens, false) })
   })
   // Unranked keeps the caller's order — for lists whose order means something
   // on its own (an injury's movements run worst-first).
