@@ -28,6 +28,10 @@ const ABBREVIATIONS = {
   sldl: 'stiff leg deadlift',
   bss: 'bulgarian split squat',
   cgbp: 'close grip bench press',
+  // "Z bar" is a common name for the EZ bar.
+  z: 'ez',
+  zbar: 'ez bar',
+  'z-bar': 'ez bar',
 }
 
 // The DB's anatomical muscle names → the everyday words people actually search
