@@ -7,12 +7,13 @@ import Modal from './Modal'
 // appears when something genuinely differs — but each line is independent, so a
 // one-off extra set doesn't have to become a new prescription.
 //
-// Two modes. `review` is the mid-session prompt: cosmetic, cancellable, nothing
-// depends on it. `finish` is the interrupt shown when the app had to GUESS which
-// day this session was, so the answer decides both the split AND the save —
-// hence a third exit (X / Escape / backdrop) meaning "back to the session",
-// which is safe precisely because nothing has been written yet.
-export default function SplitSyncModal({ dayName, changes, mode = 'review', onApply, onSkip, onClose }) {
+// Both modes appear only at FINISH — everything else saves to the split on its
+// own. `finish` is shown when the app had to GUESS which day this session was;
+// `swaps` when the day is known but a swap was never approved (the rest of the
+// changes save either way). X / Escape / backdrop mean "back to the session",
+// safe precisely because nothing has been written yet.
+export default function SplitSyncModal({ dayName, changes, mode = 'finish', onApply, onSkip, onClose }) {
+  const swaps = mode === 'swaps'
   // A removal the session only IMPLIED — a planned exercise you never logged —
   // opens unchecked: everything else in this list is something you did, that is
   // something you didn't, and one session cut short shouldn't delete a lift.
@@ -30,11 +31,11 @@ export default function SplitSyncModal({ dayName, changes, mode = 'review', onAp
   return (
     <Modal onClose={onClose} maxWidth="max-w-md">
       <div className="p-7">
-        <h3 className="font-heading text-xl font-medium text-text-primary mb-1">Update split</h3>
+        <h3 className="font-heading text-xl font-medium text-text-primary mb-1">{swaps ? 'Keep the swap?' : 'Update split'}</h3>
         <p className="text-[13px] text-text-muted mb-5 leading-relaxed">
-          {mode === 'finish' ? 'We matched this session to ' : 'This session differs from '}
-          <span className="text-text-primary">{dayName}</span>. Pick what to keep in the plan — weights
-          and logged reps aren't part of it, they carry over from your last session either way.
+          {swaps ? 'Save to ' : 'We matched this session to '}
+          <span className="text-text-primary">{dayName}</span>
+          {swaps ? '?' : '. Pick what to keep in the plan.'}
         </p>
 
         <ul className="list-none p-0 m-0 mb-6 border-t border-border">
@@ -69,19 +70,17 @@ export default function SplitSyncModal({ dayName, changes, mode = 'review', onAp
             that side by side the primary gets crushed to a few characters. */}
         <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={() => { onApply(accepted); if (mode !== 'finish') onClose() }}
+            onClick={() => onApply(accepted)}
             disabled={accepted.length === 0}
             className="flex-1 bg-text-primary text-cream font-medium py-3 border-none cursor-pointer text-[14px] hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {mode === 'finish' ? 'Update split & finish' : accepted.length === changes.length
-              ? 'Update split'
-              : `Update split (${accepted.length} of ${changes.length})`}
+            {swaps ? 'Save & finish' : 'Update split & finish'}
           </button>
           <button
-            onClick={mode === 'finish' ? onSkip : onClose}
+            onClick={onSkip}
             className="px-5 py-3 text-text-muted hover:text-text-primary bg-white border border-border hover:border-border-hover cursor-pointer text-[13px] transition-colors"
           >
-            {mode === 'finish' ? 'Finish without updating' : 'Cancel'}
+            {swaps ? 'Just this session' : 'Finish without updating'}
           </button>
         </div>
       </div>

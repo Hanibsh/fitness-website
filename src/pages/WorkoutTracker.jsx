@@ -422,7 +422,6 @@ export default function WorkoutTracker() {
   const [noteOpenFor, setNoteOpenFor] = useState(() => new Set())
   const [substituteFor, setSubstituteFor] = useState(null)
   const [pendingSub, setPendingSub] = useState(null) // { exId, name, kind, exerciseId, plannedExerciseId, dayId }
-  const [splitSyncOpen, setSplitSyncOpen] = useState(false)
   // The finish is waiting on the review sheet — only ever set when the split day
   // was inferred rather than known. { day, changes, confident }
   const [pendingSync, setPendingSync] = useState(null)
@@ -1077,43 +1076,8 @@ export default function WorkoutTracker() {
     })
   }
 
-  // How this session has drifted from its split day — drives the "Update split"
-  // row and the review modal. Empty when they already agree, when the session
-  // isn't linked to a split, when there's no split at all, or when the split is
-  // one your coach sent (theirs to change — a swap stays in this session).
-  const splitLocked = isLockedProgram(program)
-  const splitChanges = useMemo(
-    () =>
-      splitLocked
-        ? []
-        : diffSessionAgainstDay(draft.exercises, planDayForDraft, {
-            complete: isEditing,
-            droppedPlannedIds: draft.droppedPlannedIds || [],
-            ignoreSwaps: draft.declinedSwaps || [],
-          }),
-    [draft.exercises, draft.droppedPlannedIds, draft.declinedSwaps, planDayForDraft, isEditing, splitLocked]
-  )
-
-  // Write the accepted changes into the split. Exercises added to the plan are
-  // stamped back onto the session so they stay linked from here on — a later
-  // swap on one will offer to update the split too.
-  function applyChangesToSplit(accepted) {
-    if (!program || !planDayForDraft || !accepted.length) return
-    const applied = applySplitChanges(program, planDayForDraft.id, accepted)
-    // A day that comes round twice (3-version rotation) changes on both turns.
-    const updated = syncTwins(program, applied.program)
-    const { links } = applied
-    setProgram(updated)
-    persistProgram(updated)
-    if (links.size) {
-      setDraft((d) => ({
-        ...d,
-        exercises: d.exercises.map((e) => (links.has(e.id) ? { ...e, plannedExerciseId: links.get(e.id) } : e)),
-      }))
-    }
-  }
-
-  // What this session has to say to the split, resolved as the session ENDS.
+  // What this session has to say to the split, resolved as the session ENDS —
+  // there's no mid-session "update split" prompt: finishing saves it.
   // `complete: true` here and nowhere else: at finish a set count below the plan
   // is a real signal rather than "not there yet", and an exercise with nothing
   // logged didn't happen.
@@ -1808,15 +1772,24 @@ export default function WorkoutTracker() {
       setPendingSync(sync)
       return
     }
-    await commitSession(sync ? { day: sync.day, accepted: autoAcceptable(sync.changes) } : null)
+    // Everything you changed saves to the split on its own — except a swap.
+    // Replacing a lift is a choice the split only takes with a yes, so one that
+    // was never answered mid-session (the day wasn't known then) is asked here.
+    const auto = sync ? autoAcceptable(sync.changes).filter((c) => c.kind !== 'swap') : []
+    const swaps = sync ? sync.changes.filter((c) => c.kind === 'swap') : []
+    if (swaps.length) {
+      setPendingSync({ day: sync.day, changes: swaps, auto, swapsOnly: true })
+      return
+    }
+    await commitSession(sync ? { day: sync.day, accepted: auto } : null)
   }
 
   // The review sheet resolved. `accepted` is [] when the user chose to finish
-  // without updating.
+  // without updating; `auto` (the swaps-only sheet) saves either way.
   function resolvePendingSync(accepted) {
     const sync = pendingSync
     setPendingSync(null)
-    if (sync) commitSession({ day: sync.day, accepted })
+    if (sync) commitSession({ day: sync.day, accepted: [...(sync.auto || []), ...accepted] })
   }
 
   async function commitSession(sync) {
@@ -3163,23 +3136,6 @@ export default function WorkoutTracker() {
               </div>
             )}
 
-            {splitChanges.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSplitSyncOpen(true)}
-                className="w-full flex items-center gap-2 bg-cream border border-border py-2 px-3 mb-6 cursor-pointer hover:border-border-hover transition-colors text-left"
-              >
-                <Link2 className="w-3.5 h-3.5 text-text-light shrink-0" />
-                <span className="text-[12px] text-text-secondary min-w-0">
-                  {splitChanges.length} {splitChanges.length === 1 ? 'change' : 'changes'} not in{' '}
-                  <span className="text-text-primary">{planDayForDraft.name}</span>
-                </span>
-                <span className="ml-auto text-[11px] font-medium uppercase tracking-wider text-text-primary shrink-0">
-                  Update split
-                </span>
-              </button>
-            )}
-
             {/* The rest clock used to live here, above the session name, where
                 it scrolled out of sight after the first exercise. It's a
                 corner bubble now — see <RestTimer /> at the end of the page. */}
@@ -3598,22 +3554,12 @@ export default function WorkoutTracker() {
         </Modal>
       )}
 
-      {/* Review what this session changed, and push the accepted bits to the split */}
-      {splitSyncOpen && splitChanges.length > 0 && (
-        <SplitSyncModal
-          dayName={planDayForDraft.name}
-          changes={splitChanges}
-          onApply={applyChangesToSplit}
-          onClose={() => setSplitSyncOpen(false)}
-        />
-      )}
-
-      {/* Finishing, but the split day was only inferred — so the same answer
-          decides both what the split learns and that the session saves.
-          Dismissing means "back to the session": nothing has been written yet. */}
+      {/* Finishing, and the split needs an answer first: either the day was
+          only inferred, or a swap was never approved. Dismissing means "back to
+          the session": nothing has been written yet. */}
       {pendingSync && (
         <SplitSyncModal
-          mode="finish"
+          mode={pendingSync.swapsOnly ? 'swaps' : 'finish'}
           dayName={pendingSync.day.name}
           changes={pendingSync.changes}
           onApply={resolvePendingSync}
