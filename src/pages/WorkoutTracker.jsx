@@ -1429,9 +1429,11 @@ export default function WorkoutTracker() {
   // preventDefault so it can never submit anything, and blur explicitly: the IME
   // closes itself on Android but not everywhere, and a caret still sitting in a
   // field you've just finished reads as though nothing happened.
-  const hintKeyProps = (exId, setId, side = null) => ({
+  // `field` is passed only by weight boxes ('weight', or 'added' on bodyweight
+  // sets) — it's what shows the quick-add chips.
+  const hintKeyProps = (exId, setId, side = null, field = null) => ({
     enterKeyHint: 'done',
-    onFocus: () => setFocusedSet({ exId, setId, side }),
+    onFocus: () => setFocusedSet({ exId, setId, side, field }),
     onBlur: () => setFocusedSet((cur) => (cur && cur.setId === setId && cur.side === side ? null : cur)),
     onKeyDown: (e) => {
       if (e.key !== 'Enter') return
@@ -1440,6 +1442,31 @@ export default function WorkoutTracker() {
       e.currentTarget.blur()
     },
   })
+
+  // Quick-add: bump the focused weight box by `step`. Adds to what's typed; an
+  // empty box starts from its grey suggestion, then the set above, then zero.
+  function bumpFocusedWeight(step) {
+    if (!focusedSet?.field) return
+    const { exId, setId, side, field } = focusedSet
+    const ex = draft.exercises.find((e) => e.id === exId)
+    const idx = ex ? ex.sets.findIndex((s) => s.id === setId) : -1
+    if (idx < 0) return
+    const set = ex.sets[idx]
+    const prev = idx > 0 ? ex.sets[idx - 1] : null
+    const read = (s, k) => {
+      if (!s) return ''
+      const src = side ? (s.left ? s[side] : s) : (s.left ? s.left : s)
+      return src?.[k] ?? ''
+    }
+    const pick = [read(set, field), hintFor(set, field, side, ''), read(prev, field)]
+      .find((v) => v !== '' && v != null && Number.isFinite(Number(v)))
+    const next = Math.round(((Number(pick) || 0) + step) * 1000) / 1000
+    const value = String(field === 'added' ? next : Math.max(0, next))
+    if (field === 'added') updateAdded(exId, setId, value)
+    else if (side) updateLimbSet(exId, setId, side, 'weight', value)
+    else updateSet(exId, setId, 'weight', value)
+  }
+  const weightSteps = unit === 'lbs' ? [2.5, 5, 10] : [1.25, 2.5, 5]
 
   function removeSet(exId, setId) {
     setDraft((d) => ({
@@ -2562,7 +2589,7 @@ export default function WorkoutTracker() {
                         negative
                         value={set.added ?? ''}
                         onValueChange={(v) => updateAdded(ex.id, set.id, v)}
-                        {...hintKeyProps(ex.id, set.id)}
+                        {...hintKeyProps(ex.id, set.id, null, 'added')}
                         placeholder={hintFor(set, 'added', null, '0')}
                         aria-label={`Set ${i + 1} added weight in ${unit}`}
                         className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2672,7 +2699,7 @@ export default function WorkoutTracker() {
                             <NumberField
                               value={set[side]?.weight ?? ''}
                               onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'weight', v)}
-                              {...hintKeyProps(ex.id, set.id, side)}
+                              {...hintKeyProps(ex.id, set.id, side, 'weight')}
                               placeholder={hintFor(set, 'weight', side)} aria-label={`Set ${i + 1} ${side} weight`}
                               className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                             />
@@ -2712,7 +2739,7 @@ export default function WorkoutTracker() {
                         <NumberField
                           value={set.weight}
                           onValueChange={(v) => updateSet(ex.id, set.id, 'weight', v)}
-                          {...hintKeyProps(ex.id, set.id)}
+                          {...hintKeyProps(ex.id, set.id, null, 'weight')}
                           placeholder={hintFor(set, 'weight')} aria-label={`Set ${i + 1} weight in ${unit}`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
@@ -3662,6 +3689,9 @@ export default function WorkoutTracker() {
 
       <HintBar
         label={hintBar}
+        steps={focusedSet?.field ? weightSteps : null}
+        unit={unit}
+        onStep={bumpFocusedWeight}
         onTake={() => {
           if (focusedSet) fillSetFromHint(focusedSet.exId, focusedSet.setId, focusedSet.side)
           document.activeElement?.blur?.()

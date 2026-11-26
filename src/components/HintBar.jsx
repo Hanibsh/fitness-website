@@ -15,7 +15,9 @@ import { Repeat } from 'lucide-react'
 // So it gets a real control: a strip that rides just above the keyboard while
 // you're in a set that still has a suggestion waiting.
 
-export default function HintBar({ label, onTake }) {
+// It also carries the quick-add chips (+1.25 / +2.5 / +5 kg) while a weight
+// field is focused, so a small jump costs one tap and the keyboard stays up.
+export default function HintBar({ label, onTake, steps, unit, onStep }) {
   // How much of the window the keyboard is covering. visualViewport is the only
   // thing that reports this; it shrinks when the keyboard opens while
   // window.innerHeight doesn't. Zero when there's no keyboard, and zero on
@@ -37,9 +39,19 @@ export default function HintBar({ label, onTake }) {
     }
   }, [])
 
+  // Without this the input blurs on touch-down, which both closes the keyboard
+  // under us and loses track of which set was being typed into — by the time
+  // the click landed there'd be nothing to fill. Preventing the default keeps
+  // focus put; the click still fires.
+  const keepFocus = {
+    onPointerDown: (e) => e.preventDefault(),
+    onMouseDown: (e) => e.preventDefault(),
+  }
+  const hasSteps = steps && steps.length > 0
+
   return createPortal(
     <AnimatePresence>
-      {label && (
+      {(label || hasSteps) && (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -48,20 +60,35 @@ export default function HintBar({ label, onTake }) {
           style={{ bottom: keyboard }}
           className="fixed left-0 right-0 z-[85] px-3 pb-2"
         >
-          <button
-            type="button"
-            // Without this the input blurs on touch-down, which both closes the
-            // keyboard under us and loses track of which set was being typed
-            // into — by the time the click landed there'd be nothing to fill.
-            // Preventing the default here keeps focus put; the click still fires.
-            onPointerDown={(e) => e.preventDefault()}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={onTake}
-            className="w-full inline-flex items-center justify-center gap-2 bg-text-primary text-cream border-none cursor-pointer shadow-lg py-3 px-4 text-[13px] font-medium"
-          >
-            <Repeat className="w-4 h-4 shrink-0" />
-            <span className="truncate">Use {label}</span>
-          </button>
+          <div className="max-w-xl mx-auto flex flex-col gap-1.5">
+            {hasSteps && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {steps.map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    {...keepFocus}
+                    onClick={() => onStep(step)}
+                    aria-label={`Add ${step} ${unit}`}
+                    className="bg-white text-text-primary border border-border cursor-pointer shadow-lg py-2.5 px-2 text-[14px] font-medium tabular-nums"
+                  >
+                    +{step} <span className="text-text-muted text-[12px] font-normal">{unit}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {label && (
+              <button
+                type="button"
+                {...keepFocus}
+                onClick={onTake}
+                className="w-full inline-flex items-center justify-center gap-2 bg-text-primary text-cream border-none cursor-pointer shadow-lg py-3 px-4 text-[13px] font-medium"
+              >
+                <Repeat className="w-4 h-4 shrink-0" />
+                <span className="truncate">Use {label}</span>
+              </button>
+            )}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>,
