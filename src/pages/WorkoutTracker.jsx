@@ -48,7 +48,7 @@ import {
 import { fetchRemoteHistory, insertRemoteSession, insertRemoteSessions, deleteRemoteSession, updateRemoteSessionDate, updateRemoteSessionTimes, updateRemoteSession, insertSharedLifts, submitGuestLifts, fetchRemoteProgram, upsertRemoteProgram, fetchRemoteDayAnnotations, upsertRemoteDayAnnotation, upsertRemoteExerciseNotes } from '../lib/workoutRemote'
 import { moveItem, todayPlan, advanceProgram, draftFromDay, scheduleMode, nextTrainingDate, nextDayLabel, dayForSession, dayForPlannedExercise, slotRowIds, plannedRowFor, plannedLaterality, plannedWarmups, reasonConsumesSlot, rirLabel, hasPlannedWork, syncTwins, setPointerToDay } from '../lib/program'
 import { cardioOf, cardioLabel, cardioTargetText } from '../lib/cardio'
-import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet } from '../lib/workoutStats'
+import { buildSharedLifts, distanceUnit, repRangeStatus, convertWeight, supersetLabels, setSummary, sideSetSummary, lastLoggedExercise, newSupersetId, pruneSupersets, regroupSupersets, exerciseBlocks, setHasWork, sideHasWork, isStampedSet, sessionProgress } from '../lib/workoutStats'
 import { SortableList, SortableItem, DragHandle } from '../components/Sortable'
 import { diffSessionAgainstDay, applySplitChanges } from '../lib/splitSync'
 import { isLockedProgram } from '../lib/coachSync'
@@ -75,6 +75,7 @@ import UnitHelp from '../components/UnitHelp'
 import LogTabs from '../components/LogTabs'
 import QuickCalculator from '../components/QuickCalculator'
 import RestTimer from '../components/RestTimer'
+import ProgressRing from '../components/ProgressRing'
 import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
 import SessionSummary from '../components/SessionSummary'
@@ -2102,6 +2103,7 @@ export default function WorkoutTracker() {
   const distUnit = distanceUnit(unit)
   const hasLoggedSets = draftHasWork(draft)
   const liveStats = sessionStats(draft)
+  const progress = sessionProgress(draft.exercises)
   // Counted from the working sets, which is what the header shows — but a draft
   // can hold work and still count zero (warm-ups only), so fall back to a plain
   // phrase rather than promising to save "0 sets".
@@ -3022,11 +3024,8 @@ export default function WorkoutTracker() {
                 )}
               </div>
               <div className="flex items-center gap-4">
-                {hasLoggedSets && (
-                  <div className="text-right">
-                    <p className="text-[11px] uppercase tracking-wider text-text-light mb-1">Sets</p>
-                    <p className="font-heading text-lg font-medium text-text-primary">{liveStats.sets}</p>
-                  </div>
+                {progress.total > 0 && (
+                  <ProgressRing pct={progress.pct} label={`${progress.done} of ${progress.total} working sets done`} />
                 )}
                 <div className="flex items-center gap-1.5">
                   <div className="flex border border-border">

@@ -748,3 +748,19 @@ export function loggedExerciseNames(sessions) {
   }
   return [...seen.values()]
 }
+
+// How far through today's workout you are: working sets with something typed
+// in, over every working set on the page. Warm-ups sit outside both sides. A set
+// counts on input, not on the tick, so the ring moves with every entry.
+export function sessionProgress(exercises) {
+  let done = 0
+  let total = 0
+  for (const ex of exercises || []) {
+    for (const s of ex.sets || []) {
+      if (s.type === 'warmup') continue
+      total += 1
+      if (setHasWork(s, ex.kind)) done += 1
+    }
+  }
+  return { done, total, pct: total ? Math.round((done / total) * 100) : 0 }
+}
