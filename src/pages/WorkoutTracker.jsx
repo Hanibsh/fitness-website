@@ -78,6 +78,7 @@ import RestTimer from '../components/RestTimer'
 import ProgressRing from '../components/ProgressRing'
 import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
+import StepperField from '../components/StepperField'
 import SessionSummary from '../components/SessionSummary'
 import PreviousWorkouts from '../components/PreviousWorkouts'
 import SendToCoachButton from '../components/SendToCoachButton'
@@ -89,7 +90,7 @@ import { formatDuration } from '../lib/dashboard'
 import { adviseTraining } from '../lib/advisor'
 
 // Columns: set no. · weight · reps · RIR · done tick · remove.
-const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px] gap-1.5 items-center'
+const SET_GRID = 'grid grid-cols-[18px_1fr_1fr_48px_18px_18px] gap-1.5 items-center'
 // Same as SET_GRID plus a trailing column for the per-set laterality toggle —
 // only used on "both" exercises, where a flat row can be split into L/R.
 const SET_GRID_TOGGLE = 'grid grid-cols-[18px_1fr_1fr_44px_18px_18px_18px] gap-1.5 items-center'
@@ -225,6 +226,48 @@ function withAutoStamp(prev, next, kind) {
 // and no implicit signal to read, so this is what restarts the clock when you
 // repeat last week's numbers exactly. Refuses an empty row — there's no set
 // there to have finished.
+// The RIR a working set shows in grey when there's no last time to borrow
+// from. Grey until touched: ticking the set, Enter, or one step on the picker
+// makes it real, and so does typing the reps. Warm-ups skip RIR.
+const DEFAULT_RIR = '3'
+
+// Fill a blank RIR with its grey value on every side that holds work.
+function withDefaultRir(s, kind) {
+  if (kind === 'cardio' || s.type === 'warmup') return s
+  const blank = (v) => v === '' || v == null
+  if (s.left) {
+    let out = s
+    for (const k of ['left', 'right']) {
+      if (Number(s[k]?.reps) > 0 && blank(s[k]?.rir)) {
+        out = { ...out, [k]: { ...out[k], rir: hintFor(s, 'rir', k, DEFAULT_RIR) } }
+      }
+    }
+    return out
+  }
+  if (Number(s.reps) > 0 && blank(s.rir)) return { ...s, rir: hintFor(s, 'rir', null, DEFAULT_RIR) }
+  return s
+}
+
+// Typing the reps is logging the set, so that's when the grey RIR is taken
+// up — like the grey weight (takeHintWeight). Only on the FIRST reps entry,
+// per side: clear the RIR afterwards and it stays cleared.
+function rirOnFirstReps(prev, next, kind) {
+  if (kind === 'cardio' || next.type === 'warmup') return next
+  const blank = (v) => v === '' || v == null
+  const gotReps = (p, n) => !(Number(p?.reps) > 0) && Number(n?.reps) > 0
+  if (next.left) {
+    let out = next
+    for (const k of ['left', 'right']) {
+      if (gotReps(prev[k], next[k]) && blank(next[k]?.rir)) {
+        out = { ...out, [k]: { ...out[k], rir: hintFor(next, 'rir', k, DEFAULT_RIR) } }
+      }
+    }
+    return out
+  }
+  if (gotReps(prev, next) && blank(next.rir)) return { ...next, rir: hintFor(next, 'rir', null, DEFAULT_RIR) }
+  return next
+}
+
 function withDoneStamp(next, kind) {
   if (!setHasWork(next, kind)) return next
   return { ...next, completedAt: Date.now(), stampAuto: undefined }
@@ -1150,7 +1193,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, takeHintWeight(s, { ...s, [side]: { ...s[side], [field]: value } }), e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, rirOnFirstReps(s, takeHintWeight(s, { ...s, [side]: { ...s[side], [field]: value } }), e.kind), e.kind) : s)) }
           : e
       ),
     }))
@@ -1341,7 +1384,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, e.kind === 'cardio' ? { ...s, [field]: value } : takeHintWeight(s, { ...s, [field]: value }), e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withRestStamp(s, e.kind === 'cardio' ? { ...s, [field]: value } : rirOnFirstReps(s, takeHintWeight(s, { ...s, [field]: value }), e.kind), e.kind) : s)) }
           : e
       ),
     }))
@@ -1382,7 +1425,7 @@ export default function WorkoutTracker() {
       ...d,
       exercises: d.exercises.map((e) =>
         e.id === exId
-          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withDoneStamp(s, e.kind) : s)) }
+          ? { ...e, sets: e.sets.map((s) => (s.id === setId ? withDoneStamp(withDefaultRir(s, e.kind), e.kind) : s)) }
           : e
       ),
     }))
@@ -1405,7 +1448,8 @@ export default function WorkoutTracker() {
               ...e,
               sets: e.sets.map((s) => {
                 if (s.id !== setId) return s
-                const filled = promoteHint(s, side)
+                const promoted = promoteHint(s, side)
+                const filled = withDefaultRir(promoted, e.kind)
                 return filled === s ? s : withRestStamp(s, filled, e.kind)
               }),
             }
@@ -1468,6 +1512,20 @@ export default function WorkoutTracker() {
     else updateSet(exId, setId, 'weight', value)
   }
   const weightSteps = unit === 'lbs' ? [2.5, 5, 10] : [1.25, 2.5, 5]
+  // One ▲/▼ (or wheel notch) on a weight box.
+  const weightStep = unit === 'lbs' ? 5 : 2.5
+  // Where a blank weight box starts stepping from: its grey suggestion, else
+  // the set above. Same order as the quick-add chips.
+  function weightStart(ex, i, field, side = null) {
+    const set = ex.sets[i]
+    const hint = hintFor(set, field, side, '')
+    if (hint !== '') return hint
+    const prev = i > 0 ? ex.sets[i - 1] : null
+    if (!prev) return null
+    const src = side ? (prev.left ? prev[side] : prev) : (prev.left ? prev.left : prev)
+    const v = src?.[field]
+    return v === '' || v == null ? null : v
+  }
 
   function removeSet(exId, setId) {
     setDraft((d) => ({
@@ -2587,8 +2645,8 @@ export default function WorkoutTracker() {
                       >
                         {setLabels[i]}
                       </button>
-                      <NumberField
-                        negative
+                      <StepperField
+                        compact negative min={-1000} step={weightStep} start={weightStart(ex, i, 'added')}
                         value={set.added ?? ''}
                         onValueChange={(v) => updateAdded(ex.id, set.id, v)}
                         {...hintKeyProps(ex.id, set.id, null, 'added')}
@@ -2608,12 +2666,12 @@ export default function WorkoutTracker() {
                       {set.type === 'warmup' ? (
                         <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                       ) : (
-                        <NumberField
-                          decimal={false}
+                        <StepperField
+                          decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', null, DEFAULT_RIR)}
                           value={set.rir ?? ''}
                           onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
                           {...hintKeyProps(ex.id, set.id)}
-                          placeholder={hintFor(set, 'rir')}
+                          placeholder={hintFor(set, 'rir', null, DEFAULT_RIR)}
                           aria-label={`Set ${i + 1} reps in reserve`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                         />
@@ -2696,9 +2754,10 @@ export default function WorkoutTracker() {
                           </div>
                         </div>
                         {['left', 'right'].map((side) => (
-                          <div key={side} className="grid grid-cols-[20px_1fr_1fr_44px] gap-2 items-center mb-1.5 last:mb-0">
+                          <div key={side} className="grid grid-cols-[20px_1fr_1fr_48px] gap-2 items-center mb-1.5 last:mb-0">
                             <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
-                            <NumberField
+                            <StepperField
+                              compact step={weightStep} start={weightStart(ex, i, 'weight', side)}
                               value={set[side]?.weight ?? ''}
                               onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'weight', v)}
                               {...hintKeyProps(ex.id, set.id, side, 'weight')}
@@ -2716,12 +2775,12 @@ export default function WorkoutTracker() {
                             {set.type === 'warmup' ? (
                               <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                             ) : (
-                              <NumberField
-                                decimal={false}
+                              <StepperField
+                                decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', side, DEFAULT_RIR)}
                                 value={set[side]?.rir ?? ''}
                                 onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'rir', v)}
                                 {...hintKeyProps(ex.id, set.id, side)}
-                                placeholder={hintFor(set, 'rir', side)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
+                                placeholder={hintFor(set, 'rir', side, DEFAULT_RIR)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                               />
                             )}
@@ -2738,7 +2797,8 @@ export default function WorkoutTracker() {
                         >
                           {setLabels[i]}
                         </button>
-                        <NumberField
+                        <StepperField
+                          compact step={weightStep} start={weightStart(ex, i, 'weight')}
                           value={set.weight}
                           onValueChange={(v) => updateSet(ex.id, set.id, 'weight', v)}
                           {...hintKeyProps(ex.id, set.id, null, 'weight')}
@@ -2756,12 +2816,12 @@ export default function WorkoutTracker() {
                         {set.type === 'warmup' ? (
                           <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                         ) : (
-                          <NumberField
-                            decimal={false}
+                          <StepperField
+                            decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', null, DEFAULT_RIR)}
                             value={set.rir ?? ''}
                             onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
                             {...hintKeyProps(ex.id, set.id)}
-                            placeholder={hintFor(set, 'rir')} aria-label={`Set ${i + 1} reps in reserve`}
+                            placeholder={hintFor(set, 'rir', null, DEFAULT_RIR)} aria-label={`Set ${i + 1} reps in reserve`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
                         )}

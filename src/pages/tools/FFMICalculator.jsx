@@ -8,6 +8,7 @@ import { bodyFatBounds, nearestBodyFatLabel } from '../../lib/bodyFat'
 import { usePrefillEffect } from '../../lib/profilePrefill'
 import { convertMassText, convertLengthText } from '../../lib/units'
 import { asset } from '../../lib/assets'
+import HeightField from '../../components/HeightField'
 
 const inputBounds = {
   weight: { metric: { min: 20, max: 300 }, imperial: { min: 44, max: 660 } },
@@ -195,14 +196,14 @@ export default function FFMICalculator() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Weight ({unit === 'metric' ? 'kg' : 'lbs'})</label>
                 <input type="number" min={inputBounds.weight[unit].min} max={inputBounds.weight[unit].max} value={weight} onChange={e => setWeight(e.target.value)} placeholder={unit === 'metric' ? '80' : '176'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
               <div>
-                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Height ({unit === 'metric' ? 'cm' : 'in'})</label>
-                <input type="number" min={inputBounds.height[unit].min} max={inputBounds.height[unit].max} value={height} onChange={e => setHeight(e.target.value)} placeholder={unit === 'metric' ? '180' : '71'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Height ({unit === 'metric' ? 'cm' : 'ft / in'})</label>
+                <HeightField imperial={unit === 'imperial'} value={height} onValueChange={setHeight} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
             </div>
 

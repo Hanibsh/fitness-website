@@ -13,6 +13,7 @@ import { macroFoods, foodKcal } from '../../data/macroFoods'
 import { CARDIO_PRESETS, netKcalPerMin, durationParts, kmhToMph } from '../../lib/cardio'
 import { estimateTdee } from '../../lib/tdee'
 import { loseSpeeds, gainOptions, recompOptions, GOAL_DEFAULT_TARGET, DEFAULT_TARGET, CALORIE_FLOOR, calorieTargets } from '../../lib/calorieTargets'
+import HeightField from '../../components/HeightField'
 
 const macroMeta = {
   protein: { label: 'Protein', color: 'bg-series-1', kcalPerG: 4 },
@@ -309,11 +310,15 @@ export default function TDEECalculator() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 items-end">
               {[['Age', age, setAge, '25', inputBounds.age.min, inputBounds.age.max], ['Weight', weight, setWeight, unit === 'metric' ? '80' : '176', inputBounds.weight[unit].min, inputBounds.weight[unit].max], ['Height', height, setHeight, unit === 'metric' ? '180' : '71', inputBounds.height[unit].min, inputBounds.height[unit].max]].map(([label, val, set, ph, min, max]) => (
-                <div key={label}>
-                  <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">{label}{label !== 'Age' ? ` (${label === 'Weight' ? (unit === 'metric' ? 'kg' : 'lbs') : (unit === 'metric' ? 'cm' : 'in')})` : ''}</label>
-                  <input type="number" min={min} max={max} value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                <div key={label} className={label === 'Height' ? 'col-span-2 sm:col-span-1' : undefined}>
+                  <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">{label}{label !== 'Age' ? ` (${label === 'Weight' ? (unit === 'metric' ? 'kg' : 'lbs') : (unit === 'metric' ? 'cm' : 'ft / in')})` : ''}</label>
+                  {label === 'Height' ? (
+                    <HeightField imperial={unit === 'imperial'} value={val} onValueChange={set} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                  ) : (
+                    <input type="number" min={min} max={max} value={val} onChange={e => set(e.target.value)} placeholder={ph} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+                  )}
                 </div>
               ))}
             </div>

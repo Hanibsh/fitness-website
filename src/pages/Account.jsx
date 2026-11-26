@@ -21,6 +21,7 @@ import UnitHelp from '../components/UnitHelp'
 import { getRestTimer, saveRestTimer } from '../lib/workoutStore'
 import { logBodyFatThisWeek } from '../lib/useWeeklyLog'
 import NumberField from '../components/NumberField'
+import HeightField from '../components/HeightField'
 import { useCoachAccess } from '../lib/useClientsState'
 import { useMyCoach } from '../lib/useMyCoach'
 import CoachSection from '../components/CoachSection'
@@ -421,7 +422,7 @@ export default function Account() {
                     The calculators fill these in for you.
                   </p>
                   <div className="space-y-7">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Bodyweight ({unit})</label>
                         <NumberField
@@ -432,11 +433,11 @@ export default function Account() {
                         />
                       </div>
                       <div>
-                        <label className={labelCls}>Height ({(HEIGHT_BOUNDS[unit] || HEIGHT_BOUNDS.kg).label})</label>
-                        <NumberField
+                        <label className={labelCls}>Height ({unit === 'lbs' ? 'ft / in' : 'cm'})</label>
+                        <HeightField
+                          imperial={unit === 'lbs'}
                           value={height}
                           onValueChange={(v) => { setHeight(v); edited() }}
-                          placeholder={unit === 'kg' ? '180' : '71'}
                           className={inputCls}
                         />
                       </div>

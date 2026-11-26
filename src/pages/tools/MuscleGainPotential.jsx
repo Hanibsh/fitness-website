@@ -9,6 +9,7 @@ import { usePrefillEffect } from '../../lib/profilePrefill'
 import { convertLengthText } from '../../lib/units'
 import { MAX_TRAINING_YEARS } from '../../lib/profileFields'
 import { asset } from '../../lib/assets'
+import HeightField from '../../components/HeightField'
 
 const inputBounds = {
   height: { metric: { min: 100, max: 250 }, imperial: { min: 39, max: 98 } },
@@ -139,10 +140,10 @@ export default function MuscleGainPotential() {
             </div>
             <PrefillNote from={prefill.from} />
 
-            <div className="grid grid-cols-3 gap-4 items-end">
-              <div>
-                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Height ({unit === 'metric' ? 'cm' : 'in'})</label>
-                <input type="number" min={inputBounds.height[unit].min} max={inputBounds.height[unit].max} value={height} onChange={e => setHeight(e.target.value)} placeholder={unit === 'metric' ? '180' : '71'} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 items-end">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Height ({unit === 'metric' ? 'cm' : 'ft / in'})</label>
+                <HeightField imperial={unit === 'imperial'} value={height} onValueChange={setHeight} className="w-full bg-cream border border-border px-4 py-3 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors" />
               </div>
               <div>
                 <label className="text-[11px] text-text-muted uppercase tracking-wider block mb-2">Wrist ({unit === 'metric' ? 'cm' : 'in'})</label>
