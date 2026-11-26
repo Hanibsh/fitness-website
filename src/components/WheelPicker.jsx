@@ -90,7 +90,7 @@ function WheelColumn({ values, initialIndex, suffix = '', label, onIndex, autoFo
       aria-valuetext={`${values[idx]}${suffix}`}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
-      className="relative z-[1] w-24 overflow-y-scroll overscroll-contain snap-y snap-mandatory outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="relative z-[1] flex-1 min-w-0 overflow-y-scroll overscroll-contain snap-y snap-mandatory outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{ height: ITEM * ROWS }}
     >
       <div style={{ height: ITEM * 2 }} aria-hidden="true" />
@@ -163,7 +163,7 @@ function WheelPopup({ anchor, title, columns, onDone, onCancel, onClear }) {
   )
 
   const wheels = (
-    <div className="relative flex justify-center gap-2">
+    <div className="relative flex gap-2">
       <div
         className="absolute left-0 right-0 bg-cream-dark border-y border-border pointer-events-none"
         style={{ top: ITEM * 2, height: ITEM }}
