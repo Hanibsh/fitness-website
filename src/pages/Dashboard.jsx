@@ -552,8 +552,10 @@ export default function Dashboard() {
   )
   // Get started's "Message <coach>" step ticks off once they've written.
   const hasMessaged = useHasMessaged(chatMe, !!coach && !loading && sessions.length === 0)
+  // The full dashboard takes over once there's a split or a logged workout —
+  // a split alone is enough for the Today card (Hani, 2026-11-26).
   const stats = useMemo(() => {
-    if (!sessions.length) return null
+    if (!sessions.length && !program) return null
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     return {
       hero: heroSummary(sessions, unit),
@@ -567,7 +569,7 @@ export default function Dashboard() {
       throwback: thisDayInHistory(sessions, unit),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, unit])
+  }, [sessions, unit, !!program])
 
   // Kept separate from `stats` so switching the weekly-volume range doesn't
   // recompute everything else on the page.
@@ -661,7 +663,7 @@ export default function Dashboard() {
     )
   }
 
-  // Empty state — no workouts yet: a short "get started" list instead of
+  // Empty state — no split and no workouts yet: a short "get started" list instead of
   // empty stats. A session in progress still comes first; weigh-ins already
   // logged keep their card.
   if (!stats) {
@@ -1238,6 +1240,7 @@ export default function Dashboard() {
             className="w-full sm:w-80"
           />
         </div>
+        {!exerciseNames.length && <p className="text-[13px] text-text-muted">Log a workout to see progress.</p>}
         {selectedExercise && (
           <div className="-mx-1">
             <ExerciseProgress exerciseName={selectedExercise} kind={kindFor(selectedExercise)} sessions={sessions} unit={unit} />
@@ -1358,7 +1361,11 @@ export default function Dashboard() {
     activity: (
       <Card>
         <SectionHeading icon={History}>Previous workouts</SectionHeading>
-        <PreviousWorkouts sessions={sessions} onOpen={setSummarySession} inCard />
+        {sessions.length ? (
+          <PreviousWorkouts sessions={sessions} onOpen={setSummarySession} inCard />
+        ) : (
+          <p className="text-[13px] text-text-muted">No workouts yet.</p>
+        )}
       </Card>
     ),
     // SECTION 13 — THIS DAY IN HISTORY
@@ -1431,6 +1438,16 @@ export default function Dashboard() {
           <ChangeTodayDay program={program} currentDayId={plan.day.id} onPick={changeTodayDay} onClose={() => setDayPickerOpen(false)} />
         )}
         {suggestSplit && <BuildSplitNudge count={sessions.length} onDismiss={dismissNudge} />}
+        {/* Split made but nothing logged yet: whatever's left of Get started. */}
+        {!sessions.length && (
+          <GetStarted
+            remainingOnly
+            hasProgram
+            coachName={coach ? coach.coach_name || 'your coach' : null}
+            messaged={!!hasMessaged}
+            profileDone={!!profile?.sex && profile?.bodyweight != null}
+          />
+        )}
 
         {/* The cards, in the order chosen on the profile page. Two half cards
             next to each other share a row on a wide screen. */}
