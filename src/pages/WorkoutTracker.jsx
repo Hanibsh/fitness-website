@@ -3024,9 +3024,6 @@ export default function WorkoutTracker() {
                 )}
               </div>
               <div className="flex items-center gap-4">
-                {progress.total > 0 && (
-                  <ProgressRing pct={progress.pct} label={`${progress.done} of ${progress.total} working sets done`} />
-                )}
                 <div className="flex items-center gap-1.5">
                   <div className="flex border border-border">
                     {[['kg', 'Metric'], ['lbs', 'Imperial']].map(([u, label]) => (
@@ -3698,6 +3695,7 @@ export default function WorkoutTracker() {
         }}
       />
       <QuickCalculator />
+      {sessionUnderway && progress.total > 0 && <ProgressRing done={progress.done} total={progress.total} />}
       {showRestTimer && (
         <RestTimer
           anchorTs={restAnchorTs}
