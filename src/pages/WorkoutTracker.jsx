@@ -78,7 +78,7 @@ import RestTimer from '../components/RestTimer'
 import ProgressRing from '../components/ProgressRing'
 import HintBar from '../components/HintBar'
 import NumberField from '../components/NumberField'
-import StepperField from '../components/StepperField'
+import WheelField, { range } from '../components/WheelPicker'
 import SessionSummary from '../components/SessionSummary'
 import PreviousWorkouts from '../components/PreviousWorkouts'
 import SendToCoachButton from '../components/SendToCoachButton'
@@ -227,9 +227,10 @@ function withAutoStamp(prev, next, kind) {
 // repeat last week's numbers exactly. Refuses an empty row — there's no set
 // there to have finished.
 // The RIR a working set shows in grey when there's no last time to borrow
-// from. Grey until touched: ticking the set, Enter, or one step on the picker
-// makes it real, and so does typing the reps. Warm-ups skip RIR.
+// from. Grey until touched: typing the reps, ticking the set, Enter, or Done
+// on the wheel makes it real. Warm-ups skip RIR.
 const DEFAULT_RIR = '3'
+const RIR_VALUES = range(0, 10)
 
 // Fill a blank RIR with its grey value on every side that holds work.
 function withDefaultRir(s, kind) {
@@ -1512,20 +1513,6 @@ export default function WorkoutTracker() {
     else updateSet(exId, setId, 'weight', value)
   }
   const weightSteps = unit === 'lbs' ? [2.5, 5, 10] : [1.25, 2.5, 5]
-  // One ▲/▼ (or wheel notch) on a weight box.
-  const weightStep = unit === 'lbs' ? 5 : 2.5
-  // Where a blank weight box starts stepping from: its grey suggestion, else
-  // the set above. Same order as the quick-add chips.
-  function weightStart(ex, i, field, side = null) {
-    const set = ex.sets[i]
-    const hint = hintFor(set, field, side, '')
-    if (hint !== '') return hint
-    const prev = i > 0 ? ex.sets[i - 1] : null
-    if (!prev) return null
-    const src = side ? (prev.left ? prev[side] : prev) : (prev.left ? prev.left : prev)
-    const v = src?.[field]
-    return v === '' || v == null ? null : v
-  }
 
   function removeSet(exId, setId) {
     setDraft((d) => ({
@@ -2645,8 +2632,8 @@ export default function WorkoutTracker() {
                       >
                         {setLabels[i]}
                       </button>
-                      <StepperField
-                        compact negative min={-1000} step={weightStep} start={weightStart(ex, i, 'added')}
+                      <NumberField
+                        negative
                         value={set.added ?? ''}
                         onValueChange={(v) => updateAdded(ex.id, set.id, v)}
                         {...hintKeyProps(ex.id, set.id, null, 'added')}
@@ -2666,11 +2653,11 @@ export default function WorkoutTracker() {
                       {set.type === 'warmup' ? (
                         <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                       ) : (
-                        <StepperField
-                          decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', null, DEFAULT_RIR)}
-                          value={set.rir ?? ''}
-                          onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
-                          {...hintKeyProps(ex.id, set.id)}
+                        <WheelField
+                          title="RIR" columns={[{ values: RIR_VALUES, current: set.rir === '' || set.rir == null ? hintFor(set, 'rir', null, DEFAULT_RIR) : set.rir, label: 'Reps in reserve' }]}
+                          blank={set.rir === '' || set.rir == null} display={set.rir}
+                          onPick={([v]) => updateSet(ex.id, set.id, 'rir', String(v))}
+                          onClear={() => updateSet(ex.id, set.id, 'rir', '')}
                           placeholder={hintFor(set, 'rir', null, DEFAULT_RIR)}
                           aria-label={`Set ${i + 1} reps in reserve`}
                           className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
@@ -2756,8 +2743,7 @@ export default function WorkoutTracker() {
                         {['left', 'right'].map((side) => (
                           <div key={side} className="grid grid-cols-[20px_1fr_1fr_48px] gap-2 items-center mb-1.5 last:mb-0">
                             <span className="text-[11px] font-medium uppercase text-text-light">{side === 'left' ? 'L' : 'R'}</span>
-                            <StepperField
-                              compact step={weightStep} start={weightStart(ex, i, 'weight', side)}
+                            <NumberField
                               value={set[side]?.weight ?? ''}
                               onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'weight', v)}
                               {...hintKeyProps(ex.id, set.id, side, 'weight')}
@@ -2775,11 +2761,11 @@ export default function WorkoutTracker() {
                             {set.type === 'warmup' ? (
                               <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                             ) : (
-                              <StepperField
-                                decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', side, DEFAULT_RIR)}
-                                value={set[side]?.rir ?? ''}
-                                onValueChange={(v) => updateLimbSet(ex.id, set.id, side, 'rir', v)}
-                                {...hintKeyProps(ex.id, set.id, side)}
+                              <WheelField
+                                title={`RIR · ${side === 'left' ? 'left' : 'right'}`} columns={[{ values: RIR_VALUES, current: set[side]?.rir === '' || set[side]?.rir == null ? hintFor(set, 'rir', side, DEFAULT_RIR) : set[side].rir, label: 'Reps in reserve' }]}
+                                blank={set[side]?.rir === '' || set[side]?.rir == null} display={set[side]?.rir}
+                                onPick={([v]) => updateLimbSet(ex.id, set.id, side, 'rir', String(v))}
+                                onClear={() => updateLimbSet(ex.id, set.id, side, 'rir', '')}
                                 placeholder={hintFor(set, 'rir', side, DEFAULT_RIR)} aria-label={`Set ${i + 1} ${side} reps in reserve`}
                                 className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                               />
@@ -2797,8 +2783,7 @@ export default function WorkoutTracker() {
                         >
                           {setLabels[i]}
                         </button>
-                        <StepperField
-                          compact step={weightStep} start={weightStart(ex, i, 'weight')}
+                        <NumberField
                           value={set.weight}
                           onValueChange={(v) => updateSet(ex.id, set.id, 'weight', v)}
                           {...hintKeyProps(ex.id, set.id, null, 'weight')}
@@ -2816,11 +2801,11 @@ export default function WorkoutTracker() {
                         {set.type === 'warmup' ? (
                           <span className="text-center text-text-light text-[13px]" aria-hidden="true">—</span>
                         ) : (
-                          <StepperField
-                            decimal={false} step={1} min={0} max={10} start={hintFor(set, 'rir', null, DEFAULT_RIR)}
-                            value={set.rir ?? ''}
-                            onValueChange={(v) => updateSet(ex.id, set.id, 'rir', v)}
-                            {...hintKeyProps(ex.id, set.id)}
+                          <WheelField
+                            title="RIR" columns={[{ values: RIR_VALUES, current: set.rir === '' || set.rir == null ? hintFor(set, 'rir', null, DEFAULT_RIR) : set.rir, label: 'Reps in reserve' }]}
+                            blank={set.rir === '' || set.rir == null} display={set.rir}
+                            onPick={([v]) => updateSet(ex.id, set.id, 'rir', String(v))}
+                            onClear={() => updateSet(ex.id, set.id, 'rir', '')}
                             placeholder={hintFor(set, 'rir', null, DEFAULT_RIR)} aria-label={`Set ${i + 1} reps in reserve`}
                             className="w-full min-w-0 bg-white border border-border px-2 py-2 text-text-primary text-[13px] outline-none focus:border-text-primary transition-colors"
                           />
